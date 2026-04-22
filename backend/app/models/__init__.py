@@ -7,6 +7,11 @@ from app.models.auth import Role, Permission, RolePermission, RefreshToken, Audi
 from app.models.user import User  # noqa: F401
 from app.models.farm import PoultryHouse, Batch, MortalityLog, VaccinationLog, GrowthLog  # noqa: F401
 from app.models.feed import Supplier, FeedCategory, FeedItem, FeedPurchase, FeedPurchaseItem, FeedConsumption  # noqa: F401
+from app.models.inventory import StockItem, StockMovement  # noqa: F401
+from app.models.slaughter import SlaughterRecord, SlaughterOutput  # noqa: F401
+from app.models.sales import Customer, Order, OrderItem, Invoice, Payment  # noqa: F401
+from app.models.finance import ExpenseCategory, Expense, IncomeCategory, Income  # noqa: F401
+from app.models.settings import ProductCatalog, SystemConfig  # noqa: F401
 
 __all__ = [
     "Base",
@@ -27,4 +32,19 @@ __all__ = [
     "FeedPurchase",
     "FeedPurchaseItem",
     "FeedConsumption",
+    "StockItem",
+    "StockMovement",
+    "SlaughterRecord",
+    "SlaughterOutput",
+    "Customer",
+    "Order",
+    "OrderItem",
+    "Invoice",
+    "Payment",
+    "ExpenseCategory",
+    "Expense",
+    "IncomeCategory",
+    "Income",
+    "ProductCatalog",
+    "SystemConfig",
 ]

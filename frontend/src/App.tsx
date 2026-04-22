@@ -9,6 +9,9 @@ import { NotFoundPage } from '@/components/NotFoundPage'
 import { PlaceholderPage } from '@/components/PlaceholderPage'
 import { HousesPage } from '@/features/farm/HousesPage'
 import { BatchesPage } from '@/features/farm/BatchesPage'
+import { OrdersPage } from '@/features/sales/OrdersPage'
+import { ExpensesPage } from '@/features/finance/ExpensesPage'
+import { ProfitDashboard } from '@/features/analytics/ProfitDashboard'
 
 export default function App() {
   return (
@@ -60,6 +63,26 @@ export default function App() {
             <Route path="consumption" element={<PlaceholderPage title="Feed Consumption" />} />
             <Route path="suppliers" element={<PlaceholderPage title="Feed Suppliers" />} />
           </Route>
+          {/* Phase 3 & 4: Sales & Inventory */}
+          <Route path="sales">
+            <Route index element={<Navigate to="/sales/orders" replace />} />
+            <Route path="orders" element={<OrdersPage />} />
+            <Route path="customers" element={<PlaceholderPage title="Customer Management" />} />
+            <Route path="invoices" element={<PlaceholderPage title="Invoices & Billing" />} />
+            <Route path="inventory" element={<PlaceholderPage title="Inventory Management" />} />
+          </Route>
+
+          {/* Phase 4 & 5: Finance & Analytics */}
+          <Route path="finance">
+            <Route index element={<Navigate to="/finance/expenses" replace />} />
+            <Route path="expenses" element={<ExpensesPage />} />
+            <Route path="income" element={<PlaceholderPage title="Other Income" />} />
+            <Route path="profit" element={<ProfitDashboard />} />
+          </Route>
+          
+          {/* Slaughter */}
+          <Route path="slaughter" element={<PlaceholderPage title="Slaughter Records" />} />
+
           {/* 404 inside shell */}
           <Route path="*" element={<NotFoundPage />} />
         </Route>
