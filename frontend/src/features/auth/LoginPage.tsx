@@ -10,7 +10,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { ApiError } from '@/types'
 
 const loginSchema = z.object({
-  email: z.string().email('Enter a valid email address'),
+  email: z.string().includes('@', { message: 'Enter a valid email address' }),
   password: z.string().min(1, 'Password is required'),
 })
 type LoginForm = z.infer<typeof loginSchema>
