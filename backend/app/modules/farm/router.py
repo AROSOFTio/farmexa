@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.modules.auth.service import get_current_user
+from app.core.deps import get_current_user
 from app.models.user import User
 from app.modules.farm.schemas import (
     PoultryHouseCreate, PoultryHouseUpdate, PoultryHouseOut,
