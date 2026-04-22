@@ -250,5 +250,6 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         <div className="text-neutral-600 text-2xs">v1.0.0 — Phase 1</div>
       </div>
     </motion.nav>
+    </>
   )
 }
