@@ -25,6 +25,12 @@ let failedQueue: Array<{
   reject: (reason?: unknown) => void
 }> = []
 
+function shouldBypassRefresh(url?: string) {
+  if (!url) return false
+
+  return ['/auth/login', '/auth/refresh'].some((path) => url.includes(path))
+}
+
 function processQueue(error: unknown, token: string | null = null) {
   failedQueue.forEach((promise) => {
     if (error) {
@@ -41,7 +47,11 @@ api.interceptors.response.use(
   async (error: AxiosError<ApiError>) => {
     const originalRequest = error.config as typeof error.config & { _retry?: boolean }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !shouldBypassRefresh(originalRequest.url)
+    ) {
       const refreshToken = localStorage.getItem('refresh_token')
 
       if (!refreshToken) {
@@ -90,7 +100,9 @@ api.interceptors.response.use(
 function clearAuthAndRedirect() {
   localStorage.removeItem('access_token')
   localStorage.removeItem('refresh_token')
-  window.location.href = '/login'
+  if (window.location.pathname !== '/login') {
+    window.location.replace('/login')
+  }
 }
 
 export default api

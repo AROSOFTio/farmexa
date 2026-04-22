@@ -1,36 +1,68 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# PERP / Farmexa — Production Deployment Script
+# PERP / Farmexa - Production Deployment Script
 # Repo:    https://github.com/AROSOFTio/farmexa.git
 # Deploy:  /var/www/wwwroot/farmexa.arosoft.io
-# Port:    4002 (internal nginx → reverse-proxied by host Nginx)
+# Port:    4002 (internal nginx -> reverse-proxied by host Nginx)
 # ==============================================================================
 set -euo pipefail
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# -- Config --------------------------------------------------------------------
 APP_NAME="farmexa"
 DEPLOY_DIR="/var/www/wwwroot/farmexa.arosoft.io"
 REPO_URL="https://github.com/AROSOFTio/farmexa.git"
 BRANCH="${BRANCH:-main}"
 COMPOSE_FILE="docker-compose.prod.yml"
 LOG_FILE="/var/log/${APP_NAME}-deploy.log"
+DEPLOY_OWNER="${DEPLOY_OWNER:-root}"
+DEPLOY_GROUP="${DEPLOY_GROUP:-root}"
 
-# ── Colors ────────────────────────────────────────────────────────────────────
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
-BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'
+# -- Colors --------------------------------------------------------------------
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
 
 log()     { echo -e "${CYAN}[$(date '+%Y-%m-%d %H:%M:%S')]${NC} $*" | tee -a "$LOG_FILE"; }
-success() { echo -e "${GREEN}[✔] $*${NC}" | tee -a "$LOG_FILE"; }
+success() { echo -e "${GREEN}[OK] $*${NC}" | tee -a "$LOG_FILE"; }
 warn()    { echo -e "${YELLOW}[!] $*${NC}" | tee -a "$LOG_FILE"; }
-error()   { echo -e "${RED}[✘] $*${NC}" | tee -a "$LOG_FILE"; exit 1; }
+error()   { echo -e "${RED}[X] $*${NC}" | tee -a "$LOG_FILE"; exit 1; }
 
-# ── Pre-flight checks ─────────────────────────────────────────────────────────
-log "Starting ${APP_NAME} deployment — branch: ${BRANCH}"
+ensure_root() {
+  if [ "${EUID:-$(id -u)}" -ne 0 ]; then
+    error "Run this script with sudo or as root so it can manage ${DEPLOY_DIR}, ${LOG_FILE}, and Docker."
+  fi
+}
 
-command -v docker   >/dev/null 2>&1 || error "Docker not found. Install Docker first."
-command -v git      >/dev/null 2>&1 || error "Git not found."
+prepare_paths() {
+  install -d -m 755 "$(dirname "$LOG_FILE")"
+  touch "$LOG_FILE"
+  chmod 640 "$LOG_FILE"
 
-# Ensure Docker Compose v2 (plugin) or v1 (standalone)
+  install -d -m 775 "$DEPLOY_DIR"
+  chown "${DEPLOY_OWNER}:${DEPLOY_GROUP}" "$DEPLOY_DIR"
+}
+
+apply_permissions() {
+  chown -R "${DEPLOY_OWNER}:${DEPLOY_GROUP}" "$DEPLOY_DIR"
+  chmod -R u+rwX,g+rX "$DEPLOY_DIR"
+
+  if [ -f "$DEPLOY_DIR/deploy.sh" ]; then
+    chmod 755 "$DEPLOY_DIR/deploy.sh"
+  fi
+}
+
+# -- Pre-flight checks ----------------------------------------------------------
+ensure_root
+prepare_paths
+
+log "Starting ${APP_NAME} deployment - branch: ${BRANCH}"
+
+command -v docker >/dev/null 2>&1 || error "Docker not found. Install Docker first."
+command -v git >/dev/null 2>&1 || error "Git not found."
+command -v curl >/dev/null 2>&1 || error "curl not found."
+
 if docker compose version >/dev/null 2>&1; then
   DC="docker compose"
 elif command -v docker-compose >/dev/null 2>&1; then
@@ -39,30 +71,30 @@ else
   error "Docker Compose not found."
 fi
 
-# ── Clone or update repository ────────────────────────────────────────────────
+# -- Clone or update repository -------------------------------------------------
 if [ -d "$DEPLOY_DIR/.git" ]; then
-  log "Pulling latest code from ${BRANCH}…"
+  log "Pulling latest code from ${BRANCH}..."
   cd "$DEPLOY_DIR"
   git fetch --all --prune
   git checkout "$BRANCH"
   git reset --hard "origin/${BRANCH}"
   success "Repository updated."
 else
-  log "Cloning repository to ${DEPLOY_DIR}…"
-  mkdir -p "$DEPLOY_DIR"
+  log "Cloning repository to ${DEPLOY_DIR}..."
   git clone --branch "$BRANCH" "$REPO_URL" "$DEPLOY_DIR"
   cd "$DEPLOY_DIR"
   success "Repository cloned."
 fi
 
 cd "$DEPLOY_DIR"
+apply_permissions
 
-# ── Environment file ──────────────────────────────────────────────────────────
+# -- Environment file -----------------------------------------------------------
 if [ ! -f ".env" ]; then
   if [ -f ".env.example" ]; then
-    warn ".env not found — copying from .env.example. EDIT IT before continuing."
+    warn ".env not found - copying from .env.example. Edit it before continuing."
     cp .env.example .env
-    warn ">>> Open ${DEPLOY_DIR}/.env and set real secrets, then re-run this script."
+    warn "Open ${DEPLOY_DIR}/.env and set real secrets, then rerun this script."
     exit 1
   else
     error ".env file missing and no .env.example found."
@@ -70,42 +102,42 @@ if [ ! -f ".env" ]; then
 fi
 success ".env file present."
 
-# ── Pull images / build ───────────────────────────────────────────────────────
-log "Building Docker images…"
+# -- Build images ---------------------------------------------------------------
+log "Building Docker images..."
 $DC -f "$COMPOSE_FILE" build --no-cache --parallel
 success "Images built."
 
-# ── Stop existing containers gracefully ──────────────────────────────────────
-log "Stopping running containers…"
+# -- Stop existing containers ---------------------------------------------------
+log "Stopping running containers..."
 $DC -f "$COMPOSE_FILE" down --remove-orphans || true
 success "Containers stopped."
 
-# ── Run database migrations ───────────────────────────────────────────────────
-log "Running Alembic migrations…"
+# -- Run database migrations ----------------------------------------------------
+log "Running Alembic migrations..."
 $DC -f "$COMPOSE_FILE" run --rm backend alembic upgrade head
 success "Migrations complete."
 
-# ── Start all services ────────────────────────────────────────────────────────
-log "Starting all services…"
+# -- Start all services ---------------------------------------------------------
+log "Starting all services..."
 $DC -f "$COMPOSE_FILE" up -d
 success "Services started."
 
-# ── Health check ──────────────────────────────────────────────────────────────
-log "Waiting for backend health check…"
+# -- Health check ---------------------------------------------------------------
+log "Waiting for backend health check..."
 RETRIES=0
-MAX_RETRIES=18   # 18 × 5s = 90s max
-until curl -sf "http://localhost:4002/health" >/dev/null 2>&1; do
+MAX_RETRIES=18
+until curl -sf "http://localhost:4002/api/v1/openapi.json" >/dev/null 2>&1; do
   RETRIES=$((RETRIES + 1))
   if [ "$RETRIES" -ge "$MAX_RETRIES" ]; then
-    error "Backend did not become healthy within 90s. Check: docker compose -f ${COMPOSE_FILE} logs"
+    error "Backend did not become healthy within 90s. Check: $DC -f ${COMPOSE_FILE} logs"
   fi
   echo -n "."
   sleep 5
 done
 echo ""
-success "Backend healthy at http://localhost:4002"
+success "Backend healthy at http://localhost:4002/api/v1/openapi.json"
 
-# ── Show running containers ───────────────────────────────────────────────────
+# -- Show running containers ----------------------------------------------------
 log "Running containers:"
 $DC -f "$COMPOSE_FILE" ps
 
@@ -114,5 +146,5 @@ success " ${APP_NAME} deployed successfully!"
 success " Internal URL : http://localhost:4002"
 success " Public URL   : https://farmexa.arosoft.io"
 success " API Docs     : https://farmexa.arosoft.io/docs"
-success " Admin Login  : Set in .env → SEED_ADMIN_EMAIL"
+success " Admin Login  : Set in .env -> SEED_ADMIN_EMAIL"
 success "================================================================"

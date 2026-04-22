@@ -36,44 +36,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: true,
   })
 
+  const clearSession = useCallback(() => {
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    setState({ user: null, permissions: [], isAuthenticated: false, isLoading: false })
+  }, [])
+
   const loadMe = useCallback(async () => {
     const token = localStorage.getItem('access_token')
     if (!token) {
-      setState((s) => ({ ...s, isLoading: false }))
-      return
+      clearSession()
+      return null
     }
-    try {
-      const { user, permissions } = await authService.getMe()
-      setState({ user, permissions, isAuthenticated: true, isLoading: false })
-    } catch {
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refresh_token')
-      setState({ user: null, permissions: [], isAuthenticated: false, isLoading: false })
-    }
-  }, [])
+    const { user, permissions } = await authService.getMe()
+    setState({ user, permissions, isAuthenticated: true, isLoading: false })
+    return { user, permissions }
+  }, [clearSession])
 
   useEffect(() => {
-    loadMe()
-  }, [loadMe])
+    loadMe().catch(() => {
+      clearSession()
+    })
+  }, [clearSession, loadMe])
 
   const login = useCallback(async (payload: LoginRequest) => {
     const tokens = await authService.login(payload)
     localStorage.setItem('access_token', tokens.access_token)
     localStorage.setItem('refresh_token', tokens.refresh_token)
-    await loadMe()
+    try {
+      const session = await loadMe()
+      if (!session) {
+        throw new Error('Unable to load the authenticated session.')
+      }
+    } catch (error) {
+      clearSession()
+      throw error
+    }
     navigate('/dashboard', { replace: true })
-  }, [loadMe, navigate])
+  }, [clearSession, loadMe, navigate])
 
   const logout = useCallback(async () => {
     const refreshToken = localStorage.getItem('refresh_token')
     if (refreshToken) {
       try { await authService.logout(refreshToken) } catch { /* best-effort */ }
     }
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    setState({ user: null, permissions: [], isAuthenticated: false, isLoading: false })
+    clearSession()
     navigate('/login', { replace: true })
-  }, [navigate])
+  }, [clearSession, navigate])
 
   const hasPermission = useCallback(
     (code: string) => state.permissions.includes(code),
@@ -85,7 +94,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [state.user]
   )
 
-  const refetchMe = loadMe
+  const refetchMe = useCallback(async () => {
+    await loadMe()
+  }, [loadMe])
 
   return (
     <AuthContext.Provider value={{ ...state, login, logout, hasPermission, hasRole, refetchMe }}>
