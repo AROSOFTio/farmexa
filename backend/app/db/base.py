@@ -41,3 +41,13 @@ class SoftDeleteMixin:
 
     def soft_delete(self) -> None:
         self.deleted_at = datetime.now(timezone.utc)
+
+
+def get_db():
+    """
+    Compatibility wrapper for older sync modules that still import get_db
+    from app.db.base.
+    """
+    from app.db.session import get_sync_db
+
+    yield from get_sync_db()

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from datetime import date, timedelta
-from app.db.base import get_db
+from app.db.session import get_sync_db
 from . import schemas, service
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
@@ -10,7 +10,7 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 def get_kpis(
     start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=30)),
     end_date: date = Query(default_factory=date.today),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_sync_db)
 ):
     return service.analytics_service.get_kpi_dashboard(db, start_date, end_date)
 
@@ -18,7 +18,7 @@ def get_kpis(
 def get_profit_timeline(
     start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=30)),
     end_date: date = Query(default_factory=date.today),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_sync_db)
 ):
     return service.analytics_service.get_profit_timeline(db, start_date, end_date)
 
@@ -26,6 +26,6 @@ def get_profit_timeline(
 def get_sales_report(
     start_date: date = Query(default_factory=lambda: date.today() - timedelta(days=30)),
     end_date: date = Query(default_factory=date.today),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_sync_db)
 ):
     return service.analytics_service.get_sales_report(db, start_date, end_date)
