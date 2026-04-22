@@ -16,8 +16,9 @@ import app.models  # noqa: F401
 from app.db.base import Base
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
+# NOTE: Do NOT use config.set_main_option() — it goes through configparser
+# which chokes on % characters in passwords. Use settings.DATABASE_URL directly.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
@@ -25,9 +26,9 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    url = config.get_main_option("sqlalchemy.url")
+    # Use the URL directly — bypasses configparser interpolation
     context.configure(
-        url=url,
+        url=settings.DATABASE_URL,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
