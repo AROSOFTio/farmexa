@@ -1,0 +1,9 @@
+# Force LF line endings for all text files (deploy target is Linux)
+* text=auto eol=lf
+
+# Explicitly binary — no conversion
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
