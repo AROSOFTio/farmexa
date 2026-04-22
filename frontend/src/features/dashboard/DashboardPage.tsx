@@ -1,4 +1,4 @@
-﻿import { useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import {
   Users, TrendingUp, DollarSign, Package, Scissors,
@@ -10,9 +10,9 @@ interface KpiData {
   total_revenue: number
   total_expenses: number
   net_profit: number
-  total_orders: int
-  active_customers: int
-  total_birds_slaughtered: int
+  total_orders: number
+  active_customers: number
+  total_birds_slaughtered: number
 }
 
 function fetchKpis(): Promise<KpiData> {
