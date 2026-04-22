@@ -4,7 +4,7 @@ from sqlalchemy import String, Integer, Date, ForeignKey, Enum as SQLEnum, Text,
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import enum
 
-from app.db.session import Base
+from app.db.base import Base
 
 
 class HouseStatus(str, enum.Enum):

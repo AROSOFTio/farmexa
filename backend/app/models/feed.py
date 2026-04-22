@@ -3,7 +3,7 @@ from typing import Optional
 from sqlalchemy import String, Integer, Date, ForeignKey, Numeric, Text, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.session import Base
+from app.db.base import Base
 from app.models.farm import Batch
 
 
