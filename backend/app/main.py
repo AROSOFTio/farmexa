@@ -43,9 +43,15 @@ app = FastAPI(
 # ── Middleware ────────────────────────────────────────────────
 app.add_middleware(RequestLoggingMiddleware)
 
+# Parse CORS origins
+origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
+if settings.ALLOWED_ORIGINS.strip().startswith("["):
+    import json
+    origins = json.loads(settings.ALLOWED_ORIGINS)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

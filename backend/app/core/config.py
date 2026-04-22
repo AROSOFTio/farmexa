@@ -4,7 +4,7 @@ All values loaded from environment variables / .env file.
 """
 
 from functools import lru_cache
-from typing import Any, List
+from typing import Any, List, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -43,21 +43,7 @@ class Settings(BaseSettings):
     # Accepts comma-separated string OR JSON array in .env:
     #   ALLOWED_ORIGINS=http://localhost:3000,https://farmexa.arosoft.io
     #   ALLOWED_ORIGINS=["http://localhost:3000","https://farmexa.arosoft.io"]
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost"]
-
-    @field_validator("ALLOWED_ORIGINS", mode="before")
-    @classmethod
-    def parse_allowed_origins(cls, v: Any) -> List[str]:
-        if isinstance(v, list):
-            return v
-        if isinstance(v, str):
-            v = v.strip()
-            if v.startswith("["):
-                import json
-                return json.loads(v)
-            # comma-separated
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost"
 
     # ── Seeder ───────────────────────────────────────────
     SEED_ADMIN_EMAIL: str = "admin@perp.local"
