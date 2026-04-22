@@ -53,6 +53,34 @@ apply_permissions() {
   fi
 }
 
+wait_for_container_health() {
+  local container_name="$1"
+  local retries="${2:-30}"
+  local delay="${3:-5}"
+  local attempt=0
+  local status=""
+
+  log "Waiting for container health: ${container_name}"
+  until [ "$attempt" -ge "$retries" ]; do
+    status="$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$container_name" 2>/dev/null || true)"
+
+    if [ "$status" = "healthy" ]; then
+      success "${container_name} is healthy."
+      return 0
+    fi
+
+    if [ "$status" = "unhealthy" ]; then
+      error "${container_name} is unhealthy. Check: $DC -f ${COMPOSE_FILE} logs ${container_name#farmexa_}"
+    fi
+
+    attempt=$((attempt + 1))
+    echo -n "."
+    sleep "$delay"
+  done
+  echo ""
+  error "${container_name} did not become healthy in time. Last status: ${status:-unknown}"
+}
+
 # -- Pre-flight checks ----------------------------------------------------------
 ensure_root
 prepare_paths
@@ -123,19 +151,22 @@ $DC -f "$COMPOSE_FILE" up -d
 success "Services started."
 
 # -- Health check ---------------------------------------------------------------
-log "Waiting for backend health check..."
+wait_for_container_health "farmexa_backend" 24 5
+wait_for_container_health "farmexa_frontend" 18 3
+
+log "Waiting for API health check through nginx..."
 RETRIES=0
 MAX_RETRIES=18
 until curl -sf "http://localhost:4002/api/v1/openapi.json" >/dev/null 2>&1; do
   RETRIES=$((RETRIES + 1))
   if [ "$RETRIES" -ge "$MAX_RETRIES" ]; then
-    error "Backend did not become healthy within 90s. Check: $DC -f ${COMPOSE_FILE} logs"
+    error "API did not become reachable through nginx within 90s. Check: $DC -f ${COMPOSE_FILE} logs"
   fi
   echo -n "."
   sleep 5
 done
 echo ""
-success "Backend healthy at http://localhost:4002/api/v1/openapi.json"
+success "API healthy at http://localhost:4002/api/v1/openapi.json"
 
 # -- Show running containers ----------------------------------------------------
 log "Running containers:"
