@@ -4,7 +4,7 @@ import { Bird, Plus, Home } from 'lucide-react'
 import api from '@/services/api'
 
 interface PoultryHouse {
-  id: int
+  id: number
   name: string
   capacity: number
   status: string
