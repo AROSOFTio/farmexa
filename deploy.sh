@@ -53,6 +53,16 @@ apply_permissions() {
   fi
 }
 
+reexec_updated_script() {
+  if [ "${DEPLOY_REEXEC_DONE:-0}" = "1" ]; then
+    return 0
+  fi
+
+  log "Reloading deploy script from the freshly updated repository..."
+  export DEPLOY_REEXEC_DONE=1
+  exec "$DEPLOY_DIR/deploy.sh"
+}
+
 wait_for_container_health() {
   local container_name="$1"
   local retries="${2:-30}"
@@ -79,6 +89,37 @@ wait_for_container_health() {
   done
   echo ""
   error "${container_name} did not become healthy in time. Last status: ${status:-unknown}"
+}
+
+sync_db_password() {
+  log "Synchronizing PostgreSQL user password from .env..."
+  $DC -f "$COMPOSE_FILE" exec -T db sh -lc '
+    psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+      -c "ALTER USER \"$POSTGRES_USER\" WITH PASSWORD '\''$POSTGRES_PASSWORD'\'';"
+  ' >/dev/null
+  success "PostgreSQL password synchronized."
+}
+
+verify_backend_db_connection() {
+  log "Verifying backend database login over TCP..."
+  $DC -f "$COMPOSE_FILE" run --rm --no-deps backend python - <<'PY'
+import asyncio
+import os
+import asyncpg
+
+async def main():
+    conn = await asyncpg.connect(
+        host=os.getenv("POSTGRES_SERVER", "db"),
+        port=int(os.getenv("POSTGRES_PORT", "5432")),
+        user=os.environ["POSTGRES_USER"],
+        password=os.environ["POSTGRES_PASSWORD"],
+        database=os.environ["POSTGRES_DB"],
+    )
+    await conn.close()
+
+asyncio.run(main())
+PY
+  success "Backend database credentials verified."
 }
 
 # -- Pre-flight checks ----------------------------------------------------------
@@ -116,6 +157,7 @@ fi
 
 cd "$DEPLOY_DIR"
 apply_permissions
+reexec_updated_script
 
 # -- Environment file -----------------------------------------------------------
 if [ ! -f ".env" ]; then
@@ -139,6 +181,16 @@ success "Images built."
 log "Stopping running containers..."
 $DC -f "$COMPOSE_FILE" down --remove-orphans || true
 success "Containers stopped."
+
+# -- Start required infrastructure ----------------------------------------------
+log "Starting database and redis..."
+$DC -f "$COMPOSE_FILE" up -d db redis
+success "Database services started."
+
+wait_for_container_health "farmexa_db" 18 5
+wait_for_container_health "farmexa_redis" 18 3
+sync_db_password
+verify_backend_db_connection
 
 # -- Run database migrations ----------------------------------------------------
 log "Running Alembic migrations..."
