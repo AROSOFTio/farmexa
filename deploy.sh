@@ -204,7 +204,20 @@ success "Services started."
 
 # -- Health check ---------------------------------------------------------------
 wait_for_container_health "farmexa_backend" 24 5
-wait_for_container_health "farmexa_frontend" 18 3
+
+log "Waiting for frontend login page through nginx..."
+RETRIES=0
+MAX_RETRIES=18
+until curl -sf "http://localhost:4002/login" >/dev/null 2>&1; do
+  RETRIES=$((RETRIES + 1))
+  if [ "$RETRIES" -ge "$MAX_RETRIES" ]; then
+    error "Frontend did not become reachable through nginx within 90s. Check: $DC -f ${COMPOSE_FILE} logs frontend nginx"
+  fi
+  echo -n "."
+  sleep 5
+done
+echo ""
+success "Frontend reachable at http://localhost:4002/login"
 
 log "Waiting for API health check through nginx..."
 RETRIES=0
