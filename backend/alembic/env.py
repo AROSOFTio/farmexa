@@ -28,7 +28,7 @@ target_metadata = Base.metadata
 def run_migrations_offline() -> None:
     # Use the URL directly — bypasses configparser interpolation
     context.configure(
-        url=settings.DATABASE_URL,
+        url=settings.ASYNC_DATABASE_URL,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -50,7 +50,7 @@ def do_run_migrations(connection):
 
 
 async def run_async_migrations() -> None:
-    connectable = create_async_engine(settings.DATABASE_URL, poolclass=pool.NullPool)
+    connectable = create_async_engine(settings.ASYNC_DATABASE_URL, poolclass=pool.NullPool)
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()

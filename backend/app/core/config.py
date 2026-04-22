@@ -25,8 +25,23 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
 
     # ── Database ─────────────────────────────────────────
-    DATABASE_URL: str
-    DATABASE_URL_SYNC: str
+    POSTGRES_SERVER: str = "db"
+    POSTGRES_USER: str = "perp_user"
+    POSTGRES_PASSWORD: str = ""
+    POSTGRES_DB: str = "perp_db"
+    POSTGRES_PORT: str = "5432"
+    
+    @property
+    def ASYNC_DATABASE_URL(self) -> str:
+        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+
+    @property
+    def SYNC_DATABASE_URL(self) -> str:
+        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+
+    # Legacy support
+    DATABASE_URL: str | None = None
+    DATABASE_URL_SYNC: str | None = None
 
     # ── Redis ────────────────────────────────────────────
     REDIS_URL: str
