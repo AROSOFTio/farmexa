@@ -1,4 +1,3 @@
-version: "3.9"
 # ==============================================================================
 # Production compose — exposes app on port 4002
 # Host Nginx reverse-proxies farmexa.arosoft.io → localhost:4002
