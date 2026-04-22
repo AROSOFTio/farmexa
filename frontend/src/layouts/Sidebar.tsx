@@ -1,5 +1,5 @@
-import { NavLink, useLocation } from 'react-router-dom'
-import { motion } from 'framer-motion'
+﻿import { NavLink, useLocation } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard,
   Leaf,
@@ -11,7 +11,6 @@ import {
   DollarSign,
   BarChart3,
   Settings,
-  ChevronRight,
   ChevronDown,
 } from 'lucide-react'
 import { clsx } from 'clsx'
@@ -26,7 +25,7 @@ interface SubItem {
 interface NavItem {
   label: string
   icon: React.ElementType
-  path?: string // optional if it has subItems
+  path?: string
   permission?: string
   subItems?: SubItem[]
 }
@@ -143,41 +142,65 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
       {/* Mobile overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-neutral-900/50 z-40 lg:hidden backdrop-blur-sm"
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm"
           onClick={onClose}
         />
       )}
 
       <motion.nav
         className={clsx(
-          "sidebar overflow-y-auto no-scrollbar fixed top-0 bottom-0 left-0 z-50 w-64 bg-neutral-900 flex flex-col transition-transform duration-300 lg:translate-x-0",
+          "sidebar overflow-y-auto no-scrollbar fixed top-0 bottom-0 left-0 z-50 w-64 flex flex-col transition-transform duration-300 lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
+        {/* Decorative radial glow */}
+        <div
+          className="absolute top-0 left-0 w-full h-48 pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse at 30% 0%, rgba(55,155,113,0.15) 0%, transparent 70%)',
+          }}
+        />
+
         {/* Logo */}
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-white/5 flex-shrink-0">
-          <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center shadow-md">
-            <Leaf className="w-4 h-4 text-white" />
+        <div
+          className="flex items-center gap-3 px-5 py-5 flex-shrink-0 relative z-10"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
+        >
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #379b71 0%, #1c6349 100%)' }}
+          >
+            <Leaf className="w-[18px] h-[18px] text-white" />
           </div>
           <div>
             <div className="text-white font-bold text-lg tracking-tight leading-none">PERP</div>
-            <div className="text-neutral-500 text-2xs mt-0.5">Poultry ERP</div>
+            <div className="text-xs mt-0.5 font-medium" style={{ color: 'rgba(142,209,177,0.7)' }}>
+              Poultry ERP
+            </div>
+          </div>
+          {/* Live indicator */}
+          <div className="ml-auto flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-2xs font-medium" style={{ color: 'rgba(142,209,177,0.6)' }}>Live</span>
           </div>
         </div>
 
         {/* Navigation */}
-        <div className="flex-1 py-3 overflow-y-auto no-scrollbar">
+        <div className="flex-1 py-4 overflow-y-auto no-scrollbar relative z-10">
           {NAV_SECTIONS.map((section) => (
-            <div key={section.title} className="mb-4">
-              <div className="px-5 text-2xs font-semibold uppercase tracking-wider text-neutral-500 mb-2">
+            <div key={section.title} className="mb-5">
+              <div
+                className="px-5 mb-1.5 text-2xs font-bold uppercase tracking-[0.1em]"
+                style={{ color: 'rgba(147,191,167,0.4)' }}
+              >
                 {section.title}
               </div>
+
               {section.items.map((item) => {
                 const isExpanded = expandedMenus[item.label]
                 const isPathActive = item.path && location.pathname.startsWith(item.path)
                 const hasActiveSubItem = item.subItems?.some((sub) => location.pathname.startsWith(sub.path))
                 const isActive = isPathActive || hasActiveSubItem
-
                 const Icon = item.icon
 
                 if (item.subItems) {
@@ -185,58 +208,105 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                     <div key={item.label}>
                       <button
                         onClick={() => toggleMenu(item.label)}
-                        className={clsx(
-                          'w-full flex items-center px-5 py-2.5 text-sm transition-colors hover:bg-white/5',
-                          isActive ? 'text-white font-medium' : 'text-neutral-400'
-                        )}
+                        className="w-full flex items-center px-3 py-2.5 text-sm transition-all duration-150"
+                        style={{
+                          color: isActive ? '#ffffff' : 'rgba(147,191,167,0.75)',
+                          fontWeight: isActive ? 600 : 500,
+                        }}
                       >
-                        <Icon className="w-4 h-4 flex-shrink-0 mr-3" />
+                        <span
+                          className="w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 transition-all duration-150"
+                          style={{
+                            background: isActive
+                              ? 'rgba(55,155,113,0.25)'
+                              : 'rgba(255,255,255,0.05)',
+                          }}
+                        >
+                          <Icon className="w-4 h-4" />
+                        </span>
                         <span className="flex-1 text-left truncate">{item.label}</span>
                         <ChevronDown
                           className={clsx(
-                            "w-4 h-4 transition-transform duration-200",
+                            "w-3.5 h-3.5 transition-transform duration-200 flex-shrink-0",
                             isExpanded || isActive ? "rotate-180" : ""
                           )}
+                          style={{ color: 'rgba(147,191,167,0.45)' }}
                         />
                       </button>
-                      {(isExpanded || isActive) && (
-                        <div className="flex flex-col mt-1 mb-2 space-y-1">
-                          {item.subItems.map((subItem) => {
-                            const isSubActive = location.pathname.startsWith(subItem.path)
-                            return (
-                              <NavLink
-                                key={subItem.path}
-                                to={subItem.path}
-                                onClick={() => { if (window.innerWidth < 1024) onClose() }}
-                                className={clsx(
-                                  'flex items-center pl-12 pr-5 py-2 text-sm transition-colors relative',
-                                  isSubActive ? 'text-white font-medium' : 'text-neutral-400 hover:text-neutral-200'
-                                )}
-                              >
-                                {isSubActive && (
-                                  <div className="absolute left-6 w-1.5 h-1.5 rounded-full bg-brand-500" />
-                                )}
-                                <span className="truncate">{subItem.label}</span>
-                              </NavLink>
-                            )
-                          })}
-                        </div>
-                      )}
+
+                      <AnimatePresence>
+                        {(isExpanded || isActive) && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="flex flex-col mb-1 ml-11 mr-3 space-y-0.5">
+                              {item.subItems.map((subItem) => {
+                                const isSubActive = location.pathname.startsWith(subItem.path)
+                                return (
+                                  <NavLink
+                                    key={subItem.path}
+                                    to={subItem.path}
+                                    onClick={() => { if (window.innerWidth < 1024) onClose() }}
+                                    className="flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 relative"
+                                    style={{
+                                      color: isSubActive ? '#fff' : 'rgba(147,191,167,0.65)',
+                                      background: isSubActive ? 'rgba(55,155,113,0.2)' : 'transparent',
+                                      fontWeight: isSubActive ? 600 : 400,
+                                    }}
+                                  >
+                                    {isSubActive && (
+                                      <span
+                                        className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full"
+                                        style={{ background: '#5ab68e' }}
+                                      />
+                                    )}
+                                    <span className="truncate pl-1">{subItem.label}</span>
+                                  </NavLink>
+                                )
+                              })}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   )
                 }
 
                 return (
-                  <NavLink key={item.path!} to={item.path!} onClick={() => { if (window.innerWidth < 1024) onClose() }}>
+                  <NavLink
+                    key={item.path!}
+                    to={item.path!}
+                    onClick={() => { if (window.innerWidth < 1024) onClose() }}
+                    className="block"
+                  >
                     <div
-                      className={clsx(
-                        'flex items-center px-5 py-2.5 text-sm transition-colors hover:bg-white/5',
-                        isActive ? 'text-white font-medium border-r-2 border-brand-500 bg-white/5' : 'text-neutral-400'
-                      )}
+                      className="flex items-center px-3 py-2.5 text-sm transition-all duration-150"
+                      style={{
+                        color: isActive ? '#ffffff' : 'rgba(147,191,167,0.75)',
+                        fontWeight: isActive ? 600 : 500,
+                      }}
                     >
-                      <Icon className="w-4 h-4 flex-shrink-0 mr-3" />
+                      <span
+                        className="w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 transition-all duration-150"
+                        style={{
+                          background: isActive
+                            ? 'rgba(55,155,113,0.3)'
+                            : 'rgba(255,255,255,0.05)',
+                        }}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </span>
                       <span className="flex-1 truncate">{item.label}</span>
-                      {isActive && <ChevronRight className="w-3.5 h-3.5 opacity-50" />}
+                      {isActive && (
+                        <span
+                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ background: '#5ab68e' }}
+                        />
+                      )}
                     </div>
                   </NavLink>
                 )
@@ -245,11 +315,16 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           ))}
         </div>
 
-      {/* Version */}
-      <div className="px-5 py-4 border-t border-white/5 flex-shrink-0">
-        <div className="text-neutral-600 text-2xs">v1.0.0 — Phase 1</div>
-      </div>
-    </motion.nav>
+        {/* Footer */}
+        <div
+          className="px-5 py-4 flex-shrink-0 relative z-10"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <div className="text-2xs font-medium" style={{ color: 'rgba(147,191,167,0.35)' }}>
+            v1.0.0 — Phase 1
+          </div>
+        </div>
+      </motion.nav>
     </>
   )
 }

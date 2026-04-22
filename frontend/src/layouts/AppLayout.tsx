@@ -14,8 +14,8 @@ export function AppLayout() {
         <main
           className="transition-all duration-200"
           style={{
-            marginTop: '3.5rem',       // topbar height
-            minHeight: 'calc(100vh - 3.5rem)',
+            marginTop: '3.75rem',      // topbar height
+            minHeight: 'calc(100vh - 3.75rem)',
           }}
         >
           <div className="page-container py-6">

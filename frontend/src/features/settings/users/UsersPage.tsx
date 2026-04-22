@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -6,7 +6,8 @@ import { z } from 'zod'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Users, Plus, Search, Filter, MoreHorizontal,
-  Edit2, Trash2, ShieldCheck, X, CheckCircle, XCircle, Loader2
+  Edit2, Trash2, ShieldCheck, X, CheckCircle, XCircle, Loader2,
+  Mail, Phone, Briefcase, Lock, User as UserIcon
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
@@ -14,6 +15,7 @@ import { usersService } from '@/services/usersService'
 import { useAuth } from '@/features/auth/AuthContext'
 import { User, Role, ApiError } from '@/types'
 import { format } from 'date-fns'
+import { clsx } from 'clsx'
 
 // ── Schemas ───────────────────────────────────────────────────
 
@@ -42,14 +44,14 @@ const ROLE_LABELS: Record<string, string> = {
 
 function RoleBadge({ name }: { name: string }) {
   const colors: Record<string, string> = {
-    super_manager:     'bg-violet-100 text-violet-700',
-    farm_manager:      'bg-emerald-100 text-emerald-700',
-    inventory_officer: 'bg-sky-100 text-sky-700',
-    sales_officer:     'bg-amber-100 text-amber-700',
-    finance_officer:   'bg-rose-100 text-rose-700',
+    super_manager:     'bg-gold-50 text-gold-700 ring-1 ring-gold-200',
+    farm_manager:      'bg-brand-50 text-brand-700 ring-1 ring-brand-200',
+    inventory_officer: 'bg-info-light text-info ring-1 ring-blue-200',
+    sales_officer:     'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+    finance_officer:   'bg-red-50 text-red-700 ring-1 ring-red-200',
   }
   return (
-    <span className={`badge ${colors[name] ?? 'badge-neutral'}`}>
+    <span className={clsx("badge", colors[name] ?? 'badge-neutral')}>
       {ROLE_LABELS[name] ?? name}
     </span>
   )
@@ -91,54 +93,55 @@ function AddUserModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <motion.div
-        className="relative bg-white rounded-2xl shadow-modal w-full max-w-lg"
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.96 }}
-        transition={{ duration: 0.2 }}
+        className="relative bg-white rounded-3xl shadow-modal w-full max-w-lg overflow-hidden"
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
       >
-        <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-100">
+        <div className="px-8 py-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
           <div>
-            <h2 className="text-lg font-semibold text-neutral-900">Add New User</h2>
-            <p className="text-xs text-neutral-400 mt-0.5">Create a user account and assign a role</p>
+            <h2 className="text-xl font-bold text-neutral-900 tracking-tight">Add New User</h2>
+            <p className="text-xs font-medium text-neutral-400 mt-1">Configure access for a new team member</p>
           </div>
-          <button onClick={onClose} className="btn-ghost p-2 rounded-lg">
-            <X className="w-4 h-4" />
+          <button onClick={onClose} className="p-2.5 rounded-xl hover:bg-white hover:shadow-sm text-neutral-400 transition-all">
+            <X className="w-5 h-5" />
           </button>
         </div>
+        
         <form
           onSubmit={handleSubmit((d) => mutation.mutate(d))}
-          className="px-6 py-5 flex flex-col gap-4"
+          className="px-8 py-7 flex flex-col gap-5"
         >
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <div>
-              <label className="form-label">Full Name</label>
-              <input className="form-input" placeholder="John Doe" {...register('full_name')} />
+              <label className="form-label flex items-center gap-2"><UserIcon className="w-3.5 h-3.5 opacity-50" /> Full Name</label>
+              <input className="form-input" placeholder="e.g. John Doe" {...register('full_name')} />
               {errors.full_name && <p className="form-error">{errors.full_name.message}</p>}
             </div>
             <div>
-              <label className="form-label">Email Address</label>
+              <label className="form-label flex items-center gap-2"><Mail className="w-3.5 h-3.5 opacity-50" /> Email Address</label>
               <input className="form-input" type="email" placeholder="john@farm.com" {...register('email')} />
               {errors.email && <p className="form-error">{errors.email.message}</p>}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <div>
-              <label className="form-label">Password</label>
-              <input className="form-input" type="password" placeholder="Min 8 chars, A+1" {...register('password')} />
+              <label className="form-label flex items-center gap-2"><Lock className="w-3.5 h-3.5 opacity-50" /> Password</label>
+              <input className="form-input" type="password" placeholder="••••••••" {...register('password')} />
               {errors.password && <p className="form-error">{errors.password.message}</p>}
             </div>
             <div>
-              <label className="form-label">Phone <span className="text-neutral-400">(optional)</span></label>
-              <input className="form-input" placeholder="+256 700 000 000" {...register('phone')} />
+              <label className="form-label flex items-center gap-2"><Phone className="w-3.5 h-3.5 opacity-50" /> Phone <span className="text-neutral-300 font-normal ml-auto">(optional)</span></label>
+              <input className="form-input" placeholder="+256..." {...register('phone')} />
             </div>
           </div>
 
           <div>
-            <label className="form-label">Role</label>
+            <label className="form-label flex items-center gap-2"><Briefcase className="w-3.5 h-3.5 opacity-50" /> System Role</label>
             <select className="form-input" {...register('role_id')}>
               <option value="">Select a role…</option>
               {roles.map((r) => (
@@ -148,13 +151,13 @@ function AddUserModal({
             {errors.role_id && <p className="form-error">{errors.role_id.message}</p>}
           </div>
 
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1">
+          <div className="flex gap-4 pt-4">
+            <button type="button" onClick={onClose} className="btn-secondary flex-1 rounded-xl py-3 font-bold">
               Cancel
             </button>
-            <button type="submit" disabled={mutation.isPending} className="btn-primary flex-1">
+            <button type="submit" disabled={mutation.isPending} className="btn-primary flex-1 rounded-xl py-3 font-bold shadow-glow">
               {mutation.isPending ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Creating…</>
+                <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</>
               ) : (
                 <><Plus className="w-4 h-4" /> Create User</>
               )}
@@ -180,8 +183,8 @@ export function UsersPage() {
   // Debounce search
   const handleSearchChange = (v: string) => {
     setSearch(v)
-    clearTimeout((window as unknown as { _searchTimer?: ReturnType<typeof setTimeout> })._searchTimer)
-    ;(window as unknown as { _searchTimer?: ReturnType<typeof setTimeout> })._searchTimer = setTimeout(() => {
+    clearTimeout((window as any)._searchTimer)
+    ;(window as any)._searchTimer = setTimeout(() => {
       setDebouncedSearch(v)
       setPage(1)
     }, 300)
@@ -220,160 +223,167 @@ export function UsersPage() {
 
   return (
     <div className="animate-fade-in">
-      {/* Header */}
-      <div className="section-header">
+      <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="section-title">Users & Access</h1>
-          <p className="section-subtitle">Manage team members and their platform roles</p>
+          <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">Users & Access</h1>
+          <p className="text-sm text-neutral-500 mt-1 font-medium">Manage team members and their platform access levels</p>
         </div>
         {hasPermission('users:write') && (
           <button
-            className="btn-primary"
+            className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold shadow-glow"
             onClick={() => setShowAddModal(true)}
           >
             <Plus className="w-4 h-4" />
-            Add User
+            Add New User
           </button>
         )}
       </div>
 
-      {/* Search + Filters */}
-      <div className="card mb-5 px-4 py-3 flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      <div className="card mb-6 px-6 py-4 flex items-center gap-4 bg-white/50 backdrop-blur-sm border-neutral-150">
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
-            className="form-input pl-9"
-            placeholder="Search by name or email…"
+            className="form-input pl-10 bg-white"
+            placeholder="Search team members..."
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
           />
         </div>
-        <div className="text-xs text-neutral-400 ml-auto">
-          {usersData ? `${usersData.total} user${usersData.total !== 1 ? 's' : ''}` : '…'}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neutral-100 text-neutral-500 text-xs font-bold uppercase tracking-wider ml-auto">
+          <Users className="w-3.5 h-3.5" />
+          {usersData ? `${usersData.total} Total` : '…'}
         </div>
       </div>
 
-      {/* Table */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300">
         <div className="overflow-x-auto">
           <table className="data-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
+                <th className="pl-6">Team Member</th>
+                <th>Email Address</th>
+                <th>System Role</th>
                 <th>Status</th>
-                <th>Joined</th>
-                {hasPermission('users:write') && <th className="text-right">Actions</th>}
+                <th>Joined On</th>
+                {hasPermission('users:write') && <th className="pr-6 text-right">Actions</th>}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-neutral-100">
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
                     {Array.from({ length: hasPermission('users:write') ? 6 : 5 }).map((_, j) => (
-                      <td key={j}>
-                        <div className="h-4 bg-neutral-100 rounded animate-pulse" />
+                      <td key={j} className={j === 0 ? "pl-6" : ""}>
+                        <div className="h-4 bg-neutral-50 rounded animate-pulse" />
                       </td>
                     ))}
                   </tr>
                 ))
               ) : usersData?.items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <Users className="w-8 h-8 text-neutral-200" />
-                      <p className="text-sm font-medium text-neutral-400">No users found</p>
-                      {debouncedSearch && (
-                        <p className="text-xs text-neutral-400">
-                          Try a different search term
-                        </p>
-                      )}
+                  <td colSpan={6} className="py-24 text-center">
+                    <div className="flex flex-col items-center gap-3 max-w-xs mx-auto">
+                      <div className="w-16 h-16 rounded-3xl bg-neutral-50 flex items-center justify-center">
+                        <Users className="w-8 h-8 text-neutral-200" />
+                      </div>
+                      <p className="text-sm font-bold text-neutral-800">No team members found</p>
+                      <p className="text-xs text-neutral-400 leading-relaxed">
+                        {debouncedSearch ? "Try adjusting your search criteria to find who you're looking for." : "Start by adding your first user to the system."}
+                      </p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                usersData?.items.map((user: User) => (
-                  <tr key={user.id}>
-                    <td>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-brand-600/10 flex items-center justify-center text-brand-700 text-xs font-semibold flex-shrink-0">
+                usersData?.items.map((user: User, idx: number) => (
+                  <motion.tr 
+                    key={user.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.02 }}
+                    className="group"
+                  >
+                    <td className="pl-6">
+                      <div className="flex items-center gap-3 py-1">
+                        <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-700 text-xs font-bold flex-shrink-0 group-hover:bg-brand-100 transition-colors">
                           {user.full_name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()}
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-neutral-800">{user.full_name}</div>
+                          <div className="text-sm font-bold text-neutral-900">{user.full_name}</div>
                           {user.id === me?.id && (
-                            <div className="text-2xs text-brand-600 font-medium">You</div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-600">You</span>
                           )}
                         </div>
                       </div>
                     </td>
-                    <td className="text-neutral-500">{user.email}</td>
+                    <td className="text-sm text-neutral-500 font-medium">{user.email}</td>
                     <td>
                       {user.role ? <RoleBadge name={user.role.name} /> : <span className="text-neutral-300">—</span>}
                     </td>
                     <td>
-                      {user.is_active ? (
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-success" />
-                          <span className="text-xs text-success font-medium">Active</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-neutral-300" />
-                          <span className="text-xs text-neutral-400 font-medium">Inactive</span>
-                        </div>
-                      )}
+                      <div className={clsx(
+                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                        user.is_active ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-neutral-50 text-neutral-400 border border-neutral-150"
+                      )}>
+                        <span className={clsx("w-1.5 h-1.5 rounded-full", user.is_active ? "bg-emerald-500" : "bg-neutral-300")} />
+                        {user.is_active ? 'Active' : 'Inactive'}
+                      </div>
                     </td>
-                    <td className="text-neutral-500 text-xs">
-                      {format(new Date(user.created_at), 'dd MMM yyyy')}
+                    <td className="text-neutral-400 text-xs font-medium">
+                      {format(new Date(user.created_at), 'MMM dd, yyyy')}
                     </td>
                     {hasPermission('users:write') && (
-                      <td className="text-right">
+                      <td className="pr-6 text-right">
                         <div className="relative inline-block">
                           <button
-                            className="btn-ghost p-1.5 rounded-lg"
+                            className="p-2 rounded-lg hover:bg-neutral-100 text-neutral-400 transition-colors"
                             onClick={() => setMenuOpenId(menuOpenId === user.id ? null : user.id)}
                           >
-                            <MoreHorizontal className="w-4 h-4" />
+                            <MoreHorizontal className="w-4.5 h-4.5" />
                           </button>
-                          {menuOpenId === user.id && (
-                            <>
-                              <div className="fixed inset-0 z-30" onClick={() => setMenuOpenId(null)} />
-                              <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-modal border border-neutral-150 z-40 py-1 animate-fade-in">
-                                <button
-                                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
-                                  onClick={() => {
-                                    setMenuOpenId(null)
-                                    toggleActiveMutation.mutate({ id: user.id, is_active: !user.is_active })
-                                  }}
+                          <AnimatePresence>
+                            {menuOpenId === user.id && (
+                              <>
+                                <div className="fixed inset-0 z-30" onClick={() => setMenuOpenId(null)} />
+                                <motion.div 
+                                  className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-2xl shadow-modal border border-neutral-150 z-40 py-2 overflow-hidden"
+                                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
                                 >
-                                  {user.is_active ? (
-                                    <><XCircle className="w-4 h-4 text-neutral-400" /> Deactivate</>
-                                  ) : (
-                                    <><CheckCircle className="w-4 h-4 text-success" /> Activate</>
-                                  )}
-                                </button>
-                                {hasPermission('users:delete') && user.id !== me?.id && (
                                   <button
-                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-danger hover:bg-danger-light"
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
                                     onClick={() => {
                                       setMenuOpenId(null)
-                                      if (confirm(`Remove ${user.full_name}? This cannot be undone.`)) {
-                                        deleteMutation.mutate(user.id)
-                                      }
+                                      toggleActiveMutation.mutate({ id: user.id, is_active: !user.is_active })
                                     }}
                                   >
-                                    <Trash2 className="w-4 h-4" /> Remove
+                                    {user.is_active ? (
+                                      <><XCircle className="w-4 h-4 text-neutral-400" /> Deactivate User</>
+                                    ) : (
+                                      <><CheckCircle className="w-4 h-4 text-emerald-500" /> Activate User</>
+                                    )}
                                   </button>
-                                )}
-                              </div>
-                            </>
-                          )}
+                                  {hasPermission('users:delete') && user.id !== me?.id && (
+                                    <button
+                                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                                      onClick={() => {
+                                        setMenuOpenId(null)
+                                        if (confirm(`Remove ${user.full_name}? This cannot be undone.`)) {
+                                          deleteMutation.mutate(user.id)
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="w-4 h-4" /> Remove Access
+                                    </button>
+                                  )}
+                                </motion.div>
+                              </>
+                            )}
+                          </AnimatePresence>
                         </div>
                       </td>
                     )}
-                  </tr>
+                  </motion.tr>
                 ))
               )}
             </tbody>
@@ -382,20 +392,20 @@ export function UsersPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-5 py-3 border-t border-neutral-100 flex items-center justify-between">
-            <span className="text-xs text-neutral-400">
+          <div className="px-6 py-4 bg-neutral-50/50 border-t border-neutral-100 flex items-center justify-between">
+            <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
               Page {page} of {totalPages}
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <button
-                className="btn-secondary btn-sm"
+                className="btn-secondary btn-sm rounded-lg font-bold"
                 disabled={page === 1}
                 onClick={() => setPage((p) => p - 1)}
               >
                 Previous
               </button>
               <button
-                className="btn-secondary btn-sm"
+                className="btn-secondary btn-sm rounded-lg font-bold"
                 disabled={page === totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >
@@ -406,7 +416,6 @@ export function UsersPage() {
         )}
       </div>
 
-      {/* Add User Modal */}
       <AnimatePresence>
         {showAddModal && (
           <AddUserModal

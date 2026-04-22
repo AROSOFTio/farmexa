@@ -1,12 +1,12 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Bell,
   LogOut,
-  User as UserIcon,
-  ChevronDown,
   Settings,
   Menu,
+  ChevronDown,
+  Sun,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { toast } from 'sonner'
@@ -32,53 +32,78 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
     .join('')
     .toUpperCase() ?? '??'
 
+  const today = new Date().toLocaleDateString('en-UG', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+
   return (
     <header className="topbar">
       {/* Mobile Menu Button */}
       <button
         onClick={onOpenSidebar}
-        className="lg:hidden p-2 -ml-2 text-neutral-500 hover:text-neutral-800 transition-colors"
+        className="lg:hidden p-2 -ml-2 text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-lg transition-colors"
       >
         <Menu className="w-5 h-5" />
       </button>
 
-      {/* Page breadcrumb placeholder — populated by pages */}
+      {/* Date display */}
+      <div className="hidden md:flex items-center gap-2 text-neutral-400">
+        <Sun className="w-3.5 h-3.5 text-amber-400" />
+        <span className="text-xs font-medium">{today}</span>
+      </div>
+
+      {/* Spacer */}
       <div className="flex-1" />
 
       {/* Right section */}
-      <div className="flex items-center gap-2">
-        {/* Notifications — functional in Phase 5 */}
+      <div className="flex items-center gap-1.5">
+
+        {/* Notifications */}
         <button
-          className="w-9 h-9 rounded-lg flex items-center justify-center text-neutral-500
-                     hover:bg-neutral-100 hover:text-neutral-700 transition-colors"
+          className="relative w-9 h-9 rounded-xl flex items-center justify-center text-neutral-500
+                     hover:bg-neutral-100 hover:text-neutral-700 transition-all duration-150"
           title="Notifications"
         >
           <Bell className="w-4.5 h-4.5" />
+          {/* Notification dot */}
+          <span
+            className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full border-2 border-white"
+            style={{ background: '#f59e0b' }}
+          />
         </button>
 
         {/* Divider */}
-        <div className="w-px h-5 bg-neutral-200 mx-1" />
+        <div className="w-px h-5 bg-neutral-150 mx-1" />
 
         {/* User menu */}
         <div className="relative">
           <button
             onClick={() => setMenuOpen((v) => !v)}
-            className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-lg
-                       hover:bg-neutral-100 transition-colors"
+            className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl
+                       hover:bg-neutral-100 transition-all duration-150"
           >
-            {/* Avatar */}
-            <div className="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+            {/* Avatar with gradient */}
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #379b71 0%, #1c6349 100%)' }}
+            >
               {initials}
             </div>
             <div className="hidden sm:block text-left">
-              <div className="text-sm font-medium text-neutral-800 leading-none">
+              <div className="text-sm font-semibold text-neutral-800 leading-none">
                 {user?.full_name ?? 'Loading…'}
               </div>
-              <div className="text-2xs text-neutral-400 mt-0.5 capitalize">
+              <div className="text-2xs text-neutral-400 mt-0.5 capitalize font-medium">
                 {user?.role?.name?.replace('_', ' ') ?? '—'}
               </div>
             </div>
-            <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />
+            <ChevronDown
+              className="w-3.5 h-3.5 text-neutral-400 hidden sm:block"
+              style={{ transition: 'transform 0.15s', transform: menuOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+            />
           </button>
 
           {/* Dropdown */}
@@ -89,27 +114,54 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                 onClick={() => setMenuOpen(false)}
               />
               <div
-                className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-xl
-                           shadow-modal border border-neutral-150 z-50 py-1 animate-fade-in"
+                className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl
+                           border border-neutral-150 z-50 py-1.5 animate-fade-in overflow-hidden"
+                style={{ boxShadow: '0 16px 48px 0 rgb(0 0 0 / 0.14), 0 4px 16px -4px rgb(0 0 0 / 0.10)' }}
               >
-                <div className="px-4 py-3 border-b border-neutral-100">
-                  <div className="text-sm font-semibold text-neutral-800">{user?.full_name}</div>
-                  <div className="text-xs text-neutral-400 truncate">{user?.email}</div>
+                {/* User info header */}
+                <div
+                  className="px-4 py-3 mb-1"
+                  style={{ borderBottom: '1px solid #eae7e1' }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                      style={{ background: 'linear-gradient(135deg, #379b71 0%, #1c6349 100%)' }}
+                    >
+                      {initials}
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-neutral-800 leading-tight">
+                        {user?.full_name}
+                      </div>
+                      <div className="text-xs text-neutral-400 truncate mt-0.5">
+                        {user?.email}
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
                 <button
                   onClick={() => { setMenuOpen(false); navigate('/settings/users') }}
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700
                              hover:bg-neutral-50 transition-colors"
                 >
-                  <Settings className="w-4 h-4 text-neutral-400" />
+                  <div className="w-7 h-7 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                    <Settings className="w-3.5 h-3.5 text-neutral-500" />
+                  </div>
                   Settings
                 </button>
+
+                <div className="my-1 mx-3" style={{ height: '1px', background: '#eae7e1' }} />
+
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger
-                             hover:bg-danger-light transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600
+                             hover:bg-red-50 transition-colors"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+                    <LogOut className="w-3.5 h-3.5 text-red-500" />
+                  </div>
                   Sign out
                 </button>
               </div>
