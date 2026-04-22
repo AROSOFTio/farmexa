@@ -96,68 +96,82 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
 }
 
 
+import sys
+
 async def run_seed() -> None:
     """Idempotent seeder — safe to run on every startup."""
+    print("DEBUG: Starting database seed process...", file=sys.stderr)
     async with AsyncSessionLocal() as db:
         try:
             await _seed_roles_and_permissions(db)
             await _seed_admin(db)
             await db.commit()
-            logger.info("Database seed completed successfully.")
+            print("SUCCESS: Database seed completed successfully.", file=sys.stderr)
         except Exception as exc:
             await db.rollback()
-            logger.error(f"Seed failed: {exc}", exc_info=True)
+            print(f"CRITICAL ERROR: Seed failed: {exc}", file=sys.stderr)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
 
 
 async def _seed_roles_and_permissions(db: AsyncSession) -> None:
     from app.models.auth import Role, Permission, RolePermission
 
-    # Seed permissions safely using INSERT ... ON CONFLICT DO NOTHING
-    perm_map: dict[str, Permission] = {}
+    print("DEBUG: Seeding permissions...", file=sys.stderr)
+    perm_map = {}
     for code, description, module in PERMISSIONS:
-        stmt = insert(Permission).values(code=code, description=description, module=module).on_conflict_do_nothing(index_elements=['code'])
+        stmt = insert(Permission).values(
+            code=code, 
+            description=description, 
+            module=module
+        ).on_conflict_do_nothing(index_elements=['code'])
         await db.execute(stmt)
-        result = await db.execute(select(Permission).where(Permission.code == code))
-        perm = result.scalar_one()
+        
+        # Fetch the permission (whether newly created or existing)
+        res = await db.execute(select(Permission).where(Permission.code == code))
+        perm = res.scalar_one()
         perm_map[code] = perm
 
-    # Seed roles safely
-    role_map: dict[str, Role] = {}
+    print("DEBUG: Seeding roles...", file=sys.stderr)
+    role_map = {}
     for role_data in ROLES:
         stmt = insert(Role).values(**role_data).on_conflict_do_nothing(index_elements=['name'])
         await db.execute(stmt)
-        result = await db.execute(select(Role).where(Role.name == role_data["name"]))
-        role = result.scalar_one()
+        
+        res = await db.execute(select(Role).where(Role.name == role_data["name"]))
+        role = res.scalar_one()
         role_map[role_data["name"]] = role
 
-    # Seed role-permission assignments
+    print("DEBUG: Seeding role-permission mappings...", file=sys.stderr)
     for role_name, perm_codes in ROLE_PERMISSIONS.items():
         role = role_map.get(role_name)
-        if not role:
-            continue
+        if not role: continue
         for code in perm_codes:
             perm = perm_map.get(code)
-            if not perm:
-                continue
-            stmt = insert(RolePermission).values(role_id=role.id, permission_id=perm.id).on_conflict_do_nothing(index_elements=['role_id', 'permission_id'])
+            if not perm: continue
+            stmt = insert(RolePermission).values(
+                role_id=role.id, 
+                permission_id=perm.id
+            ).on_conflict_do_nothing(index_elements=['role_id', 'permission_id'])
             await db.execute(stmt)
-
 
 
 async def _seed_admin(db: AsyncSession) -> None:
     from app.models.user import User
     from app.models.auth import Role
 
+    print(f"DEBUG: Checking for admin user {settings.SEED_ADMIN_EMAIL}...", file=sys.stderr)
     result = await db.execute(
         select(User).where(User.email == settings.SEED_ADMIN_EMAIL)
     )
     if result.scalar_one_or_none() is not None:
+        print("DEBUG: Admin user already exists.", file=sys.stderr)
         return
 
     role_result = await db.execute(select(Role).where(Role.name == "super_manager"))
     role = role_result.scalar_one_or_none()
     if not role:
-        logger.error("super_manager role not found during admin seed.")
+        print("ERROR: super_manager role not found!", file=sys.stderr)
         return
 
     admin = User(
@@ -168,4 +182,4 @@ async def _seed_admin(db: AsyncSession) -> None:
         role_id=role.id,
     )
     db.add(admin)
-    logger.info(f"Super admin seeded: {settings.SEED_ADMIN_EMAIL}")
+    print(f"DEBUG: Super admin user added to session: {settings.SEED_ADMIN_EMAIL}", file=sys.stderr)
