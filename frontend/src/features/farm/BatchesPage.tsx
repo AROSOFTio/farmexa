@@ -1,6 +1,7 @@
 ﻿import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Plus, Bird, Calendar, Hash, Home, Activity } from 'lucide-react'
+import { clsx } from 'clsx'
 import api from '@/services/api'
 
 export function BatchesPage() {
@@ -136,4 +137,3 @@ export function BatchesPage() {
     </div>
   )
 }
-import { clsx } from 'clsx'

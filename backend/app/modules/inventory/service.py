@@ -7,6 +7,15 @@ class InventoryService:
     def get_items(self, db: Session, skip: int = 0, limit: int = 100):
         return db.query(StockItem).offset(skip).limit(limit).all()
 
+    def get_movements(self, db: Session, skip: int = 0, limit: int = 100):
+        return (
+            db.query(StockMovement)
+            .order_by(StockMovement.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
     def get_item(self, db: Session, item_id: int):
         return db.query(StockItem).filter(StockItem.id == item_id).first()
 

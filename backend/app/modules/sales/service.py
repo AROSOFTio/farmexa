@@ -9,6 +9,9 @@ class SalesService:
     def get_customers(self, db: Session, skip: int = 0, limit: int = 100):
         return db.query(Customer).offset(skip).limit(limit).all()
 
+    def get_orders(self, db: Session, skip: int = 0, limit: int = 100):
+        return db.query(Order).order_by(Order.created_at.desc()).offset(skip).limit(limit).all()
+
     def create_customer(self, db: Session, customer: schemas.CustomerCreate):
         db_cust = Customer(**customer.model_dump())
         db.add(db_cust)

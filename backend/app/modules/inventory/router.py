@@ -10,6 +10,10 @@ router = APIRouter(prefix="/inventory", tags=["Inventory"])
 def list_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_sync_db)):
     return service.inventory_service.get_items(db, skip, limit)
 
+@router.get("/movements", response_model=List[schemas.StockMovementOut])
+def list_movements(skip: int = 0, limit: int = 100, db: Session = Depends(get_sync_db)):
+    return service.inventory_service.get_movements(db, skip, limit)
+
 @router.post("/items", response_model=schemas.StockItemOut)
 def create_item(item: schemas.StockItemCreate, db: Session = Depends(get_sync_db)):
     return service.inventory_service.create_item(db, item)

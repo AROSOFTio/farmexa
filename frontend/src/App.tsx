@@ -6,21 +6,26 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { UsersPage } from '@/features/settings/users/UsersPage'
 import { NotFoundPage } from '@/components/NotFoundPage'
-import { PlaceholderPage } from '@/components/PlaceholderPage'
 import { HousesPage } from '@/features/farm/HousesPage'
 import { BatchesPage } from '@/features/farm/BatchesPage'
 import { OrdersPage } from '@/features/sales/OrdersPage'
 import { ExpensesPage } from '@/features/finance/ExpensesPage'
 import { ProfitDashboard } from '@/features/analytics/ProfitDashboard'
+import { FarmOperationsPage } from '@/features/farm/FarmOperationsPage'
+import { FeedManagementPage } from '@/features/feed/FeedManagementPage'
+import { InventoryPage } from '@/features/inventory/InventoryPage'
+import { CustomersPage } from '@/features/sales/CustomersPage'
+import { IncomesPage } from '@/features/finance/IncomesPage'
+import { SettingsConfigPage } from '@/features/settings/SettingsConfigPage'
+import { InvoicesPage } from '@/features/sales/InvoicesPage'
+import { SlaughterPage } from '@/features/slaughter/SlaughterPage'
 
 export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        {/* Public */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* Protected Shell */}
         <Route
           path="/"
           element={
@@ -32,7 +37,6 @@ export default function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
 
-          {/* Settings */}
           <Route path="settings">
             <Route index element={<Navigate to="/settings/users" replace />} />
             <Route
@@ -45,49 +49,56 @@ export default function App() {
             />
           </Route>
 
-          {/* Phase 2: Farm */}
           <Route path="farm">
             <Route index element={<Navigate to="/farm/houses" replace />} />
             <Route path="houses" element={<HousesPage />} />
             <Route path="batches" element={<BatchesPage />} />
-            <Route path="mortality" element={<PlaceholderPage title="Mortality Tracking" />} />
-            <Route path="vaccination" element={<PlaceholderPage title="Vaccination Log" />} />
-            <Route path="growth" element={<PlaceholderPage title="Growth Tracking" />} />
+            <Route path="mortality" element={<FarmOperationsPage mode="mortality" />} />
+            <Route path="vaccination" element={<FarmOperationsPage mode="vaccination" />} />
+            <Route path="growth" element={<FarmOperationsPage mode="growth" />} />
           </Route>
 
-          {/* Phase 2: Feed */}
           <Route path="feed">
             <Route index element={<Navigate to="/feed/stock" replace />} />
-            <Route path="stock" element={<PlaceholderPage title="Feed Stock Inventory" />} />
-            <Route path="purchases" element={<PlaceholderPage title="Feed Purchases" />} />
-            <Route path="consumption" element={<PlaceholderPage title="Feed Consumption" />} />
-            <Route path="suppliers" element={<PlaceholderPage title="Feed Suppliers" />} />
+            <Route path="stock" element={<FeedManagementPage section="stock" />} />
+            <Route path="purchases" element={<FeedManagementPage section="purchases" />} />
+            <Route path="consumption" element={<FeedManagementPage section="consumption" />} />
+            <Route path="suppliers" element={<FeedManagementPage section="suppliers" />} />
           </Route>
-          {/* Phase 3 & 4: Sales & Inventory */}
+
           <Route path="sales">
             <Route index element={<Navigate to="/sales/orders" replace />} />
             <Route path="orders" element={<OrdersPage />} />
-            <Route path="customers" element={<PlaceholderPage title="Customer Management" />} />
-            <Route path="invoices" element={<PlaceholderPage title="Invoices & Billing" />} />
-            <Route path="inventory" element={<PlaceholderPage title="Inventory Management" />} />
+            <Route path="customers" element={<CustomersPage />} />
+            <Route path="invoices" element={<InvoicesPage section="invoices" />} />
+            <Route path="payments" element={<InvoicesPage section="payments" />} />
           </Route>
 
-          {/* Phase 4 & 5: Finance & Analytics */}
+          <Route path="inventory">
+            <Route index element={<Navigate to="/inventory/items" replace />} />
+            <Route path="items" element={<InventoryPage section="items" />} />
+            <Route path="movements" element={<InventoryPage section="movements" />} />
+          </Route>
+
           <Route path="finance">
             <Route index element={<Navigate to="/finance/expenses" replace />} />
             <Route path="expenses" element={<ExpensesPage />} />
-            <Route path="income" element={<PlaceholderPage title="Other Income" />} />
+            <Route path="incomes" element={<IncomesPage />} />
             <Route path="profit" element={<ProfitDashboard />} />
           </Route>
-          
-          {/* Slaughter */}
-          <Route path="slaughter" element={<PlaceholderPage title="Slaughter Records" />} />
 
-          {/* 404 inside shell */}
+          <Route path="slaughter">
+            <Route index element={<Navigate to="/slaughter/records" replace />} />
+            <Route path="records" element={<SlaughterPage section="records" />} />
+            <Route path="outputs" element={<SlaughterPage section="outputs" />} />
+          </Route>
+
+          <Route path="analytics" element={<ProfitDashboard />} />
+          <Route path="settings/config" element={<SettingsConfigPage />} />
+
           <Route path="*" element={<NotFoundPage />} />
         </Route>
 
-        {/* Catch-all → login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </AuthProvider>

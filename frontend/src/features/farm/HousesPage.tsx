@@ -1,6 +1,7 @@
 ﻿import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Bird, Plus, Home, MapPin, Users, Info, ArrowRight } from 'lucide-react'
+import { clsx } from 'clsx'
 import api from '@/services/api'
 
 interface PoultryHouse {
@@ -122,4 +123,3 @@ export function HousesPage() {
     </div>
   )
 }
-import { clsx } from 'clsx'

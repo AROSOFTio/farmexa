@@ -50,18 +50,18 @@ export function LoginPage() {
         {/* Sophisticated light overlays */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-brand-500/10 blur-[120px]" />
-          <div className="absolute bottom-[-5%] left-[-5%] w-[400px] h-[400px] rounded-full bg-gold-500/5 blur-[100px]" />
+          <div className="absolute bottom-[-5%] left-[-5%] w-[400px] h-[400px] rounded-full bg-brand-200/10 blur-[100px]" />
         </div>
 
         {/* Logo Section */}
         <div className="relative z-10 flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl ring-1 ring-white/10"
-            style={{ background: 'linear-gradient(135deg, #379b71 0%, #1c6349 100%)' }}>
+            style={{ background: 'linear-gradient(135deg, #166534 0%, #124227 100%)' }}>
             <Leaf className="w-6 h-6 text-white" />
           </div>
           <div>
             <div className="text-white font-black text-2xl tracking-tighter leading-none">PERP</div>
-            <div className="text-brand-300 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">Poultry Enterprise</div>
+            <div className="text-brand-200 text-xs font-bold uppercase tracking-widest mt-1 opacity-80">Poultry Enterprise</div>
           </div>
         </div>
 
@@ -73,13 +73,13 @@ export function LoginPage() {
             transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
           >
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 mb-8">
-              <Sparkles className="w-3.5 h-3.5 text-gold-400" />
-              <span className="text-[10px] font-bold text-brand-100 uppercase tracking-[0.2em]">Next-Gen Farm Intelligence</span>
+              <Sparkles className="w-3.5 h-3.5 text-brand-200" />
+              <span className="text-[10px] font-bold text-brand-100 uppercase tracking-[0.2em]">Operations Intelligence</span>
             </div>
             
             <h1 className="text-5xl xl:text-6xl font-black text-white leading-[1.05] tracking-tight mb-8">
               Modern farm management <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-300 to-gold-400">redefined.</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-200 to-white">redefined.</span>
             </h1>
             
             <p className="text-brand-100/60 text-lg leading-relaxed font-medium mb-10">
@@ -97,7 +97,7 @@ export function LoginPage() {
               </div>
               <div className="flex flex-col gap-2">
                 <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-1">
-                  <ShieldCheck className="w-5 h-5 text-gold-400" />
+                  <ShieldCheck className="w-5 h-5 text-brand-200" />
                 </div>
                 <h4 className="text-white font-bold text-sm">Secure Auditing</h4>
                 <p className="text-brand-100/40 text-xs leading-relaxed">Full financial visibility and movement logs.</p>
@@ -118,7 +118,7 @@ export function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-8 bg-neutral-50 relative overflow-hidden">
         {/* Subtle decorative elements for the white side */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/5 rounded-full blur-[80px] -mr-32 -mt-32" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-gold-500/5 rounded-full blur-[80px] -ml-32 -mb-32" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-brand-200/10 rounded-full blur-[80px] -ml-32 -mb-32" />
 
         <motion.div
           initial={{ opacity: 0, x: 30 }}

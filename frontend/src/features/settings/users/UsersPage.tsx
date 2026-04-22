@@ -44,7 +44,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 function RoleBadge({ name }: { name: string }) {
   const colors: Record<string, string> = {
-    super_manager:     'bg-gold-50 text-gold-700 ring-1 ring-gold-200',
+    super_manager:     'bg-brand-100 text-brand-700 ring-1 ring-brand-200',
     farm_manager:      'bg-brand-50 text-brand-700 ring-1 ring-brand-200',
     inventory_officer: 'bg-info-light text-info ring-1 ring-blue-200',
     sales_officer:     'bg-amber-50 text-amber-700 ring-1 ring-amber-200',

@@ -18,9 +18,9 @@ export function NotFoundPage() {
         </div>
       </div>
 
-      <h2 className="text-3xl font-black text-neutral-900 tracking-tight mb-3">Lost in the farm?</h2>
+      <h2 className="text-3xl font-black text-neutral-900 tracking-tight mb-3">Page not found</h2>
       <p className="text-base font-medium text-neutral-500 mb-10 max-w-sm leading-relaxed">
-        The page you are looking for has either migrated or doesn&apos;t exist in this system environment.
+        The route you opened does not exist in the current ERP shell or has moved during the latest rollout.
       </p>
 
       <div className="flex flex-col sm:flex-row items-center gap-4">

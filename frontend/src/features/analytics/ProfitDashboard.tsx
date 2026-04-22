@@ -40,11 +40,11 @@ export function ProfitDashboard() {
           <div className="text-3xl font-black text-neutral-900 mt-4">{fmt(data?.summary?.total_expenses)}</div>
         </div>
 
-        <div className="card p-6 bg-gradient-to-br from-brand-900 to-brand-800 text-white shadow-xl relative overflow-hidden">
+        <div className="card p-6 bg-gradient-to-br from-brand-700 to-brand-900 text-white shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 -mt-10 -mr-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
           <div className="flex items-center gap-3 mb-2 relative z-10">
-            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center"><DollarSign className="w-4 h-4 text-gold-400" /></div>
-            <span className="text-xs font-bold uppercase tracking-wider text-brand-200">Net Profit</span>
+            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center"><DollarSign className="w-4 h-4 text-white" /></div>
+            <span className="text-xs font-bold uppercase tracking-wider text-brand-100">Net Profit</span>
           </div>
           <div className="text-3xl font-black mt-4 relative z-10">{fmt(data?.summary?.net_profit)}</div>
         </div>
@@ -60,8 +60,8 @@ export function ProfitDashboard() {
               <AreaChart data={data.timeline} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#379b71" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#379b71" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#166534" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#166534" stopOpacity={0}/>
                   </linearGradient>
                   <linearGradient id="colorExp" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
@@ -76,7 +76,7 @@ export function ProfitDashboard() {
                   formatter={(value: number) => [`UGX ${value.toLocaleString()}`, '']}
                 />
                 <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600 }}/>
-                <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#379b71" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+                <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#166534" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
                 <Area type="monotone" dataKey="expenses" name="Expenses" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorExp)" />
               </AreaChart>
             </ResponsiveContainer>

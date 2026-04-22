@@ -51,7 +51,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
 
       {/* Date display */}
       <div className="hidden md:flex items-center gap-2 text-neutral-400">
-        <Sun className="w-3.5 h-3.5 text-amber-400" />
+        <Sun className="w-3.5 h-3.5 text-brand-400" />
         <span className="text-xs font-medium">{today}</span>
       </div>
 
@@ -71,7 +71,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
           {/* Notification dot */}
           <span
             className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full border-2 border-white"
-            style={{ background: '#f59e0b' }}
+            style={{ background: '#166534' }}
           />
         </button>
 
@@ -88,7 +88,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
             {/* Avatar with gradient */}
             <div
               className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #379b71 0%, #1c6349 100%)' }}
+              style={{ background: 'linear-gradient(135deg, #166534 0%, #124227 100%)' }}
             >
               {initials}
             </div>
@@ -121,12 +121,12 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                 {/* User info header */}
                 <div
                   className="px-4 py-3 mb-1"
-                  style={{ borderBottom: '1px solid #eae7e1' }}
+                  style={{ borderBottom: '1px solid #e7eeea' }}
                 >
                   <div className="flex items-center gap-3">
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                      style={{ background: 'linear-gradient(135deg, #379b71 0%, #1c6349 100%)' }}
+                      style={{ background: 'linear-gradient(135deg, #166534 0%, #124227 100%)' }}
                     >
                       {initials}
                     </div>
@@ -152,7 +152,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                   Settings
                 </button>
 
-                <div className="my-1 mx-3" style={{ height: '1px', background: '#eae7e1' }} />
+                <div className="my-1 mx-3" style={{ height: '1px', background: '#e7eeea' }} />
 
                 <button
                   onClick={handleLogout}

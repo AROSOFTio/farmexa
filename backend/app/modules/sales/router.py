@@ -14,6 +14,10 @@ def list_customers(skip: int = 0, limit: int = 100, db: Session = Depends(get_sy
 def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_sync_db)):
     return service.sales_service.create_customer(db, customer)
 
+@router.get("/orders", response_model=List[schemas.OrderOut])
+def list_orders(skip: int = 0, limit: int = 100, db: Session = Depends(get_sync_db)):
+    return service.sales_service.get_orders(db, skip, limit)
+
 @router.post("/orders", response_model=schemas.OrderOut)
 def create_order(order: schemas.OrderCreate, db: Session = Depends(get_sync_db)):
     return service.sales_service.create_order(db, order)

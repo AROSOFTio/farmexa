@@ -91,8 +91,8 @@ export function DashboardPage() {
       value: isLoading ? '…' : fmtMoney(data?.net_profit ?? 0),
       subtitle: 'Last 30 Days',
       icon: DollarSign,
-      gradient: 'linear-gradient(135deg, #379b71 0%, #0b2820 100%)',
-      accentColor: '#379b71',
+      gradient: 'linear-gradient(135deg, #166534 0%, #124227 100%)',
+      accentColor: '#166534',
       delay: 0.12,
     },
     {
@@ -149,8 +149,10 @@ export function DashboardPage() {
       </div>
       
       <div className="card p-12 text-center bg-white">
-        <h3 className="text-lg font-bold text-neutral-900 mb-2">Advanced Analytics Module</h3>
-        <p className="text-neutral-500 text-sm">Navigate to the Reports Center for detailed profit timelines, sales breakdown, and CSV exports.</p>
+        <h3 className="text-lg font-bold text-neutral-900 mb-2">Reporting Center</h3>
+        <p className="text-neutral-500 text-sm">
+          Open analytics to review margin trends, revenue movement, and financial performance from live backend data.
+        </p>
       </div>
     </div>
   )
