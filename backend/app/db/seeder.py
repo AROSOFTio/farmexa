@@ -5,6 +5,7 @@ Seeds roles, permissions, and the initial super admin account if not present.
 
 import logging
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import AsyncSessionLocal
@@ -111,28 +112,22 @@ async def run_seed() -> None:
 async def _seed_roles_and_permissions(db: AsyncSession) -> None:
     from app.models.auth import Role, Permission, RolePermission
 
-    # Seed permissions
+    # Seed permissions safely using INSERT ... ON CONFLICT DO NOTHING
     perm_map: dict[str, Permission] = {}
     for code, description, module in PERMISSIONS:
+        stmt = insert(Permission).values(code=code, description=description, module=module).on_conflict_do_nothing(index_elements=['code'])
+        await db.execute(stmt)
         result = await db.execute(select(Permission).where(Permission.code == code))
-        perm = result.scalar_one_or_none()
-        if perm is None:
-            perm = Permission(code=code, description=description, module=module)
-            db.add(perm)
-            await db.flush()
-            logger.debug(f"Created permission: {code}")
+        perm = result.scalar_one()
         perm_map[code] = perm
 
-    # Seed roles
+    # Seed roles safely
     role_map: dict[str, Role] = {}
     for role_data in ROLES:
+        stmt = insert(Role).values(**role_data).on_conflict_do_nothing(index_elements=['name'])
+        await db.execute(stmt)
         result = await db.execute(select(Role).where(Role.name == role_data["name"]))
-        role = result.scalar_one_or_none()
-        if role is None:
-            role = Role(**role_data)
-            db.add(role)
-            await db.flush()
-            logger.debug(f"Created role: {role_data['name']}")
+        role = result.scalar_one()
         role_map[role_data["name"]] = role
 
     # Seed role-permission assignments
@@ -144,14 +139,9 @@ async def _seed_roles_and_permissions(db: AsyncSession) -> None:
             perm = perm_map.get(code)
             if not perm:
                 continue
-            result = await db.execute(
-                select(RolePermission).where(
-                    RolePermission.role_id == role.id,
-                    RolePermission.permission_id == perm.id,
-                )
-            )
-            if result.scalar_one_or_none() is None:
-                db.add(RolePermission(role_id=role.id, permission_id=perm.id))
+            stmt = insert(RolePermission).values(role_id=role.id, permission_id=perm.id).on_conflict_do_nothing(index_elements=['role_id', 'permission_id'])
+            await db.execute(stmt)
+
 
 
 async def _seed_admin(db: AsyncSession) -> None:
