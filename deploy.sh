@@ -2,14 +2,14 @@
 # ==============================================================================
 # PERP / Farmexa - Production Deployment Script
 # Repo:    https://github.com/AROSOFTio/farmexa.git
-# Deploy:  /var/www/wwwroot/farmexa.arosoft.io
+# Deploy:  /www/wwwroot/farmexa.arosoft.io
 # Port:    4002 (internal nginx -> reverse-proxied by host Nginx)
 # ==============================================================================
 set -euo pipefail
 
 # -- Config --------------------------------------------------------------------
 APP_NAME="farmexa"
-DEPLOY_DIR="/var/www/wwwroot/farmexa.arosoft.io"
+DEPLOY_DIR="/www/wwwroot/farmexa.arosoft.io"
 REPO_URL="https://github.com/AROSOFTio/farmexa.git"
 BRANCH="${BRANCH:-main}"
 COMPOSE_FILE="docker-compose.prod.yml"
