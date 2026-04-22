@@ -422,7 +422,9 @@ export function InventoryPage({ section }: { section: InventorySection }) {
                               {movement.quantity.toLocaleString()} {item?.unit_of_measure || ''}
                             </div>
                           </td>
-                          <td>{movement.previous_quantity.toLocaleString()} -> {movement.new_quantity.toLocaleString()}</td>
+                          <td>
+                            {movement.previous_quantity.toLocaleString()} to {movement.new_quantity.toLocaleString()}
+                          </td>
                           <td className="pr-6">{movement.reference_type ? `${movement.reference_type}${movement.reference_id ? ` #${movement.reference_id}` : ''}` : 'Manual'}</td>
                         </tr>
                       )
