@@ -24,19 +24,20 @@ interface KpiCardProps {
 function KpiCard({ title, value, subtitle, icon: Icon, iconColor, iconBg, delay = 0 }: KpiCardProps) {
   return (
     <motion.div
-      className="kpi-card"
+      className="bg-white rounded-xl border border-neutral-150 shadow-sm p-5 relative overflow-hidden group hover:shadow-card-hover transition-all duration-300"
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay }}
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="text-xs font-medium text-neutral-500 uppercase tracking-wide">{title}</div>
-          <div className="text-2xl font-bold text-neutral-900 mt-1.5">{value}</div>
-          {subtitle && <div className="text-xs text-neutral-400 mt-1">{subtitle}</div>}
+      <div className="absolute top-0 left-0 w-1 h-full" style={{ backgroundColor: `var(--tw-colors-${iconColor.replace('text-', '')})`, opacity: 0.8 }} />
+      <div className="flex items-start justify-between relative z-10 pl-2">
+        <div className="flex flex-col">
+          <div className="text-xs font-semibold text-neutral-500 uppercase tracking-widest">{title}</div>
+          <div className="text-3xl font-bold text-neutral-900 mt-2 tracking-tight">{value}</div>
+          {subtitle && <div className="text-sm text-neutral-400 mt-1.5 font-medium">{subtitle}</div>}
         </div>
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg}`}>
-          <Icon className={`w-5 h-5 ${iconColor}`} />
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${iconBg} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+          <Icon className={`w-6 h-6 ${iconColor}`} />
         </div>
       </div>
     </motion.div>
@@ -171,23 +172,25 @@ export function DashboardPage() {
         />
       </div>
 
-      {/* Module Panels — Phase 2+ will populate these */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Module Panels */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-10">
         {/* Farm Activity */}
         <motion.div
-          className="card"
+          className="bg-white rounded-xl border border-neutral-150 shadow-sm overflow-hidden hover:shadow-card transition-shadow"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.4 }}
         >
-          <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Bird className="w-4 h-4 text-emerald-600" />
-              <h3 className="text-sm font-semibold text-neutral-800">Farm Activity</h3>
+          <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+                <Bird className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-semibold text-neutral-800">Farm Activity</h3>
             </div>
-            <span className="badge badge-neutral">Live</span>
+            <span className="badge badge-success text-xs px-2.5 py-1 rounded-md">Live</span>
           </div>
-          <div className="px-5 py-4">
+          <div className="p-6">
             {(data?.farm.active_batches ?? 0) === 0 ? (
               <SectionEmpty label="No active batches" />
             ) : (
@@ -198,19 +201,21 @@ export function DashboardPage() {
 
         {/* Sales Summary */}
         <motion.div
-          className="card"
+          className="bg-white rounded-xl border border-neutral-150 shadow-sm overflow-hidden hover:shadow-card transition-shadow"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.45 }}
         >
-          <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="w-4 h-4 text-violet-600" />
-              <h3 className="text-sm font-semibold text-neutral-800">Sales Summary</h3>
+          <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-violet-100 text-violet-600 rounded-lg">
+                <ShoppingCart className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-semibold text-neutral-800">Sales Summary</h3>
             </div>
-            <span className="badge badge-neutral">This Month</span>
+            <span className="badge badge-neutral text-xs px-2.5 py-1 rounded-md">This Month</span>
           </div>
-          <div className="px-5 py-4">
+          <div className="p-6">
             {(data?.sales.revenue_this_month ?? 0) === 0 ? (
               <SectionEmpty label="No sales recorded" />
             ) : (
@@ -221,19 +226,21 @@ export function DashboardPage() {
 
         {/* Finance */}
         <motion.div
-          className="card"
+          className="bg-white rounded-xl border border-neutral-150 shadow-sm overflow-hidden hover:shadow-card transition-shadow"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.5 }}
         >
-          <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-brand-600" />
-              <h3 className="text-sm font-semibold text-neutral-800">Financial Overview</h3>
+          <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-brand-100 text-brand-600 rounded-lg">
+                <DollarSign className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-semibold text-neutral-800">Financial Overview</h3>
             </div>
-            <span className="badge badge-neutral">This Month</span>
+            <span className="badge badge-neutral text-xs px-2.5 py-1 rounded-md">This Month</span>
           </div>
-          <div className="px-5 py-4">
+          <div className="p-6">
             {(data?.finance.income_this_month ?? 0) === 0 ? (
               <SectionEmpty label="No financial data" />
             ) : (
@@ -244,24 +251,28 @@ export function DashboardPage() {
 
         {/* Feed Stock */}
         <motion.div
-          className="card"
+          className="bg-white rounded-xl border border-neutral-150 shadow-sm overflow-hidden hover:shadow-card transition-shadow"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.55 }}
         >
-          <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Wheat className="w-4 h-4 text-amber-600" />
-              <h3 className="text-sm font-semibold text-neutral-800">Feed Stock Status</h3>
+          <div className="px-6 py-5 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-amber-100 text-amber-600 rounded-lg">
+                <Wheat className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-semibold text-neutral-800">Feed Stock Status</h3>
             </div>
-            {(data?.feed.low_stock_alerts ?? 0) > 0 && (
-              <span className="badge badge-warning">
-                <AlertTriangle className="w-2.5 h-2.5" />
+            {(data?.feed.low_stock_alerts ?? 0) > 0 ? (
+              <span className="badge badge-warning text-xs px-2.5 py-1 rounded-md flex items-center gap-1.5">
+                <AlertTriangle className="w-3 h-3" />
                 {data?.feed.low_stock_alerts} alerts
               </span>
+            ) : (
+              <span className="badge badge-neutral text-xs px-2.5 py-1 rounded-md">All Good</span>
             )}
           </div>
-          <div className="px-5 py-4">
+          <div className="p-6">
             {(data?.feed.stock_items ?? 0) === 0 ? (
               <SectionEmpty label="No feed items in stock" />
             ) : (

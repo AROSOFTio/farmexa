@@ -6,11 +6,12 @@ import {
   User as UserIcon,
   ChevronDown,
   Settings,
+  Menu,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { toast } from 'sonner'
 
-export function Topbar() {
+export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -33,6 +34,14 @@ export function Topbar() {
 
   return (
     <header className="topbar">
+      {/* Mobile Menu Button */}
+      <button
+        onClick={onOpenSidebar}
+        className="lg:hidden p-2 -ml-2 text-neutral-500 hover:text-neutral-800 transition-colors"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+
       {/* Page breadcrumb placeholder — populated by pages */}
       <div className="flex-1" />
 
