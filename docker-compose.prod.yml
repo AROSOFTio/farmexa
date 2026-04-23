@@ -1,6 +1,6 @@
 # ==============================================================================
-# Production compose — exposes app on port 4002
-# Host Nginx reverse-proxies farmexa.arosoft.io → localhost:4002
+# Production Compose stack for Farmexa ERP.
+# Exposes the internal app gateway on port 4002 for the host Nginx reverse proxy.
 # ==============================================================================
 
 services:
@@ -9,13 +9,13 @@ services:
     container_name: farmexa_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-perp_db}
-      POSTGRES_USER: ${POSTGRES_USER:-perp_user}
+      POSTGRES_DB: ${POSTGRES_DB:-farmexa_db}
+      POSTGRES_USER: ${POSTGRES_USER:-farmexa_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - farmexa_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-perp_user} -d ${POSTGRES_DB:-perp_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-farmexa_user} -d ${POSTGRES_DB:-farmexa_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -95,8 +95,6 @@ services:
     networks:
       - farmexa_net
 
-  # Internal nginx — routes /api → backend, / → frontend
-  # Exposed on host port 4002 for the server's reverse proxy
   nginx:
     image: nginx:alpine
     container_name: farmexa_nginx
@@ -111,9 +109,6 @@ services:
     networks:
       - farmexa_net
 
-  # Adminer — lightweight DB web UI (PostgreSQL browser)
-  # Access at: http://YOUR_SERVER_IP:4003
-  # System: PostgreSQL | Server: db | User/Pass/DB: from .env
   adminer:
     image: adminer:latest
     container_name: farmexa_adminer
