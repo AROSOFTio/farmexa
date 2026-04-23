@@ -1,13 +1,22 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, LogOut, Menu, Settings } from 'lucide-react'
+import { ChevronDown, LogOut, Menu, MoonStar, Settings, SunMedium } from 'lucide-react'
 import { clsx } from 'clsx'
 import { toast } from 'sonner'
 import { BrandMark } from '@/components/BrandMark'
 import { useAuth } from '@/features/auth/AuthContext'
 import { ROLE_LABELS } from '@/lib/branding'
+import type { ThemeMode } from '@/lib/theme'
 
-export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
+export function Topbar({
+  onOpenSidebar,
+  onToggleTheme,
+  theme,
+}: {
+  onOpenSidebar: () => void
+  onToggleTheme: () => void
+  theme: ThemeMode
+}) {
   const { user, logout, hasPermission } = useAuth()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -51,6 +60,16 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
       <div className="hidden lg:block">
         <div className="text-xs font-bold uppercase tracking-[0.24em] text-ink-400">{roleLabel}</div>
       </div>
+
+      <button type="button" onClick={onToggleTheme} className="theme-toggle">
+        <div className="theme-toggle__icon">
+          {theme === 'light' ? <MoonStar className="h-4 w-4" /> : <SunMedium className="h-4 w-4" />}
+        </div>
+        <div className="hidden sm:block text-left">
+          <div className="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-ink-400">Theme</div>
+          <div className="text-sm font-semibold text-ink-900">{theme === 'light' ? 'Black mode' : 'White mode'}</div>
+        </div>
+      </button>
 
       <div className="ml-auto relative">
         <button

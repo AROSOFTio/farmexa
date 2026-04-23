@@ -7,6 +7,9 @@ import { Toaster } from 'sonner'
 
 import App from './App'
 import './index.css'
+import { applyTheme, resolveInitialTheme } from '@/lib/theme'
+
+applyTheme(resolveInitialTheme())
 
 const queryClient = new QueryClient({
   defaultOptions: {

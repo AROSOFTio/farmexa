@@ -1,10 +1,12 @@
-from datetime import date, datetime
+from datetime import date
 from typing import Optional
-from sqlalchemy import String, Integer, Date, ForeignKey, Enum as SQLEnum, Text, Float
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 import enum
 
+from sqlalchemy import Date, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.base import Base
+from app.db.enums import db_enum
 
 
 class HouseStatus(str, enum.Enum):
@@ -32,9 +34,8 @@ class PoultryHouse(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
     capacity: Mapped[int] = mapped_column(Integer)
-    status: Mapped[HouseStatus] = mapped_column(SQLEnum(HouseStatus), default=HouseStatus.ACTIVE)
-    
-    # Relationships
+    status: Mapped[HouseStatus] = mapped_column(db_enum(HouseStatus, name="housestatus"), default=HouseStatus.ACTIVE)
+
     batches: Mapped[list["Batch"]] = relationship("Batch", back_populates="house")
 
 
@@ -49,9 +50,8 @@ class Batch(Base):
     arrival_date: Mapped[date] = mapped_column(Date)
     initial_quantity: Mapped[int] = mapped_column(Integer)
     active_quantity: Mapped[int] = mapped_column(Integer)
-    status: Mapped[BatchStatus] = mapped_column(SQLEnum(BatchStatus), default=BatchStatus.ACTIVE)
+    status: Mapped[BatchStatus] = mapped_column(db_enum(BatchStatus, name="batchstatus"), default=BatchStatus.ACTIVE)
 
-    # Relationships
     house: Mapped["PoultryHouse"] = relationship("PoultryHouse", back_populates="batches")
     mortality_logs: Mapped[list["MortalityLog"]] = relationship("MortalityLog", back_populates="batch", cascade="all, delete-orphan")
     vaccinations: Mapped[list["VaccinationLog"]] = relationship("VaccinationLog", back_populates="batch", cascade="all, delete-orphan")
@@ -79,7 +79,10 @@ class VaccinationLog(Base):
     vaccine_name: Mapped[str] = mapped_column(String(150))
     scheduled_date: Mapped[date] = mapped_column(Date)
     administered_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    status: Mapped[VaccinationStatus] = mapped_column(SQLEnum(VaccinationStatus), default=VaccinationStatus.PENDING)
+    status: Mapped[VaccinationStatus] = mapped_column(
+        db_enum(VaccinationStatus, name="vaccinationstatus"),
+        default=VaccinationStatus.PENDING,
+    )
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     batch: Mapped["Batch"] = relationship("Batch", back_populates="vaccinations")

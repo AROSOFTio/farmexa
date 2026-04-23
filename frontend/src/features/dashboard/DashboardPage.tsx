@@ -152,6 +152,8 @@ type ActivityRecord = {
   timestamp: string
 }
 
+type MetricTone = 'emerald' | 'sky' | 'amber' | 'coral' | 'slate'
+
 function sameDay(value: string) {
   return new Date(value).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)
 }
@@ -171,6 +173,16 @@ function formatDateTime(value: string) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+const metricTones: MetricTone[] = ['emerald', 'sky', 'amber', 'coral', 'slate']
+
+const chartTooltipStyle = {
+  border: '1px solid var(--border-subtle)',
+  borderRadius: '1.2rem',
+  background: 'var(--surface-strong)',
+  boxShadow: 'var(--shadow-card)',
+  color: 'var(--text-strong)',
 }
 
 export function DashboardPage() {
@@ -356,7 +368,7 @@ export function DashboardPage() {
     const todaysSlaughter = (data?.slaughterRecords ?? []).filter((entry) => sameDay(entry.slaughter_date)).reduce((sum, entry) => sum + entry.live_birds_count, 0)
 
     return [
-      { label: 'Feed', value: todaysFeed.toLocaleString() },
+      { label: 'Feed used', value: todaysFeed.toLocaleString() },
       { label: 'Expense', value: `UGX ${todaysExpense.toLocaleString()}` },
       { label: 'Income', value: `UGX ${todaysIncome.toLocaleString()}` },
       { label: 'Processed', value: todaysSlaughter.toLocaleString() },
@@ -371,6 +383,7 @@ export function DashboardPage() {
           title: 'Active birds',
           value: activeBirds.toLocaleString(),
           icon: Bird,
+          hint: 'Birds currently in active batches',
         }
       : null,
     hasPermission('feed:read')
@@ -378,6 +391,7 @@ export function DashboardPage() {
           title: 'Low stock',
           value: lowStockItems.length.toLocaleString(),
           icon: Boxes,
+          hint: 'Feed items at or below reorder point',
         }
       : null,
     hasPermission('slaughter:read')
@@ -385,6 +399,7 @@ export function DashboardPage() {
           title: 'Yield',
           value: averageYield ? `${averageYield.toFixed(1)}%` : 'No data',
           icon: Scissors,
+          hint: 'Average dressed yield from completed runs',
         }
       : null,
     hasPermission('sales:read')
@@ -392,6 +407,7 @@ export function DashboardPage() {
           title: 'Receivables',
           value: `UGX ${outstandingValue.toLocaleString()}`,
           icon: Receipt,
+          hint: 'Outstanding invoice value',
         }
       : null,
     hasPermission('finance:read')
@@ -399,23 +415,46 @@ export function DashboardPage() {
           title: 'Net profit',
           value: `UGX ${(data?.kpis?.net_profit ?? 0).toLocaleString()}`,
           icon: DollarSign,
+          hint: 'Current result for the selected window',
         }
       : null,
-  ].filter(Boolean) as Array<{ title: string; value: string; icon: ElementType }>
+  ].filter(Boolean) as Array<{ title: string; value: string; icon: ElementType; hint: string }>
 
   return (
-    <div className="animate-fade-in space-y-6 pb-8">
-      <div className="section-header">
-        <div>
-          <h1 className="section-title">Dashboard</h1>
-          <p className="mt-1 text-sm font-medium text-ink-500">{roleLabel}</p>
+    <div className="dashboard-shell animate-fade-in space-y-6 pb-8">
+      <section className="dashboard-hero">
+        <div className="dashboard-eyebrow">Live command center</div>
+        <div className="mt-3 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <h1 className="dashboard-hero__title">Dashboard</h1>
+            <p className="dashboard-hero__subtitle">{roleLabel} with a live view of farm operations, inventory, sales, and finance.</p>
+          </div>
+
+          <button type="button" onClick={() => overview.refetch()} className="dashboard-refresh-btn">
+            <RefreshCw className={`h-4.5 w-4.5 ${overview.isFetching ? 'animate-spin' : ''}`} />
+            {overview.isFetching ? 'Refreshing...' : 'Refresh data'}
+          </button>
         </div>
 
-        <button type="button" onClick={() => overview.refetch()} className="btn-secondary">
-          <RefreshCw className={`h-4.5 w-4.5 ${overview.isFetching ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-      </div>
+        <div className="dashboard-hero__grid">
+          <div className="dashboard-pill">
+            <span>Today</span>
+            <strong>{formatDate(new Date().toISOString())}</strong>
+          </div>
+          <div className="dashboard-pill">
+            <span>Alerts</span>
+            <strong>{alerts.length.toLocaleString()}</strong>
+          </div>
+          <div className="dashboard-pill">
+            <span>Recent activity</span>
+            <strong>{recentActivity.length.toLocaleString()}</strong>
+          </div>
+          <div className="dashboard-pill">
+            <span>Open invoices</span>
+            <strong>{outstandingInvoices.length.toLocaleString()}</strong>
+          </div>
+        </div>
+      </section>
 
       {overview.isError ? (
         <div className="card flex items-center gap-4 p-5 text-danger">
@@ -425,15 +464,18 @@ export function DashboardPage() {
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {leadingMetrics.map((metric) => {
+        {leadingMetrics.map((metric, index) => {
           const Icon = metric.icon
+          const tone = metricTones[index % metricTones.length]
+
           return (
-            <div key={metric.title} className="kpi-card">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-ink-500">
-                <Icon className="h-4 w-4 text-brand-600" />
+            <div key={metric.title} className={`dashboard-metric dashboard-metric--${tone}`}>
+              <div className="dashboard-metric__label">
+                <Icon className="h-4.5 w-4.5" />
                 {metric.title}
               </div>
-              <div className="mt-3 text-2xl font-semibold text-ink-900">{metric.value}</div>
+              <div className="dashboard-metric__value">{metric.value}</div>
+              <p className="dashboard-metric__hint">{metric.hint}</p>
             </div>
           )
         })}
@@ -441,40 +483,58 @@ export function DashboardPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {todaySummary.map((item) => (
-          <div key={item.label} className="card px-5 py-4">
-            <div className="text-xs font-bold uppercase tracking-[0.18em] text-ink-500">{item.label}</div>
-            <div className="mt-2 text-xl font-semibold text-ink-900">{item.value}</div>
+          <div key={item.label} className="dashboard-mini-card">
+            <div className="dashboard-mini-card__label">{item.label}</div>
+            <div className="dashboard-mini-card__value">{item.value}</div>
           </div>
         ))}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-        <div className="card p-6">
-          <h2 className="text-xl font-semibold text-ink-900">Revenue</h2>
+        <div className="dashboard-panel">
+          <div className="dashboard-panel__heading">
+            <DollarSign className="h-4.5 w-4.5" />
+            Financial momentum
+          </div>
+          <h2 className="dashboard-panel__title">Revenue vs expenses</h2>
+          <p className="dashboard-panel__subtitle">Thirty-day operating view across recorded income and cost.</p>
           <div className="mt-5 h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data?.profit.timeline ?? []} margin={{ left: 0, right: 12, top: 8, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e3ebe4" vertical={false} />
-                <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fill: '#5f6f7b', fontSize: 12 }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5f6f7b', fontSize: 12 }} tickFormatter={(value) => `${Math.round(value / 1000)}k`} />
-                <Tooltip formatter={(value: number) => `UGX ${value.toLocaleString()}`} />
-                <Area type="monotone" dataKey="revenue" stroke="#1b832c" fill="#d7f0dc" strokeWidth={3} />
-                <Area type="monotone" dataKey="expenses" stroke="#c24034" fill="#fde9e6" strokeWidth={2} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+                <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fill: 'var(--chart-axis)', fontSize: 12 }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fill: 'var(--chart-axis)', fontSize: 12 }} tickFormatter={(value) => `${Math.round(value / 1000)}k`} />
+                <Tooltip
+                  contentStyle={chartTooltipStyle}
+                  formatter={(value: number) => `UGX ${value.toLocaleString()}`}
+                  labelStyle={{ color: 'var(--text-muted)' }}
+                />
+                <Area type="monotone" dataKey="revenue" stroke="var(--chart-revenue)" fill="var(--chart-revenue-fill)" strokeWidth={3} />
+                <Area type="monotone" dataKey="expenses" stroke="var(--chart-expense)" fill="var(--chart-expense-fill)" strokeWidth={2.2} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="card p-6">
-          <h2 className="text-xl font-semibold text-ink-900">Occupancy</h2>
+        <div className="dashboard-panel">
+          <div className="dashboard-panel__heading">
+            <Bird className="h-4.5 w-4.5" />
+            House performance
+          </div>
+          <h2 className="dashboard-panel__title">Occupancy</h2>
+          <p className="dashboard-panel__subtitle">Bird count by house against current capacity.</p>
           <div className="mt-5 h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={houseOccupancy}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e3ebe4" vertical={false} />
-                <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: '#5f6f7b', fontSize: 12 }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5f6f7b', fontSize: 12 }} />
-                <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                <Bar dataKey="birds" fill="#259d35" radius={[10, 10, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+                <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: 'var(--chart-axis)', fontSize: 12 }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fill: 'var(--chart-axis)', fontSize: 12 }} />
+                <Tooltip
+                  contentStyle={chartTooltipStyle}
+                  formatter={(value: number) => value.toLocaleString()}
+                  labelStyle={{ color: 'var(--text-muted)' }}
+                />
+                <Bar dataKey="birds" fill="var(--chart-bar)" radius={[10, 10, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -482,42 +542,53 @@ export function DashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-        <div className="card p-6">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-ink-500">
-            <CircleAlert className="h-4 w-4 text-brand-600" />
-            Alerts
+        <div className="dashboard-panel">
+          <div className="dashboard-panel__heading">
+            <CircleAlert className="h-4.5 w-4.5" />
+            Priority alerts
           </div>
-          <div className="mt-4 space-y-3">
+          <h2 className="dashboard-panel__title">What needs attention</h2>
+          <div className="dashboard-list">
             {alerts.length === 0 ? (
-              <div className="rounded-2xl border border-neutral-150 bg-neutral-50 px-4 py-4 text-sm text-ink-500">
-                No alerts.
+              <div className="dashboard-list-item">
+                <div>
+                  <div className="text-sm font-semibold text-ink-900">All clear</div>
+                  <div className="mt-1 text-sm text-ink-500">No urgent stock, invoice, or occupancy alerts right now.</div>
+                </div>
               </div>
             ) : (
               alerts.map((alert) => (
-                <div key={`${alert.title}-${alert.detail}`} className="rounded-2xl border border-neutral-150 bg-neutral-50 px-4 py-4">
-                  <div className={`text-sm font-semibold ${alert.tone === 'danger' ? 'text-danger' : alert.tone === 'warning' ? 'text-warning' : 'text-brand-700'}`}>
-                    {alert.title}
+                <div
+                  key={`${alert.title}-${alert.detail}`}
+                  className={`dashboard-list-item dashboard-alert dashboard-alert--${alert.tone}`}
+                >
+                  <div>
+                    <div className="text-sm font-semibold text-ink-900">{alert.title}</div>
+                    <div className="mt-1 text-sm text-ink-500">{alert.detail}</div>
                   </div>
-                  <div className="mt-1 text-sm text-ink-500">{alert.detail}</div>
                 </div>
               ))
             )}
           </div>
         </div>
 
-        <div className="card p-6">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-ink-500">
-            <Warehouse className="h-4 w-4 text-brand-600" />
-            Activity
+        <div className="dashboard-panel">
+          <div className="dashboard-panel__heading">
+            <Warehouse className="h-4.5 w-4.5" />
+            Recent activity
           </div>
-          <div className="mt-4 space-y-3">
+          <h2 className="dashboard-panel__title">Latest movement</h2>
+          <div className="dashboard-list">
             {recentActivity.length === 0 ? (
-              <div className="rounded-2xl border border-neutral-150 bg-neutral-50 px-4 py-4 text-sm text-ink-500">
-                No activity.
+              <div className="dashboard-list-item">
+                <div>
+                  <div className="text-sm font-semibold text-ink-900">No recent activity</div>
+                  <div className="mt-1 text-sm text-ink-500">New operational records will appear here as the team works.</div>
+                </div>
               </div>
             ) : (
               recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start justify-between gap-4 rounded-2xl border border-neutral-150 bg-neutral-50 px-4 py-4">
+                <div key={activity.id} className="dashboard-list-item">
                   <div>
                     <div className="text-sm font-semibold text-ink-900">{activity.label}</div>
                     <div className="mt-1 text-sm text-ink-500">{activity.meta}</div>
