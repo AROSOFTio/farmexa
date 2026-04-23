@@ -45,9 +45,9 @@ function KpiCard({ title, value, subtitle, icon: Icon, gradient, accentColor, de
 
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col min-w-0">
-          <span className="text-2xs font-bold uppercase tracking-[0.09em] text-neutral-400 mb-2">{title}</span>
+          <span className="text-xs font-bold uppercase tracking-[0.09em] text-slate-500 mb-2">{title}</span>
           <span className="text-3xl font-bold tracking-tight text-neutral-900 leading-none">{value}</span>
-          {subtitle && <span className="text-xs font-medium text-neutral-400 mt-2 leading-snug">{subtitle}</span>}
+          {subtitle && <span className="text-sm font-medium text-slate-400 mt-2 leading-snug">{subtitle}</span>}
         </div>
         <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm" style={{ background: gradient }}>
           <Icon className="w-5 h-5 text-white" />
@@ -91,8 +91,8 @@ export function DashboardPage() {
       value: isLoading ? '…' : fmtMoney(data?.net_profit ?? 0),
       subtitle: 'Last 30 Days',
       icon: DollarSign,
-      gradient: 'linear-gradient(135deg, #166534 0%, #124227 100%)',
-      accentColor: '#166534',
+      gradient: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+      accentColor: '#10b981',
       delay: 0.12,
     },
     {
@@ -109,8 +109,8 @@ export function DashboardPage() {
       value: isLoading ? '…' : fmt(data?.total_orders ?? 0),
       subtitle: 'Processed this period',
       icon: Package,
-      gradient: 'linear-gradient(135deg, #16a34a 0%, #14532d 100%)',
-      accentColor: '#16a34a',
+      gradient: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+      accentColor: '#3b82f6',
       delay: 0.24,
     },
     {
@@ -128,8 +128,8 @@ export function DashboardPage() {
     <div className="animate-fade-in">
       <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">Executive Dashboard</h1>
-          <p className="text-sm text-neutral-500 mt-1 font-medium">Real-time enterprise overview</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Executive Dashboard</h1>
+          <p className="text-base text-slate-600 mt-1 font-medium">Real-time enterprise overview</p>
         </div>
         <button onClick={() => refetch()} className="btn-secondary flex items-center gap-2">
           <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
@@ -148,9 +148,9 @@ export function DashboardPage() {
         {kpis.map((kpi) => <KpiCard key={kpi.title} {...kpi} />)}
       </div>
       
-      <div className="card p-12 text-center bg-white">
-        <h3 className="text-lg font-bold text-neutral-900 mb-2">Reporting Center</h3>
-        <p className="text-neutral-500 text-sm">
+      <div className="card p-12 text-center bg-white border-2 border-slate-200">
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Reporting Center</h3>
+        <p className="text-slate-500 text-base">
           Open analytics to review margin trends, revenue movement, and financial performance from live backend data.
         </p>
       </div>

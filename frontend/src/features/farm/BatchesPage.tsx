@@ -1,10 +1,15 @@
-﻿import { useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Plus, Bird, Calendar, Hash, Home, Activity } from 'lucide-react'
 import { clsx } from 'clsx'
 import api from '@/services/api'
+import { useState } from 'react'
+import { Modal } from '@/components/Modal'
+import { BatchForm } from './BatchForm'
 
 export function BatchesPage() {
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
   const { data, isLoading } = useQuery({
     queryKey: ['farm-batches'],
     queryFn: () => api.get('/farm/batches').then(r => r.data),
@@ -17,7 +22,10 @@ export function BatchesPage() {
           <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">Bird Batches</h1>
           <p className="text-sm text-neutral-500 mt-1 font-medium">Manage poultry batches across all houses</p>
         </div>
-        <button className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold shadow-glow">
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm"
+        >
           <Plus className="w-4 h-4" />
           New Batch
         </button>
@@ -134,6 +142,15 @@ export function BatchesPage() {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Create New Batch"
+        description="Register a new batch of birds into the system."
+      >
+        <BatchForm onSuccess={() => setIsModalOpen(false)} />
+      </Modal>
     </div>
   )
 }

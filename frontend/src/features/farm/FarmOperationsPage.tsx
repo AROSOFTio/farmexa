@@ -214,8 +214,8 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
     <div className="animate-fade-in">
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">{copy.title}</h1>
-          <p className="mt-1 max-w-2xl text-sm font-medium text-neutral-500">{copy.description}</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">{copy.title}</h1>
+          <p className="mt-1 max-w-2xl text-base font-medium text-slate-600">{copy.description}</p>
         </div>
         <div className="flex min-w-[280px] flex-col gap-2">
           <label className="form-label mb-0">Select batch</label>
@@ -235,13 +235,13 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
       </div>
 
       {batchesLoading ? (
-        <div className="card p-12 text-center text-neutral-500">Loading batch operations...</div>
+        <div className="card p-12 text-center text-slate-500 text-lg">Loading batch operations...</div>
       ) : batches.length === 0 ? (
-        <div className="card flex flex-col items-center gap-4 p-16 text-center">
-          <ModeIcon className="h-10 w-10 text-brand-500" />
+        <div className="card flex flex-col items-center gap-4 p-16 text-center border-2 border-slate-200">
+          <ModeIcon className="h-12 w-12 text-blue-500" />
           <div>
-            <h2 className="text-lg font-bold text-neutral-900">No batches available yet</h2>
-            <p className="mt-2 max-w-md text-sm text-neutral-500">
+            <h2 className="text-xl font-bold text-slate-900">No batches available yet</h2>
+            <p className="mt-2 max-w-md text-base text-slate-500">
               Create a poultry batch first so you can record {copy.title.toLowerCase()} against a real operational unit.
             </p>
           </div>
@@ -249,25 +249,25 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
       ) : (
         <>
           <div className="mb-6 grid gap-4 md:grid-cols-3">
-            <div className="card p-5">
-              <div className="mb-3 flex items-center gap-2 text-neutral-500">
-                <ClipboardList className="h-4 w-4 text-brand-500" />
-                <span className="text-xs font-semibold uppercase tracking-[0.12em]">Batch</span>
+            <div className="card p-5 border-2 border-slate-200">
+              <div className="mb-3 flex items-center gap-2 text-slate-500">
+                <ClipboardList className="h-5 w-5 text-blue-500" />
+                <span className="text-sm font-bold uppercase tracking-[0.12em]">Batch</span>
               </div>
-              <p className="text-xl font-bold text-neutral-900">{selectedBatch?.batch_number ?? '—'}</p>
-              <p className="mt-1 text-sm text-neutral-500">
+              <p className="text-2xl font-bold text-slate-900">{selectedBatch?.batch_number ?? '—'}</p>
+              <p className="mt-1 text-base text-slate-500">
                 {selectedBatch?.breed ?? '—'} in {selectedBatch?.house?.name ?? 'Unassigned house'}
               </p>
             </div>
-            <div className="card p-5">
-              <div className="mb-3 flex items-center gap-2 text-neutral-500">
-                <HeartPulse className="h-4 w-4 text-brand-500" />
-                <span className="text-xs font-semibold uppercase tracking-[0.12em]">
+            <div className="card p-5 border-2 border-slate-200">
+              <div className="mb-3 flex items-center gap-2 text-slate-500">
+                <HeartPulse className="h-5 w-5 text-blue-500" />
+                <span className="text-sm font-bold uppercase tracking-[0.12em]">
                   {mode === 'mortality' ? 'Recorded Losses' : mode === 'vaccination' ? 'Completed Doses' : 'Latest Weight'}
                 </span>
               </div>
-              <p className="text-xl font-bold text-neutral-900">{summary.primary}</p>
-              <p className="mt-1 text-sm text-neutral-500">
+              <p className="text-2xl font-bold text-slate-900">{summary.primary}</p>
+              <p className="mt-1 text-base text-slate-500">
                 {mode === 'mortality'
                   ? `Mortality rate: ${summary.secondary}`
                   : mode === 'vaccination'
@@ -275,15 +275,15 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
                     : `${summary.secondary} growth entries recorded`}
               </p>
             </div>
-            <div className="card p-5">
-              <div className="mb-3 flex items-center gap-2 text-neutral-500">
-                <Activity className="h-4 w-4 text-brand-500" />
-                <span className="text-xs font-semibold uppercase tracking-[0.12em]">
+            <div className="card p-5 border-2 border-slate-200">
+              <div className="mb-3 flex items-center gap-2 text-slate-500">
+                <Activity className="h-5 w-5 text-blue-500" />
+                <span className="text-sm font-bold uppercase tracking-[0.12em]">
                   {mode === 'vaccination' ? 'Total Vaccine Logs' : 'Active Birds'}
                 </span>
               </div>
-              <p className="text-xl font-bold text-neutral-900">{summary.tertiary}</p>
-              <p className="mt-1 text-sm text-neutral-500">
+              <p className="text-2xl font-bold text-slate-900">{summary.tertiary}</p>
+              <p className="mt-1 text-base text-slate-500">
                 Arrived on {formatDate(selectedBatch?.arrival_date)}
               </p>
             </div>
@@ -291,9 +291,9 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
 
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_420px]">
             <div className="card overflow-hidden">
-              <div className="border-b border-neutral-100 px-6 py-5">
-                <h2 className="text-lg font-bold text-neutral-900">Operational history</h2>
-                <p className="mt-1 text-sm text-neutral-500">
+              <div className="border-b-2 border-slate-200 px-6 py-5 bg-slate-50">
+                <h2 className="text-xl font-bold text-slate-900">Operational history</h2>
+                <p className="mt-1 text-base text-slate-600">
                   Logged entries for {selectedBatch?.batch_number}. All records are stored against the selected batch.
                 </p>
               </div>
@@ -314,13 +314,13 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
                   <tbody>
                     {logsLoading ? (
                       <tr>
-                        <td className="pl-6 py-12 text-sm text-neutral-500" colSpan={tableColumnCount}>
+                        <td className="pl-6 py-12 text-base text-slate-500 text-center font-medium" colSpan={tableColumnCount}>
                           Loading records...
                         </td>
                       </tr>
                     ) : logs.length === 0 ? (
                       <tr>
-                        <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={tableColumnCount}>
+                        <td className="pl-6 py-14 text-base text-slate-500 text-center font-medium" colSpan={tableColumnCount}>
                           No {copy.title.toLowerCase()} entries recorded for this batch yet.
                         </td>
                       </tr>
@@ -361,10 +361,10 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
               </div>
             </div>
 
-            <div className="card p-6">
+            <div className="card p-6 border-2 border-slate-200 bg-slate-50">
               <div className="mb-5">
-                <h2 className="text-lg font-bold text-neutral-900">Add new entry</h2>
-                <p className="mt-1 text-sm text-neutral-500">
+                <h2 className="text-xl font-bold text-slate-900">Add new entry</h2>
+                <p className="mt-1 text-base text-slate-600">
                   Post a live operational update for {selectedBatch?.batch_number ?? 'the selected batch'}.
                 </p>
               </div>

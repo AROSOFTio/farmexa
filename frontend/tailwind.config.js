@@ -13,50 +13,50 @@ export default {
       },
       colors: {
         brand: {
-          50: "#eef8f1",
-          100: "#d9efdf",
-          200: "#b7dfc2",
-          300: "#89c59d",
-          400: "#52a972",
-          500: "#166534",
-          600: "#14532d",
-          700: "#124227",
-          800: "#113524",
-          900: "#0c2419",
-          950: "#07160f",
+          50: "#eff6ff",
+          100: "#dbeafe",
+          200: "#bfdbfe",
+          300: "#93c5fd",
+          400: "#60a5fa",
+          500: "#3b82f6", // clear blue
+          600: "#2563eb",
+          700: "#1d4ed8",
+          800: "#1e40af",
+          900: "#1e3a8a",
+          950: "#172554",
         },
-        forest: {
-          50: "#f0f6f2",
-          100: "#ddebe1",
-          200: "#bdd5c5",
-          300: "#94b59f",
-          400: "#5d8b6f",
-          500: "#2f5f41",
-          600: "#234b33",
-          700: "#19392a",
-          800: "#12291f",
-          900: "#0d1d16",
-          950: "#08120d",
+        slate: {
+          50: "#f8fafc",
+          100: "#f1f5f9",
+          200: "#e2e8f0",
+          300: "#cbd5e1",
+          400: "#94a3b8",
+          500: "#64748b",
+          600: "#475569",
+          700: "#334155",
+          800: "#1e293b", // dark slate for sidebar
+          900: "#0f172a",
+          950: "#020617",
         },
         neutral: {
           0: "#ffffff",
-          50: "#f8faf9",
-          100: "#f2f5f3",
-          150: "#e7eeea",
-          200: "#dde6e1",
-          300: "#c3d0c8",
-          400: "#93a79a",
-          500: "#6e8476",
-          600: "#53665b",
-          700: "#3b4941",
-          800: "#29322d",
-          850: "#1c231f",
-          900: "#121714",
-          950: "#0b0f0d",
+          50: "#f9fafb",
+          100: "#f3f4f6",
+          150: "#e5e7eb",
+          200: "#d1d5db",
+          300: "#9ca3af",
+          400: "#6b7280",
+          500: "#4b5563",
+          600: "#374151",
+          700: "#1f2937",
+          800: "#111827",
+          850: "#0f131a",
+          900: "#030712",
+          950: "#000000",
         },
-        success: { DEFAULT: "#16a34a", light: "#dcfce7" },
-        warning: { DEFAULT: "#d97706", light: "#fef3c7" },
-        danger: { DEFAULT: "#dc2626", light: "#fee2e2" },
+        success: { DEFAULT: "#15803d", light: "#dcfce7" }, // darker green for better contrast
+        warning: { DEFAULT: "#b45309", light: "#fef3c7" }, // darker amber/orange
+        danger: { DEFAULT: "#b91c1c", light: "#fee2e2" },  // darker red
         info: { DEFAULT: "#0369a1", light: "#e0f2fe" },
       },
       borderRadius: {
@@ -69,36 +69,37 @@ export default {
         "3xl": "1.5rem",
       },
       boxShadow: {
-        card: "0 1px 4px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.05)",
-        "card-hover": "0 8px 28px 0 rgb(0 0 0 / 0.11), 0 3px 8px -2px rgb(0 0 0 / 0.08)",
-        modal: "0 24px 64px 0 rgb(0 0 0 / 0.18), 0 8px 24px -6px rgb(0 0 0 / 0.14)",
-        sidebar: "4px 0 32px 0 rgb(0 0 0 / 0.22)",
-        "inner-sm": "inset 0 1px 2px 0 rgb(0 0 0 / 0.06)",
-        glow: "0 0 28px 0 rgb(22 101 52 / 0.22)",
+        card: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)", // clearer border/shadow
+        "card-hover": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        modal: "0 25px 50px -12px rgb(0 0 0 / 0.25)",
+        sidebar: "2px 0 10px 0 rgb(0 0 0 / 0.1)", // softer shadow, less dramatic
+        "inner-sm": "inset 0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        glow: "0 0 10px 0 rgb(59 130 246 / 0.3)", // blue glow
       },
       fontSize: {
-        "2xs": ["0.625rem", { lineHeight: "0.875rem" }],
-        xs: ["0.75rem", { lineHeight: "1rem" }],
-        sm: ["0.8125rem", { lineHeight: "1.25rem" }],
-        base: ["0.875rem", { lineHeight: "1.375rem" }],
-        md: ["0.9375rem", { lineHeight: "1.5rem" }],
-        lg: ["1rem", { lineHeight: "1.5rem" }],
-        xl: ["1.125rem", { lineHeight: "1.625rem" }],
-        "2xl": ["1.25rem", { lineHeight: "1.75rem" }],
-        "3xl": ["1.5rem", { lineHeight: "2rem" }],
-        "4xl": ["1.875rem", { lineHeight: "2.25rem" }],
-        "5xl": ["2.25rem", { lineHeight: "2.75rem" }],
+        // Boosted base text sizes for "grandma" legibility
+        "2xs": ["0.75rem", { lineHeight: "1rem" }], // was 0.625
+        xs: ["0.8125rem", { lineHeight: "1.125rem" }], // was 0.75
+        sm: ["0.875rem", { lineHeight: "1.25rem" }], // was 0.8125
+        base: ["1rem", { lineHeight: "1.5rem" }], // standard reading size
+        md: ["1.0625rem", { lineHeight: "1.5rem" }],
+        lg: ["1.125rem", { lineHeight: "1.75rem" }],
+        xl: ["1.25rem", { lineHeight: "1.75rem" }],
+        "2xl": ["1.5rem", { lineHeight: "2rem" }],
+        "3xl": ["1.875rem", { lineHeight: "2.25rem" }],
+        "4xl": ["2.25rem", { lineHeight: "2.5rem" }],
+        "5xl": ["3rem", { lineHeight: "1" }],
       },
       spacing: {
         18: "4.5rem",
         22: "5.5rem",
-        sidebar: "15rem",
-        "sidebar-collapsed": "4rem",
-        topbar: "3.75rem",
+        sidebar: "16rem", // slightly wider sidebar for larger text
+        "sidebar-collapsed": "4.5rem",
+        topbar: "4rem", // slightly taller topbar
       },
       backgroundImage: {
-        "sidebar-gradient": "linear-gradient(180deg, #12291f 0%, #08120d 100%)",
-        "brand-gradient": "linear-gradient(135deg, #166534 0%, #124227 100%)",
+        "sidebar-gradient": "linear-gradient(180deg, #0f172a 0%, #020617 100%)", // slate
+        "brand-gradient": "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)", // blue
       },
       animation: {
         "fade-in": "fadeIn 0.22s ease-out",

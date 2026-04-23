@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Bell,
@@ -51,7 +51,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
 
       {/* Date display */}
       <div className="hidden md:flex items-center gap-2 text-neutral-400">
-        <Sun className="w-3.5 h-3.5 text-brand-400" />
+        <Sun className="w-4 h-4 text-blue-500" />
         <span className="text-xs font-medium">{today}</span>
       </div>
 
@@ -70,8 +70,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
           <Bell className="w-4.5 h-4.5" />
           {/* Notification dot */}
           <span
-            className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full border-2 border-white"
-            style={{ background: '#166534' }}
+            className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border-2 border-white bg-blue-600"
           />
         </button>
 
@@ -87,8 +86,8 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
           >
             {/* Avatar with gradient */}
             <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #166534 0%, #124227 100%)' }}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }}
             >
               {initials}
             </div>
@@ -96,7 +95,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
               <div className="text-sm font-semibold text-neutral-800 leading-none">
                 {user?.full_name ?? 'Loading…'}
               </div>
-              <div className="text-2xs text-neutral-400 mt-0.5 capitalize font-medium">
+              <div className="text-xs text-neutral-500 mt-0.5 capitalize font-medium">
                 {user?.role?.name?.replace('_', ' ') ?? '—'}
               </div>
             </div>
@@ -114,9 +113,8 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                 onClick={() => setMenuOpen(false)}
               />
               <div
-                className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl
-                           border border-neutral-150 z-50 py-1.5 animate-fade-in overflow-hidden"
-                style={{ boxShadow: '0 16px 48px 0 rgb(0 0 0 / 0.14), 0 4px 16px -4px rgb(0 0 0 / 0.10)' }}
+                className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl
+                           border-2 border-neutral-200 z-50 py-2 animate-fade-in overflow-hidden shadow-lg"
               >
                 {/* User info header */}
                 <div
@@ -125,8 +123,8 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                      style={{ background: 'linear-gradient(135deg, #166534 0%, #124227 100%)' }}
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+                      style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }}
                     >
                       {initials}
                     </div>

@@ -1,4 +1,4 @@
-﻿import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard,
@@ -157,7 +157,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         <div
           className="absolute top-0 left-0 w-full h-48 pointer-events-none"
           style={{
-            background: 'radial-gradient(ellipse at 30% 0%, rgba(82,169,114,0.16) 0%, transparent 70%)',
+            background: 'radial-gradient(ellipse at 30% 0%, rgba(59,130,246,0.1) 0%, transparent 70%)',
           }}
         />
 
@@ -168,20 +168,20 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         >
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #166534 0%, #124227 100%)' }}
+            style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }}
           >
             <Leaf className="w-[18px] h-[18px] text-white" />
           </div>
           <div>
             <div className="text-white font-bold text-lg tracking-tight leading-none">PERP</div>
-            <div className="text-xs mt-0.5 font-medium" style={{ color: 'rgba(183,223,194,0.72)' }}>
+            <div className="text-xs mt-0.5 font-medium text-slate-400">
               Poultry ERP
             </div>
           </div>
           {/* Live indicator */}
           <div className="ml-auto flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-2xs font-medium" style={{ color: 'rgba(183,223,194,0.6)' }}>Live</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+            <span className="text-2xs font-bold text-slate-500 uppercase tracking-wider">Live</span>
           </div>
         </div>
 
@@ -190,8 +190,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           {NAV_SECTIONS.map((section) => (
             <div key={section.title} className="mb-5">
               <div
-                className="px-5 mb-1.5 text-2xs font-bold uppercase tracking-[0.1em]"
-                style={{ color: 'rgba(189,213,197,0.4)' }}
+                className="px-5 mb-1.5 text-xs font-bold uppercase tracking-[0.1em] text-slate-500"
               >
                 {section.title}
               </div>
@@ -208,17 +207,17 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                     <div key={item.label}>
                       <button
                         onClick={() => toggleMenu(item.label)}
-                        className="w-full flex items-center px-3 py-2.5 text-sm transition-all duration-150"
+                        className="w-full flex items-center px-3 py-2.5 text-base transition-all duration-150"
                         style={{
-                          color: isActive ? '#ffffff' : 'rgba(189,213,197,0.78)',
-                          fontWeight: isActive ? 600 : 500,
+                          color: isActive ? '#ffffff' : '#94a3b8',
+                          fontWeight: isActive ? 700 : 500,
                         }}
                       >
                         <span
                           className="w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 transition-all duration-150"
                           style={{
                             background: isActive
-                              ? 'rgba(82,169,114,0.22)'
+                              ? 'rgba(59,130,246,0.15)'
                               : 'rgba(255,255,255,0.05)',
                           }}
                         >
@@ -227,10 +226,9 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                         <span className="flex-1 text-left truncate">{item.label}</span>
                         <ChevronDown
                           className={clsx(
-                            "w-3.5 h-3.5 transition-transform duration-200 flex-shrink-0",
+                            "w-4 h-4 transition-transform duration-200 flex-shrink-0 text-slate-500",
                             isExpanded || isActive ? "rotate-180" : ""
                           )}
-                          style={{ color: 'rgba(189,213,197,0.45)' }}
                         />
                       </button>
 
@@ -251,17 +249,16 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                                     key={subItem.path}
                                     to={subItem.path}
                                     onClick={() => { if (window.innerWidth < 1024) onClose() }}
-                                    className="flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 relative"
+                                    className="flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-lg transition-all duration-150 relative"
                                     style={{
-                                      color: isSubActive ? '#fff' : 'rgba(189,213,197,0.68)',
-                                      background: isSubActive ? 'rgba(82,169,114,0.18)' : 'transparent',
-                                      fontWeight: isSubActive ? 600 : 400,
+                                      color: isSubActive ? '#ffffff' : '#94a3b8',
+                                      background: isSubActive ? 'rgba(59,130,246,0.15)' : 'transparent',
+                                      fontWeight: isSubActive ? 600 : 500,
                                     }}
                                   >
                                     {isSubActive && (
                                       <span
-                                        className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full"
-                                        style={{ background: '#89c59d' }}
+                                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 rounded-full bg-blue-500"
                                       />
                                     )}
                                     <span className="truncate pl-1">{subItem.label}</span>
@@ -284,17 +281,17 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                     className="block"
                   >
                     <div
-                      className="flex items-center px-3 py-2.5 text-sm transition-all duration-150"
+                      className="flex items-center px-3 py-2.5 text-base transition-all duration-150"
                       style={{
-                        color: isActive ? '#ffffff' : 'rgba(189,213,197,0.78)',
-                        fontWeight: isActive ? 600 : 500,
+                        color: isActive ? '#ffffff' : '#94a3b8',
+                        fontWeight: isActive ? 700 : 500,
                       }}
                     >
                       <span
                         className="w-8 h-8 rounded-lg flex items-center justify-center mr-3 flex-shrink-0 transition-all duration-150"
                         style={{
                           background: isActive
-                            ? 'rgba(82,169,114,0.24)'
+                            ? 'rgba(59,130,246,0.15)'
                             : 'rgba(255,255,255,0.05)',
                         }}
                       >
@@ -303,8 +300,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                       <span className="flex-1 truncate">{item.label}</span>
                       {isActive && (
                         <span
-                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{ background: '#89c59d' }}
+                          className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-blue-500"
                         />
                       )}
                     </div>
@@ -320,7 +316,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           className="px-5 py-4 flex-shrink-0 relative z-10"
           style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
         >
-          <div className="text-2xs font-medium" style={{ color: 'rgba(189,213,197,0.36)' }}>
+          <div className="text-xs font-bold text-slate-600">
             v1.0.0 - Operations Suite
           </div>
         </div>

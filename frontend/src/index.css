@@ -58,7 +58,7 @@
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-neutral-150 bg-white shadow-card;
+    @apply rounded-xl border-2 border-neutral-200 bg-white shadow-sm;
   }
 
   .card-hover {
@@ -74,11 +74,11 @@
   }
 
   .section-title {
-    @apply text-xl font-semibold text-neutral-900;
+    @apply text-2xl font-bold text-slate-900;
   }
 
   .section-subtitle {
-    @apply mt-0.5 text-sm text-neutral-500;
+    @apply mt-1 text-base text-slate-600;
   }
 
   .page-container {
@@ -90,11 +90,11 @@
   }
 
   .data-table th {
-    @apply border-b border-neutral-150 bg-neutral-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500;
+    @apply border-b-2 border-slate-200 bg-slate-50 px-5 py-4 text-left text-sm font-bold uppercase tracking-wider text-slate-700;
   }
 
   .data-table td {
-    @apply border-b border-neutral-100 px-4 py-3.5 text-sm text-neutral-700;
+    @apply border-b border-neutral-200 px-5 py-4 text-base text-slate-800;
   }
 
   .data-table tr:last-child td {
@@ -134,14 +134,14 @@
   }
 
   .form-input {
-    @apply w-full rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm text-neutral-800
-      placeholder:text-neutral-400 transition-colors duration-150
-      focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20
-      disabled:cursor-not-allowed disabled:bg-neutral-50 disabled:opacity-60;
+    @apply w-full rounded-lg border-2 border-neutral-300 bg-white px-4 py-3 text-base text-slate-900
+      placeholder:text-slate-400 transition-colors duration-150
+      focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/20
+      disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:opacity-70;
   }
 
   .form-label {
-    @apply mb-1.5 block text-sm font-medium text-neutral-700;
+    @apply mb-2 block text-base font-bold text-slate-800;
   }
 
   .form-error {
@@ -171,7 +171,7 @@
   }
 
   .btn-primary {
-    @apply btn-md bg-brand-500 text-white shadow-sm hover:bg-brand-600 active:scale-[0.98] active:bg-brand-700 focus-visible:ring-brand-500;
+    @apply btn-md bg-brand-600 text-white shadow-sm border-2 border-brand-700 hover:bg-brand-700 active:scale-[0.98] active:bg-brand-800 focus-visible:ring-brand-500;
   }
 
   .btn-secondary {
@@ -187,19 +187,16 @@
   }
 
   .sidebar {
-    @apply fixed bottom-0 left-0 top-0 z-40 flex w-sidebar flex-col overflow-hidden;
-    background: linear-gradient(180deg, #12291f 0%, #0d1d16 55%, #08120d 100%);
-    box-shadow: 4px 0 32px 0 rgb(0 0 0 / 0.25);
+    @apply fixed bottom-0 left-0 top-0 z-40 flex w-sidebar flex-col overflow-hidden bg-slate-900;
+    box-shadow: 2px 0 10px 0 rgb(0 0 0 / 0.1);
   }
 
   .topbar {
-    @apply fixed right-0 top-0 z-30 flex items-center gap-4 px-6;
+    @apply fixed right-0 top-0 z-30 flex items-center gap-4 px-6 bg-white;
     left: theme('spacing.sidebar');
     height: theme('spacing.topbar');
-    background: rgba(255, 255, 255, 0.96);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid theme('colors.neutral.150');
-    box-shadow: 0 1px 0 0 theme('colors.neutral.150'), 0 4px 16px 0 rgb(0 0 0 / 0.04);
+    border-bottom: 2px solid theme('colors.neutral.200');
+    box-shadow: 0 2px 4px 0 rgb(0 0 0 / 0.05);
   }
 }
 
