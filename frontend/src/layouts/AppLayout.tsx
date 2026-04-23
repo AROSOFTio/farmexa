@@ -17,7 +17,7 @@ export function AppLayout() {
     <div className="app-shell min-h-screen">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-      <div className="min-h-screen transition-all duration-300 lg:pl-[18rem]">
+      <div className="min-h-screen transition-all duration-300 lg:pl-sidebar">
         <Topbar
           onOpenSidebar={() => setIsSidebarOpen(true)}
           theme={theme}

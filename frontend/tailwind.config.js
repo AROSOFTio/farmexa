@@ -58,7 +58,7 @@ export default {
       spacing: {
         18: '4.5rem',
         22: '5.5rem',
-        sidebar: '18rem',
+        sidebar: '16rem',
         topbar: '4.5rem',
       },
       borderRadius: {

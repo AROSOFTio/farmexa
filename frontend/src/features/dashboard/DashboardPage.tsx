@@ -155,14 +155,6 @@ function sameDay(value: string) {
   return new Date(value).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)
 }
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString('en-UG', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-}
-
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString('en-UG', {
     day: 'numeric',
@@ -409,38 +401,14 @@ export function DashboardPage() {
   ].filter(Boolean) as Array<{ title: string; value: string; icon: ElementType }>
 
   return (
-    <div className="dashboard-shell animate-fade-in space-y-6 pb-8">
-      <section className="dashboard-hero">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div className="space-y-2">
-            <h1 className="dashboard-hero__title">Dashboard</h1>
-            <div className="text-sm font-medium text-white/62">{formatDate(new Date().toISOString())}</div>
-          </div>
+    <div className="dashboard-shell animate-fade-in space-y-5 pb-8">
+      <section className="dashboard-toolbar">
+        <h1 className="dashboard-toolbar__title">Dashboard</h1>
 
-          <button type="button" onClick={() => overview.refetch()} className="dashboard-refresh-btn">
-            <RefreshCw className={`h-4.5 w-4.5 ${overview.isFetching ? 'animate-spin' : ''}`} />
-            {overview.isFetching ? 'Syncing' : 'Refresh'}
-          </button>
-        </div>
-
-        <div className="dashboard-hero__grid">
-          <div className="dashboard-pill">
-            <span>Alerts</span>
-            <strong>{alerts.length.toLocaleString()}</strong>
-          </div>
-          <div className="dashboard-pill">
-            <span>Open</span>
-            <strong>{outstandingInvoices.length.toLocaleString()}</strong>
-          </div>
-          <div className="dashboard-pill">
-            <span>Activity</span>
-            <strong>{recentActivity.length.toLocaleString()}</strong>
-          </div>
-          <div className="dashboard-pill">
-            <span>Houses</span>
-            <strong>{(data?.houses ?? []).length.toLocaleString()}</strong>
-          </div>
-        </div>
+        <button type="button" onClick={() => overview.refetch()} className="dashboard-refresh-btn">
+          <RefreshCw className={`h-4.5 w-4.5 ${overview.isFetching ? 'animate-spin' : ''}`} />
+          {overview.isFetching ? 'Syncing' : 'Refresh'}
+        </button>
       </section>
 
       {overview.isError ? (

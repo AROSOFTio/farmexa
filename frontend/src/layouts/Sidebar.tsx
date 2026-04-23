@@ -165,21 +165,19 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="border-b border-neutral-200 px-5 py-6">
+        <div className="border-b border-white/8 px-4 pb-4 pt-4">
           <BrandMark />
-          <div className="mt-5 rounded-[20px] border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white/88">
-            {roleLabel}
-          </div>
+          <div className="mt-3 pl-0.5 text-[13px] font-medium tracking-[-0.01em] text-white/68">{roleLabel}</div>
         </div>
 
-        <div className="sidebar-scroll flex-1 overflow-y-auto px-3 py-5">
+        <div className="sidebar-scroll flex-1 overflow-y-auto px-2 py-3">
           {sections.map((section) => (
-            <div key={section.title} className="mb-6">
-              <div className="px-3 pb-2 text-[0.68rem] font-medium uppercase tracking-[0.24em] text-white/38">
+            <div key={section.title} className="mb-5">
+              <div className="px-3 pb-1.5 text-[0.66rem] font-medium uppercase tracking-[0.24em] text-white/34">
                 {section.title}
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-0.5">
                 {section.items.map((item) => {
                   const Icon = item.icon
                   const hasActiveSubItem = item.subItems?.some((subItem) => location.pathname.startsWith(subItem.path))
@@ -188,25 +186,25 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
                   if (item.subItems) {
                     return (
-                      <div key={item.label} className="rounded-[24px] border border-white/6 bg-white/[0.03] p-2.5">
+                      <div key={item.label}>
                         <div
                           className={clsx(
-                            'flex items-center gap-3 rounded-[20px] px-3 py-3',
-                            isActive ? 'bg-white/8 text-white' : 'text-white/82'
+                            'flex items-center gap-3 rounded-[18px] px-3 py-2.5',
+                            isActive ? 'bg-white/7 text-white' : 'text-white/80'
                           )}
                         >
                           <div
                             className={clsx(
-                              'flex h-10 w-10 items-center justify-center rounded-[18px]',
-                              isActive ? 'bg-[#20a53a]/18 text-[#20a53a]' : 'bg-white/6 text-white/68'
+                              'flex h-9 w-9 items-center justify-center rounded-[16px]',
+                              isActive ? 'bg-[#20a53a]/18 text-[#20a53a]' : 'text-white/60'
                             )}
                           >
                             <Icon className="h-4.5 w-4.5" />
                           </div>
-                          <div className="min-w-0 flex-1 truncate text-sm font-medium tracking-[-0.02em]">{item.label}</div>
+                          <div className="min-w-0 flex-1 truncate text-[14px] font-medium tracking-[-0.02em]">{item.label}</div>
                         </div>
 
-                        <div className="ml-[3.4rem] mt-2 space-y-1">
+                        <div className="mt-0.5 space-y-0.5">
                           {item.subItems.map((subItem) => {
                             const isSubActive = location.pathname.startsWith(subItem.path)
                             return (
@@ -217,13 +215,14 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                                   if (window.innerWidth < 1024) onClose()
                                 }}
                                 className={clsx(
-                                  'block rounded-2xl px-3 py-2.5 text-[13px] font-medium tracking-[-0.01em] transition-colors',
+                                  'flex items-center gap-3 rounded-[16px] px-3 py-2 text-[13px] font-medium tracking-[-0.01em] transition-colors',
                                   isSubActive
-                                    ? 'bg-[#20a53a]/16 text-[#20a53a]'
-                                    : 'text-white/64 hover:bg-white/6 hover:text-white'
+                                    ? 'bg-white/7 text-white'
+                                    : 'text-white/58 hover:bg-white/5 hover:text-white'
                                 )}
                               >
-                                {subItem.label}
+                                <span className="block h-9 w-9 shrink-0" />
+                                <span>{subItem.label}</span>
                               </NavLink>
                             )
                           })}
@@ -240,19 +239,19 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                         if (window.innerWidth < 1024) onClose()
                       }}
                       className={clsx(
-                        'flex items-center gap-3 rounded-[22px] px-3 py-3 transition-colors',
-                        isActive ? 'bg-white/8 text-white' : 'text-white/82 hover:bg-white/6 hover:text-white'
+                        'flex items-center gap-3 rounded-[18px] px-3 py-2.5 transition-colors',
+                        isActive ? 'bg-white/7 text-white' : 'text-white/80 hover:bg-white/5 hover:text-white'
                       )}
                     >
                       <div
                         className={clsx(
-                          'flex h-10 w-10 items-center justify-center rounded-[18px]',
-                          isActive ? 'bg-[#20a53a]/18 text-[#20a53a]' : 'bg-white/6 text-white/68'
+                          'flex h-9 w-9 items-center justify-center rounded-[16px]',
+                          isActive ? 'bg-[#20a53a]/18 text-[#20a53a]' : 'text-white/60'
                         )}
                       >
                         <Icon className="h-4.5 w-4.5" />
                       </div>
-                      <span className="flex-1 text-sm font-medium tracking-[-0.02em]">{item.label}</span>
+                      <span className="flex-1 text-[14px] font-medium tracking-[-0.02em]">{item.label}</span>
                     </NavLink>
                   )
                 })}
