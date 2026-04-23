@@ -175,7 +175,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 py-5">
+        <div className="no-scrollbar flex-1 overflow-y-auto px-3 py-5">
           {sections.map((section) => (
             <div key={section.title} className="mb-6">
               <div className="px-3 pb-2 text-[0.68rem] font-bold uppercase tracking-[0.24em] text-ink-400">
@@ -222,7 +222,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                               transition={{ duration: 0.18 }}
                               className="overflow-hidden"
                             >
-                              <div className="ml-12 mt-1 space-y-1 border-l border-neutral-200 pl-3">
+                              <div className="ml-12 mt-1 space-y-1 pl-3">
                                 {item.subItems.map((subItem) => {
                                   const isSubActive = location.pathname.startsWith(subItem.path)
                                   return (

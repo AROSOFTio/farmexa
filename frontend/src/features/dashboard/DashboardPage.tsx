@@ -152,8 +152,6 @@ type ActivityRecord = {
   timestamp: string
 }
 
-type MetricTone = 'emerald' | 'sky' | 'amber' | 'coral' | 'slate'
-
 function sameDay(value: string) {
   return new Date(value).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)
 }
@@ -174,8 +172,6 @@ function formatDateTime(value: string) {
     minute: '2-digit',
   })
 }
-
-const metricTones: MetricTone[] = ['emerald', 'sky', 'amber', 'coral', 'slate']
 
 const chartTooltipStyle = {
   border: '1px solid var(--border-subtle)',
@@ -464,12 +460,11 @@ export function DashboardPage() {
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {leadingMetrics.map((metric, index) => {
+        {leadingMetrics.map((metric) => {
           const Icon = metric.icon
-          const tone = metricTones[index % metricTones.length]
 
           return (
-            <div key={metric.title} className={`dashboard-metric dashboard-metric--${tone}`}>
+            <div key={metric.title} className="dashboard-metric">
               <div className="dashboard-metric__label">
                 <Icon className="h-4.5 w-4.5" />
                 {metric.title}

@@ -5,9 +5,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Manrope', 'system-ui', 'sans-serif'],
-        display: ['Sora', 'Manrope', 'system-ui', 'sans-serif'],
-        mono: ['IBM Plex Mono', 'monospace'],
+        sans: ['"PingFang SC"', 'Inter', '"Microsoft YaHei"', '"Segoe UI"', 'sans-serif'],
+        display: ['"PingFang SC"', 'Inter', '"Microsoft YaHei"', '"Segoe UI"', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       colors: {
         brand: {
