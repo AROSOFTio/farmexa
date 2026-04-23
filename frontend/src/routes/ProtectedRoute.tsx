@@ -29,12 +29,12 @@ export function ProtectedRoute({ children, permission, role }: ProtectedRoutePro
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-shell-gradient">
+      <div className="flex min-h-screen items-center justify-center bg-neutral-50">
         <div className="flex flex-col items-center gap-3">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-card">
             <LockKeyhole className="h-6 w-6 text-brand-600 animate-pulse-soft" />
           </div>
-          <span className="text-sm font-medium text-ink-500">Loading workspace...</span>
+          <span className="text-sm font-medium text-ink-500">Loading...</span>
         </div>
       </div>
     )
@@ -49,7 +49,7 @@ export function ProtectedRoute({ children, permission, role }: ProtectedRoutePro
   }
 
   if (role && !hasRole(role)) {
-    return <AccessDenied message="Your assigned role does not grant access to this workspace." />
+    return <AccessDenied message="Your role cannot open this area." />
   }
 
   return <>{children}</>

@@ -123,16 +123,14 @@ export function ExpensesPage() {
       <div className="section-header">
         <div>
           <h1 className="section-title">Farm expenses</h1>
-          <p className="section-subtitle">
-            Record operational outflows by category and link batch-specific spend where applicable.
-          </p>
+          <p className="section-subtitle">Expense ledger.</p>
         </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[360px_420px_minmax(0,1fr)]">
         <div className="card p-6">
           <h2 className="text-xl font-semibold text-ink-900">Add category</h2>
-          <p className="mt-1 text-sm text-ink-500">Create a reusable expense classification for the finance ledger.</p>
+          <p className="mt-1 text-sm text-ink-500">Create an expense category.</p>
           <form onSubmit={categoryForm.handleSubmit((values) => createCategory.mutate(values))} className="mt-5 space-y-4">
             <div>
               <label className="form-label">Category name</label>
@@ -151,7 +149,7 @@ export function ExpensesPage() {
 
         <div className="card p-6">
           <h2 className="text-xl font-semibold text-ink-900">Record expense</h2>
-          <p className="mt-1 text-sm text-ink-500">Capture a dated expense with reference and optional batch linkage.</p>
+          <p className="mt-1 text-sm text-ink-500">Post an expense entry.</p>
           <form onSubmit={expenseForm.handleSubmit((values) => createExpense.mutate(values))} className="mt-5 space-y-4">
             <div>
               <label className="form-label">Category</label>
@@ -203,7 +201,7 @@ export function ExpensesPage() {
         <div className="card overflow-hidden">
           <div className="border-b border-neutral-150 px-6 py-5">
             <h2 className="text-xl font-semibold text-ink-900">Expense history</h2>
-            <p className="mt-1 text-sm text-ink-500">Live finance outflows already stored in the Farmexa ledger.</p>
+            <p className="mt-1 text-sm text-ink-500">Recorded expenses.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="data-table">
@@ -220,7 +218,7 @@ export function ExpensesPage() {
                 {expenses.length === 0 ? (
                   <tr>
                     <td className="pl-6 py-16 text-sm text-ink-500" colSpan={5}>
-                      No expenses have been recorded yet.
+                      No expenses.
                     </td>
                   </tr>
                 ) : (

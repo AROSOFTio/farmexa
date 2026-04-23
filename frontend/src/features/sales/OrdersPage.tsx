@@ -133,18 +133,13 @@ export function OrdersPage() {
       <div className="section-header">
         <div>
           <h1 className="section-title">Sales orders</h1>
-          <p className="section-subtitle">
-            Create live customer orders from available stock. Each completed order issues an invoice automatically.
-          </p>
         </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[480px_minmax(0,1fr)]">
         <div className="card p-6">
           <h2 className="text-xl font-semibold text-ink-900">Create order</h2>
-          <p className="mt-1 text-sm text-ink-500">
-            Use current stock-controlled items only. Quantities are deducted from inventory immediately.
-          </p>
+          <p className="mt-1 text-sm text-ink-500">Create an order from available stock.</p>
 
           <form onSubmit={form.handleSubmit((values) => mutation.mutate(values))} className="mt-6 space-y-5">
             <div>
@@ -229,7 +224,7 @@ export function OrdersPage() {
                         <span>
                           {selectedProduct
                             ? `Available stock: ${selectedProduct.current_quantity.toLocaleString()} ${selectedProduct.unit_of_measure}`
-                            : 'Select an item to view stock availability'}
+                            : 'Select an item'}
                         </span>
                         {fields.length > 1 ? (
                           <button type="button" onClick={() => remove(index)} className="btn-ghost btn-sm">
@@ -264,7 +259,7 @@ export function OrdersPage() {
         <div className="card overflow-hidden">
           <div className="border-b border-neutral-150 px-6 py-5">
             <h2 className="text-xl font-semibold text-ink-900">Order ledger</h2>
-            <p className="mt-1 text-sm text-ink-500">Live orders already posted from the commercial workflow.</p>
+            <p className="mt-1 text-sm text-ink-500">Recorded orders.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="data-table">
@@ -281,7 +276,7 @@ export function OrdersPage() {
                 {orders.length === 0 ? (
                   <tr>
                     <td className="pl-6 py-16 text-sm text-ink-500" colSpan={5}>
-                      No sales orders have been created yet.
+                      No orders.
                     </td>
                   </tr>
                 ) : (

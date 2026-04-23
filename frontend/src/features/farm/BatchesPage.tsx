@@ -61,9 +61,6 @@ export function BatchesPage() {
       <div className="section-header">
         <div>
           <h1 className="section-title">Bird batches</h1>
-          <p className="section-subtitle">
-            Track every live flock by house, breed, source, and remaining active bird count.
-          </p>
         </div>
 
         <button type="button" onClick={() => setIsModalOpen(true)} className="btn-primary">
@@ -79,7 +76,6 @@ export function BatchesPage() {
             Active batches
           </div>
           <div className="text-3xl font-semibold text-ink-900">{activeBatches.length.toLocaleString()}</div>
-          <p className="text-sm text-ink-500">Batches currently available for live farm operations.</p>
         </div>
 
         <div className="kpi-card">
@@ -88,19 +84,18 @@ export function BatchesPage() {
             Active birds
           </div>
           <div className="text-3xl font-semibold text-ink-900">{totalBirds.toLocaleString()}</div>
-          <p className="text-sm text-ink-500">Current live bird count across active batches.</p>
         </div>
 
         <div className="kpi-card">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-ink-500">
             <Search className="h-4 w-4 text-brand-600" />
-            Search register
+            Search
           </div>
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="form-input"
-            placeholder="Search by batch, breed, or house"
+            placeholder="Search batch"
           />
         </div>
       </div>
@@ -133,17 +128,12 @@ export function BatchesPage() {
                         <Bird className="h-8 w-8" />
                       </div>
                       <h2 className="mt-5 text-2xl font-semibold text-ink-900">
-                        {batches.length === 0 ? 'No batches recorded yet' : 'No batches match this search'}
+                        {batches.length === 0 ? 'No batches' : 'No matches'}
                       </h2>
-                      <p className="mt-2 text-sm text-ink-500">
-                        {batches.length === 0
-                          ? 'Create a batch to connect houses, mortality, vaccination, growth tracking, and downstream production.'
-                          : 'Try a different search term to find the batch you need.'}
-                      </p>
                       {batches.length === 0 ? (
                         <button type="button" onClick={() => setIsModalOpen(true)} className="btn-primary mt-6">
                           <Plus className="h-4.5 w-4.5" />
-                          Create first batch
+                          Add batch
                         </button>
                       ) : null}
                     </div>
@@ -187,7 +177,7 @@ export function BatchesPage() {
                             <span>{occupancy.toFixed(0)}%</span>
                           </div>
                           <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-neutral-100">
-                            <div className="h-full rounded-full bg-brand-gradient" style={{ width: `${occupancy}%` }} />
+                            <div className="h-full rounded-full bg-brand-600" style={{ width: `${occupancy}%` }} />
                           </div>
                         </div>
                       </td>
@@ -216,8 +206,7 @@ export function BatchesPage() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Create batch"
-        description="Register a new flock against a real house so it can flow into mortality, feed, slaughter, sales, and reporting."
+        title="New batch"
       >
         <BatchForm onSuccess={() => setIsModalOpen(false)} />
       </Modal>

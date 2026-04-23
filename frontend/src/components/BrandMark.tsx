@@ -64,7 +64,7 @@ export function BrandMark({
             </div>
           ) : (
             <div className={clsx('text-xs font-medium uppercase tracking-[0.3em]', mutedClass)}>
-              Poultry Operations ERP
+              ERP
             </div>
           )}
         </div>

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Banknote, ClipboardList, Landmark, Plus } from 'lucide-react'
+import { Landmark, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
 
@@ -97,21 +97,15 @@ export function IncomesPage() {
     <div className="animate-fade-in">
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Income Register</h1>
-          <p className="mt-1 max-w-2xl text-sm font-medium text-neutral-500">
-            Capture non-invoice income streams and keep finance reporting grounded in real entries.
-          </p>
-        </div>
-        <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-          <Banknote className="h-3.5 w-3.5" />
-          Finance Ledger
+          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Income</h1>
+          <p className="mt-1 max-w-2xl text-sm font-medium text-neutral-500">Income ledger.</p>
         </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[360px_420px_minmax(0,1fr)]">
         <div className="card p-6">
           <h2 className="text-lg font-bold text-neutral-900">Add category</h2>
-          <p className="mt-1 text-sm text-neutral-500">Create a reusable income classification.</p>
+          <p className="mt-1 text-sm text-neutral-500">Create an income category.</p>
           <form className="mt-5 space-y-4" onSubmit={categoryForm.handleSubmit((values) => createCategory.mutate(values))}>
             <div>
               <label className="form-label">Category name</label>
@@ -130,7 +124,7 @@ export function IncomesPage() {
 
         <div className="card p-6">
           <h2 className="text-lg font-bold text-neutral-900">Record income</h2>
-          <p className="mt-1 text-sm text-neutral-500">Post a dated income entry into the finance ledger.</p>
+          <p className="mt-1 text-sm text-neutral-500">Post an income entry.</p>
           <form className="mt-5 space-y-4" onSubmit={incomeForm.handleSubmit((values) => createIncome.mutate(values))}>
             <div>
               <label className="form-label">Category</label>
@@ -169,7 +163,7 @@ export function IncomesPage() {
         <div className="card overflow-hidden">
           <div className="border-b border-neutral-100 px-6 py-5">
             <h2 className="text-lg font-bold text-neutral-900">Income history</h2>
-            <p className="mt-1 text-sm text-neutral-500">Live finance entries already stored in the backend ledger.</p>
+            <p className="mt-1 text-sm text-neutral-500">Recorded income.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="data-table">
@@ -185,7 +179,7 @@ export function IncomesPage() {
                 {incomes.length === 0 ? (
                   <tr>
                     <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={4}>
-                      No income entries recorded yet.
+                      No income.
                     </td>
                   </tr>
                 ) : (

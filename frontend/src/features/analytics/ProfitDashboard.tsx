@@ -683,11 +683,7 @@ export function ProfitDashboard() {
     <div className="animate-fade-in space-y-6 pb-10">
       <div className="section-header">
         <div>
-          <div className="text-[0.7rem] font-bold uppercase tracking-[0.28em] text-brand-700">Reports center</div>
-          <h1 className="section-title">Operational and financial analytics</h1>
-          <p className="section-subtitle">
-            Review production, health, feed, slaughter, inventory, sales, and finance reports from live Farmexa data.
-          </p>
+          <h1 className="section-title">Reports</h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -697,7 +693,7 @@ export function ProfitDashboard() {
           </button>
           <button type="button" onClick={() => reports.refetch()} className="btn-primary" disabled={reports.isFetching}>
             <RefreshCw className={`h-4.5 w-4.5 ${reports.isFetching ? 'animate-spin' : ''}`} />
-            Refresh reports
+            Refresh
           </button>
         </div>
       </div>
@@ -707,7 +703,7 @@ export function ProfitDashboard() {
           <AlertTriangle className="h-6 w-6" />
           <div>
             <div className="font-semibold">Reports could not be loaded.</div>
-            <div className="text-sm text-ink-500">Check backend connectivity and retry the analytics refresh.</div>
+            <div className="text-sm text-ink-500">Try again.</div>
           </div>
         </div>
       ) : null}

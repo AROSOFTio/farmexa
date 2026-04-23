@@ -22,7 +22,7 @@
   }
 
   body {
-    @apply min-h-screen bg-shell-gradient font-sans text-base text-ink-900;
+    @apply min-h-screen bg-neutral-50 font-sans text-base text-ink-900;
     margin: 0;
   }
 
@@ -197,15 +197,15 @@
   }
 
   .sidebar {
-    @apply fixed inset-y-0 left-0 z-50 flex w-sidebar flex-col overflow-hidden border-r border-white/10 bg-sidebar-gradient text-white;
-    box-shadow: 0 24px 60px -34px rgb(6 16 11 / 0.7);
+    @apply fixed inset-y-0 left-0 z-50 flex w-sidebar flex-col overflow-hidden border-r border-neutral-200 bg-white text-ink-900;
+    box-shadow: 0 18px 44px -34px rgb(16 28 20 / 0.18);
   }
 
   .topbar {
-    @apply fixed right-0 top-0 z-30 flex items-center gap-4 border-b border-neutral-200/80 bg-white/90 px-4 backdrop-blur-xl sm:px-6;
+    @apply fixed right-0 top-0 z-30 flex items-center gap-4 border-b border-neutral-200 bg-white px-4 sm:px-6;
     left: theme('spacing.sidebar');
     height: theme('spacing.topbar');
-    box-shadow: 0 8px 28px -24px rgb(14 34 20 / 0.28);
+    box-shadow: 0 10px 24px -24px rgb(14 34 20 / 0.18);
   }
 }
 

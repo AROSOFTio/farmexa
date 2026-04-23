@@ -64,7 +64,7 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
           <input
             {...register('batch_number')}
             className={clsx('form-input', errors.batch_number && 'border-red-500 focus:ring-red-500/20')}
-            placeholder="e.g. BT-2024-001"
+            placeholder="Batch number"
           />
           {errors.batch_number && <p className="form-error">{errors.batch_number.message}</p>}
         </div>
@@ -88,7 +88,7 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
           <input
             {...register('breed')}
             className={clsx('form-input', errors.breed && 'border-red-500 focus:ring-red-500/20')}
-            placeholder="e.g. Cobb 500, Ross 308"
+            placeholder="Breed"
           />
           {errors.breed && <p className="form-error">{errors.breed.message}</p>}
         </div>
@@ -119,12 +119,12 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
           <input
             {...register('source')}
             className="form-input"
-            placeholder="e.g. National Hatchery Ltd"
+            placeholder="Source"
           />
         </div>
       </div>
 
-      <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
+      <div className="pt-4 flex justify-end gap-3 border-t border-neutral-150">
         <button
           type="button"
           onClick={onSuccess}

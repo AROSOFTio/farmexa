@@ -54,9 +54,6 @@ export function HousesPage() {
       <div className="section-header">
         <div>
           <h1 className="section-title">Poultry houses</h1>
-          <p className="section-subtitle">
-            Manage physical housing capacity and keep active bird occupancy tied to live batch data.
-          </p>
         </div>
 
         <button type="button" onClick={() => setIsCreateModalOpen(true)} className="btn-primary">
@@ -77,12 +74,9 @@ export function HousesPage() {
             <Home className="h-8 w-8" />
           </div>
           <h2 className="mt-6 text-2xl font-semibold text-ink-900">No houses configured yet</h2>
-          <p className="mt-2 max-w-md text-base text-ink-500">
-            Create your first poultry house to start assigning batches and monitoring occupancy.
-          </p>
           <button type="button" onClick={() => setIsCreateModalOpen(true)} className="btn-primary mt-8">
             <Plus className="h-4.5 w-4.5" />
-            Create first house
+            Add house
           </button>
         </div>
       ) : (
@@ -95,13 +89,10 @@ export function HousesPage() {
               transition={{ duration: 0.24, delay: index * 0.04 }}
               className="card-hover overflow-hidden"
             >
-              <div className="border-b border-neutral-150 bg-brand-fade px-6 py-5">
+              <div className="border-b border-neutral-150 px-6 py-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-[0.68rem] font-bold uppercase tracking-[0.24em] text-brand-700">
-                      Farm structure
-                    </div>
-                    <h2 className="mt-2 text-2xl font-semibold text-ink-900">{house.name}</h2>
+                    <h2 className="text-2xl font-semibold text-ink-900">{house.name}</h2>
                   </div>
                   <span className={house.status === 'active' ? 'badge badge-success' : house.status === 'maintenance' ? 'badge badge-warning' : 'badge badge-neutral'}>
                     {house.status}
@@ -136,7 +127,7 @@ export function HousesPage() {
                     </span>
                   </div>
                   <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-neutral-100">
-                    <div className="h-full rounded-full bg-brand-gradient" style={{ width: `${house.occupancy}%` }} />
+                    <div className="h-full rounded-full bg-brand-600" style={{ width: `${house.occupancy}%` }} />
                   </div>
                 </div>
               </div>
@@ -147,7 +138,7 @@ export function HousesPage() {
                 </div>
                 <button type="button" onClick={() => setSelectedHouse(house)} className="btn-secondary btn-sm">
                   <PencilLine className="h-4 w-4" />
-                  Manage house
+                  Edit
                 </button>
               </div>
             </motion.div>
@@ -158,8 +149,7 @@ export function HousesPage() {
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Create poultry house"
-        description="Set the capacity and operating status for a real production house."
+        title="New house"
       >
         <HouseForm onSuccess={() => setIsCreateModalOpen(false)} />
       </Modal>
@@ -167,8 +157,7 @@ export function HousesPage() {
       <Modal
         isOpen={Boolean(selectedHouse)}
         onClose={() => setSelectedHouse(null)}
-        title={selectedHouse ? `Manage ${selectedHouse.name}` : 'Manage poultry house'}
-        description="Update the house profile used by live farm batches and occupancy reporting."
+        title={selectedHouse ? selectedHouse.name : 'House'}
       >
         {selectedHouse ? (
           <HouseForm

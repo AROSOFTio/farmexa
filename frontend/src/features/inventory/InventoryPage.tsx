@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeftRight, Boxes, PackagePlus, TrendingDown, TrendingUp, Warehouse } from 'lucide-react'
+import { ArrowLeftRight, Boxes, PackagePlus, TrendingDown, TrendingUp } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
 
@@ -66,12 +66,12 @@ type MovementFormValues = z.infer<typeof movementSchema>
 
 const sectionCopy: Record<InventorySection, { title: string; description: string }> = {
   items: {
-    title: 'Inventory Items',
-    description: 'Manage central stock records for packaged goods, medicines, and finished outputs.',
+    title: 'Inventory items',
+    description: 'Current stock records.',
   },
   movements: {
-    title: 'Stock Movements',
-    description: 'Post controlled stock in, stock out, and adjustment transactions with traceability.',
+    title: 'Stock movements',
+    description: 'Stock ledger activity.',
   },
 }
 
@@ -186,10 +186,6 @@ export function InventoryPage({ section }: { section: InventorySection }) {
           <h1 className="text-2xl font-bold tracking-tight text-neutral-900">{copy.title}</h1>
           <p className="mt-1 max-w-2xl text-sm font-medium text-neutral-500">{copy.description}</p>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-          <Warehouse className="h-3.5 w-3.5" />
-          Central Inventory
-        </div>
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -199,7 +195,6 @@ export function InventoryPage({ section }: { section: InventorySection }) {
             <span className="text-xs font-semibold uppercase tracking-[0.12em]">Tracked items</span>
           </div>
           <p className="text-xl font-bold text-neutral-900">{items.length.toLocaleString()}</p>
-          <p className="mt-1 text-sm text-neutral-500">Centralized stock records across the operation.</p>
         </div>
         <div className="card p-5">
           <div className="mb-3 flex items-center gap-2 text-neutral-500">
@@ -207,7 +202,6 @@ export function InventoryPage({ section }: { section: InventorySection }) {
             <span className="text-xs font-semibold uppercase tracking-[0.12em]">Low stock items</span>
           </div>
           <p className="text-xl font-bold text-neutral-900">{lowStockCount.toLocaleString()}</p>
-          <p className="mt-1 text-sm text-neutral-500">Items already at or below their reorder level.</p>
         </div>
         <div className="card p-5">
           <div className="mb-3 flex items-center gap-2 text-neutral-500">
@@ -215,7 +209,6 @@ export function InventoryPage({ section }: { section: InventorySection }) {
             <span className="text-xs font-semibold uppercase tracking-[0.12em]">Recent movements</span>
           </div>
           <p className="text-xl font-bold text-neutral-900">{movements.length.toLocaleString()}</p>
-          <p className="mt-1 text-sm text-neutral-500">Latest logged stock transactions in the current dataset.</p>
         </div>
       </div>
 
@@ -281,7 +274,7 @@ export function InventoryPage({ section }: { section: InventorySection }) {
           <div className="card overflow-hidden">
             <div className="border-b border-neutral-100 px-6 py-5">
               <h2 className="text-lg font-bold text-neutral-900">Item register</h2>
-              <p className="mt-1 text-sm text-neutral-500">Current stock, cost basis, and reorder exposure per SKU.</p>
+              <p className="mt-1 text-sm text-neutral-500">Current stock and cost.</p>
             </div>
             <div className="overflow-x-auto">
               <table className="data-table">
@@ -298,7 +291,7 @@ export function InventoryPage({ section }: { section: InventorySection }) {
                   {items.length === 0 ? (
                     <tr>
                       <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={5}>
-                        No inventory items exist yet.
+                        No inventory items.
                       </td>
                     </tr>
                   ) : (
@@ -361,7 +354,7 @@ export function InventoryPage({ section }: { section: InventorySection }) {
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="form-label">Reference type</label>
-                  <input className="form-input" placeholder="manual, sale_order, slaughter_output..." {...movementForm.register('reference_type')} />
+                  <input className="form-input" {...movementForm.register('reference_type')} />
                 </div>
                 <div>
                   <label className="form-label">Reference ID</label>
@@ -386,7 +379,7 @@ export function InventoryPage({ section }: { section: InventorySection }) {
           <div className="card overflow-hidden">
             <div className="border-b border-neutral-100 px-6 py-5">
               <h2 className="text-lg font-bold text-neutral-900">Movement log</h2>
-              <p className="mt-1 text-sm text-neutral-500">Chronological stock audit trail from the backend ledger.</p>
+              <p className="mt-1 text-sm text-neutral-500">Recorded stock changes.</p>
             </div>
             <div className="overflow-x-auto">
               <table className="data-table">
@@ -403,7 +396,7 @@ export function InventoryPage({ section }: { section: InventorySection }) {
                   {movements.length === 0 ? (
                     <tr>
                       <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={5}>
-                        No stock movements recorded yet.
+                        No stock movements.
                       </td>
                     </tr>
                   ) : (

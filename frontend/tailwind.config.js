@@ -86,10 +86,10 @@ export default {
         '4xl': ['2.45rem', { lineHeight: '2.8rem' }],
       },
       backgroundImage: {
-        'shell-gradient': 'radial-gradient(circle at top left, rgba(37,157,53,0.14), transparent 34%), linear-gradient(180deg, #f7faf7 0%, #f1f5f2 100%)',
-        'sidebar-gradient': 'linear-gradient(180deg, #1f2a36 0%, #121922 100%)',
-        'brand-gradient': 'linear-gradient(135deg, #259d35 0%, #146823 100%)',
-        'brand-fade': 'linear-gradient(145deg, rgba(37,157,53,0.12) 0%, rgba(31,42,54,0.04) 100%)',
+        'shell-gradient': 'linear-gradient(180deg, #fbfdfb 0%, #fbfdfb 100%)',
+        'sidebar-gradient': 'linear-gradient(180deg, #ffffff 0%, #ffffff 100%)',
+        'brand-gradient': 'linear-gradient(135deg, #259d35 0%, #259d35 100%)',
+        'brand-fade': 'linear-gradient(180deg, rgba(37,157,53,0.08) 0%, rgba(37,157,53,0.08) 100%)',
       },
       animation: {
         'fade-in': 'fadeIn 0.24s ease-out',

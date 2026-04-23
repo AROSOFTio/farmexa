@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Building2, Mail, Phone, Plus, Users } from 'lucide-react'
+import { Mail, Phone, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
 
@@ -61,21 +61,15 @@ export function CustomersPage() {
     <div className="animate-fade-in">
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Customer Accounts</h1>
-          <p className="mt-1 max-w-2xl text-sm font-medium text-neutral-500">
-            Manage retail and wholesale customers with outstanding balance visibility.
-          </p>
-        </div>
-        <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-          <Users className="h-3.5 w-3.5" />
-          Sales CRM
+          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Customers</h1>
+          <p className="mt-1 max-w-2xl text-sm font-medium text-neutral-500">Customer directory and balances.</p>
         </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
         <div className="card p-6">
           <h2 className="text-lg font-bold text-neutral-900">Add customer</h2>
-          <p className="mt-1 text-sm text-neutral-500">Create a real customer account for order, invoice, and payment workflows.</p>
+          <p className="mt-1 text-sm text-neutral-500">Create a customer record.</p>
           <form className="mt-5 space-y-4" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
             <div>
               <label className="form-label">Customer name</label>
@@ -112,7 +106,7 @@ export function CustomersPage() {
         <div className="card overflow-hidden">
           <div className="border-b border-neutral-100 px-6 py-5">
             <h2 className="text-lg font-bold text-neutral-900">Customer directory</h2>
-            <p className="mt-1 text-sm text-neutral-500">Live customer accounts and their current balances.</p>
+            <p className="mt-1 text-sm text-neutral-500">Saved customers.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="data-table">
@@ -128,7 +122,7 @@ export function CustomersPage() {
                 {customers.length === 0 ? (
                   <tr>
                     <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={4}>
-                      No customer accounts have been created yet.
+                      No customers.
                     </td>
                   </tr>
                 ) : (

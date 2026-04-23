@@ -20,19 +20,17 @@ export function NotFoundPage() {
         </div>
       </div>
 
-      <h2 className="text-3xl font-semibold text-ink-900">This Farmexa route does not exist</h2>
-      <p className="mt-3 max-w-md text-base text-ink-500">
-        The page you requested is unavailable or no longer part of the active ERP workspace.
-      </p>
+      <h2 className="text-3xl font-semibold text-ink-900">Page not found</h2>
+      <p className="mt-3 max-w-md text-base text-ink-500">This page is unavailable.</p>
 
       <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
         <Link to="/dashboard" className="btn-primary btn-lg">
           <Home className="h-4.5 w-4.5" />
-          Back to dashboard
+          Dashboard
         </Link>
         <button type="button" onClick={() => window.history.back()} className="btn-secondary btn-lg">
           <ArrowLeft className="h-4.5 w-4.5" />
-          Go back
+          Back
         </button>
       </div>
     </motion.div>

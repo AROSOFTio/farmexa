@@ -109,13 +109,9 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
           </h1>
           <p className="mt-1 max-w-2xl text-sm font-medium text-neutral-500">
             {section === 'invoices'
-              ? 'Track issued invoices, outstanding amounts, and settlement progress.'
-              : 'Record invoice payments and monitor cash collection against receivables.'}
+              ? 'Invoice ledger.'
+              : 'Payment history.'}
           </p>
-        </div>
-        <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-          {section === 'invoices' ? <FileText className="h-3.5 w-3.5" /> : <CreditCard className="h-3.5 w-3.5" />}
-          Billing
         </div>
       </div>
 
@@ -126,7 +122,6 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
             <span className="text-xs font-semibold uppercase tracking-[0.12em]">Invoices</span>
           </div>
           <p className="text-xl font-bold text-neutral-900">{invoices.length.toLocaleString()}</p>
-          <p className="mt-1 text-sm text-neutral-500">Current invoices returned by the backend ledger.</p>
         </div>
         <div className="card p-5">
           <div className="mb-3 flex items-center gap-2 text-neutral-500">
@@ -134,7 +129,6 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
             <span className="text-xs font-semibold uppercase tracking-[0.12em]">Outstanding</span>
           </div>
           <p className="text-xl font-bold text-neutral-900">UGX {outstandingTotal.toLocaleString()}</p>
-          <p className="mt-1 text-sm text-neutral-500">Open receivables not yet settled by payments.</p>
         </div>
         <div className="card p-5">
           <div className="mb-3 flex items-center gap-2 text-neutral-500">
@@ -142,14 +136,13 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
             <span className="text-xs font-semibold uppercase tracking-[0.12em]">Payments</span>
           </div>
           <p className="text-xl font-bold text-neutral-900">{payments.length.toLocaleString()}</p>
-          <p className="mt-1 text-sm text-neutral-500">Recorded settlement transactions across all invoices.</p>
         </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
         <div className="card p-6">
           <h2 className="text-lg font-bold text-neutral-900">Post payment</h2>
-          <p className="mt-1 text-sm text-neutral-500">Apply a real payment directly to an existing invoice.</p>
+          <p className="mt-1 text-sm text-neutral-500">Apply payment to an invoice.</p>
           <form className="mt-5 space-y-4" onSubmit={paymentForm.handleSubmit((values) => paymentMutation.mutate(values))}>
             <div>
               <label className="form-label">Invoice</label>
@@ -201,8 +194,8 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
             </h2>
             <p className="mt-1 text-sm text-neutral-500">
               {section === 'invoices'
-                ? 'Current invoice status, issue dates, and settlement progress.'
-                : 'Flattened payment history across invoice records.'}
+                ? 'Invoice status and balances.'
+                : 'Recorded payments.'}
             </p>
           </div>
           <div className="overflow-x-auto">
@@ -221,7 +214,7 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
                   {invoices.length === 0 ? (
                     <tr>
                       <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={5}>
-                        No invoices available yet.
+                        No invoices.
                       </td>
                     </tr>
                   ) : (
@@ -260,7 +253,7 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
                   {payments.length === 0 ? (
                     <tr>
                       <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={4}>
-                        No payments recorded yet.
+                        No payments.
                       </td>
                     </tr>
                   ) : (

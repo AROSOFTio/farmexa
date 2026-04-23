@@ -451,7 +451,7 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
                   {records.length === 0 ? (
                     <tr>
                       <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={5}>
-                        No slaughter records available yet.
+                        No slaughter records.
                       </td>
                     </tr>
                   ) : (

@@ -8,7 +8,7 @@ import { clsx } from 'clsx'
 import api from '@/services/api'
 
 const houseSchema = z.object({
-  name: z.string().min(1, 'House name is required').max(100),
+  name: z.string().trim().min(1, 'House name is required').max(100),
   capacity: z.coerce.number().min(1, 'Capacity must be greater than 0'),
   status: z.enum(['active', 'maintenance', 'inactive']),
 })
@@ -57,7 +57,9 @@ export function HouseForm({ houseId, initialValues, onSuccess }: HouseFormProps)
       onSuccess?.()
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || `Failed to ${isEditing ? 'update' : 'create'} house.`)
+      const detail = error?.response?.data?.detail
+      const validation = error?.response?.data?.errors?.[0]?.message
+      toast.error(typeof detail === 'string' ? detail : validation ?? `Failed to ${isEditing ? 'save' : 'create'} house.`)
     },
   })
 
@@ -68,7 +70,6 @@ export function HouseForm({ houseId, initialValues, onSuccess }: HouseFormProps)
         <input
           {...register('name')}
           className={clsx('form-input', errors.name && 'border-red-400 focus:ring-red-100')}
-          placeholder="Broiler House A"
         />
         {errors.name ? <p className="form-error">{errors.name.message}</p> : null}
       </div>
@@ -80,7 +81,6 @@ export function HouseForm({ houseId, initialValues, onSuccess }: HouseFormProps)
             type="number"
             {...register('capacity')}
             className={clsx('form-input', errors.capacity && 'border-red-400 focus:ring-red-100')}
-            placeholder="5000"
           />
           {errors.capacity ? <p className="form-error">{errors.capacity.message}</p> : null}
         </div>
@@ -104,7 +104,7 @@ export function HouseForm({ houseId, initialValues, onSuccess }: HouseFormProps)
           Cancel
         </button>
         <button type="submit" className="btn-primary" disabled={mutation.isPending}>
-          {mutation.isPending ? 'Saving...' : isEditing ? 'Save changes' : 'Create house'}
+          {mutation.isPending ? 'Saving...' : isEditing ? 'Save' : 'Create'}
         </button>
       </div>
     </form>

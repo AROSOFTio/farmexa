@@ -1,3 +1,4 @@
+import logging
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
@@ -10,6 +11,9 @@ from app.modules.farm.schemas import (
     VaccinationLogCreate, VaccinationLogUpdate, VaccinationLogOut,
     GrowthLogCreate, GrowthLogOut
 )
+
+logger = logging.getLogger("farmexa.farm")
+
 
 class FarmService:
     def __init__(self, db: AsyncSession):
@@ -28,25 +32,48 @@ class FarmService:
         return PoultryHouseOut.model_validate(house)
 
     async def create_house(self, data: PoultryHouseCreate) -> PoultryHouseOut:
+        clean_name = data.name.strip()
+        if await self.repo.get_house_by_name(clean_name):
+            raise HTTPException(status_code=400, detail="House with this name already exists")
+
         try:
-            house = await self.repo.create_house(data)
+            payload = data.model_copy(update={"name": clean_name})
+            house = await self.repo.create_house(payload)
             await self.db.commit()
+            house = await self.repo.get_house(house.id)
             return PoultryHouseOut.model_validate(house)
         except IntegrityError:
             await self.db.rollback()
             raise HTTPException(status_code=400, detail="House with this name already exists")
+        except Exception as exc:
+            await self.db.rollback()
+            logger.exception("Failed to create house: %s", exc)
+            raise HTTPException(status_code=500, detail="Unable to save house")
 
     async def update_house(self, house_id: int, data: PoultryHouseUpdate) -> PoultryHouseOut:
         house = await self.repo.get_house(house_id)
         if not house:
             raise HTTPException(status_code=404, detail="House not found")
+
+        if data.name is not None:
+            clean_name = data.name.strip()
+            existing_house = await self.repo.get_house_by_name(clean_name)
+            if existing_house and existing_house.id != house_id:
+                raise HTTPException(status_code=400, detail="House with this name already exists")
+            data = data.model_copy(update={"name": clean_name})
+
         try:
             house = await self.repo.update_house(house, data)
             await self.db.commit()
+            house = await self.repo.get_house(house.id)
             return PoultryHouseOut.model_validate(house)
         except IntegrityError:
             await self.db.rollback()
             raise HTTPException(status_code=400, detail="House with this name already exists")
+        except Exception as exc:
+            await self.db.rollback()
+            logger.exception("Failed to update house %s: %s", house_id, exc)
+            raise HTTPException(status_code=500, detail="Unable to save house")
 
     # ── Batches ──────────────────────────────────────────────────
     async def get_batches(self) -> list[BatchOut]:

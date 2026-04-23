@@ -1,4 +1,4 @@
-import { useMemo, type ElementType } from 'react'
+import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -69,26 +69,22 @@ interface BatchOption {
   breed: string
 }
 
-const sectionCopy: Record<FeedSection, { title: string; description: string; icon: ElementType }> = {
+const sectionCopy: Record<FeedSection, { title: string; description: string }> = {
   stock: {
-    title: 'Feed Stock',
-    description: 'Maintain feed SKUs, categories, stock balances, and reorder thresholds.',
-    icon: Boxes,
+    title: 'Feed stock',
+    description: 'Feed items and balances.',
   },
   purchases: {
-    title: 'Feed Purchases',
-    description: 'Capture supplier purchases and increase stock with real cost values.',
-    icon: ShoppingBasket,
+    title: 'Feed purchases',
+    description: 'Purchase history and spend.',
   },
   consumption: {
-    title: 'Feed Consumption',
-    description: 'Post daily consumption against batches and deduct feed from available stock.',
-    icon: Wheat,
+    title: 'Feed consumption',
+    description: 'Consumption by batch.',
   },
   suppliers: {
     title: 'Suppliers',
-    description: 'Track approved vendors, contacts, and purchase sourcing records.',
-    icon: Truck,
+    description: 'Supplier directory.',
   },
 }
 
@@ -148,7 +144,6 @@ function formatDate(value?: string | null) {
 export function FeedManagementPage({ section }: { section: FeedSection }) {
   const qc = useQueryClient()
   const copy = sectionCopy[section]
-  const SectionIcon = copy.icon
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ['feed-suppliers'],
@@ -301,53 +296,44 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
     <div className="animate-fade-in">
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">{copy.title}</h1>
-          <p className="mt-1 max-w-2xl text-base font-medium text-slate-600">{copy.description}</p>
-        </div>
-        <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-brand-700">
-          <SectionIcon className="h-4 w-4" />
-          Feed Operations
+          <h1 className="text-3xl font-bold tracking-tight text-ink-900">{copy.title}</h1>
+          <p className="mt-1 max-w-2xl text-base font-medium text-ink-500">{copy.description}</p>
         </div>
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <div className="card p-5 border-2 border-slate-200">
-          <div className="mb-3 flex items-center gap-2 text-slate-500">
+        <div className="card p-5">
+          <div className="mb-3 flex items-center gap-2 text-ink-500">
             <Boxes className="h-5 w-5 text-brand-600" />
             <span className="text-sm font-bold uppercase tracking-[0.12em]">Feed items</span>
           </div>
-          <p className="text-2xl font-bold text-slate-900">{items.length.toLocaleString()}</p>
-          <p className="mt-1 text-base text-slate-500">Configured stock records in the feed ledger.</p>
+          <p className="text-2xl font-bold text-ink-900">{items.length.toLocaleString()}</p>
         </div>
-        <div className="card p-5 border-2 border-slate-200">
-          <div className="mb-3 flex items-center gap-2 text-slate-500">
+        <div className="card p-5">
+          <div className="mb-3 flex items-center gap-2 text-ink-500">
             <AlertTriangle className="h-5 w-5 text-brand-600" />
             <span className="text-sm font-bold uppercase tracking-[0.12em]">Low stock</span>
           </div>
-          <p className="text-2xl font-bold text-slate-900">{lowStockCount.toLocaleString()}</p>
-          <p className="mt-1 text-base text-slate-500">Items already at or below their reorder threshold.</p>
+          <p className="text-2xl font-bold text-ink-900">{lowStockCount.toLocaleString()}</p>
         </div>
-        <div className="card p-5 border-2 border-slate-200">
-          <div className="mb-3 flex items-center gap-2 text-slate-500">
+        <div className="card p-5">
+          <div className="mb-3 flex items-center gap-2 text-ink-500">
             <BadgeDollarSign className="h-5 w-5 text-brand-600" />
             <span className="text-sm font-bold uppercase tracking-[0.12em]">
               {section === 'purchases' ? 'Purchase spend' : 'Suppliers'}
             </span>
           </div>
-          <p className="text-2xl font-bold text-slate-900">
+          <p className="text-2xl font-bold text-ink-900">
             {section === 'purchases' ? `UGX ${purchaseTotal.toLocaleString()}` : suppliers.length.toLocaleString()}
-          </p>
-          <p className="mt-1 text-base text-slate-500">
-            {section === 'purchases' ? 'Value of recorded feed purchases.' : 'Approved supplier records currently stored.'}
           </p>
         </div>
       </div>
 
       {section === 'suppliers' && (
         <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-          <div className="card p-6 border-2 border-slate-200 bg-slate-50">
-            <h2 className="text-xl font-bold text-slate-900">Add supplier</h2>
-            <p className="mt-1 text-base text-slate-600">Create a real vendor record for purchasing and traceability.</p>
+          <div className="card border border-neutral-150 bg-neutral-50 p-6">
+            <h2 className="text-xl font-bold text-ink-900">Add supplier</h2>
+            <p className="mt-1 text-base text-ink-500">Create a supplier record.</p>
             <form className="mt-5 space-y-4" onSubmit={supplierForm.handleSubmit((values) => createSupplier.mutate(values))}>
               <div>
                 <label className="form-label">Supplier name</label>
@@ -380,9 +366,9 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
           </div>
 
           <div className="card overflow-hidden">
-            <div className="border-b-2 border-slate-200 px-6 py-5 bg-slate-50">
-              <h2 className="text-xl font-bold text-slate-900">Supplier directory</h2>
-              <p className="mt-1 text-base text-slate-600">Live vendors currently available for feed procurement.</p>
+            <div className="border-b border-neutral-150 bg-neutral-50 px-6 py-5">
+              <h2 className="text-xl font-bold text-ink-900">Supplier directory</h2>
+              <p className="mt-1 text-base text-ink-500">Saved suppliers.</p>
             </div>
             <div className="overflow-x-auto">
               <table className="data-table">
@@ -397,16 +383,16 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
                 <tbody>
                   {suppliers.length === 0 ? (
                     <tr>
-                      <td className="pl-6 py-14 text-base text-slate-500 text-center font-medium" colSpan={4}>
-                        No suppliers recorded yet.
+                      <td className="pl-6 py-14 text-center text-base font-medium text-ink-500" colSpan={4}>
+                        No suppliers.
                       </td>
                     </tr>
                   ) : (
                     suppliers.map((supplier) => (
                       <tr key={supplier.id}>
                         <td className="pl-6">
-                          <div className="font-bold text-slate-900">{supplier.name}</div>
-                          <div className="text-sm text-slate-500">{supplier.address || 'Address not recorded'}</div>
+                          <div className="font-bold text-ink-900">{supplier.name}</div>
+                          <div className="text-sm text-ink-500">{supplier.address || 'No address'}</div>
                         </td>
                         <td>{supplier.contact_person || '—'}</td>
                         <td>{supplier.email || '—'}</td>
@@ -423,9 +409,9 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
 
       {section === 'stock' && (
         <div className="grid gap-6 xl:grid-cols-[420px_420px_minmax(0,1fr)]">
-          <div className="card p-6 border-2 border-slate-200 bg-slate-50">
-            <h2 className="text-xl font-bold text-slate-900">Add category</h2>
-            <p className="mt-1 text-base text-slate-600">Define a logical group before you create feed items.</p>
+          <div className="card border border-neutral-150 bg-neutral-50 p-6">
+            <h2 className="text-xl font-bold text-ink-900">Add category</h2>
+            <p className="mt-1 text-base text-ink-500">Create a feed category.</p>
             <form className="mt-5 space-y-4" onSubmit={categoryForm.handleSubmit((values) => createCategory.mutate(values))}>
               <div>
                 <label className="form-label">Category name</label>
@@ -443,9 +429,9 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
             </form>
           </div>
 
-          <div className="card p-6 border-2 border-slate-200 bg-slate-50">
-            <h2 className="text-xl font-bold text-slate-900">Add feed item</h2>
-            <p className="mt-1 text-base text-slate-600">Create a stock-managed feed SKU with reorder logic.</p>
+          <div className="card border border-neutral-150 bg-neutral-50 p-6">
+            <h2 className="text-xl font-bold text-ink-900">Add feed item</h2>
+            <p className="mt-1 text-base text-ink-500">Create a feed item.</p>
             <form className="mt-5 space-y-4" onSubmit={itemForm.handleSubmit((values) => createItem.mutate(values))}>
               <div>
                 <label className="form-label">Item name</label>
@@ -480,9 +466,9 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
           </div>
 
           <div className="card overflow-hidden">
-            <div className="border-b-2 border-slate-200 px-6 py-5 bg-slate-50">
-              <h2 className="text-xl font-bold text-slate-900">Stock ledger</h2>
-              <p className="mt-1 text-base text-slate-600">Live quantities from purchases and consumption postings.</p>
+            <div className="border-b border-neutral-150 bg-neutral-50 px-6 py-5">
+              <h2 className="text-xl font-bold text-ink-900">Stock ledger</h2>
+              <p className="mt-1 text-base text-ink-500">Current feed stock.</p>
             </div>
             <div className="overflow-x-auto">
               <table className="data-table">
@@ -497,8 +483,8 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
                 <tbody>
                   {items.length === 0 ? (
                     <tr>
-                      <td className="pl-6 py-14 text-base text-slate-500 text-center font-medium" colSpan={4}>
-                        No feed stock items configured yet.
+                      <td className="pl-6 py-14 text-center text-base font-medium text-ink-500" colSpan={4}>
+                        No feed items.
                       </td>
                     </tr>
                   ) : (
@@ -507,8 +493,8 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
                       return (
                         <tr key={item.id}>
                           <td className="pl-6">
-                            <div className="font-bold text-slate-900">{item.name}</div>
-                            <div className="text-sm text-slate-500">Unit: {item.unit}</div>
+                            <div className="font-bold text-ink-900">{item.name}</div>
+                            <div className="text-sm text-ink-500">Unit: {item.unit}</div>
                           </td>
                           <td>{item.category?.name || '—'}</td>
                           <td>
@@ -530,9 +516,9 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
 
       {section === 'purchases' && (
         <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-          <div className="card p-6 border-2 border-slate-200 bg-slate-50">
-            <h2 className="text-xl font-bold text-slate-900">Record purchase</h2>
-            <p className="mt-1 text-base text-slate-600">This flow updates stock and keeps a cost trail per purchase.</p>
+          <div className="card border border-neutral-150 bg-neutral-50 p-6">
+            <h2 className="text-xl font-bold text-ink-900">Record purchase</h2>
+            <p className="mt-1 text-base text-ink-500">Post a purchase.</p>
             <form className="mt-5 space-y-4" onSubmit={purchaseForm.handleSubmit((values) => createPurchase.mutate(values))}>
               <div>
                 <label className="form-label">Supplier</label>
@@ -584,9 +570,9 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
           </div>
 
           <div className="card overflow-hidden">
-            <div className="border-b-2 border-slate-200 px-6 py-5 bg-slate-50">
-              <h2 className="text-xl font-bold text-slate-900">Purchase history</h2>
-              <p className="mt-1 text-base text-slate-600">Posted purchases with supplier and line-item value.</p>
+            <div className="border-b border-neutral-150 bg-neutral-50 px-6 py-5">
+              <h2 className="text-xl font-bold text-ink-900">Purchase history</h2>
+              <p className="mt-1 text-base text-ink-500">Recorded purchases.</p>
             </div>
             <div className="overflow-x-auto">
               <table className="data-table">
@@ -601,22 +587,22 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
                 <tbody>
                   {purchases.length === 0 ? (
                     <tr>
-                      <td className="pl-6 py-14 text-base text-slate-500 text-center font-medium" colSpan={4}>
-                        No feed purchases recorded yet.
+                      <td className="pl-6 py-14 text-center text-base font-medium text-ink-500" colSpan={4}>
+                        No feed purchases.
                       </td>
                     </tr>
                   ) : (
                     purchases.map((purchase) => (
                       <tr key={purchase.id}>
                         <td className="pl-6">
-                          <div className="font-bold text-slate-900">{formatDate(purchase.purchase_date)}</div>
-                          <div className="text-sm text-slate-500">{purchase.invoice_number || 'No invoice reference'}</div>
+                          <div className="font-bold text-ink-900">{formatDate(purchase.purchase_date)}</div>
+                          <div className="text-sm text-ink-500">{purchase.invoice_number || 'No invoice'}</div>
                         </td>
                         <td>{purchase.supplier?.name || suppliers.find((supplier) => supplier.id === purchase.supplier_id)?.name || '—'}</td>
                         <td>
                           {purchase.items.map((item) => items.find((feedItem) => feedItem.id === item.feed_item_id)?.name || `Item #${item.feed_item_id}`).join(', ')}
                         </td>
-                        <td className="pr-6 font-bold text-slate-900">UGX {purchase.total_amount.toLocaleString()}</td>
+                        <td className="pr-6 font-bold text-ink-900">UGX {purchase.total_amount.toLocaleString()}</td>
                       </tr>
                     ))
                   )}
@@ -629,9 +615,9 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
 
       {section === 'consumption' && (
         <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-          <div className="card p-6 border-2 border-slate-200 bg-slate-50">
-            <h2 className="text-xl font-bold text-slate-900">Record consumption</h2>
-            <p className="mt-1 text-base text-slate-600">Deduct feed from stock and attach it to a real production batch.</p>
+          <div className="card border border-neutral-150 bg-neutral-50 p-6">
+            <h2 className="text-xl font-bold text-ink-900">Record consumption</h2>
+            <p className="mt-1 text-base text-ink-500">Post feed usage.</p>
             <form className="mt-5 space-y-4" onSubmit={consumptionForm.handleSubmit((values) => createConsumption.mutate(values))}>
               <div>
                 <label className="form-label">Batch</label>
@@ -673,9 +659,9 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
           </div>
 
           <div className="card overflow-hidden">
-            <div className="border-b-2 border-slate-200 px-6 py-5 bg-slate-50">
-              <h2 className="text-xl font-bold text-slate-900">Consumption history</h2>
-              <p className="mt-1 text-base text-slate-600">Posted usage entries by batch and feed item.</p>
+            <div className="border-b border-neutral-150 bg-neutral-50 px-6 py-5">
+              <h2 className="text-xl font-bold text-ink-900">Consumption history</h2>
+              <p className="mt-1 text-base text-ink-500">Recorded usage.</p>
             </div>
             <div className="overflow-x-auto">
               <table className="data-table">
@@ -690,8 +676,8 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
                 <tbody>
                   {consumptions.length === 0 ? (
                     <tr>
-                      <td className="pl-6 py-14 text-base text-slate-500 text-center font-medium" colSpan={4}>
-                        No feed consumption recorded yet.
+                      <td className="pl-6 py-14 text-center text-base font-medium text-ink-500" colSpan={4}>
+                        No feed consumption.
                       </td>
                     </tr>
                   ) : (

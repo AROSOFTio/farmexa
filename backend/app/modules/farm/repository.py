@@ -1,5 +1,5 @@
 from typing import Sequence
-from sqlalchemy import select, update
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -21,6 +21,12 @@ class FarmRepository:
 
     async def get_house(self, house_id: int) -> PoultryHouse | None:
         res = await self.db.execute(select(PoultryHouse).where(PoultryHouse.id == house_id))
+        return res.scalar_one_or_none()
+
+    async def get_house_by_name(self, name: str) -> PoultryHouse | None:
+        res = await self.db.execute(
+            select(PoultryHouse).where(func.lower(PoultryHouse.name) == name.strip().lower())
+        )
         return res.scalar_one_or_none()
 
     async def create_house(self, data: PoultryHouseCreate) -> PoultryHouse:

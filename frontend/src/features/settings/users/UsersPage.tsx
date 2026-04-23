@@ -86,7 +86,7 @@ function AddUserModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-ink-950/30" onClick={onClose} />
       <motion.div
         className="relative bg-white rounded-3xl shadow-modal w-full max-w-lg overflow-hidden"
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -94,10 +94,9 @@ function AddUserModal({
         exit={{ opacity: 0, y: 10, scale: 0.98 }}
         transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
       >
-        <div className="px-8 py-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
+        <div className="px-8 py-6 border-b border-neutral-100 flex items-center justify-between bg-neutral-50">
           <div>
-            <h2 className="text-xl font-bold text-neutral-900 tracking-tight">Add New User</h2>
-            <p className="text-xs font-medium text-neutral-400 mt-1">Configure access for a new team member</p>
+            <h2 className="text-xl font-bold text-neutral-900 tracking-tight">Add user</h2>
           </div>
           <button onClick={onClose} className="p-2.5 rounded-xl hover:bg-white hover:shadow-sm text-neutral-400 transition-all">
             <X className="w-5 h-5" />
@@ -110,13 +109,13 @@ function AddUserModal({
         >
           <div className="grid grid-cols-2 gap-5">
             <div>
-              <label className="form-label flex items-center gap-2"><UserIcon className="w-3.5 h-3.5 opacity-50" /> Full Name</label>
-              <input className="form-input" placeholder="e.g. John Doe" {...register('full_name')} />
+              <label className="form-label flex items-center gap-2"><UserIcon className="w-3.5 h-3.5 opacity-50" /> Full name</label>
+              <input className="form-input" {...register('full_name')} />
               {errors.full_name && <p className="form-error">{errors.full_name.message}</p>}
             </div>
             <div>
-              <label className="form-label flex items-center gap-2"><Mail className="w-3.5 h-3.5 opacity-50" /> Email Address</label>
-              <input className="form-input" type="email" placeholder="john@farm.com" {...register('email')} />
+              <label className="form-label flex items-center gap-2"><Mail className="w-3.5 h-3.5 opacity-50" /> Email</label>
+              <input className="form-input" type="email" {...register('email')} />
               {errors.email && <p className="form-error">{errors.email.message}</p>}
             </div>
           </div>
@@ -124,12 +123,12 @@ function AddUserModal({
           <div className="grid grid-cols-2 gap-5">
             <div>
               <label className="form-label flex items-center gap-2"><Lock className="w-3.5 h-3.5 opacity-50" /> Password</label>
-              <input className="form-input" type="password" placeholder="••••••••" {...register('password')} />
+              <input className="form-input" type="password" {...register('password')} />
               {errors.password && <p className="form-error">{errors.password.message}</p>}
             </div>
             <div>
               <label className="form-label flex items-center gap-2"><Phone className="w-3.5 h-3.5 opacity-50" /> Phone <span className="text-neutral-300 font-normal ml-auto">(optional)</span></label>
-              <input className="form-input" placeholder="+256..." {...register('phone')} />
+              <input className="form-input" {...register('phone')} />
             </div>
           </div>
 
@@ -150,9 +149,9 @@ function AddUserModal({
             </button>
             <button type="submit" disabled={mutation.isPending} className="btn-primary flex-1 rounded-xl py-3 font-bold shadow-glow">
               {mutation.isPending ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</>
+                <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
               ) : (
-                <><Plus className="w-4 h-4" /> Create User</>
+                <><Plus className="w-4 h-4" /> Add user</>
               )}
             </button>
           </div>
@@ -218,8 +217,8 @@ export function UsersPage() {
     <div className="animate-fade-in">
       <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">Users & Access</h1>
-          <p className="text-sm text-neutral-500 mt-1 font-medium">Manage team members and their platform access levels</p>
+          <h1 className="text-2xl font-bold text-neutral-900 tracking-tight">Users</h1>
+          <p className="text-sm text-neutral-500 mt-1 font-medium">Team access.</p>
         </div>
         {hasPermission('users:write') && (
           <button
@@ -227,17 +226,17 @@ export function UsersPage() {
             onClick={() => setShowAddModal(true)}
           >
             <Plus className="w-4 h-4" />
-            Add New User
+            Add user
           </button>
         )}
       </div>
 
-      <div className="card mb-6 px-6 py-4 flex items-center gap-4 bg-white/50 backdrop-blur-sm border-neutral-150">
+      <div className="card mb-6 px-6 py-4 flex items-center gap-4 border-neutral-150">
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             className="form-input pl-10 bg-white"
-            placeholder="Search team members..."
+            placeholder="Search users"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
           />
@@ -248,7 +247,7 @@ export function UsersPage() {
         </div>
       </div>
 
-      <div className="card overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300">
+      <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="data-table">
             <thead>
@@ -279,10 +278,7 @@ export function UsersPage() {
                       <div className="w-16 h-16 rounded-3xl bg-neutral-50 flex items-center justify-center">
                         <Users className="w-8 h-8 text-neutral-200" />
                       </div>
-                      <p className="text-sm font-bold text-neutral-800">No team members found</p>
-                      <p className="text-xs text-neutral-400 leading-relaxed">
-                        {debouncedSearch ? "Try adjusting your search criteria to find who you're looking for." : "Start by adding your first user to the system."}
-                      </p>
+                      <p className="text-sm font-bold text-neutral-800">{debouncedSearch ? 'No users found' : 'No users'}</p>
                     </div>
                   </td>
                 </tr>
