@@ -1,10 +1,9 @@
-import { useMemo, useState, type ElementType } from 'react'
+import { useMemo, type ElementType } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   BarChart3,
   Bird,
-  ChevronDown,
   DollarSign,
   LayoutDashboard,
   Package,
@@ -39,14 +38,14 @@ interface NavSection {
 
 const NAV_SECTIONS: NavSection[] = [
   {
-    title: 'Overview',
+    title: 'Main',
     items: [
       { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', permission: 'dashboard:read' },
       { label: 'Reports', icon: BarChart3, path: '/analytics', permission: 'reports:read' },
     ],
   },
   {
-    title: 'Operations',
+    title: 'Farm',
     items: [
       {
         label: 'Farm',
@@ -88,7 +87,7 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    title: 'Commercial',
+    title: 'Sales',
     items: [
       {
         label: 'Sales',
@@ -111,7 +110,7 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    title: 'Admin',
+    title: 'System',
     items: [
       {
         label: 'Settings',
@@ -128,7 +127,6 @@ const NAV_SECTIONS: NavSection[] = [
 export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const location = useLocation()
   const { hasPermission, user } = useAuth()
-  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({})
 
   const sections = useMemo(
     () =>
@@ -148,7 +146,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     [hasPermission]
   )
 
-  const roleLabel = user?.role?.name ? ROLE_LABELS[user.role.name] ?? user.role.name : 'Team Member'
+  const roleLabel = user?.role?.name ? ROLE_LABELS[user.role.name] ?? user.role.name : 'Team'
 
   return (
     <>
@@ -163,88 +161,73 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
       <motion.aside
         className={clsx(
-          'sidebar no-scrollbar transition-transform duration-300 lg:translate-x-0',
+          'sidebar transition-transform duration-300 lg:translate-x-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         <div className="border-b border-neutral-200 px-5 py-6">
           <BrandMark />
-          <div className="mt-5 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-            <div className="text-[0.68rem] font-bold uppercase tracking-[0.24em] text-ink-400">Role</div>
-            <div className="mt-1 text-sm font-semibold text-ink-900">{roleLabel}</div>
+          <div className="mt-5 rounded-[20px] border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white/88">
+            {roleLabel}
           </div>
         </div>
 
-        <div className="no-scrollbar flex-1 overflow-y-auto px-3 py-5">
+        <div className="sidebar-scroll flex-1 overflow-y-auto px-3 py-5">
           {sections.map((section) => (
             <div key={section.title} className="mb-6">
-              <div className="px-3 pb-2 text-[0.68rem] font-bold uppercase tracking-[0.24em] text-ink-400">
+              <div className="px-3 pb-2 text-[0.68rem] font-medium uppercase tracking-[0.24em] text-white/38">
                 {section.title}
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {section.items.map((item) => {
                   const Icon = item.icon
                   const hasActiveSubItem = item.subItems?.some((subItem) => location.pathname.startsWith(subItem.path))
                   const isLeafActive = item.path ? location.pathname.startsWith(item.path) : false
                   const isActive = hasActiveSubItem || isLeafActive
-                  const isExpanded = expandedMenus[item.label] ?? hasActiveSubItem
 
                   if (item.subItems) {
                     return (
-                      <div key={item.label}>
-                        <button
-                          type="button"
-                          onClick={() => setExpandedMenus((current) => ({ ...current, [item.label]: !isExpanded }))}
+                      <div key={item.label} className="rounded-[24px] border border-white/6 bg-white/[0.03] p-2.5">
+                        <div
                           className={clsx(
-                            'flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors',
-                            isActive ? 'bg-brand-50 text-brand-800' : 'text-ink-700 hover:bg-neutral-100'
+                            'flex items-center gap-3 rounded-[20px] px-3 py-3',
+                            isActive ? 'bg-white/8 text-white' : 'text-white/82'
                           )}
                         >
                           <div
                             className={clsx(
-                              'flex h-10 w-10 items-center justify-center rounded-2xl',
-                              isActive ? 'bg-brand-100 text-brand-700' : 'bg-neutral-100 text-ink-500'
+                              'flex h-10 w-10 items-center justify-center rounded-[18px]',
+                              isActive ? 'bg-[#20a53a]/18 text-[#20a53a]' : 'bg-white/6 text-white/68'
                             )}
                           >
                             <Icon className="h-4.5 w-4.5" />
                           </div>
-                          <div className="min-w-0 flex-1 truncate text-sm font-semibold">{item.label}</div>
-                          <ChevronDown className={clsx('h-4 w-4 text-ink-400 transition-transform', isExpanded ? 'rotate-180' : '')} />
-                        </button>
+                          <div className="min-w-0 flex-1 truncate text-sm font-medium tracking-[-0.02em]">{item.label}</div>
+                        </div>
 
-                        <AnimatePresence initial={false}>
-                          {isExpanded ? (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.18 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="ml-12 mt-1 space-y-1 pl-3">
-                                {item.subItems.map((subItem) => {
-                                  const isSubActive = location.pathname.startsWith(subItem.path)
-                                  return (
-                                    <NavLink
-                                      key={subItem.path}
-                                      to={subItem.path}
-                                      onClick={() => {
-                                        if (window.innerWidth < 1024) onClose()
-                                      }}
-                                      className={clsx(
-                                        'block rounded-xl px-3 py-2 text-sm font-medium transition-colors',
-                                        isSubActive ? 'bg-brand-50 text-brand-800' : 'text-ink-600 hover:bg-neutral-100 hover:text-ink-900'
-                                      )}
-                                    >
-                                      {subItem.label}
-                                    </NavLink>
-                                  )
-                                })}
-                              </div>
-                            </motion.div>
-                          ) : null}
-                        </AnimatePresence>
+                        <div className="ml-[3.4rem] mt-2 space-y-1">
+                          {item.subItems.map((subItem) => {
+                            const isSubActive = location.pathname.startsWith(subItem.path)
+                            return (
+                              <NavLink
+                                key={subItem.path}
+                                to={subItem.path}
+                                onClick={() => {
+                                  if (window.innerWidth < 1024) onClose()
+                                }}
+                                className={clsx(
+                                  'block rounded-2xl px-3 py-2.5 text-[13px] font-medium tracking-[-0.01em] transition-colors',
+                                  isSubActive
+                                    ? 'bg-[#20a53a]/16 text-[#20a53a]'
+                                    : 'text-white/64 hover:bg-white/6 hover:text-white'
+                                )}
+                              >
+                                {subItem.label}
+                              </NavLink>
+                            )
+                          })}
+                        </div>
                       </div>
                     )
                   }
@@ -257,19 +240,19 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                         if (window.innerWidth < 1024) onClose()
                       }}
                       className={clsx(
-                        'flex items-center gap-3 rounded-2xl px-3 py-3 transition-colors',
-                        isActive ? 'bg-brand-50 text-brand-800' : 'text-ink-700 hover:bg-neutral-100'
+                        'flex items-center gap-3 rounded-[22px] px-3 py-3 transition-colors',
+                        isActive ? 'bg-white/8 text-white' : 'text-white/82 hover:bg-white/6 hover:text-white'
                       )}
                     >
                       <div
                         className={clsx(
-                          'flex h-10 w-10 items-center justify-center rounded-2xl',
-                          isActive ? 'bg-brand-100 text-brand-700' : 'bg-neutral-100 text-ink-500'
+                          'flex h-10 w-10 items-center justify-center rounded-[18px]',
+                          isActive ? 'bg-[#20a53a]/18 text-[#20a53a]' : 'bg-white/6 text-white/68'
                         )}
                       >
                         <Icon className="h-4.5 w-4.5" />
                       </div>
-                      <span className="flex-1 text-sm font-semibold">{item.label}</span>
+                      <span className="flex-1 text-sm font-medium tracking-[-0.02em]">{item.label}</span>
                     </NavLink>
                   )
                 })}

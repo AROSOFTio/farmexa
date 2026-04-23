@@ -24,7 +24,6 @@ import {
 } from 'recharts'
 import api from '@/services/api'
 import { useAuth } from '@/features/auth/AuthContext'
-import { ROLE_LABELS } from '@/lib/branding'
 
 interface KpiData {
   total_revenue: number
@@ -182,7 +181,7 @@ const chartTooltipStyle = {
 }
 
 export function DashboardPage() {
-  const { hasPermission, user, permissions } = useAuth()
+  const { hasPermission, permissions } = useAuth()
 
   const overview = useQuery<DashboardOverview>({
     queryKey: ['dashboard-overview', permissions.join('|')],
@@ -364,30 +363,26 @@ export function DashboardPage() {
     const todaysSlaughter = (data?.slaughterRecords ?? []).filter((entry) => sameDay(entry.slaughter_date)).reduce((sum, entry) => sum + entry.live_birds_count, 0)
 
     return [
-      { label: 'Feed used', value: todaysFeed.toLocaleString() },
+      { label: 'Feed', value: todaysFeed.toLocaleString() },
       { label: 'Expense', value: `UGX ${todaysExpense.toLocaleString()}` },
       { label: 'Income', value: `UGX ${todaysIncome.toLocaleString()}` },
-      { label: 'Processed', value: todaysSlaughter.toLocaleString() },
+      { label: 'Output', value: todaysSlaughter.toLocaleString() },
     ]
   }, [data?.consumptions, data?.expenses, data?.incomes, data?.slaughterRecords])
-
-  const roleLabel = user?.role?.name ? ROLE_LABELS[user.role.name] ?? user.role.name : 'Operations'
 
   const leadingMetrics = [
     hasPermission('farm:read')
       ? {
-          title: 'Active birds',
+          title: 'Birds',
           value: activeBirds.toLocaleString(),
           icon: Bird,
-          hint: 'Birds currently in active batches',
         }
       : null,
     hasPermission('feed:read')
       ? {
-          title: 'Low stock',
+          title: 'Stock',
           value: lowStockItems.length.toLocaleString(),
           icon: Boxes,
-          hint: 'Feed items at or below reorder point',
         }
       : null,
     hasPermission('slaughter:read')
@@ -395,59 +390,55 @@ export function DashboardPage() {
           title: 'Yield',
           value: averageYield ? `${averageYield.toFixed(1)}%` : 'No data',
           icon: Scissors,
-          hint: 'Average dressed yield from completed runs',
         }
       : null,
     hasPermission('sales:read')
       ? {
-          title: 'Receivables',
+          title: 'Due',
           value: `UGX ${outstandingValue.toLocaleString()}`,
           icon: Receipt,
-          hint: 'Outstanding invoice value',
         }
       : null,
     hasPermission('finance:read')
       ? {
-          title: 'Net profit',
+          title: 'Profit',
           value: `UGX ${(data?.kpis?.net_profit ?? 0).toLocaleString()}`,
           icon: DollarSign,
-          hint: 'Current result for the selected window',
         }
       : null,
-  ].filter(Boolean) as Array<{ title: string; value: string; icon: ElementType; hint: string }>
+  ].filter(Boolean) as Array<{ title: string; value: string; icon: ElementType }>
 
   return (
     <div className="dashboard-shell animate-fade-in space-y-6 pb-8">
       <section className="dashboard-hero">
-        <div className="dashboard-eyebrow">Live command center</div>
-        <div className="mt-3 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div>
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div className="space-y-2">
             <h1 className="dashboard-hero__title">Dashboard</h1>
-            <p className="dashboard-hero__subtitle">{roleLabel} with a live view of farm operations, inventory, sales, and finance.</p>
+            <div className="text-sm font-medium text-white/62">{formatDate(new Date().toISOString())}</div>
           </div>
 
           <button type="button" onClick={() => overview.refetch()} className="dashboard-refresh-btn">
             <RefreshCw className={`h-4.5 w-4.5 ${overview.isFetching ? 'animate-spin' : ''}`} />
-            {overview.isFetching ? 'Refreshing...' : 'Refresh data'}
+            {overview.isFetching ? 'Syncing' : 'Refresh'}
           </button>
         </div>
 
         <div className="dashboard-hero__grid">
           <div className="dashboard-pill">
-            <span>Today</span>
-            <strong>{formatDate(new Date().toISOString())}</strong>
-          </div>
-          <div className="dashboard-pill">
             <span>Alerts</span>
             <strong>{alerts.length.toLocaleString()}</strong>
           </div>
           <div className="dashboard-pill">
-            <span>Recent activity</span>
+            <span>Open</span>
+            <strong>{outstandingInvoices.length.toLocaleString()}</strong>
+          </div>
+          <div className="dashboard-pill">
+            <span>Activity</span>
             <strong>{recentActivity.length.toLocaleString()}</strong>
           </div>
           <div className="dashboard-pill">
-            <span>Open invoices</span>
-            <strong>{outstandingInvoices.length.toLocaleString()}</strong>
+            <span>Houses</span>
+            <strong>{(data?.houses ?? []).length.toLocaleString()}</strong>
           </div>
         </div>
       </section>
@@ -470,7 +461,6 @@ export function DashboardPage() {
                 {metric.title}
               </div>
               <div className="dashboard-metric__value">{metric.value}</div>
-              <p className="dashboard-metric__hint">{metric.hint}</p>
             </div>
           )
         })}
@@ -487,12 +477,12 @@ export function DashboardPage() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
         <div className="dashboard-panel">
-          <div className="dashboard-panel__heading">
-            <DollarSign className="h-4.5 w-4.5" />
-            Financial momentum
+          <div className="dashboard-panel__header">
+            <div className="dashboard-panel__icon">
+              <DollarSign className="h-4.5 w-4.5" />
+            </div>
+            <h2 className="dashboard-panel__title">Cash</h2>
           </div>
-          <h2 className="dashboard-panel__title">Revenue vs expenses</h2>
-          <p className="dashboard-panel__subtitle">Thirty-day operating view across recorded income and cost.</p>
           <div className="mt-5 h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data?.profit.timeline ?? []} margin={{ left: 0, right: 12, top: 8, bottom: 0 }}>
@@ -512,12 +502,12 @@ export function DashboardPage() {
         </div>
 
         <div className="dashboard-panel">
-          <div className="dashboard-panel__heading">
-            <Bird className="h-4.5 w-4.5" />
-            House performance
+          <div className="dashboard-panel__header">
+            <div className="dashboard-panel__icon">
+              <Bird className="h-4.5 w-4.5" />
+            </div>
+            <h2 className="dashboard-panel__title">Houses</h2>
           </div>
-          <h2 className="dashboard-panel__title">Occupancy</h2>
-          <p className="dashboard-panel__subtitle">Bird count by house against current capacity.</p>
           <div className="mt-5 h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={houseOccupancy}>
@@ -538,17 +528,17 @@ export function DashboardPage() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
         <div className="dashboard-panel">
-          <div className="dashboard-panel__heading">
-            <CircleAlert className="h-4.5 w-4.5" />
-            Priority alerts
+          <div className="dashboard-panel__header">
+            <div className="dashboard-panel__icon">
+              <CircleAlert className="h-4.5 w-4.5" />
+            </div>
+            <h2 className="dashboard-panel__title">Alerts</h2>
           </div>
-          <h2 className="dashboard-panel__title">What needs attention</h2>
           <div className="dashboard-list">
             {alerts.length === 0 ? (
               <div className="dashboard-list-item">
                 <div>
-                  <div className="text-sm font-semibold text-ink-900">All clear</div>
-                  <div className="mt-1 text-sm text-ink-500">No urgent stock, invoice, or occupancy alerts right now.</div>
+                  <div className="text-sm font-medium text-ink-900">No alerts</div>
                 </div>
               </div>
             ) : (
@@ -558,7 +548,7 @@ export function DashboardPage() {
                   className={`dashboard-list-item dashboard-alert dashboard-alert--${alert.tone}`}
                 >
                   <div>
-                    <div className="text-sm font-semibold text-ink-900">{alert.title}</div>
+                    <div className="text-sm font-medium text-ink-900">{alert.title}</div>
                     <div className="mt-1 text-sm text-ink-500">{alert.detail}</div>
                   </div>
                 </div>
@@ -568,24 +558,24 @@ export function DashboardPage() {
         </div>
 
         <div className="dashboard-panel">
-          <div className="dashboard-panel__heading">
-            <Warehouse className="h-4.5 w-4.5" />
-            Recent activity
+          <div className="dashboard-panel__header">
+            <div className="dashboard-panel__icon">
+              <Warehouse className="h-4.5 w-4.5" />
+            </div>
+            <h2 className="dashboard-panel__title">Activity</h2>
           </div>
-          <h2 className="dashboard-panel__title">Latest movement</h2>
           <div className="dashboard-list">
             {recentActivity.length === 0 ? (
               <div className="dashboard-list-item">
                 <div>
-                  <div className="text-sm font-semibold text-ink-900">No recent activity</div>
-                  <div className="mt-1 text-sm text-ink-500">New operational records will appear here as the team works.</div>
+                  <div className="text-sm font-medium text-ink-900">No activity</div>
                 </div>
               </div>
             ) : (
               recentActivity.map((activity) => (
                 <div key={activity.id} className="dashboard-list-item">
                   <div>
-                    <div className="text-sm font-semibold text-ink-900">{activity.label}</div>
+                    <div className="text-sm font-medium text-ink-900">{activity.label}</div>
                     <div className="mt-1 text-sm text-ink-500">{activity.meta}</div>
                   </div>
                   <div className="whitespace-nowrap text-xs font-medium text-ink-500">{formatDateTime(activity.timestamp)}</div>

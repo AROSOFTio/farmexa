@@ -57,17 +57,15 @@ export function Topbar({
         <BrandMark compact />
       </div>
 
-      <div className="hidden lg:block">
-        <div className="text-xs font-bold uppercase tracking-[0.24em] text-ink-400">{roleLabel}</div>
-      </div>
-
-      <button type="button" onClick={onToggleTheme} className="theme-toggle">
+      <button
+        type="button"
+        onClick={onToggleTheme}
+        className="theme-toggle"
+        aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+        title={theme === 'light' ? 'Dark mode' : 'Light mode'}
+      >
         <div className="theme-toggle__icon">
           {theme === 'light' ? <MoonStar className="h-4 w-4" /> : <SunMedium className="h-4 w-4" />}
-        </div>
-        <div className="hidden sm:block text-left">
-          <div className="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-ink-400">Theme</div>
-          <div className="text-sm font-semibold text-ink-900">{theme === 'light' ? 'Black mode' : 'White mode'}</div>
         </div>
       </button>
 
@@ -81,8 +79,7 @@ export function Topbar({
             {initials}
           </div>
           <div className="hidden sm:block text-left">
-            <div className="text-sm font-semibold text-ink-900">{user?.full_name ?? 'Loading...'}</div>
-            <div className="text-xs text-ink-500">{user?.email ?? ''}</div>
+            <div className="text-sm font-medium tracking-[-0.02em] text-ink-900">{user?.full_name ?? 'Loading...'}</div>
           </div>
           <ChevronDown className={clsx('hidden h-4 w-4 text-ink-400 sm:block transition-transform', menuOpen ? 'rotate-180' : '')} />
         </button>
