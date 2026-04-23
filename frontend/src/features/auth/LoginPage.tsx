@@ -1,19 +1,40 @@
-﻿import { useForm } from 'react-hook-form'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Eye, EyeOff, LogIn, Leaf, ShieldCheck, Sparkles, Sprout } from 'lucide-react'
-import { toast } from 'sonner'
 import { AxiosError } from 'axios'
+import { Bird, ChartColumn, Eye, EyeOff, LogIn, Warehouse } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { toast } from 'sonner'
+import { BrandMark } from '@/components/BrandMark'
 import { useAuth } from '@/features/auth/AuthContext'
+import { APP_DESCRIPTION, APP_TAGLINE, APP_NAME } from '@/lib/branding'
 import { ApiError } from '@/types'
 
 const loginSchema = z.object({
-  email: z.string().includes('@', { message: 'Enter a valid email address' }),
+  email: z.string().email('Enter a valid email address'),
   password: z.string().min(1, 'Password is required'),
 })
-type LoginForm = z.infer<typeof loginSchema>
+
+type LoginFormValues = z.infer<typeof loginSchema>
+
+const capabilities = [
+  {
+    icon: Bird,
+    title: 'Farm lifecycle control',
+    description: 'Manage houses, batches, mortality, vaccination, and growth from one operational workspace.',
+  },
+  {
+    icon: Warehouse,
+    title: 'Stock and feed visibility',
+    description: 'Track purchases, consumption, low stock exposure, and finished inventory movement in real time.',
+  },
+  {
+    icon: ChartColumn,
+    title: 'Commercial and finance clarity',
+    description: 'Run orders, invoices, payments, and profit reporting with role-based access and accountability.',
+  },
+]
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -24,204 +45,174 @@ export function LoginPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) })
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+  })
 
-  const onSubmit = async (data: LoginForm) => {
+  const onSubmit = async (values: LoginFormValues) => {
     setIsSubmitting(true)
     try {
-      await login(data)
-      toast.success('Welcome back!')
-    } catch (err) {
-      const axiosErr = err as AxiosError<ApiError>
-      const message =
-        axiosErr.response?.data?.detail ?? 'Login failed. Please try again.'
-      toast.error(message)
+      await login(values)
+      toast.success('Welcome back to Farmexa.')
+    } catch (error) {
+      const axiosError = error as AxiosError<ApiError>
+      toast.error(axiosError.response?.data?.detail ?? 'Login failed. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex bg-neutral-50 selection:bg-brand-100 selection:text-brand-900">
-      {/* ── Left Panel: Brand Experience ────────────────────────── */}
-      <div className="hidden lg:flex lg:w-1/2 xl:w-[55%] relative overflow-hidden flex-col justify-between p-16 sidebar">
-        {/* Deep Forest Gradient Base is already in the .sidebar class in index.css */}
-        
-        {/* Sophisticated light overlays */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-brand-500/10 blur-[120px]" />
-          <div className="absolute bottom-[-5%] left-[-5%] w-[400px] h-[400px] rounded-full bg-brand-200/10 blur-[100px]" />
-        </div>
-
-        {/* Logo Section */}
-        <div className="relative z-10 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl ring-1 ring-white/10"
-            style={{ background: 'linear-gradient(135deg, #166534 0%, #124227 100%)' }}>
-            <Leaf className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-shell-gradient">
+      <div className="grid min-h-screen lg:grid-cols-[1.08fr_0.92fr]">
+        <section className="relative hidden overflow-hidden border-r border-neutral-200 bg-sidebar-gradient px-8 py-10 text-white lg:flex lg:flex-col lg:justify-between xl:px-14 xl:py-12">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute left-[-8rem] top-[-9rem] h-72 w-72 rounded-full bg-brand-500/18 blur-3xl" />
+            <div className="absolute bottom-[-10rem] right-[-4rem] h-80 w-80 rounded-full bg-brand-400/10 blur-3xl" />
+            <div className="absolute bottom-16 left-10 h-56 w-56 rounded-full border border-white/8" />
+            <div className="absolute bottom-6 left-24 h-72 w-72 rounded-full border border-white/6" />
           </div>
-          <div>
-            <div className="text-white font-black text-2xl tracking-tighter leading-none">PERP</div>
-            <div className="text-brand-200 text-xs font-bold uppercase tracking-widest mt-1 opacity-80">Poultry Enterprise</div>
-          </div>
-        </div>
 
-        {/* Hero Section */}
-        <div className="relative z-10 max-w-lg">
+          <div className="relative z-10">
+            <BrandMark light showTagline />
+          </div>
+
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
+            transition={{ duration: 0.5 }}
+            className="relative z-10 max-w-2xl"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 mb-8">
-              <Sparkles className="w-3.5 h-3.5 text-brand-200" />
-              <span className="text-[10px] font-bold text-brand-100 uppercase tracking-[0.2em]">Operations Intelligence</span>
+            <div className="inline-flex items-center rounded-full border border-white/10 bg-white/6 px-4 py-2 text-[0.68rem] font-bold uppercase tracking-[0.24em] text-brand-100">
+              Premium Poultry Operations Workspace
             </div>
-            
-            <h1 className="text-5xl xl:text-6xl font-black text-white leading-[1.05] tracking-tight mb-8">
-              Modern farm management <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-200 to-white">redefined.</span>
+            <h1 className="mt-8 max-w-3xl text-balance font-display text-5xl font-semibold leading-[1.06] text-white xl:text-6xl">
+              Poultry operations aligned from the farm floor to the finance desk.
             </h1>
-            
-            <p className="text-brand-100/60 text-lg leading-relaxed font-medium mb-10">
-              A premium, all-in-one ecosystem for serious poultry operations. 
-              Track flocks, manage feed, and scale your business with data-driven precision.
+            <p className="mt-6 max-w-xl text-lg leading-8 text-white/70">
+              {APP_DESCRIPTION}
             </p>
 
-            <div className="grid grid-cols-2 gap-8">
-              <div className="flex flex-col gap-2">
-                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-1">
-                  <Sprout className="w-5 h-5 text-brand-300" />
+            <div className="mt-10 grid gap-4">
+              {capabilities.map((capability) => {
+                const Icon = capability.icon
+                return (
+                  <div
+                    key={capability.title}
+                    className="rounded-3xl border border-white/10 bg-white/6 px-5 py-4 backdrop-blur-sm"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500/16 text-brand-100">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-semibold text-white">{capability.title}</h2>
+                        <p className="mt-1 text-sm leading-6 text-white/70">{capability.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </motion.div>
+
+          <div className="relative z-10 flex items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs font-medium uppercase tracking-[0.24em] text-white/45">
+            <span>{APP_NAME}</span>
+            <span>{APP_TAGLINE}</span>
+          </div>
+        </section>
+
+        <section className="relative flex items-center justify-center px-4 py-8 sm:px-6 lg:px-10">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="absolute right-[-6rem] top-[-4rem] h-56 w-56 rounded-full bg-brand-100 blur-3xl" />
+            <div className="absolute bottom-[-7rem] left-[-6rem] h-64 w-64 rounded-full bg-brand-50 blur-3xl" />
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.42 }}
+            className="relative z-10 w-full max-w-lg"
+          >
+            <div className="mb-8 lg:hidden">
+              <BrandMark showTagline />
+            </div>
+
+            <div className="card overflow-hidden">
+              <div className="border-b border-neutral-150 bg-neutral-50 px-6 py-6 sm:px-8">
+                <div className="text-[0.7rem] font-bold uppercase tracking-[0.26em] text-brand-700">
+                  Secure Sign In
                 </div>
-                <h4 className="text-white font-bold text-sm">Real-time Tracking</h4>
-                <p className="text-brand-100/40 text-xs leading-relaxed">Monitor every batch with high-fidelity analytics.</p>
+                <h2 className="mt-3 text-3xl font-semibold text-ink-900">Welcome back</h2>
+                <p className="mt-2 text-sm leading-6 text-ink-500">
+                  Sign in to continue managing farm, stock, sales, and finance workflows in Farmexa ERP.
+                </p>
               </div>
-              <div className="flex flex-col gap-2">
-                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-1">
-                  <ShieldCheck className="w-5 h-5 text-brand-200" />
+
+              <div className="px-6 py-6 sm:px-8 sm:py-7">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                  <div>
+                    <label htmlFor="email" className="form-label">
+                      Work email
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="name@farmexa.com"
+                      className="form-input"
+                      {...register('email')}
+                    />
+                    {errors.email ? <p className="form-error">{errors.email.message}</p> : null}
+                  </div>
+
+                  <div>
+                    <label htmlFor="password" className="form-label">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        placeholder="Enter your password"
+                        className="form-input pr-12"
+                        {...register('password')}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((current) => !current)}
+                        className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-2xl text-ink-400 transition-colors hover:bg-neutral-100 hover:text-ink-700"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                      </button>
+                    </div>
+                    {errors.password ? <p className="form-error">{errors.password.message}</p> : null}
+                  </div>
+
+                  <button type="submit" disabled={isSubmitting} className="btn-primary btn-lg w-full">
+                    {isSubmitting ? (
+                      <>
+                        <div className="h-5 w-5 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      <>
+                        <LogIn className="h-4.5 w-4.5" />
+                        Sign in to Farmexa
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                <div className="mt-6 rounded-2xl border border-brand-100 bg-brand-50/70 px-4 py-3 text-sm text-brand-800">
+                  Password assistance and account access are managed by your Farmexa system administrator.
                 </div>
-                <h4 className="text-white font-bold text-sm">Secure Auditing</h4>
-                <p className="text-brand-100/40 text-xs leading-relaxed">Full financial visibility and movement logs.</p>
               </div>
             </div>
           </motion.div>
-        </div>
-
-        {/* Footer Tagline */}
-        <div className="relative z-10 flex items-center justify-between text-brand-100/30 text-xs font-bold tracking-widest uppercase">
-          <span>© {new Date().getFullYear()} Farmexa Corp</span>
-          <span className="w-8 h-px bg-white/10 mx-4" />
-          <span>v1.0.0 — Enterprise Edition</span>
-        </div>
-      </div>
-
-      {/* ── Right Panel: Login Interface ────────────────────────── */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-neutral-50 relative overflow-hidden">
-        {/* Subtle decorative elements for the white side */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/5 rounded-full blur-[80px] -mr-32 -mt-32" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-brand-200/10 rounded-full blur-[80px] -ml-32 -mb-32" />
-
-        <motion.div
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-          className="w-full max-w-md relative z-10"
-        >
-          {/* Mobile Logo Visibility */}
-          <div className="lg:hidden flex items-center gap-3 mb-10">
-            <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg">
-              <Leaf className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-black text-xl text-neutral-900 tracking-tighter">PERP</span>
-          </div>
-
-          <div className="mb-10">
-            <h2 className="text-3xl font-black text-neutral-900 tracking-tight">Welcome back</h2>
-            <p className="text-sm font-medium text-neutral-400 mt-2">
-              Sign in to your dashboard to manage your farm
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="space-y-2">
-              <label htmlFor="email" className="form-label font-bold text-xs uppercase tracking-wider text-neutral-500">
-                Email Address
-              </label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="name@company.com"
-                className="form-input py-3 rounded-xl border-neutral-200 focus:ring-brand-500/20"
-                {...register('email')}
-              />
-              {errors.email && (
-                <p className="form-error font-bold">{errors.email.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label htmlFor="password" className="form-label font-bold text-xs uppercase tracking-wider text-neutral-500">
-                  Password
-                </label>
-                <a href="#" className="text-xs font-bold text-brand-600 hover:text-brand-700 transition-colors">Forgot password?</a>
-              </div>
-              <div className="relative group">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  className="form-input py-3 pr-12 rounded-xl border-neutral-200 focus:ring-brand-500/20"
-                  {...register('password')}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="form-error font-bold">{errors.password.message}</p>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="btn-primary w-full py-4 rounded-xl font-bold text-base shadow-glow group overflow-hidden relative"
-            >
-              <span className="relative z-10 flex items-center justify-center gap-2">
-                {isSubmitting ? (
-                  <>
-                    <div className="w-5 h-5 border-3 border-white/20 border-t-white rounded-full animate-spin" />
-                    Authenticating…
-                  </>
-                ) : (
-                  <>
-                    Sign In
-                    <LogIn className="w-4.5 h-4.5 group-hover:translate-x-1 transition-transform" />
-                  </>
-                )}
-              </span>
-            </button>
-          </form>
-
-          <div className="mt-12 flex flex-col items-center gap-6">
-            <div className="flex items-center gap-2 text-[10px] font-bold text-neutral-300 uppercase tracking-[0.2em]">
-              <div className="w-8 h-px bg-neutral-200" />
-              Trusted by 100+ Commercial Farms
-              <div className="w-8 h-px bg-neutral-200" />
-            </div>
-            
-            <p className="text-center text-xs font-medium text-neutral-400">
-              Need assistance? Contact your <span className="text-neutral-900 font-bold">System Administrator</span>
-            </p>
-          </div>
-        </motion.div>
+        </section>
       </div>
     </div>
   )

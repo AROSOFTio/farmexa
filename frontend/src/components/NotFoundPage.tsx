@@ -1,39 +1,38 @@
-﻿import { Link } from 'react-router-dom'
-import { Home, Compass, ArrowLeft } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowLeft, Compass, Home } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export function NotFoundPage() {
   return (
-    <motion.div 
-      className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4"
+    <motion.div
+      className="flex min-h-[72vh] flex-col items-center justify-center px-4 text-center"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
       <div className="relative mb-12">
-        <div className="text-[12rem] font-black text-neutral-100/60 leading-none select-none tracking-tighter">404</div>
+        <div className="select-none font-display text-[9rem] font-semibold leading-none tracking-[-0.08em] text-brand-100 sm:text-[11rem]">
+          404
+        </div>
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-24 h-24 rounded-full bg-white shadow-xl flex items-center justify-center">
-            <Compass className="w-12 h-12 text-brand-600 animate-pulse-soft" />
+          <div className="flex h-24 w-24 items-center justify-center rounded-full border border-brand-100 bg-white shadow-card">
+            <Compass className="h-11 w-11 text-brand-600 animate-pulse-soft" />
           </div>
         </div>
       </div>
 
-      <h2 className="text-3xl font-black text-neutral-900 tracking-tight mb-3">Page not found</h2>
-      <p className="text-base font-medium text-neutral-500 mb-10 max-w-sm leading-relaxed">
-        The route you opened does not exist in the current ERP shell or has moved during the latest rollout.
+      <h2 className="text-3xl font-semibold text-ink-900">This Farmexa route does not exist</h2>
+      <p className="mt-3 max-w-md text-base text-ink-500">
+        The page you requested is unavailable or no longer part of the active ERP workspace.
       </p>
 
-      <div className="flex flex-col sm:flex-row items-center gap-4">
-        <Link to="/dashboard" className="btn-primary px-8 py-3.5 rounded-xl font-bold shadow-glow flex items-center gap-2">
-          <Home className="w-4.5 h-4.5" />
-          Back to Dashboard
+      <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
+        <Link to="/dashboard" className="btn-primary btn-lg">
+          <Home className="h-4.5 w-4.5" />
+          Back to dashboard
         </Link>
-        <button 
-          onClick={() => window.history.back()}
-          className="btn-secondary px-8 py-3.5 rounded-xl font-bold flex items-center gap-2"
-        >
-          <ArrowLeft className="w-4.5 h-4.5" />
-          Go Back
+        <button type="button" onClick={() => window.history.back()} className="btn-secondary btn-lg">
+          <ArrowLeft className="h-4.5 w-4.5" />
+          Go back
         </button>
       </div>
     </motion.div>

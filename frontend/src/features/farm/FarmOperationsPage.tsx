@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ElementType } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -72,7 +72,7 @@ type MortalityFormValues = z.infer<typeof mortalitySchema>
 type VaccinationFormValues = z.infer<typeof vaccinationSchema>
 type GrowthFormValues = z.infer<typeof growthSchema>
 
-const modeCopy: Record<FarmOperationMode, { title: string; description: string; path: string; icon: React.ElementType }> = {
+const modeCopy: Record<FarmOperationMode, { title: string; description: string; path: string; icon: ElementType }> = {
   mortality: {
     title: 'Mortality Tracking',
     description: 'Record bird losses with date, cause, and impact on active batch quantity.',
@@ -238,7 +238,7 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
         <div className="card p-12 text-center text-slate-500 text-lg">Loading batch operations...</div>
       ) : batches.length === 0 ? (
         <div className="card flex flex-col items-center gap-4 p-16 text-center border-2 border-slate-200">
-          <ModeIcon className="h-12 w-12 text-blue-500" />
+          <ModeIcon className="h-12 w-12 text-brand-600" />
           <div>
             <h2 className="text-xl font-bold text-slate-900">No batches available yet</h2>
             <p className="mt-2 max-w-md text-base text-slate-500">
@@ -251,7 +251,7 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
           <div className="mb-6 grid gap-4 md:grid-cols-3">
             <div className="card p-5 border-2 border-slate-200">
               <div className="mb-3 flex items-center gap-2 text-slate-500">
-                <ClipboardList className="h-5 w-5 text-blue-500" />
+                <ClipboardList className="h-5 w-5 text-brand-600" />
                 <span className="text-sm font-bold uppercase tracking-[0.12em]">Batch</span>
               </div>
               <p className="text-2xl font-bold text-slate-900">{selectedBatch?.batch_number ?? '—'}</p>
@@ -261,7 +261,7 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
             </div>
             <div className="card p-5 border-2 border-slate-200">
               <div className="mb-3 flex items-center gap-2 text-slate-500">
-                <HeartPulse className="h-5 w-5 text-blue-500" />
+                <HeartPulse className="h-5 w-5 text-brand-600" />
                 <span className="text-sm font-bold uppercase tracking-[0.12em]">
                   {mode === 'mortality' ? 'Recorded Losses' : mode === 'vaccination' ? 'Completed Doses' : 'Latest Weight'}
                 </span>
@@ -277,7 +277,7 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
             </div>
             <div className="card p-5 border-2 border-slate-200">
               <div className="mb-3 flex items-center gap-2 text-slate-500">
-                <Activity className="h-5 w-5 text-blue-500" />
+                <Activity className="h-5 w-5 text-brand-600" />
                 <span className="text-sm font-bold uppercase tracking-[0.12em]">
                   {mode === 'vaccination' ? 'Total Vaccine Logs' : 'Active Birds'}
                 </span>

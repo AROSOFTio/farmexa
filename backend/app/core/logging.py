@@ -19,4 +19,4 @@ def setup_logging(level: str = "INFO") -> None:
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
 
-logger = logging.getLogger("perp")
+logger = logging.getLogger("farmexa")

@@ -43,6 +43,7 @@ type ProductFormValues = z.infer<typeof productSchema>
 
 export function SettingsConfigPage() {
   const qc = useQueryClient()
+
   const { data: configs = [] } = useQuery({
     queryKey: ['settings-config'],
     queryFn: () => api.get<SystemConfig[]>('/settings/config').then((response) => response.data),
@@ -66,12 +67,12 @@ export function SettingsConfigPage() {
   const createConfig = useMutation({
     mutationFn: (values: ConfigFormValues) => api.post('/settings/config', values),
     onSuccess: () => {
-      toast.success('System config saved.')
+      toast.success('System configuration saved.')
       qc.invalidateQueries({ queryKey: ['settings-config'] })
       configForm.reset({ key: '', value: '', description: '' })
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.detail ?? 'Failed to save system config.')
+      toast.error(error?.response?.data?.detail ?? 'Failed to save system configuration.')
     },
   })
 
@@ -91,21 +92,22 @@ export function SettingsConfigPage() {
     <div className="animate-fade-in">
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">System Configuration</h1>
+          <div className="text-[0.7rem] font-bold uppercase tracking-[0.28em] text-brand-700">Administrative controls</div>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900">Farmexa business settings</h1>
           <p className="mt-1 max-w-2xl text-sm font-medium text-neutral-500">
-            Manage runtime config keys and baseline product pricing from one settings surface.
+            Manage runtime controls, invoice defaults, and baseline product pricing from one administrative workspace.
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
           <ShieldCheck className="h-3.5 w-3.5" />
-          Admin Settings
+          Admin settings
         </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[360px_420px_minmax(0,1fr)]">
         <div className="card p-6">
           <h2 className="text-lg font-bold text-neutral-900">Save config key</h2>
-          <p className="mt-1 text-sm text-neutral-500">Add or update a system-level preference value.</p>
+          <p className="mt-1 text-sm text-neutral-500">Add or update system-level values used across the Farmexa workspace.</p>
           <form className="mt-5 space-y-4" onSubmit={configForm.handleSubmit((values) => createConfig.mutate(values))}>
             <div>
               <label className="form-label">Key</label>
@@ -128,7 +130,7 @@ export function SettingsConfigPage() {
 
         <div className="card p-6">
           <h2 className="text-lg font-bold text-neutral-900">Add priced product</h2>
-          <p className="mt-1 text-sm text-neutral-500">Store a baseline selling product and pricing pair for downstream operations.</p>
+          <p className="mt-1 text-sm text-neutral-500">Store catalog pricing defaults used by downstream sales and planning workflows.</p>
           <form className="mt-5 space-y-4" onSubmit={productForm.handleSubmit((values) => createProduct.mutate(values))}>
             <div>
               <label className="form-label">Product name</label>
@@ -161,9 +163,9 @@ export function SettingsConfigPage() {
 
         <div className="space-y-6">
           <div className="card overflow-hidden">
-            <div className="border-b border-neutral-100 px-6 py-5">
+            <div className="border-b border-neutral-150 px-6 py-5">
               <h2 className="text-lg font-bold text-neutral-900">Runtime config</h2>
-              <p className="mt-1 text-sm text-neutral-500">Active keys currently stored in the ERP database.</p>
+              <p className="mt-1 text-sm text-neutral-500">Active keys currently stored in the Farmexa database.</p>
             </div>
             <div className="overflow-x-auto">
               <table className="data-table">
@@ -178,7 +180,7 @@ export function SettingsConfigPage() {
                   {configs.length === 0 ? (
                     <tr>
                       <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={3}>
-                        No system config records stored yet.
+                        No system configuration records stored yet.
                       </td>
                     </tr>
                   ) : (
@@ -196,9 +198,9 @@ export function SettingsConfigPage() {
           </div>
 
           <div className="card overflow-hidden">
-            <div className="border-b border-neutral-100 px-6 py-5">
+            <div className="border-b border-neutral-150 px-6 py-5">
               <h2 className="text-lg font-bold text-neutral-900">Priced products</h2>
-              <p className="mt-1 text-sm text-neutral-500">Product catalog values available for future pricing and sales flows.</p>
+              <p className="mt-1 text-sm text-neutral-500">Catalog values available for commercial pricing and order entry.</p>
             </div>
             <div className="overflow-x-auto">
               <table className="data-table">

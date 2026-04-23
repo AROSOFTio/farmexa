@@ -16,6 +16,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { User, Role, ApiError } from '@/types'
 import { format } from 'date-fns'
 import { clsx } from 'clsx'
+import { ROLE_LABELS } from '@/lib/branding'
 
 // ── Schemas ───────────────────────────────────────────────────
 
@@ -34,24 +35,16 @@ type CreateUserForm = z.infer<typeof createUserSchema>
 
 // ── Role badge ────────────────────────────────────────────────
 
-const ROLE_LABELS: Record<string, string> = {
-  super_manager:     'Super Manager',
-  farm_manager:      'Farm Manager',
-  inventory_officer: 'Inventory Officer',
-  sales_officer:     'Sales Officer',
-  finance_officer:   'Finance Officer',
-}
-
 function RoleBadge({ name }: { name: string }) {
   const colors: Record<string, string> = {
-    super_manager:     'bg-brand-100 text-brand-700 ring-1 ring-brand-200',
-    farm_manager:      'bg-brand-50 text-brand-700 ring-1 ring-brand-200',
-    inventory_officer: 'bg-info-light text-info ring-1 ring-blue-200',
-    sales_officer:     'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
-    finance_officer:   'bg-red-50 text-red-700 ring-1 ring-red-200',
+    super_manager: 'bg-ink-900 text-white ring-1 ring-ink-900/10',
+    farm_manager: 'bg-brand-100 text-brand-800 ring-1 ring-brand-200',
+    inventory_officer: 'bg-brand-50 text-brand-700 ring-1 ring-brand-150',
+    sales_officer: 'bg-neutral-100 text-ink-700 ring-1 ring-neutral-200',
+    finance_officer: 'bg-neutral-200 text-ink-800 ring-1 ring-neutral-300',
   }
   return (
-    <span className={clsx("badge", colors[name] ?? 'badge-neutral')}>
+    <span className={clsx('badge', colors[name] ?? 'badge-neutral')}>
       {ROLE_LABELS[name] ?? name}
     </span>
   )

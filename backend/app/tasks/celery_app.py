@@ -3,10 +3,11 @@ Celery application configuration.
 """
 
 from celery import Celery
+
 from app.core.config import settings
 
 celery_app = Celery(
-    "perp",
+    "farmexa",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
     include=["app.tasks.scheduled"],
@@ -21,5 +22,5 @@ celery_app.conf.update(
     task_track_started=True,
     task_acks_late=True,
     worker_prefetch_multiplier=1,
-    beat_schedule={},  # Scheduled tasks added in Phase 2+
+    beat_schedule={},
 )

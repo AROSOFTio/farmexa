@@ -30,8 +30,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           position="top-right"
           toastOptions={{
             style: {
-              fontFamily: 'Inter, system-ui, sans-serif',
-              fontSize: '0.875rem',
+              fontFamily: 'Manrope, system-ui, sans-serif',
+              fontSize: '0.9rem',
             },
             classNames: {
               toast: 'shadow-modal',

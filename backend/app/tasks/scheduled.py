@@ -1,15 +1,16 @@
 """
-Scheduled Celery tasks placeholder — populated in Phase 2+.
+Scheduled Celery tasks for Farmexa background operations.
 """
 
-from app.tasks.celery_app import celery_app
 import logging
 
-logger = logging.getLogger("perp.tasks")
+from app.tasks.celery_app import celery_app
+
+logger = logging.getLogger("farmexa.tasks")
 
 
 @celery_app.task(name="tasks.health_ping")
 def health_ping() -> str:
-    """Simple liveness task — verifies Celery worker is responsive."""
+    """Simple liveness task that verifies the Celery worker is responsive."""
     logger.info("Celery health ping OK")
     return "pong"

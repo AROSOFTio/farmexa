@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type ElementType } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -69,7 +69,7 @@ interface BatchOption {
   breed: string
 }
 
-const sectionCopy: Record<FeedSection, { title: string; description: string; icon: React.ElementType }> = {
+const sectionCopy: Record<FeedSection, { title: string; description: string; icon: ElementType }> = {
   stock: {
     title: 'Feed Stock',
     description: 'Maintain feed SKUs, categories, stock balances, and reorder thresholds.',
@@ -304,7 +304,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">{copy.title}</h1>
           <p className="mt-1 max-w-2xl text-base font-medium text-slate-600">{copy.description}</p>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-blue-700">
+        <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-brand-700">
           <SectionIcon className="h-4 w-4" />
           Feed Operations
         </div>
@@ -313,7 +313,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
       <div className="mb-6 grid gap-4 md:grid-cols-3">
         <div className="card p-5 border-2 border-slate-200">
           <div className="mb-3 flex items-center gap-2 text-slate-500">
-            <Boxes className="h-5 w-5 text-blue-500" />
+            <Boxes className="h-5 w-5 text-brand-600" />
             <span className="text-sm font-bold uppercase tracking-[0.12em]">Feed items</span>
           </div>
           <p className="text-2xl font-bold text-slate-900">{items.length.toLocaleString()}</p>
@@ -321,7 +321,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
         </div>
         <div className="card p-5 border-2 border-slate-200">
           <div className="mb-3 flex items-center gap-2 text-slate-500">
-            <AlertTriangle className="h-5 w-5 text-blue-500" />
+            <AlertTriangle className="h-5 w-5 text-brand-600" />
             <span className="text-sm font-bold uppercase tracking-[0.12em]">Low stock</span>
           </div>
           <p className="text-2xl font-bold text-slate-900">{lowStockCount.toLocaleString()}</p>
@@ -329,7 +329,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
         </div>
         <div className="card p-5 border-2 border-slate-200">
           <div className="mb-3 flex items-center gap-2 text-slate-500">
-            <BadgeDollarSign className="h-5 w-5 text-blue-500" />
+            <BadgeDollarSign className="h-5 w-5 text-brand-600" />
             <span className="text-sm font-bold uppercase tracking-[0.12em]">
               {section === 'purchases' ? 'Purchase spend' : 'Suppliers'}
             </span>

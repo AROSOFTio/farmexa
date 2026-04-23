@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import IntegrityError
 
-logger = logging.getLogger("perp.errors")
+logger = logging.getLogger("farmexa.errors")
 
 
 def register_exception_handlers(app: FastAPI) -> None:

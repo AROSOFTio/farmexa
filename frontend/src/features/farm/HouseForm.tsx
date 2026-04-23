@@ -1,81 +1,110 @@
+import { useEffect } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import api from '@/services/api'
 import { clsx } from 'clsx'
+import api from '@/services/api'
 
 const houseSchema = z.object({
   name: z.string().min(1, 'House name is required').max(100),
   capacity: z.coerce.number().min(1, 'Capacity must be greater than 0'),
+  status: z.enum(['active', 'maintenance', 'inactive']),
 })
 
 type HouseFormValues = z.infer<typeof houseSchema>
 
-export function HouseForm({ onSuccess }: { onSuccess?: () => void }) {
-  const queryClient = useQueryClient()
+interface HouseFormProps {
+  houseId?: number
+  initialValues?: Partial<HouseFormValues>
+  onSuccess?: () => void
+}
 
-  const { register, handleSubmit, formState: { errors } } = useForm<HouseFormValues>({
+export function HouseForm({ houseId, initialValues, onSuccess }: HouseFormProps) {
+  const queryClient = useQueryClient()
+  const isEditing = Boolean(houseId)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<HouseFormValues>({
     resolver: zodResolver(houseSchema),
+    defaultValues: {
+      name: initialValues?.name ?? '',
+      capacity: initialValues?.capacity ?? 0,
+      status: initialValues?.status ?? 'active',
+    },
   })
 
-  const createHouse = useMutation({
-    mutationFn: (data: HouseFormValues) => {
-      return api.post('/farm/houses', { ...data, status: 'active' })
-    },
+  useEffect(() => {
+    reset({
+      name: initialValues?.name ?? '',
+      capacity: initialValues?.capacity ?? 0,
+      status: initialValues?.status ?? 'active',
+    })
+  }, [initialValues?.capacity, initialValues?.name, initialValues?.status, reset])
+
+  const mutation = useMutation({
+    mutationFn: (values: HouseFormValues) =>
+      isEditing ? api.put(`/farm/houses/${houseId}`, values) : api.post('/farm/houses', values),
     onSuccess: () => {
-      toast.success('Poultry house created successfully')
+      toast.success(isEditing ? 'House updated successfully.' : 'House created successfully.')
       queryClient.invalidateQueries({ queryKey: ['farm-houses'] })
+      queryClient.invalidateQueries({ queryKey: ['farm-batches'] })
       onSuccess?.()
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to create poultry house')
-    }
+      toast.error(error.response?.data?.detail || `Failed to ${isEditing ? 'update' : 'create'} house.`)
+    },
   })
 
-  const onSubmit = (data: HouseFormValues) => {
-    createHouse.mutate(data)
-  }
-
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-5">
       <div>
-        <label className="form-label">House Name</label>
+        <label className="form-label">House name</label>
         <input
           {...register('name')}
-          className={clsx('form-input', errors.name && 'border-red-500 focus:ring-red-500/20')}
-          placeholder="e.g. Broiler House A"
+          className={clsx('form-input', errors.name && 'border-red-400 focus:ring-red-100')}
+          placeholder="Broiler House A"
         />
-        {errors.name && <p className="form-error">{errors.name.message}</p>}
+        {errors.name ? <p className="form-error">{errors.name.message}</p> : null}
       </div>
 
-      <div>
-        <label className="form-label">Maximum Capacity (Birds)</label>
-        <input
-          type="number"
-          {...register('capacity')}
-          className={clsx('form-input', errors.capacity && 'border-red-500 focus:ring-red-500/20')}
-          placeholder="e.g. 5000"
-        />
-        {errors.capacity && <p className="form-error">{errors.capacity.message}</p>}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="form-label">Capacity</label>
+          <input
+            type="number"
+            {...register('capacity')}
+            className={clsx('form-input', errors.capacity && 'border-red-400 focus:ring-red-100')}
+            placeholder="5000"
+          />
+          {errors.capacity ? <p className="form-error">{errors.capacity.message}</p> : null}
+        </div>
+
+        <div>
+          <label className="form-label">Status</label>
+          <select
+            {...register('status')}
+            className={clsx('form-input', errors.status && 'border-red-400 focus:ring-red-100')}
+          >
+            <option value="active">Active</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          {errors.status ? <p className="form-error">{errors.status.message}</p> : null}
+        </div>
       </div>
 
-      <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
-        <button
-          type="button"
-          onClick={onSuccess}
-          className="btn-secondary"
-          disabled={createHouse.isPending}
-        >
+      <div className="flex justify-end gap-3 border-t border-neutral-150 pt-5">
+        <button type="button" onClick={onSuccess} className="btn-secondary" disabled={mutation.isPending}>
           Cancel
         </button>
-        <button
-          type="submit"
-          className="btn-primary"
-          disabled={createHouse.isPending}
-        >
-          {createHouse.isPending ? 'Saving...' : 'Create House'}
+        <button type="submit" className="btn-primary" disabled={mutation.isPending}>
+          {mutation.isPending ? 'Saving...' : isEditing ? 'Save changes' : 'Create house'}
         </button>
       </div>
     </form>

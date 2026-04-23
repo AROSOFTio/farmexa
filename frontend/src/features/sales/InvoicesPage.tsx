@@ -29,6 +29,9 @@ interface Invoice {
   total_amount: number
   paid_amount: number
   created_at: string
+  customer?: {
+    name: string
+  } | null
   payments: Payment[]
 }
 
@@ -152,7 +155,9 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
               <label className="form-label">Invoice</label>
               <select className="form-input" {...paymentForm.register('invoice_id')}>
                 <option value={0}>Choose invoice</option>
-                {invoices.map((invoice) => (
+                {invoices
+                  .filter((invoice) => Math.max(invoice.total_amount - invoice.paid_amount, 0) > 0)
+                  .map((invoice) => (
                   <option key={invoice.id} value={invoice.id}>
                     {invoice.invoice_number} - UGX {(invoice.total_amount - invoice.paid_amount).toLocaleString()} outstanding
                   </option>
@@ -224,7 +229,7 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
                       <tr key={invoice.id}>
                         <td className="pl-6">
                           <div className="font-semibold text-neutral-900">{invoice.invoice_number}</div>
-                          <div className="text-xs text-neutral-500">Customer #{invoice.customer_id}</div>
+                          <div className="text-xs text-neutral-500">{invoice.customer?.name || `Customer #${invoice.customer_id}`}</div>
                         </td>
                         <td>
                           <span className={invoice.status === 'paid' ? 'badge badge-success' : invoice.status === 'partial' ? 'badge badge-warning' : 'badge badge-brand'}>

@@ -38,7 +38,7 @@ interface SlaughterRecord {
   waste_weight: number
   condemned_birds_count: number
   notes?: string | null
-  status: 'pending' | 'completed' | 'cancelled'
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
   total_dressed_weight?: number | null
   yield_percentage?: number | null
   outputs: SlaughterOutput[]
@@ -56,7 +56,7 @@ const recordSchema = z.object({
 
 const completionSchema = z.object({
   record_id: z.coerce.number().int().positive('Record is required'),
-  status: z.enum(['pending', 'completed', 'cancelled']),
+  status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled']),
   total_dressed_weight: z.coerce.number().optional(),
   waste_weight: z.coerce.number().min(0, 'Waste must be zero or more'),
   condemned_birds_count: z.coerce.number().int().min(0, 'Condemned birds must be zero or more'),
@@ -381,9 +381,10 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
               <div>
                 <label className="form-label">Status</label>
                 <select className="form-input" {...completionForm.register('status')}>
-                  <option value="pending">Pending</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="in_progress">In progress</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
                 </select>
               </div>
               <div>
@@ -468,7 +469,9 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
                                 ? 'badge badge-success'
                                 : record.status === 'cancelled'
                                   ? 'badge badge-danger'
-                                  : 'badge badge-warning'
+                                  : record.status === 'in_progress'
+                                    ? 'badge badge-brand'
+                                    : 'badge badge-warning'
                             }
                           >
                             {record.status}

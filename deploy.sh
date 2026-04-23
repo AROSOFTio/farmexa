@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# PERP / Farmexa - Production Deployment Script
+# Farmexa - Production Deployment Script
 # Repo:    https://github.com/AROSOFTio/farmexa.git
 # Deploy:  /www/wwwroot/farmexa.arosoft.io
 # Port:    4002 (internal nginx -> reverse-proxied by host Nginx)

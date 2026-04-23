@@ -4,10 +4,11 @@ Request logging middleware.
 
 import logging
 import time
+
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
-logger = logging.getLogger("perp.access")
+logger = logging.getLogger("farmexa.access")
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -16,7 +17,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         duration_ms = (time.perf_counter() - start) * 1000
         logger.info(
-            f"{request.method} {request.url.path} → {response.status_code} "
+            f"{request.method} {request.url.path} -> {response.status_code} "
             f"({duration_ms:.1f}ms)"
         )
         return response

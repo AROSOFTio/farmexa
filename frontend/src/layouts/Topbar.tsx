@@ -1,36 +1,26 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Bell,
-  LogOut,
-  Settings,
-  Menu,
-  ChevronDown,
-  Sun,
-} from 'lucide-react'
-import { useAuth } from '@/features/auth/AuthContext'
+import { ChevronDown, LogOut, Menu, Settings, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
+import { BrandMark } from '@/components/BrandMark'
+import { useAuth } from '@/features/auth/AuthContext'
+import { ROLE_LABELS } from '@/lib/branding'
 
 export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
-  const { user, logout } = useAuth()
+  const { user, logout, hasPermission } = useAuth()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const handleLogout = async () => {
-    setMenuOpen(false)
-    try {
-      await logout()
-    } catch {
-      toast.error('Logout failed. Please try again.')
-    }
-  }
-
-  const initials = user?.full_name
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase() ?? '??'
+  const initials = useMemo(
+    () =>
+      user?.full_name
+        .split(' ')
+        .map((name) => name[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase() ?? 'FM',
+    [user?.full_name]
+  )
 
   const today = new Date().toLocaleDateString('en-UG', {
     weekday: 'short',
@@ -39,129 +29,108 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
     year: 'numeric',
   })
 
+  const roleLabel = user?.role?.name ? ROLE_LABELS[user.role.name] ?? user.role.name : 'Workspace User'
+
+  const handleLogout = async () => {
+    setMenuOpen(false)
+    try {
+      await logout()
+    } catch {
+      toast.error('Sign-out failed. Please try again.')
+    }
+  }
+
   return (
     <header className="topbar">
-      {/* Mobile Menu Button */}
       <button
+        type="button"
         onClick={onOpenSidebar}
-        className="lg:hidden p-2 -ml-2 text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 rounded-lg transition-colors"
+        className="rounded-2xl border border-neutral-200 bg-white p-2.5 text-ink-600 shadow-sm transition-colors hover:bg-neutral-50 lg:hidden"
       >
-        <Menu className="w-5 h-5" />
+        <Menu className="h-5 w-5" />
       </button>
 
-      {/* Date display */}
-      <div className="hidden md:flex items-center gap-2 text-neutral-400">
-        <Sun className="w-4 h-4 text-blue-500" />
-        <span className="text-xs font-medium">{today}</span>
+      <div className="lg:hidden">
+        <BrandMark compact />
       </div>
 
-      {/* Spacer */}
-      <div className="flex-1" />
+      <div className="hidden md:flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-2 text-sm shadow-sm">
+        <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
+          <ShieldCheck className="h-4 w-4" />
+        </div>
+        <div>
+          <div className="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-ink-500">Workspace date</div>
+          <div className="text-sm font-semibold text-ink-800">{today}</div>
+        </div>
+      </div>
 
-      {/* Right section */}
-      <div className="flex items-center gap-1.5">
+      <div className="ml-auto flex items-center gap-3">
+        <div className="hidden lg:block text-right">
+          <div className="text-[0.68rem] font-bold uppercase tracking-[0.24em] text-ink-500">Signed in as</div>
+          <div className="text-sm font-semibold text-ink-800">{roleLabel}</div>
+        </div>
 
-        {/* Notifications */}
-        <button
-          className="relative w-9 h-9 rounded-xl flex items-center justify-center text-neutral-500
-                     hover:bg-neutral-100 hover:text-neutral-700 transition-all duration-150"
-          title="Notifications"
-        >
-          <Bell className="w-4.5 h-4.5" />
-          {/* Notification dot */}
-          <span
-            className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border-2 border-white bg-blue-600"
-          />
-        </button>
-
-        {/* Divider */}
-        <div className="w-px h-5 bg-neutral-150 mx-1" />
-
-        {/* User menu */}
         <div className="relative">
           <button
-            onClick={() => setMenuOpen((v) => !v)}
-            className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl
-                       hover:bg-neutral-100 transition-all duration-150"
+            type="button"
+            onClick={() => setMenuOpen((current) => !current)}
+            className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-2.5 py-2 shadow-sm transition-all duration-150 hover:border-neutral-300 hover:bg-neutral-50"
           >
-            {/* Avatar with gradient */}
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }}
-            >
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-gradient text-sm font-bold text-white">
               {initials}
             </div>
             <div className="hidden sm:block text-left">
-              <div className="text-sm font-semibold text-neutral-800 leading-none">
-                {user?.full_name ?? 'Loading…'}
-              </div>
-              <div className="text-xs text-neutral-500 mt-0.5 capitalize font-medium">
-                {user?.role?.name?.replace('_', ' ') ?? '—'}
-              </div>
+              <div className="text-sm font-semibold text-ink-900">{user?.full_name ?? 'Loading...'}</div>
+              <div className="text-xs font-medium text-ink-500">{user?.email ?? ''}</div>
             </div>
-            <ChevronDown
-              className="w-3.5 h-3.5 text-neutral-400 hidden sm:block"
-              style={{ transition: 'transform 0.15s', transform: menuOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
-            />
+            <ChevronDown className={`hidden h-4 w-4 text-ink-400 sm:block ${menuOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          {/* Dropdown */}
           {menuOpen && (
             <>
-              <div
-                className="fixed inset-0 z-40"
+              <button
+                type="button"
+                aria-label="Close user menu"
+                className="fixed inset-0 z-30"
                 onClick={() => setMenuOpen(false)}
               />
-              <div
-                className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl
-                           border-2 border-neutral-200 z-50 py-2 animate-fade-in overflow-hidden shadow-lg"
-              >
-                {/* User info header */}
-                <div
-                  className="px-4 py-3 mb-1"
-                  style={{ borderBottom: '1px solid #e7eeea' }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                      style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }}
-                    >
-                      {initials}
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-neutral-800 leading-tight">
-                        {user?.full_name}
-                      </div>
-                      <div className="text-xs text-neutral-400 truncate mt-0.5">
-                        {user?.email}
-                      </div>
-                    </div>
+              <div className="absolute right-0 top-full z-40 mt-2 w-72 overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-modal">
+                <div className="border-b border-neutral-150 bg-neutral-50 px-5 py-4">
+                  <div className="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-ink-500">
+                    Farmexa Workspace
                   </div>
+                  <div className="mt-1 text-base font-semibold text-ink-900">{user?.full_name}</div>
+                  <div className="mt-1 text-sm text-ink-500">{roleLabel}</div>
                 </div>
 
-                <button
-                  onClick={() => { setMenuOpen(false); navigate('/settings/users') }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700
-                             hover:bg-neutral-50 transition-colors"
-                >
-                  <div className="w-7 h-7 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
-                    <Settings className="w-3.5 h-3.5 text-neutral-500" />
-                  </div>
-                  Settings
-                </button>
+                <div className="p-2">
+                  {hasPermission('settings:read') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        navigate('/settings/config')
+                      }}
+                      className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-ink-700 transition-colors hover:bg-neutral-50"
+                    >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-neutral-100 text-ink-500">
+                        <Settings className="h-4 w-4" />
+                      </div>
+                      Workspace settings
+                    </button>
+                  )}
 
-                <div className="my-1 mx-3" style={{ height: '1px', background: '#e7eeea' }} />
-
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600
-                             hover:bg-red-50 transition-colors"
-                >
-                  <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
-                    <LogOut className="w-3.5 h-3.5 text-red-500" />
-                  </div>
-                  Sign out
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-danger transition-colors hover:bg-danger-light"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-danger-light text-danger">
+                      <LogOut className="h-4 w-4" />
+                    </div>
+                    Sign out
+                  </button>
+                </div>
               </div>
             </>
           )}

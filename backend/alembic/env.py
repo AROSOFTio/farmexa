@@ -1,24 +1,22 @@
-# Alembic Environment Configuration
-# Uses async SQLAlchemy engine to match the application.
+# Alembic environment configuration.
+# Uses the application settings so migrations stay aligned with runtime database config.
 
+import os
+import sys
 from logging.config import fileConfig
+
+from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
-from alembic import context
 
-# Load application settings
-import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from app.core.config import settings
 
-# Import all models so Alembic detects metadata
-import app.models  # noqa: F401
+from app.core.config import settings
 from app.db.base import Base
+import app.models  # noqa: F401
 
 config = context.config
 
-# NOTE: Do NOT use config.set_main_option() — it goes through configparser
-# which chokes on % characters in passwords. Use settings.DATABASE_URL directly.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
@@ -26,7 +24,6 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    # Use the URL directly — bypasses configparser interpolation
     context.configure(
         url=settings.ASYNC_DATABASE_URL,
         target_metadata=target_metadata,
@@ -39,7 +36,7 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection):
+def do_run_migrations(connection) -> None:
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
@@ -58,6 +55,7 @@ async def run_async_migrations() -> None:
 
 def run_migrations_online() -> None:
     import asyncio
+
     asyncio.run(run_async_migrations())
 
 

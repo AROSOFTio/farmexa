@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
-LABEL maintainer="PERP Platform"
-LABEL description="Poultry ERP Backend — FastAPI"
+LABEL maintainer="Farmexa Platform"
+LABEL description="Farmexa ERP backend API"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -10,18 +10,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Copy application code
 COPY . .
 
 EXPOSE 8000
