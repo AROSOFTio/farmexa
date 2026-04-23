@@ -131,8 +131,6 @@ export function HousesPage() {
           ))}
         </div>
       )}
-        </div>
-      )}
 
       <Modal
         isOpen={isModalOpen}
