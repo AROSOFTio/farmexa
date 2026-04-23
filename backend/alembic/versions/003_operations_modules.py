@@ -7,6 +7,7 @@ Create Date: 2026-04-23 20:45:00.000000
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 revision = "003_operations_modules"
@@ -15,20 +16,30 @@ branch_labels = None
 depends_on = None
 
 
-stock_category = sa.Enum(
+stock_category = postgresql.ENUM(
     "raw_material",
     "packaging",
     "medicine",
     "finished_product",
     "other",
     name="stockcategory",
+    create_type=False,
 )
-movement_type = sa.Enum("in", "out", "adjustment", name="movementtype")
-customer_type = sa.Enum("retail", "wholesale", name="customertype")
-order_status = sa.Enum("pending", "completed", "cancelled", name="orderstatus")
-invoice_status = sa.Enum("draft", "issued", "partial", "paid", "overdue", "cancelled", name="invoicestatus")
-payment_method = sa.Enum("cash", "bank_transfer", "mobile_money", "cheque", name="paymentmethod")
-slaughter_status = sa.Enum("scheduled", "in_progress", "completed", "cancelled", name="slaughterstatus")
+movement_type = postgresql.ENUM("in", "out", "adjustment", name="movementtype", create_type=False)
+customer_type = postgresql.ENUM("retail", "wholesale", name="customertype", create_type=False)
+order_status = postgresql.ENUM("pending", "completed", "cancelled", name="orderstatus", create_type=False)
+invoice_status = postgresql.ENUM(
+    "draft",
+    "issued",
+    "partial",
+    "paid",
+    "overdue",
+    "cancelled",
+    name="invoicestatus",
+    create_type=False,
+)
+payment_method = postgresql.ENUM("cash", "bank_transfer", "mobile_money", "cheque", name="paymentmethod", create_type=False)
+slaughter_status = postgresql.ENUM("scheduled", "in_progress", "completed", "cancelled", name="slaughterstatus", create_type=False)
 
 
 def upgrade() -> None:
