@@ -11,8 +11,8 @@
     --surface-card: #ffffff;
     --surface-soft: #f8fafc;
     --surface-muted: #eef2f7;
-    --sidebar-bg: #475569;
-    --sidebar-active: #334155;
+    --sidebar-bg: #0f2747;
+    --sidebar-active: #1d4ed8;
     --topbar-bg: rgba(255, 255, 255, 0.92);
     --border-subtle: #e2e8f0;
     --border-strong: #cbd5e1;
@@ -263,8 +263,10 @@
   }
 
   .sidebar {
-    background: var(--sidebar-bg);
-    color: rgba(255, 255, 255, 0.9);
+    background:
+      linear-gradient(180deg, rgba(37, 99, 235, 0.2) 0%, rgba(15, 39, 71, 0) 24%),
+      linear-gradient(180deg, #16345c 0%, #0f2747 46%, #0a1730 100%);
+    color: #ffffff;
     box-shadow: var(--shadow-shell);
   }
 
