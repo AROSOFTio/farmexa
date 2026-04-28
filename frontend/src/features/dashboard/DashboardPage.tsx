@@ -194,7 +194,7 @@ export function DashboardPage() {
       const canInventory = hasPermission('inventory:read')
       const canReports = hasPermission('reports:read')
 
-      const [kpis, profit, salesReport, houses, batches, feedItems, consumptions, slaughterRecords, invoices, expenses, incomes, movements] =
+      const [kpis, profit, salesReport, houses, batches, feedItems, consumptions, slaughterRecords, invoices, expenses, incomes, movements, eggSummary] =
         await Promise.all([
           api.get<KpiData>('/analytics/kpis').then((response) => response.data),
           canReports

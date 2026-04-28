@@ -15,7 +15,7 @@ interface TenantModule {
 }
 
 interface Tenant {
-  id: int
+  id: number
   name: string
   slug: string
   email: string
