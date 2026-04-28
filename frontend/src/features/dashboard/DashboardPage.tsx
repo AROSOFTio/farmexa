@@ -5,24 +5,18 @@ import {
   AlertTriangle,
   ArrowRight,
   Bird,
-  DollarSign,
+  ClipboardCheck,
   Egg,
-  Package2,
-  Scissors,
-  ShieldAlert,
-  Syringe,
+  FilePlus2,
+  Package,
+  Receipt,
+  Skull,
   Wheat,
 } from 'lucide-react'
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
-  Cell,
-  Legend,
   Line,
   LineChart,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -33,30 +27,15 @@ import { useAuth } from '@/features/auth/AuthContext'
 
 interface KpiData {
   total_revenue: number
-  total_expenses: number
-  net_profit: number
-  total_orders: number
-  active_customers: number
-  total_birds_slaughtered: number
-}
-
-interface House {
-  id: number
-  name: string
-  capacity: number
-  status: 'active' | 'maintenance' | 'inactive'
 }
 
 interface Batch {
   id: number
   batch_number: string
-  house_id: number
   breed: string
   arrival_date: string
   active_quantity: number
-  initial_quantity: number
   status: string
-  house?: House | null
 }
 
 interface FeedItem {
@@ -73,37 +52,32 @@ interface FeedConsumption {
   quantity: number
 }
 
-interface SlaughterOutput {
-  id: number
-  quantity: number
-}
-
-interface SlaughterRecord {
-  id: number
-  slaughter_date: string
-  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
-  yield_percentage?: number | null
-  total_dressed_weight?: number | null
-  live_birds_count: number
-  created_at: string
-  outputs?: SlaughterOutput[]
-}
-
-interface Invoice {
-  id: number
-  invoice_number: string
-  status: 'draft' | 'issued' | 'partial' | 'paid' | 'overdue' | 'cancelled'
-  due_date: string
-  total_amount: number
-  paid_amount: number
+interface EggSummary {
+  total_eggs: number
+  total_good: number
+  avg_production_rate: number | null
 }
 
 interface EggLog {
   id: number
   record_date: string
   total_eggs: number
-  good_eggs: number
-  production_rate: number | null
+}
+
+interface Invoice {
+  id: number
+  invoice_number: string
+  status: 'draft' | 'issued' | 'partial' | 'paid' | 'overdue' | 'cancelled'
+  total_amount: number
+  paid_amount: number
+  due_date: string
+}
+
+interface SlaughterRecord {
+  id: number
+  slaughter_date: string
+  live_birds_count: number
+  total_dressed_weight?: number | null
 }
 
 interface MortalityLog {
@@ -112,91 +86,80 @@ interface MortalityLog {
   quantity: number
 }
 
-interface EggSummary {
-  total_eggs: number
-  total_good: number
-  avg_production_rate: number | null
-}
-
 interface DashboardOverview {
   kpis: KpiData
-  houses: House[]
   batches: Batch[]
   feedItems: FeedItem[]
   consumptions: FeedConsumption[]
-  slaughterRecords: SlaughterRecord[]
-  invoices: Invoice[]
   eggSummary: EggSummary
   eggLogs: EggLog[]
+  invoices: Invoice[]
+  slaughterRecords: SlaughterRecord[]
   mortalityByBatch: Record<number, MortalityLog[]>
+}
+
+const chartTooltipStyle = {
+  border: '1px solid #E2E8F0',
+  borderRadius: '16px',
+  background: '#FFFFFF',
+  boxShadow: '0 18px 35px -28px rgba(15, 23, 42, 0.32)',
 }
 
 function sameDay(value: string) {
   return new Date(value).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)
 }
 
-function daysOld(value: string) {
-  const diff = Date.now() - new Date(value).getTime()
-  return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)))
-}
-
 function formatCurrency(value: number) {
   return `UGX ${value.toLocaleString()}`
 }
-
-const CHART_COLORS = ['#1E7A3A', '#2563EB', '#F59E0B', '#DC2626', '#6B7280']
 
 export function DashboardPage() {
   const navigate = useNavigate()
   const { hasPermission, permissions } = useAuth()
 
   const overview = useQuery<DashboardOverview>({
-    queryKey: ['dashboard-overview-v2', permissions.join('|')],
+    queryKey: ['dashboard-overview-v3', permissions.join('|')],
     queryFn: async () => {
       const canFarm = hasPermission('farm:read')
       const canFeed = hasPermission('feed:read')
-      const canSlaughter = hasPermission('slaughter:read')
       const canSales = hasPermission('sales:read')
+      const canSlaughter = hasPermission('slaughter:read')
 
-      const [kpis, houses, batches, feedItems, consumptions, slaughterRecords, invoices, eggSummary, eggLogs] = await Promise.all([
+      const [kpis, batches, feedItems, consumptions, eggSummary, eggLogs, invoices, slaughterRecords] = await Promise.all([
         api.get<KpiData>('/analytics/kpis').then((response) => response.data),
-        canFarm ? api.get<House[]>('/farm/houses').then((response) => response.data) : Promise.resolve([] as House[]),
         canFarm ? api.get<Batch[]>('/farm/batches').then((response) => response.data) : Promise.resolve([] as Batch[]),
         canFeed ? api.get<FeedItem[]>('/feed/items').then((response) => response.data) : Promise.resolve([] as FeedItem[]),
         canFeed ? api.get<FeedConsumption[]>('/feed/consumptions').then((response) => response.data) : Promise.resolve([] as FeedConsumption[]),
-        canSlaughter ? api.get<SlaughterRecord[]>('/slaughter/records').then((response) => response.data) : Promise.resolve([] as SlaughterRecord[]),
-        canSales ? api.get<Invoice[]>('/sales/invoices').then((response) => response.data) : Promise.resolve([] as Invoice[]),
         canFarm ? api.get<EggSummary>('/eggs/summary').then((response) => response.data) : Promise.resolve({ total_eggs: 0, total_good: 0, avg_production_rate: null }),
         canFarm ? api.get<EggLog[]>('/eggs').then((response) => response.data) : Promise.resolve([] as EggLog[]),
+        canSales ? api.get<Invoice[]>('/sales/invoices').then((response) => response.data) : Promise.resolve([] as Invoice[]),
+        canSlaughter ? api.get<SlaughterRecord[]>('/slaughter/records').then((response) => response.data) : Promise.resolve([] as SlaughterRecord[]),
       ])
 
       const mortalityByBatch: Record<number, MortalityLog[]> = {}
       if (canFarm && batches.length) {
-        const recent = batches.slice(0, 8)
-        const mortalityResults = await Promise.all(
-          recent.map((batch) =>
+        const results = await Promise.all(
+          batches.slice(0, 6).map((batch) =>
             api
               .get<MortalityLog[]>(`/farm/batches/${batch.id}/mortality`)
               .then((response) => ({ batchId: batch.id, logs: response.data }))
               .catch(() => ({ batchId: batch.id, logs: [] as MortalityLog[] }))
           )
         )
-
-        mortalityResults.forEach(({ batchId, logs }) => {
+        results.forEach(({ batchId, logs }) => {
           mortalityByBatch[batchId] = logs
         })
       }
 
       return {
         kpis,
-        houses,
         batches,
         feedItems,
         consumptions,
-        slaughterRecords,
-        invoices,
         eggSummary,
         eggLogs,
+        invoices,
+        slaughterRecords,
         mortalityByBatch,
       }
     },
@@ -215,90 +178,27 @@ export function DashboardPage() {
     [data?.eggLogs]
   )
 
-  const feedInStock = useMemo(
+  const feedRemaining = useMemo(
     () => (data?.feedItems ?? []).reduce((sum, item) => sum + item.current_stock, 0),
     [data?.feedItems]
   )
 
-  const totalMortality = useMemo(
-    () => Object.values(data?.mortalityByBatch ?? {}).flat().reduce((sum, log) => sum + log.quantity, 0),
-    [data?.mortalityByBatch]
+  const salesThisMonth = useMemo(() => data?.kpis.total_revenue ?? 0, [data?.kpis.total_revenue])
+
+  const productionTrend = useMemo(
+    () =>
+      [...(data?.eggLogs ?? [])]
+        .sort((left, right) => new Date(left.record_date).getTime() - new Date(right.record_date).getTime())
+        .slice(-14)
+        .map((entry) => ({
+          day: new Date(entry.record_date).toLocaleDateString('en-UG', { month: 'short', day: 'numeric' }),
+          eggs: entry.total_eggs,
+        })),
+    [data?.eggLogs]
   )
-
-  const mortalityRate = activeBirds > 0 ? (totalMortality / (activeBirds + totalMortality)) * 100 : 0
-
-  const birdsSlaughteredToday = useMemo(
-    () => (data?.slaughterRecords ?? []).filter((record) => sameDay(record.slaughter_date)).reduce((sum, record) => sum + record.live_birds_count, 0),
-    [data?.slaughterRecords]
-  )
-
-  const totalMeatProduced = useMemo(
-    () => (data?.slaughterRecords ?? []).reduce((sum, record) => sum + (record.total_dressed_weight ?? 0), 0),
-    [data?.slaughterRecords]
-  )
-
-  const avgYield = useMemo(() => {
-    const completed = (data?.slaughterRecords ?? []).filter((record) => typeof record.yield_percentage === 'number')
-    if (!completed.length) return 0
-    return completed.reduce((sum, record) => sum + (record.yield_percentage ?? 0), 0) / completed.length
-  }, [data?.slaughterRecords])
-
-  const eggChart = useMemo(() => {
-    return [...(data?.eggLogs ?? [])]
-      .sort((left, right) => new Date(left.record_date).getTime() - new Date(right.record_date).getTime())
-      .slice(-14)
-      .map((entry) => ({
-        day: new Date(entry.record_date).toLocaleDateString('en-UG', { month: 'short', day: 'numeric' }),
-        eggs: entry.total_eggs,
-      }))
-  }, [data?.eggLogs])
-
-  const feedChart = useMemo(() => {
-    return [...(data?.consumptions ?? [])]
-      .sort((left, right) => new Date(left.record_date).getTime() - new Date(right.record_date).getTime())
-      .slice(-14)
-      .map((entry) => ({
-        day: new Date(entry.record_date).toLocaleDateString('en-UG', { month: 'short', day: 'numeric' }),
-        quantity: entry.quantity,
-      }))
-  }, [data?.consumptions])
-
-  const batchStatusChart = useMemo(() => {
-    const counts = new Map<string, number>()
-    ;(data?.batches ?? []).forEach((batch) => {
-      counts.set(batch.status, (counts.get(batch.status) ?? 0) + 1)
-    })
-    return Array.from(counts.entries()).map(([name, value]) => ({ name, value }))
-  }, [data?.batches])
-
-  const recentBatches = useMemo(() => {
-    return [...(data?.batches ?? [])]
-      .sort((left, right) => new Date(right.arrival_date).getTime() - new Date(left.arrival_date).getTime())
-      .slice(0, 6)
-      .map((batch) => {
-        const mortality = (data?.mortalityByBatch?.[batch.id] ?? []).reduce((sum, log) => sum + log.quantity, 0)
-        const rate = batch.initial_quantity > 0 ? (mortality / batch.initial_quantity) * 100 : 0
-        return {
-          ...batch,
-          ageDays: daysOld(batch.arrival_date),
-          mortalityRate: rate,
-        }
-      })
-  }, [data?.batches, data?.mortalityByBatch])
 
   const alerts = useMemo(() => {
-    const items: Array<{ tone: 'danger' | 'warning' | 'success' | 'info'; title: string; detail: string }> = []
-
-    recentBatches
-      .filter((batch) => batch.mortalityRate >= 2)
-      .slice(0, 2)
-      .forEach((batch) => {
-        items.push({
-          tone: 'danger',
-          title: 'High Mortality',
-          detail: `${batch.batch_number} is at ${batch.mortalityRate.toFixed(1)}% mortality`,
-        })
-      })
+    const items: Array<{ tone: 'warning' | 'danger' | 'info'; title: string; detail: string }> = []
 
     ;(data?.feedItems ?? [])
       .filter((item) => item.current_stock <= item.reorder_threshold)
@@ -306,55 +206,106 @@ export function DashboardPage() {
       .forEach((item) => {
         items.push({
           tone: 'warning',
-          title: 'Low Feed Stock',
-          detail: `${item.name} has ${item.current_stock.toLocaleString()} ${item.unit} remaining`,
+          title: 'Low Feed',
+          detail: `${item.name} is below reorder level with ${item.current_stock.toLocaleString()} ${item.unit} left.`,
         })
       })
 
-    if (avgYield > 0) {
-      items.push({
-        tone: 'success',
-        title: 'Yield Tracking',
-        detail: `Average slaughter yield is ${avgYield.toFixed(1)}%`,
+    Object.entries(data?.mortalityByBatch ?? {})
+      .map(([batchId, logs]) => ({ batchId, total: logs.reduce((sum, log) => sum + log.quantity, 0) }))
+      .filter((entry) => entry.total >= 5)
+      .slice(0, 2)
+      .forEach((entry) => {
+        items.push({
+          tone: 'danger',
+          title: 'High Mortality',
+          detail: `Batch #${entry.batchId} has ${entry.total.toLocaleString()} recorded mortalities.`,
+        })
       })
+
+    ;(data?.invoices ?? [])
+      .filter((invoice) => invoice.status === 'overdue')
+      .slice(0, 2)
+      .forEach((invoice) => {
+        items.push({
+          tone: 'info',
+          title: 'Overdue Invoice',
+          detail: `${invoice.invoice_number} is overdue with ${formatCurrency(invoice.total_amount - invoice.paid_amount)} outstanding.`,
+        })
+      })
+
+    return items.slice(0, 5)
+  }, [data?.feedItems, data?.invoices, data?.mortalityByBatch])
+
+  const todayTasks = useMemo(() => {
+    const items: Array<{ title: string; detail: string; path: string }> = []
+
+    if ((data?.batches?.length ?? 0) > 0 && eggsToday === 0) {
+      items.push({ title: 'Record egg collection', detail: 'No egg collection has been logged today.', path: '/farm/eggs' })
     }
 
-    if ((data?.eggSummary?.avg_production_rate ?? 0) > 0) {
-      items.push({
-        tone: 'info',
-        title: 'Production Info',
-        detail: `Average egg production rate is ${(data?.eggSummary?.avg_production_rate ?? 0).toFixed(1)}%`,
-      })
+    const feedLoggedToday = (data?.consumptions ?? []).some((entry) => sameDay(entry.record_date))
+    if ((data?.batches?.length ?? 0) > 0 && !feedLoggedToday) {
+      items.push({ title: 'Capture feed usage', detail: 'Feed usage has not been recorded for today.', path: '/feed/consumption' })
+    }
+
+    const overdueInvoice = (data?.invoices ?? []).find((invoice) => invoice.status === 'overdue')
+    if (overdueInvoice) {
+      items.push({ title: 'Follow up overdue invoice', detail: `${overdueInvoice.invoice_number} needs collection action.`, path: '/sales/payments' })
+    }
+
+    if (alerts.some((alert) => alert.tone === 'warning')) {
+      items.push({ title: 'Review stock alert', detail: 'At least one feed item has reached reorder level.', path: '/feed/stock' })
     }
 
     return items.slice(0, 4)
-  }, [avgYield, data?.eggSummary?.avg_production_rate, data?.feedItems, recentBatches])
+  }, [alerts, data?.batches?.length, data?.consumptions, data?.invoices, eggsToday])
 
-  const chartTooltipStyle = {
-    border: '1px solid #E5E7EB',
-    borderRadius: '14px',
-    background: '#FFFFFF',
-    color: '#111827',
-    boxShadow: '0 20px 45px -24px rgba(15,23,42,0.28)',
-  }
+  const recentActivity = useMemo(() => {
+    const activity = [
+      ...(data?.eggLogs ?? []).slice(-3).map((entry) => ({
+        type: 'Egg Collection',
+        detail: `${entry.total_eggs.toLocaleString()} eggs recorded`,
+        date: entry.record_date,
+      })),
+      ...(data?.slaughterRecords ?? []).slice(-2).map((entry) => ({
+        type: 'Slaughter',
+        detail: `${entry.live_birds_count.toLocaleString()} birds processed`,
+        date: entry.slaughter_date,
+      })),
+      ...(data?.invoices ?? []).slice(-3).map((entry) => ({
+        type: 'Invoice',
+        detail: `${entry.invoice_number} created at ${formatCurrency(entry.total_amount)}`,
+        date: entry.due_date,
+      })),
+    ]
 
-  const primaryCards = [
-    { title: 'Total Birds', value: activeBirds.toLocaleString(), icon: Bird, accent: '#1E7A3A' },
-    { title: 'Eggs Today', value: eggsToday.toLocaleString(), icon: Egg, accent: '#F59E0B' },
-    { title: 'Feed In Stock', value: `${feedInStock.toLocaleString()} kg`, icon: Package2, accent: '#2563EB' },
-    { title: 'Mortality Rate', value: `${mortalityRate.toFixed(2)}%`, icon: ShieldAlert, accent: '#DC2626' },
-    { title: 'Revenue', value: formatCurrency(data?.kpis.total_revenue ?? 0), icon: DollarSign, accent: '#16A34A' },
+    return activity
+      .sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime())
+      .slice(0, 6)
+  }, [data?.eggLogs, data?.invoices, data?.slaughterRecords])
+
+  const quickActions = [
+    { label: 'Add Batch', icon: Bird, path: '/farm/batches' },
+    { label: 'Record Eggs', icon: Egg, path: '/farm/eggs' },
+    { label: 'Record Feed Usage', icon: Wheat, path: '/feed/consumption' },
+    { label: 'Record Mortality', icon: Skull, path: '/farm/mortality' },
+    hasPermission('dev_admin:read')
+      ? { label: 'Upload Document', icon: FilePlus2, path: '/dev-admin/tenants' }
+      : { label: 'Create Sale', icon: Receipt, path: '/sales/orders' },
+    { label: 'Open Reports', icon: ClipboardCheck, path: '/reports/production' },
   ]
 
-  const slaughterCards = [
-    { title: 'Birds Slaughtered Today', value: birdsSlaughteredToday.toLocaleString(), icon: Bird },
-    { title: 'Total Meat Produced', value: `${totalMeatProduced.toLocaleString()} kg`, icon: Scissors },
-    { title: 'Yield %', value: avgYield ? `${avgYield.toFixed(1)}%` : '0%', icon: Egg },
+  const primaryCards = [
+    { title: 'Active Birds', value: activeBirds.toLocaleString(), icon: Bird, accent: 'bg-blue-50 text-blue-600' },
+    { title: 'Eggs Today', value: eggsToday.toLocaleString(), icon: Egg, accent: 'bg-amber-50 text-amber-600' },
+    { title: 'Feed Remaining', value: `${feedRemaining.toLocaleString()} kg`, icon: Package, accent: 'bg-slate-100 text-slate-600' },
+    { title: 'Sales This Month', value: formatCurrency(salesThisMonth), icon: Receipt, accent: 'bg-emerald-50 text-emerald-600' },
   ]
 
   if (overview.isError) {
     return (
-      <div className="card flex items-center gap-4 p-6 text-danger">
+      <div className="card flex items-center gap-4 p-6 text-red-600">
         <AlertTriangle className="h-6 w-6" />
         <div className="font-semibold">Dashboard data could not be loaded.</div>
       </div>
@@ -363,215 +314,161 @@ export function DashboardPage() {
 
   return (
     <div className="animate-fade-in space-y-6 pb-8">
-      <section className="flex items-start justify-between gap-4">
+      <section className="section-header">
         <div>
-          <h1 className="text-[2.15rem] font-semibold tracking-[-0.03em] text-[#111827]">Dashboard</h1>
-          <p className="mt-1 text-sm text-[#6B7280]">Operational overview, production flow, subscription-aware access.</p>
-        </div>
-        <div className="flex gap-3">
-          <button type="button" onClick={() => navigate('/farm/batches')} className="btn-primary px-4 py-2.5 text-sm font-semibold">
-            Add Batch
-          </button>
-          <button type="button" onClick={() => navigate('/farm/eggs')} className="btn-secondary px-4 py-2.5 text-sm font-semibold">
-            Record Egg
-          </button>
+          <h1 className="section-title">Operations Dashboard</h1>
+          <p className="section-subtitle">Today’s priorities, key farm signals, and recent operational activity.</p>
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {primaryCards.map((card) => {
           const Icon = card.icon
           return (
-            <div key={card.title} className="rounded-3xl border border-[#E5E7EB] bg-white p-5 shadow-[0_22px_50px_-30px_rgba(15,23,42,0.24)]">
-              <div className="mb-4 flex items-center gap-3">
-                <span className="h-12 w-1 rounded-full" style={{ backgroundColor: card.accent }} />
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl" style={{ backgroundColor: `${card.accent}15`, color: card.accent }}>
+            <div key={card.title} className="kpi-card">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{card.title}</div>
+                  <div className="mt-3 text-[1.85rem] font-bold tracking-[-0.04em] text-slate-900">{card.value}</div>
+                </div>
+                <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${card.accent}`}>
                   <Icon className="h-5 w-5" />
                 </div>
               </div>
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6B7280]">{card.title}</div>
-              <div className="mt-2 text-[1.9rem] font-semibold tracking-[-0.04em] text-[#111827]">{card.value}</div>
             </div>
           )
         })}
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        {slaughterCards.map((card) => {
-          const Icon = card.icon
-          return (
-            <div key={card.title} className="rounded-3xl border border-[#E5E7EB] bg-white px-5 py-4 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.24)]">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#1E7A3A]/10 text-[#1E7A3A]">
-                  <Icon className="h-4.5 w-4.5" />
-                </div>
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6B7280]">{card.title}</div>
-                  <div className="mt-1 text-[1.45rem] font-semibold tracking-[-0.03em] text-[#111827]">{card.value}</div>
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.2fr_1fr_0.9fr]">
-        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-5 shadow-[0_22px_50px_-30px_rgba(15,23,42,0.24)]">
-          <div className="mb-5 flex items-center justify-between">
+      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.15fr_0.95fr]">
+        <div className="card p-5">
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-[#111827]">Egg Production</h2>
-              <p className="text-sm text-[#6B7280]">Daily output trend</p>
+              <h2 className="text-lg font-semibold text-slate-900">Today’s Tasks</h2>
+              <p className="mt-1 text-sm text-slate-500">Immediate actions for the team.</p>
             </div>
-            <Egg className="h-5 w-5 text-[#1E7A3A]" />
+            <ClipboardCheck className="h-5 w-5 text-blue-600" />
           </div>
-          <div className="h-[280px]">
+          <div className="mt-5 space-y-3">
+            {todayTasks.length ? todayTasks.map((task) => (
+              <button
+                key={task.title}
+                type="button"
+                onClick={() => navigate(task.path)}
+                className="flex w-full items-start justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left hover:bg-white"
+              >
+                <div>
+                  <div className="font-semibold text-slate-900">{task.title}</div>
+                  <div className="mt-1 text-sm text-slate-500">{task.detail}</div>
+                </div>
+                <ArrowRight className="mt-1 h-4 w-4 text-slate-400" />
+              </button>
+            )) : (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                No urgent tasks right now.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Production Trend</h2>
+              <p className="mt-1 text-sm text-slate-500">Last 14 recorded egg collection days.</p>
+            </div>
+            <Egg className="h-5 w-5 text-blue-600" />
+          </div>
+          <div className="mt-4 h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={eggChart}>
-                <CartesianGrid stroke="#E5E7EB" vertical={false} />
-                <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
+              <LineChart data={productionTrend}>
+                <CartesianGrid stroke="#E2E8F0" vertical={false} />
+                <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
                 <Tooltip contentStyle={chartTooltipStyle} />
-                <Line type="monotone" dataKey="eggs" stroke="#1E7A3A" strokeWidth={3} dot={false} />
+                <Line type="monotone" dataKey="eggs" stroke="#2563EB" strokeWidth={3} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-5 shadow-[0_22px_50px_-30px_rgba(15,23,42,0.24)]">
-          <div className="mb-5 flex items-center justify-between">
+        <div className="card p-5">
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-[#111827]">Feed Consumption</h2>
-              <p className="text-sm text-[#6B7280]">Recent feed usage</p>
+              <h2 className="text-lg font-semibold text-slate-900">Important Alerts</h2>
+              <p className="mt-1 text-sm text-slate-500">Items needing attention.</p>
             </div>
-            <Wheat className="h-5 w-5 text-[#1E7A3A]" />
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
           </div>
-          <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={feedChart}>
-                <CartesianGrid stroke="#E5E7EB" vertical={false} />
-                <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
-                <Tooltip contentStyle={chartTooltipStyle} />
-                <Bar dataKey="quantity" fill="#1E7A3A" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-[#E5E7EB] bg-white p-5 shadow-[0_22px_50px_-30px_rgba(15,23,42,0.24)]">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-[#111827]">Batch Status</h2>
-              <p className="text-sm text-[#6B7280]">Current flock distribution</p>
-            </div>
-            <Bird className="h-5 w-5 text-[#1E7A3A]" />
-          </div>
-          <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={batchStatusChart} dataKey="value" nameKey="name" innerRadius={62} outerRadius={92} paddingAngle={3}>
-                  {batchStatusChart.map((entry, index) => (
-                    <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={chartTooltipStyle} />
-                <Legend verticalAlign="bottom" height={36} />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="mt-5 space-y-3">
+            {alerts.length ? alerts.map((alert) => (
+              <div key={`${alert.title}-${alert.detail}`} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className={`status-dot ${alert.tone === 'danger' ? 'bg-red-500' : alert.tone === 'warning' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                  <div className="font-semibold text-slate-900">{alert.title}</div>
+                </div>
+                <div className="mt-1 text-sm text-slate-500">{alert.detail}</div>
+              </div>
+            )) : (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                No active alerts.
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-3xl border border-[#E5E7EB] bg-white shadow-[0_22px_50px_-30px_rgba(15,23,42,0.24)]">
-          <div className="flex items-center justify-between border-b border-[#E5E7EB] px-5 py-4">
+      <section className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
+        <div className="card p-5">
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-[#111827]">Recent Batches</h2>
-              <p className="text-sm text-[#6B7280]">Latest flock performance snapshot</p>
+              <h2 className="text-lg font-semibold text-slate-900">Recent Activity</h2>
+              <p className="mt-1 text-sm text-slate-500">Latest production, slaughter, and sales events.</p>
             </div>
-            <button type="button" onClick={() => navigate('/farm/batches')} className="inline-flex items-center gap-2 text-sm font-semibold text-[#1E7A3A]">
-              View all
-              <ArrowRight className="h-4 w-4" />
-            </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-[#F8FAFC] text-[#6B7280]">
-                <tr>
-                  <th className="px-5 py-3 font-semibold">Batch ID</th>
-                  <th className="px-5 py-3 font-semibold">Breed</th>
-                  <th className="px-5 py-3 font-semibold">Birds</th>
-                  <th className="px-5 py-3 font-semibold">Age</th>
-                  <th className="px-5 py-3 font-semibold">Status</th>
-                  <th className="px-5 py-3 font-semibold">Mortality Rate</th>
-                  <th className="px-5 py-3 font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentBatches.map((batch) => (
-                  <tr key={batch.id} className="border-t border-[#E5E7EB] hover:bg-[#F9FAFB]">
-                    <td className="px-5 py-3 font-semibold text-[#111827]">{batch.batch_number}</td>
-                    <td className="px-5 py-3 text-[#6B7280]">{batch.breed}</td>
-                    <td className="px-5 py-3 text-[#111827]">{batch.active_quantity.toLocaleString()}</td>
-                    <td className="px-5 py-3 text-[#6B7280]">{batch.ageDays} days</td>
-                    <td className="px-5 py-3">
-                      <span className="inline-flex rounded-full bg-[#1E7A3A]/10 px-2.5 py-1 text-xs font-semibold capitalize text-[#1E7A3A]">
-                        {batch.status.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-[#111827]">{batch.mortalityRate.toFixed(2)}%</td>
-                    <td className="px-5 py-3">
-                      <button type="button" onClick={() => navigate('/farm/batches')} className="text-sm font-semibold text-[#1E7A3A]">
-                        Open
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {recentBatches.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-5 py-10 text-center text-[#6B7280]">
-                      No batch data available.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
+          <div className="mt-5 space-y-3">
+            {recentActivity.length ? recentActivity.map((entry) => (
+              <div key={`${entry.type}-${entry.detail}-${entry.date}`} className="flex items-start justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                <div>
+                  <div className="font-semibold text-slate-900">{entry.type}</div>
+                  <div className="mt-1 text-sm text-slate-500">{entry.detail}</div>
+                </div>
+                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
+                  {new Date(entry.date).toLocaleDateString('en-UG', { month: 'short', day: 'numeric' })}
+                </div>
+              </div>
+            )) : (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                No recent activity available.
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="rounded-3xl border border-[#E5E7EB] bg-white shadow-[0_22px_50px_-30px_rgba(15,23,42,0.24)]">
-          <div className="flex items-center justify-between border-b border-[#E5E7EB] px-5 py-4">
+        <div className="card p-5">
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-[#111827]">Alerts & Notifications</h2>
-              <p className="text-sm text-[#6B7280]">Operational issues that need attention</p>
+              <h2 className="text-lg font-semibold text-slate-900">Quick Actions</h2>
+              <p className="mt-1 text-sm text-slate-500">Fast entry points for daily work.</p>
             </div>
-            <Syringe className="h-5 w-5 text-[#1E7A3A]" />
           </div>
-          <div className="divide-y divide-[#E5E7EB]">
-            {alerts.map((alert) => (
-              <div key={`${alert.title}-${alert.detail}`} className="flex gap-4 px-5 py-4">
-                <div
-                  className="mt-1 h-10 w-10 shrink-0 rounded-2xl"
-                  style={{
-                    background:
-                      alert.tone === 'danger'
-                        ? 'rgba(220,38,38,0.12)'
-                        : alert.tone === 'warning'
-                          ? 'rgba(245,158,11,0.14)'
-                          : alert.tone === 'success'
-                            ? 'rgba(22,163,74,0.12)'
-                            : 'rgba(37,99,235,0.12)',
-                  }}
-                />
-                <div>
-                  <div className="font-semibold text-[#111827]">{alert.title}</div>
-                  <div className="mt-1 text-sm text-[#6B7280]">{alert.detail}</div>
-                </div>
-              </div>
-            ))}
-            {alerts.length === 0 ? (
-              <div className="px-5 py-10 text-center text-[#6B7280]">No active alerts.</div>
-            ) : null}
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {quickActions.map((action) => {
+              const Icon = action.icon
+              return (
+                <button
+                  key={action.label}
+                  type="button"
+                  onClick={() => navigate(action.path)}
+                  className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left hover:bg-white"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                    <Icon className="h-4.5 w-4.5" />
+                  </span>
+                  <span className="font-semibold text-slate-900">{action.label}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
       </section>

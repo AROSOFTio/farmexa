@@ -5,9 +5,9 @@ export const APP_DESCRIPTION =
   'Farmexa poultry ERP for farm operations, inventory, sales, and finance.'
 
 export const ROLE_LABELS: Record<string, string> = {
-  super_manager: 'System Administrator',
+  super_manager: 'Platform Administrator',
   developer_admin: 'Developer Admin',
-  farm_manager: 'Farm Manager',
+  farm_manager: 'Tenant Administrator',
   inventory_officer: 'Inventory Officer',
   sales_officer: 'Sales Officer',
   finance_officer: 'Finance Officer',

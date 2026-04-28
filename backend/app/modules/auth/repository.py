@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.security import hash_refresh_token
 from app.models.auth import Permission, RefreshToken, Role, RolePermission
-from app.models.tenant import Tenant
+from app.models.tenant import Subscription, Tenant, TenantDomain, TenantModule
 from app.models.user import User
 
 
@@ -23,7 +23,9 @@ def _user_with_permissions():
 def _user_with_relationships():
     return (
         _user_with_permissions(),
-        selectinload(User.tenant).selectinload(Tenant.modules),
+        selectinload(User.tenant).selectinload(Tenant.modules).selectinload(TenantModule.module),
+        selectinload(User.tenant).selectinload(Tenant.domains),
+        selectinload(User.tenant).selectinload(Tenant.subscriptions).selectinload(Subscription.plan),
     )
 
 

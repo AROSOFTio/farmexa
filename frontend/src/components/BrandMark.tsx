@@ -26,12 +26,12 @@ export function BrandMark({
       >
         <defs>
           <linearGradient id="farmexaLeaf" x1="0%" x2="100%" y1="0%" y2="100%">
-            <stop offset="0%" stopColor="#39a231" />
-            <stop offset="100%" stopColor="#0f6c24" />
+            <stop offset="0%" stopColor="#2563EB" />
+            <stop offset="100%" stopColor="#1D4ED8" />
           </linearGradient>
           <linearGradient id="farmexaStem" x1="0%" x2="0%" y1="0%" y2="100%">
-            <stop offset="0%" stopColor="#1f972d" />
-            <stop offset="100%" stopColor="#0b4f18" />
+            <stop offset="0%" stopColor="#475569" />
+            <stop offset="100%" stopColor="#334155" />
           </linearGradient>
         </defs>
         <path
@@ -45,11 +45,11 @@ export function BrandMark({
         />
         <path
           d="M63 49 77 39l13 9 7 14H85V52H66v10H55l8-13Z"
-          fill="#1f2a36"
+          fill="#0f172a"
         />
         <path
           d="M37 71c8-6 19-10 34-12-7 3-13 6-17 10 8 1 15 3 22 6-13 1-26 1-39-4Z"
-          fill="#14842a"
+          fill="#f59e0b"
         />
       </svg>
 

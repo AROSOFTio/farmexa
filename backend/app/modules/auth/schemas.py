@@ -2,7 +2,7 @@
 Pydantic v2 schemas for authentication endpoints.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -63,8 +63,10 @@ class TenantSessionOut(BaseModel):
     name: str
     slug: str
     plan: str
+    subscription_status: str | None = None
+    primary_domain: str | None = None
     is_suspended: bool
-    subscription_expiry: datetime | None = None
+    subscription_expiry: date | None = None
 
 
 class MeResponse(BaseModel):

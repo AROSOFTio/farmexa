@@ -100,13 +100,26 @@ class AuthService:
         tenant = None
         if user.tenant:
             enabled_modules = [module.module_key for module in user.tenant.modules if module.is_enabled]
+            domains = sorted(user.tenant.domains, key=lambda domain: not domain.is_primary)
+            subscriptions = sorted(
+                user.tenant.subscriptions,
+                key=lambda record: (record.start_date, record.created_at),
+                reverse=True,
+            )
+            latest_subscription = subscriptions[0] if subscriptions else None
             tenant = TenantSessionOut(
                 id=user.tenant.id,
                 name=user.tenant.name,
                 slug=user.tenant.slug,
-                plan=user.tenant.plan.value if hasattr(user.tenant.plan, "value") else str(user.tenant.plan),
+                plan=latest_subscription.plan_code if latest_subscription else (
+                    user.tenant.plan.value if hasattr(user.tenant.plan, "value") else str(user.tenant.plan)
+                ),
+                subscription_status=latest_subscription.status.value if latest_subscription else (
+                    user.tenant.status.value if hasattr(user.tenant.status, "value") else str(user.tenant.status)
+                ),
+                primary_domain=domains[0].host if domains else None,
                 is_suspended=user.tenant.is_suspended,
-                subscription_expiry=user.tenant.subscription_expiry,
+                subscription_expiry=latest_subscription.expiry_date if latest_subscription else user.tenant.subscription_expiry,
             )
         return MeResponse(
             user=UserOut.model_validate(user),

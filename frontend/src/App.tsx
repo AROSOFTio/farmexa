@@ -346,7 +346,47 @@ export default function App() {
               path="tenants"
               element={
                 <ProtectedRoute permission="dev_admin:read">
-                  <TenantsPage />
+                  <TenantsPage section="tenants" />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="domains"
+              element={
+                <ProtectedRoute permission="dev_admin:read">
+                  <TenantsPage section="domains" />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="plans"
+              element={
+                <ProtectedRoute permission="dev_admin:read">
+                  <TenantsPage section="plans" />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="modules"
+              element={
+                <ProtectedRoute permission="dev_admin:read">
+                  <TenantsPage section="modules" />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="billing"
+              element={
+                <ProtectedRoute permission="dev_admin:read">
+                  <TenantsPage section="billing" />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="control"
+              element={
+                <ProtectedRoute permission="dev_admin:read">
+                  <TenantsPage section="control" />
                 </ProtectedRoute>
               }
             />
@@ -354,7 +394,7 @@ export default function App() {
               path="*"
               element={
                 <ProtectedRoute permission="dev_admin:read">
-                  <TenantsPage /> {/* mapping all dev admin pages to tenants for now */}
+                  <TenantsPage section="tenants" />
                 </ProtectedRoute>
               }
             />

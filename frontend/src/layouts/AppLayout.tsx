@@ -1,21 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from '@/layouts/Sidebar'
 import { Topbar } from '@/layouts/Topbar'
-import { applyTheme, resolveInitialTheme, THEME_STORAGE_KEY, type ThemeMode } from '@/lib/theme'
 
 const SIDEBAR_WIDTH = 240
 
 export function AppLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [theme, setTheme] = useState<ThemeMode>(() => resolveInitialTheme())
-
-  useEffect(() => {
-    applyTheme(theme)
-    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
-  }, [theme])
-
-  const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'))
 
   return (
     <div className="app-shell min-h-screen" style={{ background: 'var(--app-bg)' }}>
@@ -34,11 +25,7 @@ export function AppLayout() {
           }
         `}</style>
 
-        <Topbar
-          onOpenSidebar={() => setIsSidebarOpen(true)}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-        />
+        <Topbar onOpenSidebar={() => setIsSidebarOpen(true)} />
 
         <main
           className="main-offset relative flex-1"

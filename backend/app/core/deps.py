@@ -3,6 +3,7 @@ FastAPI dependency injection: current user, permission checks, and tenant module
 """
 
 from typing import Annotated
+from datetime import date
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -94,6 +95,23 @@ async def _ensure_tenant_module_access(user, request: Request, permission_code: 
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Your tenant account is suspended.",
         )
+    subscriptions = sorted(
+        tenant.subscriptions,
+        key=lambda record: (record.start_date, record.created_at),
+        reverse=True,
+    )
+    latest_subscription = subscriptions[0] if subscriptions else None
+    if latest_subscription:
+        if latest_subscription.status.value in {"expired", "cancelled"}:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your subscription is not active.",
+            )
+        if latest_subscription.expiry_date and latest_subscription.expiry_date < date.today():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your subscription has expired.",
+            )
 
     module_key = _module_key_from_request_path(str(request.url.path))
     if module_key is None:

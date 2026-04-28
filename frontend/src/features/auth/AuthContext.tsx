@@ -104,6 +104,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const roleName = state.user?.role?.name
       if (roleName === 'super_manager' || roleName === 'developer_admin') return true
       if (!state.tenant) return true
+      if (state.tenant.is_suspended) return false
+      if (state.tenant.subscription_status && ['expired', 'cancelled', 'suspended'].includes(state.tenant.subscription_status)) return false
       return state.enabledModules.includes(moduleKey)
     },
     [state.enabledModules, state.tenant, state.user]

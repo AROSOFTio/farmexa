@@ -12,6 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.security import hash_password
 from app.db.session import AsyncSessionLocal
+from app.modules.developer_admin.catalog import (
+    DEFAULT_MODULE_PRICES,
+    DEFAULT_MODULES,
+    DEFAULT_PLAN_MODULES,
+    DEFAULT_PLANS,
+)
 
 logger = logging.getLogger("farmexa.seeder")
 
@@ -108,6 +114,7 @@ async def run_seed() -> None:
     async with AsyncSessionLocal() as db:
         try:
             await _seed_roles_and_permissions(db)
+            await _seed_saas_catalog(db)
             await _seed_admin(db)
             await _seed_developer_admin(db)
             await db.commit()
@@ -161,6 +168,70 @@ async def _seed_roles_and_permissions(db: AsyncSession) -> None:
                 .on_conflict_do_nothing(index_elements=["role_id", "permission_id"])
             )
             await db.execute(statement)
+
+
+async def _seed_saas_catalog(db: AsyncSession) -> None:
+    from app.models.tenant import ModulePrice, PlanDefinition, PlanModule, PlatformModule
+
+    logger.info("Seeding SaaS catalog.")
+
+    for module in DEFAULT_MODULES:
+        statement = (
+            insert(PlatformModule)
+            .values(**module)
+            .on_conflict_do_update(
+                index_elements=["key"],
+                set_={
+                    "name": module["name"],
+                    "category": module["category"],
+                    "description": module["description"],
+                    "is_core": module["is_core"],
+                    "is_active": True,
+                },
+            )
+        )
+        await db.execute(statement)
+
+    for plan in DEFAULT_PLANS:
+        statement = (
+            insert(PlanDefinition)
+            .values(**plan)
+            .on_conflict_do_update(
+                index_elements=["code"],
+                set_={
+                    "name": plan["name"],
+                    "description": plan["description"],
+                    "billing_cycle": plan["billing_cycle"],
+                    "is_custom": plan["is_custom"],
+                    "is_active": True,
+                },
+            )
+        )
+        await db.execute(statement)
+
+    for plan_code, modules in DEFAULT_PLAN_MODULES.items():
+        for module_key in modules:
+            statement = (
+                insert(PlanModule)
+                .values(plan_code=plan_code, module_key=module_key, is_included=True)
+                .on_conflict_do_nothing(index_elements=["plan_code", "module_key"])
+            )
+            await db.execute(statement)
+
+    for price in DEFAULT_MODULE_PRICES:
+        statement = (
+            insert(ModulePrice)
+            .values(**price)
+            .on_conflict_do_update(
+                index_elements=["module_key", "billing_cycle"],
+                set_={
+                    "price": price["price"],
+                    "currency": price["currency"],
+                    "notes": price["notes"],
+                },
+            )
+        )
+        await db.execute(statement)
 
 
 async def _seed_admin(db: AsyncSession) -> None:

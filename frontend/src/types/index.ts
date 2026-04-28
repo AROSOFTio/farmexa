@@ -30,6 +30,8 @@ export interface TenantSession {
   name: string
   slug: string
   plan: string
+  subscription_status: string | null
+  primary_domain: string | null
   is_suspended: boolean
   subscription_expiry: string | null
 }

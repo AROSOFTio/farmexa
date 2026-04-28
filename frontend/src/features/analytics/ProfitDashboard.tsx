@@ -748,8 +748,8 @@ export function ProfitDashboard() {
               <AreaChart data={data?.profit.timeline ?? []} margin={{ left: 0, right: 12, top: 8, bottom: 0 }}>
                 <defs>
                   <linearGradient id="reportsRevenue" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="5%" stopColor="#259d35" stopOpacity={0.28} />
-                    <stop offset="95%" stopColor="#259d35" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.24} />
+                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="reportsExpenses" x1="0" x2="0" y1="0" y2="1">
                     <stop offset="5%" stopColor="#c24034" stopOpacity={0.2} />
@@ -760,7 +760,7 @@ export function ProfitDashboard() {
                 <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fill: '#5f6f7b', fontSize: 12 }} />
                 <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5f6f7b', fontSize: 12 }} tickFormatter={(value) => `${Math.round(value / 1000)}k`} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                <Area type="monotone" dataKey="revenue" stroke="#1b832c" fill="url(#reportsRevenue)" strokeWidth={3} />
+                <Area type="monotone" dataKey="revenue" stroke="#2563eb" fill="url(#reportsRevenue)" strokeWidth={3} />
                 <Area type="monotone" dataKey="expenses" stroke="#c24034" fill="url(#reportsExpenses)" strokeWidth={3} />
               </AreaChart>
             </ResponsiveContainer>
@@ -787,7 +787,7 @@ export function ProfitDashboard() {
                 <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} tick={{ fill: '#5f6f7b', fontSize: 12 }} />
                 <Tooltip />
                 <Bar yAxisId="left" dataKey="orders_count" fill="#1f2a36" radius={[8, 8, 0, 0]} />
-                <Bar yAxisId="right" dataKey="revenue" fill="#259d35" radius={[8, 8, 0, 0]} />
+                <Bar yAxisId="right" dataKey="revenue" fill="#2563eb" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

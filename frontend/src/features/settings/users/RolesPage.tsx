@@ -21,7 +21,7 @@ export function RolesPage() {
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="card p-6">
           <div className="mb-5 flex items-center gap-3">
-            <div className="rounded-2xl bg-[#1E7A3A]/10 p-3 text-[#1E7A3A]">
+            <div className="rounded-2xl bg-blue-50 p-3 text-blue-600">
               <Shield className="h-6 w-6" />
             </div>
             <div>
@@ -40,7 +40,7 @@ export function RolesPage() {
                 <div key={role.id} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-soft)] p-4">
                   <div className="font-semibold text-[var(--text-strong)]">{ROLE_LABELS[role.name] ?? role.name}</div>
                   <div className="mt-1 text-sm text-[var(--text-muted)]">{role.description ?? 'No description provided.'}</div>
-                  <div className="mt-3 inline-flex rounded-full bg-[#1E7A3A]/10 px-2.5 py-1 text-xs font-semibold text-[#1E7A3A]">
+                  <div className="mt-3 inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-600">
                     {role.permissions.length} permissions
                   </div>
                 </div>

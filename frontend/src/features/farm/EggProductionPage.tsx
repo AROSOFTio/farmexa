@@ -174,14 +174,14 @@ export function EggProductionPage() {
       {summary && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="kpi-card">
-            <div className="flex items-center gap-3 text-[#1E7A3A] mb-2">
+            <div className="mb-2 flex items-center gap-3 text-blue-600">
               <EggIcon className="h-5 w-5" />
               <h3 className="font-semibold text-sm uppercase tracking-wider">Total Eggs</h3>
             </div>
             <p className="text-3xl font-bold">{summary.total_eggs.toLocaleString()}</p>
           </div>
           <div className="kpi-card">
-            <div className="flex items-center gap-3 text-[#1E7A3A] mb-2">
+            <div className="mb-2 flex items-center gap-3 text-blue-600">
               <EggIcon className="h-5 w-5" />
               <h3 className="font-semibold text-sm uppercase tracking-wider">Good Eggs</h3>
             </div>
