@@ -4,6 +4,7 @@ Migration 004: Add egg_production_logs, tenants, tenant_modules, subscription_hi
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 revision = "004_egg_tenant_subscription"
@@ -13,6 +14,30 @@ depends_on = None
 
 
 def upgrade() -> None:
+    tenant_status_enum = postgresql.ENUM(
+        "active",
+        "suspended",
+        "trial",
+        "expired",
+        name="tenantstatus",
+        create_type=False,
+    )
+    subscription_plan_enum = postgresql.ENUM(
+        "basic",
+        "standard",
+        "premium",
+        "custom",
+        name="subscriptionplan",
+        create_type=False,
+    )
+    billing_cycle_enum = postgresql.ENUM(
+        "monthly",
+        "quarterly",
+        "annual",
+        name="billingcycle",
+        create_type=False,
+    )
+
     # ── egg_production_logs ─────────────────────────────────────────────────
     op.create_table(
         "egg_production_logs",
@@ -33,15 +58,9 @@ def upgrade() -> None:
     op.create_index("ix_egg_production_logs_record_date", "egg_production_logs", ["record_date"])
 
     # ── tenants ─────────────────────────────────────────────────────────────
-    op.execute(
-        "CREATE TYPE tenantstatus AS ENUM ('active', 'suspended', 'trial', 'expired')"
-    )
-    op.execute(
-        "CREATE TYPE subscriptionplan AS ENUM ('basic', 'standard', 'premium', 'custom')"
-    )
-    op.execute(
-        "CREATE TYPE billingcycle AS ENUM ('monthly', 'quarterly', 'annual')"
-    )
+    tenant_status_enum.create(op.get_bind(), checkfirst=True)
+    subscription_plan_enum.create(op.get_bind(), checkfirst=True)
+    billing_cycle_enum.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "tenants",
@@ -52,9 +71,9 @@ def upgrade() -> None:
         sa.Column("phone", sa.String(50), nullable=True),
         sa.Column("address", sa.Text(), nullable=True),
         sa.Column("country", sa.String(100), nullable=True),
-        sa.Column("status", sa.Enum("active", "suspended", "trial", "expired", name="tenantstatus"), nullable=False, server_default="trial"),
-        sa.Column("plan", sa.Enum("basic", "standard", "premium", "custom", name="subscriptionplan"), nullable=False, server_default="basic"),
-        sa.Column("billing_cycle", sa.Enum("monthly", "quarterly", "annual", name="billingcycle"), nullable=False, server_default="monthly"),
+        sa.Column("status", tenant_status_enum, nullable=False, server_default="trial"),
+        sa.Column("plan", subscription_plan_enum, nullable=False, server_default="basic"),
+        sa.Column("billing_cycle", billing_cycle_enum, nullable=False, server_default="monthly"),
         sa.Column("subscription_start", sa.Date(), nullable=True),
         sa.Column("subscription_expiry", sa.Date(), nullable=True),
         sa.Column("is_suspended", sa.Boolean(), nullable=False, server_default="false"),
