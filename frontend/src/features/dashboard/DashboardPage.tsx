@@ -6,6 +6,7 @@ import {
   Boxes,
   CircleAlert,
   DollarSign,
+  Egg,
   Receipt,
   RefreshCw,
   Scissors,
@@ -123,6 +124,12 @@ interface StockMovement {
   reference_type?: string | null
 }
 
+interface EggSummary {
+  total_eggs: number
+  total_good: number
+  avg_production_rate: number | null
+}
+
 interface DashboardOverview {
   kpis: KpiData
   profit: {
@@ -142,6 +149,7 @@ interface DashboardOverview {
   expenses: Expense[]
   incomes: Income[]
   movements: StockMovement[]
+  eggSummary: EggSummary
 }
 
 type ActivityRecord = {
@@ -210,6 +218,7 @@ export function DashboardPage() {
           canInventory
             ? api.get<StockMovement[]>('/inventory/movements').then((response) => response.data)
             : Promise.resolve([] as StockMovement[]),
+          canFarm ? api.get<EggSummary>('/eggs/summary').then((response) => response.data) : Promise.resolve({ total_eggs: 0, total_good: 0, avg_production_rate: null }),
         ])
 
       return {
@@ -225,6 +234,7 @@ export function DashboardPage() {
         expenses,
         incomes,
         movements,
+        eggSummary,
       }
     },
     refetchInterval: 60_000,
@@ -368,6 +378,13 @@ export function DashboardPage() {
           title: 'Birds',
           value: activeBirds.toLocaleString(),
           icon: Bird,
+        }
+      : null,
+    hasPermission('farm:read')
+      ? {
+          title: 'Eggs',
+          value: (data?.eggSummary?.total_eggs ?? 0).toLocaleString(),
+          icon: Egg,
         }
       : null,
     hasPermission('feed:read')

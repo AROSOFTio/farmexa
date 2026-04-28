@@ -15,10 +15,14 @@ import { InvoicesPage } from '@/features/sales/InvoicesPage'
 import { OrdersPage } from '@/features/sales/OrdersPage'
 import { SettingsConfigPage } from '@/features/settings/SettingsConfigPage'
 import { UsersPage } from '@/features/settings/users/UsersPage'
+import { RolesPage } from '@/features/settings/users/RolesPage'
 import { SlaughterPage } from '@/features/slaughter/SlaughterPage'
 import { AppLayout } from '@/layouts/AppLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { NotFoundPage } from '@/components/NotFoundPage'
+import { EggProductionPage } from '@/features/farm/EggProductionPage'
+import { TenantsPage } from '@/features/developer_admin/TenantsPage'
+import { ModuleGuard, ModuleDisabledPage } from '@/components/ModuleGuard'
 
 export default function App() {
   return (
@@ -40,7 +44,9 @@ export default function App() {
             path="dashboard"
             element={
               <ProtectedRoute permission="dashboard:read">
-                <DashboardPage />
+                <ModuleGuard moduleKey="dashboard">
+                  <DashboardPage />
+                </ModuleGuard>
               </ProtectedRoute>
             }
           />
@@ -51,7 +57,9 @@ export default function App() {
               path="houses"
               element={
                 <ProtectedRoute permission="farm:read">
-                  <HousesPage />
+                  <ModuleGuard moduleKey="houses">
+                    <HousesPage />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -59,7 +67,9 @@ export default function App() {
               path="batches"
               element={
                 <ProtectedRoute permission="farm:read">
-                  <BatchesPage />
+                  <ModuleGuard moduleKey="batches">
+                    <BatchesPage />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -67,7 +77,9 @@ export default function App() {
               path="mortality"
               element={
                 <ProtectedRoute permission="farm:read">
-                  <FarmOperationsPage mode="mortality" />
+                  <ModuleGuard moduleKey="mortality">
+                    <FarmOperationsPage mode="mortality" />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -75,7 +87,9 @@ export default function App() {
               path="vaccination"
               element={
                 <ProtectedRoute permission="farm:read">
-                  <FarmOperationsPage mode="vaccination" />
+                  <ModuleGuard moduleKey="vaccination">
+                    <FarmOperationsPage mode="vaccination" />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -83,7 +97,19 @@ export default function App() {
               path="growth"
               element={
                 <ProtectedRoute permission="farm:read">
-                  <FarmOperationsPage mode="growth" />
+                  <ModuleGuard moduleKey="growth_tracking">
+                    <FarmOperationsPage mode="growth" />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="eggs"
+              element={
+                <ProtectedRoute permission="farm:read">
+                  <ModuleGuard moduleKey="egg_production">
+                    <EggProductionPage />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -95,7 +121,9 @@ export default function App() {
               path="stock"
               element={
                 <ProtectedRoute permission="feed:read">
-                  <FeedManagementPage section="stock" />
+                  <ModuleGuard moduleKey="feed_stock">
+                    <FeedManagementPage section="stock" />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -103,7 +131,9 @@ export default function App() {
               path="purchases"
               element={
                 <ProtectedRoute permission="feed:read">
-                  <FeedManagementPage section="purchases" />
+                  <ModuleGuard moduleKey="feed_purchases">
+                    <FeedManagementPage section="purchases" />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -111,7 +141,9 @@ export default function App() {
               path="consumption"
               element={
                 <ProtectedRoute permission="feed:read">
-                  <FeedManagementPage section="consumption" />
+                  <ModuleGuard moduleKey="feed_consumption">
+                    <FeedManagementPage section="consumption" />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -119,7 +151,9 @@ export default function App() {
               path="suppliers"
               element={
                 <ProtectedRoute permission="feed:read">
-                  <FeedManagementPage section="suppliers" />
+                  <ModuleGuard moduleKey="feed_suppliers">
+                    <FeedManagementPage section="suppliers" />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -131,7 +165,9 @@ export default function App() {
               path="items"
               element={
                 <ProtectedRoute permission="inventory:read">
-                  <InventoryPage section="items" />
+                  <ModuleGuard moduleKey="inventory_items">
+                    <InventoryPage section="items" />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -139,7 +175,19 @@ export default function App() {
               path="movements"
               element={
                 <ProtectedRoute permission="inventory:read">
-                  <InventoryPage section="movements" />
+                  <ModuleGuard moduleKey="inventory_movements">
+                    <InventoryPage section="movements" />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="medicine"
+              element={
+                <ProtectedRoute permission="inventory:read">
+                  <ModuleGuard moduleKey="medicine_supplies">
+                    <InventoryPage section="items" /> {/* using items page for now */}
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -151,7 +199,9 @@ export default function App() {
               path="records"
               element={
                 <ProtectedRoute permission="slaughter:read">
-                  <SlaughterPage section="records" />
+                  <ModuleGuard moduleKey="slaughter_records">
+                    <SlaughterPage section="records" />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -159,7 +209,19 @@ export default function App() {
               path="outputs"
               element={
                 <ProtectedRoute permission="slaughter:read">
-                  <SlaughterPage section="outputs" />
+                  <ModuleGuard moduleKey="slaughter_outputs">
+                    <SlaughterPage section="outputs" />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="yield"
+              element={
+                <ProtectedRoute permission="slaughter:read">
+                  <ModuleGuard moduleKey="slaughter_records">
+                    <SlaughterPage section="records" /> {/* mapped to records */}
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -171,7 +233,9 @@ export default function App() {
               path="customers"
               element={
                 <ProtectedRoute permission="sales:read">
-                  <CustomersPage />
+                  <ModuleGuard moduleKey="customers">
+                    <CustomersPage />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -179,7 +243,9 @@ export default function App() {
               path="orders"
               element={
                 <ProtectedRoute permission="sales:read">
-                  <OrdersPage />
+                  <ModuleGuard moduleKey="sales_orders">
+                    <OrdersPage />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -187,7 +253,9 @@ export default function App() {
               path="invoices"
               element={
                 <ProtectedRoute permission="sales:read">
-                  <InvoicesPage section="invoices" />
+                  <ModuleGuard moduleKey="invoices">
+                    <InvoicesPage section="invoices" />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -195,7 +263,9 @@ export default function App() {
               path="payments"
               element={
                 <ProtectedRoute permission="sales:read">
-                  <InvoicesPage section="payments" />
+                  <ModuleGuard moduleKey="payments">
+                    <InvoicesPage section="payments" />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -207,7 +277,9 @@ export default function App() {
               path="expenses"
               element={
                 <ProtectedRoute permission="finance:read">
-                  <ExpensesPage />
+                  <ModuleGuard moduleKey="expenses">
+                    <ExpensesPage />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -215,15 +287,9 @@ export default function App() {
               path="incomes"
               element={
                 <ProtectedRoute permission="finance:read">
-                  <IncomesPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="profit"
-              element={
-                <ProtectedRoute permission="reports:read">
-                  <Navigate to="/analytics" replace />
+                  <ModuleGuard moduleKey="income">
+                    <IncomesPage />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -235,7 +301,19 @@ export default function App() {
               path="users"
               element={
                 <ProtectedRoute permission="users:read">
-                  <UsersPage />
+                  <ModuleGuard moduleKey="users">
+                    <UsersPage />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="roles"
+              element={
+                <ProtectedRoute permission="settings:read">
+                  <ModuleGuard moduleKey="settings">
+                    <RolesPage />
+                  </ModuleGuard>
                 </ProtectedRoute>
               }
             />
@@ -243,7 +321,40 @@ export default function App() {
               path="config"
               element={
                 <ProtectedRoute permission="settings:read">
-                  <SettingsConfigPage />
+                  <ModuleGuard moduleKey="settings">
+                    <SettingsConfigPage />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+          </Route>
+
+          <Route path="reports">
+            <Route index element={<Navigate to="/analytics" replace />} />
+            <Route path="*" element={
+              <ProtectedRoute permission="reports:read">
+                <ModuleGuard moduleKey="reports">
+                  <ProfitDashboard />
+                </ModuleGuard>
+              </ProtectedRoute>
+            } />
+          </Route>
+          
+          <Route path="dev-admin">
+            <Route index element={<Navigate to="/dev-admin/tenants" replace />} />
+            <Route
+              path="tenants"
+              element={
+                <ProtectedRoute permission="dev_admin:read">
+                  <TenantsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="*"
+              element={
+                <ProtectedRoute permission="dev_admin:read">
+                  <TenantsPage /> {/* mapping all dev admin pages to tenants for now */}
                 </ProtectedRoute>
               }
             />
@@ -253,11 +364,14 @@ export default function App() {
             path="analytics"
             element={
               <ProtectedRoute permission="reports:read">
-                <ProfitDashboard />
+                <ModuleGuard moduleKey="reports">
+                  <ProfitDashboard />
+                </ModuleGuard>
               </ProtectedRoute>
             }
           />
 
+          <Route path="module-disabled" element={<ModuleDisabledPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
 
