@@ -15,6 +15,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.tenant import (
     BillingCycle,
+    DomainStatus,
     ModulePrice,
     PlanDefinition,
     PlanModule,
@@ -53,6 +54,22 @@ class DeveloperAdminService:
     @staticmethod
     def _slugify(value: str) -> str:
         return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+
+    @staticmethod
+    def _parse_billing_cycle(value: str) -> BillingCycle:
+        try:
+            return BillingCycle(value)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="Invalid billing cycle.") from exc
+
+    @staticmethod
+    def _normalize_domain(host: str | None) -> str | None:
+        if not host:
+            return None
+        normalized = host.strip().lower()
+        if not normalized:
+            return None
+        return normalized
 
     async def _get_plan(self, plan_code: str) -> PlanDefinition:
         result = await self.db.execute(
@@ -103,18 +120,26 @@ class DeveloperAdminService:
         await self.db.flush()
 
     async def _ensure_primary_domain(self, tenant: Tenant, host: str | None) -> None:
-        desired_host = host or f"{tenant.slug}.farmexa.local"
+        desired_host = self._normalize_domain(host) or f"{tenant.slug}.farmexa.local"
+        conflict = await self.db.execute(
+            select(TenantDomain).where(
+                TenantDomain.host == desired_host,
+                TenantDomain.tenant_id != tenant.id,
+            )
+        )
+        if conflict.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail="That domain or subdomain is already assigned to another tenant.")
         existing = next((domain for domain in tenant.domains if domain.host == desired_host), None)
         if existing:
             existing.is_primary = True
-            existing.status = "active"
+            existing.status = DomainStatus.ACTIVE
         else:
             self.db.add(
                 TenantDomain(
                     tenant_id=tenant.id,
                     host=desired_host,
                     is_primary=True,
-                    status="active",
+                    status=DomainStatus.ACTIVE,
                 )
             )
         for domain in tenant.domains:
@@ -135,10 +160,11 @@ class DeveloperAdminService:
         latest = self._latest_subscription(tenant)
         if latest and latest.status in {SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL, SubscriptionStatus.PAST_DUE}:
             latest.status = SubscriptionStatus.CANCELLED
+        parsed_billing_cycle = self._parse_billing_cycle(billing_cycle)
         subscription = Subscription(
             tenant_id=tenant.id,
             plan_code=plan_code,
-            billing_cycle=BillingCycle(billing_cycle),
+            billing_cycle=parsed_billing_cycle,
             status=SubscriptionStatus(status or ("trial" if not expiry_date else "active")),
             start_date=start_date or date.today(),
             expiry_date=expiry_date,
@@ -179,11 +205,14 @@ class DeveloperAdminService:
 
     async def create_tenant(self, data: TenantCreate, actor: User) -> Tenant:
         slug = self._slugify(data.slug or data.name)
+        if not slug:
+            raise HTTPException(status_code=422, detail="Tenant name or slug is invalid.")
         existing = await self.db.execute(select(Tenant).where((Tenant.slug == slug) | (Tenant.name == data.name)))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=409, detail="A tenant with the same name or slug already exists.")
 
         plan = await self._get_plan(data.plan)
+        billing_cycle = self._parse_billing_cycle(data.billing_cycle)
         tenant = Tenant(
             name=data.name,
             slug=slug,
@@ -194,8 +223,8 @@ class DeveloperAdminService:
             address=data.address,
             country=data.country,
             status=TenantStatus.TRIAL if not data.subscription_expiry else TenantStatus.ACTIVE,
-            plan=data.plan,
-            billing_cycle=data.billing_cycle,
+            plan=plan.code,
+            billing_cycle=billing_cycle,
             subscription_start=data.subscription_start,
             subscription_expiry=data.subscription_expiry,
             notes=data.notes,
@@ -209,7 +238,7 @@ class DeveloperAdminService:
         await self._create_subscription(
             tenant,
             plan_code=plan.code,
-            billing_cycle=data.billing_cycle,
+            billing_cycle=billing_cycle.value,
             start_date=data.subscription_start,
             expiry_date=data.subscription_expiry,
             notes=data.notes,
@@ -233,6 +262,8 @@ class DeveloperAdminService:
         updates = data.model_dump(exclude_none=True)
         if "slug" in updates:
             updates["slug"] = self._slugify(updates["slug"])
+        if "billing_cycle" in updates:
+            updates["billing_cycle"] = self._parse_billing_cycle(updates["billing_cycle"])
         for field, value in updates.items():
             setattr(tenant, field, value)
         await self.db.commit()
@@ -242,10 +273,13 @@ class DeveloperAdminService:
         tenant = await self._get_tenant(tenant_id)
         plan = await self._get_plan(data.plan)
         old_plan = tenant.plan.value if hasattr(tenant.plan, "value") else str(tenant.plan)
+        billing_cycle = self._parse_billing_cycle(
+            data.billing_cycle or (tenant.billing_cycle.value if hasattr(tenant.billing_cycle, "value") else str(tenant.billing_cycle))
+        )
 
         tenant.plan = plan.code
         if data.billing_cycle:
-            tenant.billing_cycle = data.billing_cycle
+            tenant.billing_cycle = billing_cycle
         if data.subscription_expiry is not None:
             tenant.subscription_expiry = data.subscription_expiry
         tenant.subscription_start = date.today()
@@ -258,7 +292,7 @@ class DeveloperAdminService:
         await self._create_subscription(
             tenant,
             plan_code=plan.code,
-            billing_cycle=data.billing_cycle or (tenant.billing_cycle.value if hasattr(tenant.billing_cycle, "value") else str(tenant.billing_cycle)),
+            billing_cycle=billing_cycle.value,
             start_date=date.today(),
             expiry_date=data.subscription_expiry or tenant.subscription_expiry,
             notes=data.notes,
@@ -304,17 +338,28 @@ class DeveloperAdminService:
         if data.is_primary:
             for domain in tenant.domains:
                 domain.is_primary = False
-        existing = next((domain for domain in tenant.domains if domain.host == data.host), None)
+        host = self._normalize_domain(data.host)
+        if not host:
+            raise HTTPException(status_code=422, detail="Domain or subdomain is required.")
+        conflict = await self.db.execute(
+            select(TenantDomain).where(
+                TenantDomain.host == host,
+                TenantDomain.tenant_id != tenant.id,
+            )
+        )
+        if conflict.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail="That domain or subdomain is already assigned to another tenant.")
+        existing = next((domain for domain in tenant.domains if domain.host == host), None)
         if existing:
             existing.is_primary = data.is_primary
-            existing.status = "active"
+            existing.status = DomainStatus.ACTIVE
         else:
             self.db.add(
                 TenantDomain(
                     tenant_id=tenant.id,
-                    host=data.host,
+                    host=host,
                     is_primary=data.is_primary,
-                    status="active",
+                    status=DomainStatus.ACTIVE,
                 )
             )
         self.db.add(
@@ -322,7 +367,7 @@ class DeveloperAdminService:
                 tenant_id=tenant.id,
                 changed_by_user_id=actor.id,
                 event_type="domain_update",
-                notes=f"Domain set to {data.host}",
+                notes=f"Domain set to {host}",
             )
         )
         await self.db.commit()
@@ -330,10 +375,11 @@ class DeveloperAdminService:
 
     async def update_module_price(self, module_key: str, data: ModulePriceUpdate) -> ModulePrice:
         await self._get_module(module_key)
+        billing_cycle = self._parse_billing_cycle(data.billing_cycle)
         result = await self.db.execute(
             select(ModulePrice).where(
                 ModulePrice.module_key == module_key,
-                ModulePrice.billing_cycle == data.billing_cycle,
+                ModulePrice.billing_cycle == billing_cycle,
             )
         )
         price = result.scalar_one_or_none()
@@ -344,7 +390,7 @@ class DeveloperAdminService:
         else:
             price = ModulePrice(
                 module_key=module_key,
-                billing_cycle=data.billing_cycle,
+                billing_cycle=billing_cycle,
                 price=data.price,
                 currency=data.currency,
                 notes=data.notes,

@@ -77,7 +77,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
           onClick={() => setQuickOpen((open) => !open)}
           className="btn-secondary rounded-2xl border-slate-200 bg-white"
         >
-          <ClipboardPlus className="h-4 w-4 text-[var(--brand-primary)]" />
+          <ClipboardPlus className="h-4 w-4 text-slate-600" />
           Quick Actions
           <ChevronDown className={clsx('h-4 w-4 text-slate-400 transition-transform', quickOpen && 'rotate-180')} />
         </button>
@@ -97,7 +97,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                     }}
                     className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
                   >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
                       <Icon className="h-4 w-4" />
                     </span>
                     {action.label}
@@ -124,7 +124,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
           onClick={() => setProfileOpen((open) => !open)}
           className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-600 text-xs font-bold text-white">{initials}</div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-700 text-xs font-bold text-white">{initials}</div>
           <div className="hidden text-left sm:block">
             <div className="text-sm font-semibold text-slate-900">{user?.full_name ?? 'Loading...'}</div>
             <div className="text-xs text-slate-500">{tenant?.name ?? roleLabel}</div>

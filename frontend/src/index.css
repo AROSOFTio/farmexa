@@ -11,15 +11,15 @@
     --surface-card: #ffffff;
     --surface-soft: #f8fafc;
     --surface-muted: #eef2f7;
-    --sidebar-bg: #0f2747;
-    --sidebar-active: #1d4ed8;
+    --sidebar-bg: #475569;
+    --sidebar-active: #334155;
     --topbar-bg: rgba(255, 255, 255, 0.92);
     --border-subtle: #e2e8f0;
     --border-strong: #cbd5e1;
     --text-strong: #0f172a;
     --text-default: #1e293b;
     --text-muted: #64748b;
-    --brand-primary: #2563eb;
+    --brand-primary: #334155;
     --brand-accent: #f59e0b;
     --success: #10b981;
     --warning: #f59e0b;
@@ -196,7 +196,7 @@
   }
 
   .badge-brand {
-    background: rgba(37, 99, 235, 0.12);
+    background: rgba(51, 65, 85, 0.12);
     color: var(--brand-primary);
   }
 
@@ -236,12 +236,12 @@
     @apply btn px-4 py-2.5 text-white;
     background: var(--brand-primary);
     border: 1px solid var(--brand-primary);
-    box-shadow: 0 12px 28px -20px rgba(37, 99, 235, 0.65);
+    box-shadow: 0 12px 28px -20px rgba(51, 65, 85, 0.45);
   }
 
   .btn-primary:hover {
-    background: #1d4ed8;
-    border-color: #1d4ed8;
+    background: var(--sidebar-active);
+    border-color: var(--sidebar-active);
   }
 
   .btn-secondary {

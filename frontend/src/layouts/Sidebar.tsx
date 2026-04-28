@@ -195,19 +195,19 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                       }}
                       className={clsx(
                         'group flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors',
-                        active ? 'bg-white text-slate-950 shadow-[0_16px_32px_-20px_rgba(255,255,255,0.95)]' : 'text-white/95 hover:bg-white/14 hover:text-white'
+                        active ? 'bg-white text-slate-950 shadow-[0_16px_32px_-20px_rgba(255,255,255,0.95)]' : 'text-white/95 hover:bg-[rgba(51,65,85,0.28)] hover:text-white'
                       )}
                     >
                       <span
                         className={clsx(
                           'flex h-9 w-9 items-center justify-center rounded-xl border transition-colors',
-                          active ? 'border-slate-200 bg-blue-50 text-blue-700' : 'border-white/15 bg-white/8 text-white group-hover:bg-white/16'
+                          active ? 'border-slate-200 bg-slate-100 text-slate-700' : 'border-white/15 bg-white/8 text-white group-hover:bg-white/16'
                         )}
                       >
                         <Icon className="h-4.5 w-4.5" />
                       </span>
                       <span className="flex-1 text-[13px] font-bold tracking-[0.01em]">{item.label}</span>
-                      <ChevronRight className={clsx('h-4 w-4 transition-opacity', active ? 'text-blue-700 opacity-100' : 'text-white/80 opacity-0 group-hover:opacity-90')} />
+                      <ChevronRight className={clsx('h-4 w-4 transition-opacity', active ? 'text-slate-700 opacity-100' : 'text-white/80 opacity-0 group-hover:opacity-90')} />
                     </NavLink>
                   )
                 })}

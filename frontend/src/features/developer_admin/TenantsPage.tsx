@@ -140,6 +140,21 @@ const domainSchema = z.object({
 type TenantFormValues = z.infer<typeof tenantSchema>
 type DomainFormValues = z.infer<typeof domainSchema>
 
+function getApiErrorMessage(error: any, fallback: string) {
+  const detail = error?.response?.data?.detail
+  const errors = error?.response?.data?.errors
+
+  if (Array.isArray(errors) && errors.length > 0) {
+    return errors.map((item: { field?: string; message?: string }) => item.message || item.field || 'Validation error').join(', ')
+  }
+
+  if (typeof detail === 'string' && detail.trim()) {
+    return detail
+  }
+
+  return fallback
+}
+
 function formatMoney(value: string | null, currency = 'UGX') {
   if (!value) return 'Not set'
   return `${currency} ${Number(value).toLocaleString()}`
@@ -215,7 +230,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
       setIsTenantModalOpen(false)
       reset()
     },
-    onError: () => toast.error('Failed to create tenant'),
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to create tenant.')),
   })
 
   const suspendMutation = useMutation({
@@ -225,6 +240,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
       queryClient.invalidateQueries({ queryKey: ['dev-admin-billing'] })
       toast.success('Tenant suspended')
     },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to suspend tenant.')),
   })
 
   const reactivateMutation = useMutation({
@@ -234,6 +250,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
       queryClient.invalidateQueries({ queryKey: ['dev-admin-billing'] })
       toast.success('Tenant reactivated')
     },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to reactivate tenant.')),
   })
 
   const toggleModuleMutation = useMutation({
@@ -246,6 +263,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
       queryClient.invalidateQueries({ queryKey: ['dev-admin-tenants'] })
       toast.success('Module access updated')
     },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to update module access.')),
   })
 
   const addDomainMutation = useMutation({
@@ -258,6 +276,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
       setIsDomainModalOpen(false)
       resetDomain()
     },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to save domain.')),
   })
 
   const monthlyPriceMap = useMemo(() => {
@@ -446,7 +465,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{plan.code}</div>
               <h2 className="mt-2 text-xl font-semibold text-slate-900">{plan.name}</h2>
             </div>
-            <CreditCard className="h-5 w-5 text-blue-600" />
+            <CreditCard className="h-5 w-5 text-slate-700" />
           </div>
           <p className="mt-3 text-sm text-slate-500">{plan.description}</p>
           <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
@@ -567,7 +586,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tenants</div>
                 <div className="mt-3 text-3xl font-bold text-slate-900">{billing.total_tenants}</div>
               </div>
-              <Building2 className="h-5 w-5 text-blue-600" />
+              <Building2 className="h-5 w-5 text-slate-700" />
             </div>
           </div>
           <div className="kpi-card">
@@ -712,7 +731,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                             return { ...current, modules: modulesCopy }
                           })
                         }}
-                        className={`relative inline-flex h-6 w-11 rounded-full transition-colors ${enabled ? 'bg-blue-600' : 'bg-slate-300'}`}
+                        className={`relative inline-flex h-6 w-11 rounded-full transition-colors ${enabled ? 'bg-slate-700' : 'bg-slate-300'}`}
                       >
                         <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
                       </button>

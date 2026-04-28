@@ -23,7 +23,7 @@ class TenantCreate(BaseModel):
     billing_cycle: str = "monthly"
     subscription_start: Optional[date] = None
     subscription_expiry: Optional[date] = None
-    enabled_modules: List[str] = []
+    enabled_modules: List[str] = Field(default_factory=list)
     notes: Optional[str] = None
 
 
@@ -119,9 +119,9 @@ class TenantOut(BaseModel):
     is_suspended: bool
     notes: Optional[str]
     created_at: datetime
-    modules: List[TenantModuleOut] = []
-    domains: List[TenantDomainOut] = []
-    subscriptions: List[SubscriptionOut] = []
+    modules: List[TenantModuleOut] = Field(default_factory=list)
+    domains: List[TenantDomainOut] = Field(default_factory=list)
+    subscriptions: List[SubscriptionOut] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 
@@ -151,7 +151,7 @@ class PlanOut(BaseModel):
     billing_cycle: str
     is_custom: bool
     is_active: bool
-    modules: List[PlanModuleOut] = []
+    modules: List[PlanModuleOut] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 
