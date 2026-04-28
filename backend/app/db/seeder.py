@@ -17,6 +17,7 @@ logger = logging.getLogger("farmexa.seeder")
 
 ROLES = [
     {"name": "super_manager", "description": "Full system access"},
+    {"name": "developer_admin", "description": "Platform-level tenant and subscription administration"},
     {"name": "farm_manager", "description": "Farm and production operations"},
     {"name": "inventory_officer", "description": "Inventory and stock management"},
     {"name": "sales_officer", "description": "Sales, customers, and invoices"},
@@ -50,10 +51,19 @@ PERMISSIONS = [
     ("users:read", "View users", "users"),
     ("users:write", "Create/edit users", "users"),
     ("users:delete", "Delete/deactivate users", "users"),
+    ("dev_admin:read", "View developer admin workspace", "developer_admin"),
+    ("dev_admin:write", "Manage tenants, plans, and modules", "developer_admin"),
 ]
 
 ROLE_PERMISSIONS: dict[str, list[str]] = {
     "super_manager": [permission[0] for permission in PERMISSIONS],
+    "developer_admin": [
+        "dashboard:read",
+        "reports:read",
+        "users:read",
+        "dev_admin:read",
+        "dev_admin:write",
+    ],
     "farm_manager": [
         "dashboard:read",
         "farm:read",
@@ -99,6 +109,7 @@ async def run_seed() -> None:
         try:
             await _seed_roles_and_permissions(db)
             await _seed_admin(db)
+            await _seed_developer_admin(db)
             await db.commit()
             logger.info("Database seed completed successfully.")
         except Exception as exc:
@@ -177,3 +188,30 @@ async def _seed_admin(db: AsyncSession) -> None:
     )
     db.add(admin)
     logger.info("Super admin user staged for creation: %s", settings.SEED_ADMIN_EMAIL)
+
+
+async def _seed_developer_admin(db: AsyncSession) -> None:
+    from app.models.auth import Role
+    from app.models.user import User
+
+    logger.info("Checking for developer admin user %s.", settings.SEED_DEV_ADMIN_EMAIL)
+    result = await db.execute(select(User).where(User.email == settings.SEED_DEV_ADMIN_EMAIL))
+    if result.scalar_one_or_none() is not None:
+        logger.info("Developer admin user already exists.")
+        return
+
+    role_result = await db.execute(select(Role).where(Role.name == "developer_admin"))
+    role = role_result.scalar_one_or_none()
+    if not role:
+        logger.error("developer_admin role was not found during developer admin seeding.")
+        return
+
+    admin = User(
+        email=settings.SEED_DEV_ADMIN_EMAIL,
+        full_name=settings.SEED_DEV_ADMIN_FULL_NAME,
+        hashed_password=hash_password(settings.SEED_DEV_ADMIN_PASSWORD),
+        is_active=True,
+        role_id=role.id,
+    )
+    db.add(admin)
+    logger.info("Developer admin user staged for creation: %s", settings.SEED_DEV_ADMIN_EMAIL)

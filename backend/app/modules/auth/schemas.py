@@ -58,6 +58,17 @@ class UserOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class TenantSessionOut(BaseModel):
+    id: int
+    name: str
+    slug: str
+    plan: str
+    is_suspended: bool
+    subscription_expiry: datetime | None = None
+
+
 class MeResponse(BaseModel):
     user: UserOut
     permissions: list[str]  # flat list of permission codes for easy frontend use
+    enabled_modules: list[str]
+    tenant: TenantSessionOut | None = None

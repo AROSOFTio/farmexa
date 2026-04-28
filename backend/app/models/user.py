@@ -13,6 +13,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     __table_args__ = (
         Index("ix_users_email", "email"),
         Index("ix_users_role_id", "role_id"),
+        Index("ix_users_tenant_id", "tenant_id"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -26,9 +27,13 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     role_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("roles.id", ondelete="SET NULL"), nullable=True
     )
+    tenant_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True
+    )
 
     # Relationships
     role: Mapped["Role | None"] = relationship("Role", back_populates="users")
+    tenant: Mapped["Tenant | None"] = relationship("Tenant", back_populates="users")
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         "RefreshToken", back_populates="user", cascade="all, delete-orphan"
     )

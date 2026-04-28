@@ -69,6 +69,7 @@ class Tenant(Base):
     modules: Mapped[list["TenantModule"]] = relationship(
         "TenantModule", back_populates="tenant", cascade="all, delete-orphan"
     )
+    users: Mapped[list["User"]] = relationship("User", back_populates="tenant")
     subscription_history: Mapped[list["SubscriptionHistory"]] = relationship(
         "SubscriptionHistory", back_populates="tenant", cascade="all, delete-orphan"
     )

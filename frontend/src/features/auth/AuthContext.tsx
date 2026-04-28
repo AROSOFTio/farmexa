@@ -7,12 +7,14 @@ import {
   ReactNode,
 } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, LoginRequest } from '@/types'
+import { LoginRequest, TenantSession, User } from '@/types'
 import { authService } from '@/services/authService'
 
 interface AuthState {
   user: User | null
+  tenant: TenantSession | null
   permissions: string[]
+  enabledModules: string[]
   isAuthenticated: boolean
   isLoading: boolean
 }
@@ -22,6 +24,7 @@ interface AuthContextValue extends AuthState {
   logout: () => Promise<void>
   hasPermission: (code: string) => boolean
   hasRole: (role: string) => boolean
+  hasModuleAccess: (moduleKey: string) => boolean
   refetchMe: () => Promise<void>
 }
 
@@ -31,7 +34,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const [state, setState] = useState<AuthState>({
     user: null,
+    tenant: null,
     permissions: [],
+    enabledModules: [],
     isAuthenticated: false,
     isLoading: true,
   })
@@ -39,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearSession = useCallback(() => {
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
-    setState({ user: null, permissions: [], isAuthenticated: false, isLoading: false })
+    setState({ user: null, tenant: null, permissions: [], enabledModules: [], isAuthenticated: false, isLoading: false })
   }, [])
 
   const loadMe = useCallback(async () => {
@@ -48,9 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearSession()
       return null
     }
-    const { user, permissions } = await authService.getMe()
-    setState({ user, permissions, isAuthenticated: true, isLoading: false })
-    return { user, permissions }
+    const { user, permissions, enabled_modules, tenant } = await authService.getMe()
+    setState({ user, tenant, permissions, enabledModules: enabled_modules, isAuthenticated: true, isLoading: false })
+    return { user, permissions, enabledModules: enabled_modules, tenant }
   }, [clearSession])
 
   useEffect(() => {
@@ -94,12 +99,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [state.user]
   )
 
+  const hasModuleAccess = useCallback(
+    (moduleKey: string) => {
+      const roleName = state.user?.role?.name
+      if (roleName === 'super_manager' || roleName === 'developer_admin') return true
+      if (!state.tenant) return true
+      return state.enabledModules.includes(moduleKey)
+    },
+    [state.enabledModules, state.tenant, state.user]
+  )
+
   const refetchMe = useCallback(async () => {
     await loadMe()
   }, [loadMe])
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, hasPermission, hasRole, refetchMe }}>
+    <AuthContext.Provider value={{ ...state, login, logout, hasPermission, hasRole, hasModuleAccess, refetchMe }}>
       {children}
     </AuthContext.Provider>
   )

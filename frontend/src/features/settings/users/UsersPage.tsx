@@ -38,6 +38,7 @@ type CreateUserForm = z.infer<typeof createUserSchema>
 function RoleBadge({ name }: { name: string }) {
   const colors: Record<string, string> = {
     super_manager: 'bg-ink-900 text-white ring-1 ring-ink-900/10',
+    developer_admin: 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200',
     farm_manager: 'bg-brand-100 text-brand-800 ring-1 ring-brand-200',
     inventory_officer: 'bg-brand-50 text-brand-700 ring-1 ring-brand-150',
     sales_officer: 'bg-neutral-100 text-ink-700 ring-1 ring-neutral-200',

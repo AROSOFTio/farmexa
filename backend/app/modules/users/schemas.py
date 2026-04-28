@@ -13,6 +13,7 @@ class UserCreateRequest(BaseModel):
     password: str = Field(min_length=8)
     phone: str | None = Field(default=None, max_length=20)
     role_id: int
+    tenant_id: int | None = None
 
     @field_validator("password")
     @classmethod
@@ -29,6 +30,7 @@ class UserUpdateRequest(BaseModel):
     phone: str | None = Field(default=None, max_length=20)
     role_id: int | None = None
     is_active: bool | None = None
+    tenant_id: int | None = None
 
 
 class ChangePasswordRequest(BaseModel):
@@ -46,9 +48,16 @@ class ChangePasswordRequest(BaseModel):
 
 
 class RoleOut(BaseModel):
+    class PermissionOut(BaseModel):
+        code: str
+        module: str
+        description: str | None = None
+        model_config = {"from_attributes": True}
+
     id: int
     name: str
     description: str | None = None
+    permissions: list[PermissionOut] = []
     model_config = {"from_attributes": True}
 
 
@@ -60,6 +69,7 @@ class UserOut(BaseModel):
     avatar_url: str | None = None
     is_active: bool
     role: RoleOut | None = None
+    tenant_id: int | None = None
     created_at: datetime
     updated_at: datetime
     model_config = {"from_attributes": True}

@@ -2,19 +2,28 @@
 User repository: data access for user management.
 """
 
-import math
-from sqlalchemy import select, func, or_
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.auth import Permission, Role, RolePermission
+from app.models.tenant import Tenant
 from app.models.user import User
-from app.models.auth import Role, RolePermission, Permission
 
 
 def _user_with_role():
-    return selectinload(User.role).selectinload(
-        Role.role_permissions
-    ).selectinload(RolePermission.permission)
+    return (
+        selectinload(User.role)
+        .selectinload(Role.role_permissions)
+        .selectinload(RolePermission.permission)
+    )
+
+
+def _user_with_relationships():
+    return (
+        _user_with_role(),
+        selectinload(User.tenant),
+    )
 
 
 class UserRepository:
@@ -25,7 +34,7 @@ class UserRepository:
         result = await self.db.execute(
             select(User)
             .where(User.id == user_id, User.deleted_at.is_(None))
-            .options(_user_with_role())
+            .options(*_user_with_relationships())
         )
         return result.scalar_one_or_none()
 
@@ -33,6 +42,7 @@ class UserRepository:
         result = await self.db.execute(
             select(User)
             .where(User.email == email, User.deleted_at.is_(None))
+            .options(*_user_with_relationships())
         )
         return result.scalar_one_or_none()
 
@@ -43,9 +53,10 @@ class UserRepository:
         search: str | None = None,
         role_id: int | None = None,
         is_active: bool | None = None,
+        tenant_id: int | None = None,
     ) -> tuple[list[User], int]:
         base_filter = User.deleted_at.is_(None)
-        query = select(User).where(base_filter).options(selectinload(User.role))
+        query = select(User).where(base_filter).options(selectinload(User.role), selectinload(User.tenant))
         count_query = select(func.count(User.id)).where(base_filter)
 
         if search:
@@ -59,6 +70,9 @@ class UserRepository:
         if is_active is not None:
             query = query.where(User.is_active == is_active)
             count_query = count_query.where(User.is_active == is_active)
+        if tenant_id is not None:
+            query = query.where(User.tenant_id == tenant_id)
+            count_query = count_query.where(User.tenant_id == tenant_id)
 
         total = (await self.db.execute(count_query)).scalar_one()
         offset = (page - 1) * size

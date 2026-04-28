@@ -25,6 +25,15 @@ export interface User {
   updated_at: string
 }
 
+export interface TenantSession {
+  id: number
+  name: string
+  slug: string
+  plan: string
+  is_suspended: boolean
+  subscription_expiry: string | null
+}
+
 export interface TokenPair {
   access_token: string
   refresh_token: string
@@ -35,6 +44,8 @@ export interface TokenPair {
 export interface MeResponse {
   user: User
   permissions: string[]
+  enabled_modules: string[]
+  tenant: TenantSession | null
 }
 
 // ── Request Types ─────────────────────────────────────────────
@@ -50,6 +61,7 @@ export interface UserCreateRequest {
   password: string
   phone?: string
   role_id: number
+  tenant_id?: number | null
 }
 
 export interface UserUpdateRequest {
@@ -57,6 +69,7 @@ export interface UserUpdateRequest {
   phone?: string
   role_id?: number
   is_active?: boolean
+  tenant_id?: number | null
 }
 
 export interface ChangePasswordRequest {

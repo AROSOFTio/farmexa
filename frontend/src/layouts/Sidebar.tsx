@@ -4,25 +4,21 @@ import {
   BarChart3,
   Bird,
   Bot,
-  Building2,
+  Boxes,
   ChevronDown,
-  CircleDollarSign,
-  Clipboard,
+  ClipboardList,
   CreditCard,
   Database,
   Egg,
   LayoutDashboard,
-  Package,
-  PackageSearch,
-  PieChart,
   Receipt,
   Scissors,
   Settings,
-  ShoppingCart,
+  Skull,
   Stethoscope,
   Syringe,
-  TrendingUp,
   Users,
+  Wallet,
   Wheat,
   X,
 } from 'lucide-react'
@@ -31,152 +27,91 @@ import { BrandMark } from '@/components/BrandMark'
 import { useAuth } from '@/features/auth/AuthContext'
 import { ROLE_LABELS } from '@/lib/branding'
 
-interface SubItem {
+interface NavLinkItem {
   label: string
   path: string
   permission: string
-  icon?: ElementType
+  moduleKey?: string
+  icon: ElementType
 }
 
-interface NavItem {
+interface NavGroup {
   label: string
   icon: ElementType
-  path?: string
-  permission?: string
-  subItems?: SubItem[]
+  items: NavLinkItem[]
 }
 
 interface NavSection {
   title: string
-  items: NavItem[]
+  items: Array<NavLinkItem | NavGroup>
 }
+
+const isGroup = (item: NavLinkItem | NavGroup): item is NavGroup => 'items' in item
 
 const NAV_SECTIONS: NavSection[] = [
   {
     title: 'Main',
     items: [
-      { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', permission: 'dashboard:read' },
+      { label: 'Dashboard', path: '/dashboard', permission: 'dashboard:read', moduleKey: 'dashboard', icon: LayoutDashboard },
     ],
   },
   {
-    title: 'Farm Management',
+    title: 'Operations',
     items: [
+      { label: 'Flocks / Batches', path: '/farm/batches', permission: 'farm:read', moduleKey: 'batches', icon: ClipboardList },
+      { label: 'Bird Stock', path: '/farm/houses', permission: 'farm:read', moduleKey: 'houses', icon: Bird },
+      { label: 'Age Groups', path: '/farm/growth', permission: 'farm:read', moduleKey: 'growth_tracking', icon: BarChart3 },
+      { label: 'Egg Production', path: '/farm/eggs', permission: 'farm:read', moduleKey: 'egg_production', icon: Egg },
       {
-        label: 'Farm',
-        icon: Bird,
-        subItems: [
-          { label: 'Houses', path: '/farm/houses', permission: 'farm:read', icon: Building2 },
-          { label: 'Batches', path: '/farm/batches', permission: 'farm:read', icon: Clipboard },
-          { label: 'Mortality', path: '/farm/mortality', permission: 'farm:read', icon: TrendingUp },
-          { label: 'Vaccination', path: '/farm/vaccination', permission: 'farm:read', icon: Syringe },
-          { label: 'Growth Tracking', path: '/farm/growth', permission: 'farm:read', icon: BarChart3 },
-          { label: 'Egg Production', path: '/farm/eggs', permission: 'farm:read', icon: Egg },
-        ],
-      },
-      {
-        label: 'Feed',
+        label: 'Feed Management',
         icon: Wheat,
-        subItems: [
-          { label: 'Feed Stock', path: '/feed/stock', permission: 'feed:read' },
-          { label: 'Purchases', path: '/feed/purchases', permission: 'feed:read' },
-          { label: 'Consumption', path: '/feed/consumption', permission: 'feed:read' },
-          { label: 'Suppliers', path: '/feed/suppliers', permission: 'feed:read' },
+        items: [
+          { label: 'Feed Inventory', path: '/feed/stock', permission: 'feed:read', moduleKey: 'feed_stock', icon: Boxes },
+          { label: 'Purchases', path: '/feed/purchases', permission: 'feed:read', moduleKey: 'feed_purchases', icon: Receipt },
+          { label: 'Consumption', path: '/feed/consumption', permission: 'feed:read', moduleKey: 'feed_consumption', icon: Wheat },
+          { label: 'Suppliers', path: '/feed/suppliers', permission: 'feed:read', moduleKey: 'feed_suppliers', icon: Stethoscope },
         ],
       },
-    ],
-  },
-  {
-    title: 'Inventory',
-    items: [
+      { label: 'Health Records', path: '/farm/vaccination', permission: 'farm:read', moduleKey: 'vaccination', icon: Stethoscope },
+      { label: 'Vaccination', path: '/farm/vaccination', permission: 'farm:read', moduleKey: 'vaccination', icon: Syringe },
+      { label: 'Mortality Records', path: '/farm/mortality', permission: 'farm:read', moduleKey: 'mortality', icon: Skull },
       {
-        label: 'Inventory',
-        icon: Package,
-        subItems: [
-          { label: 'Stock Items', path: '/inventory/items', permission: 'inventory:read' },
-          { label: 'Stock Movements', path: '/inventory/movements', permission: 'inventory:read' },
-          { label: 'Medicine & Supplies', path: '/inventory/medicine', permission: 'inventory:read', icon: Stethoscope },
-        ],
-      },
-    ],
-  },
-  {
-    title: 'Slaughter',
-    items: [
-      {
-        label: 'Slaughter',
+        label: 'Slaughter Management',
         icon: Scissors,
-        subItems: [
-          { label: 'Records', path: '/slaughter/records', permission: 'slaughter:read' },
-          { label: 'Outputs', path: '/slaughter/outputs', permission: 'slaughter:read' },
-          { label: 'Yield Tracking', path: '/slaughter/yield', permission: 'slaughter:read' },
+        items: [
+          { label: 'Slaughter Records', path: '/slaughter/records', permission: 'slaughter:read', moduleKey: 'slaughter_records', icon: Scissors },
+          { label: 'Outputs', path: '/slaughter/outputs', permission: 'slaughter:read', moduleKey: 'slaughter_outputs', icon: Boxes },
+          { label: 'Yield Tracking', path: '/slaughter/yield', permission: 'slaughter:read', moduleKey: 'slaughter_records', icon: BarChart3 },
         ],
       },
     ],
   },
   {
-    title: 'Sales',
+    title: 'Commercial',
     items: [
-      {
-        label: 'Sales',
-        icon: ShoppingCart,
-        subItems: [
-          { label: 'Customers', path: '/sales/customers', permission: 'sales:read' },
-          { label: 'Orders', path: '/sales/orders', permission: 'sales:read' },
-          { label: 'Invoices', path: '/sales/invoices', permission: 'sales:read' },
-          { label: 'Payments', path: '/sales/payments', permission: 'sales:read' },
-        ],
-      },
-      {
-        label: 'Finance',
-        icon: CircleDollarSign,
-        subItems: [
-          { label: 'Expenses', path: '/finance/expenses', permission: 'finance:read' },
-          { label: 'Income', path: '/finance/incomes', permission: 'finance:read' },
-          { label: 'Profit & Loss', path: '/analytics', permission: 'reports:read', icon: PieChart },
-        ],
-      },
+      { label: 'Sales / Orders', path: '/sales/orders', permission: 'sales:read', moduleKey: 'sales_orders', icon: Receipt },
+      { label: 'Expenses', path: '/finance/expenses', permission: 'finance:read', moduleKey: 'expenses', icon: Wallet },
+      { label: 'Profit & Loss', path: '/analytics', permission: 'reports:read', moduleKey: 'reports', icon: BarChart3 },
+      { label: 'Reports & Analytics', path: '/reports/production', permission: 'reports:read', moduleKey: 'reports', icon: BarChart3 },
     ],
   },
   {
-    title: 'Reports',
+    title: 'Administration',
     items: [
-      {
-        label: 'Reports & Analytics',
-        icon: BarChart3,
-        subItems: [
-          { label: 'Production Report', path: '/reports/production', permission: 'reports:read' },
-          { label: 'Feed Report', path: '/reports/feed', permission: 'reports:read' },
-          { label: 'Mortality Report', path: '/reports/mortality', permission: 'reports:read' },
-          { label: 'Sales Report', path: '/reports/sales', permission: 'reports:read' },
-          { label: 'Profit Report', path: '/reports/profit', permission: 'reports:read' },
-        ],
-      },
+      { label: 'Users & Roles', path: '/settings/users', permission: 'users:read', moduleKey: 'users', icon: Users },
+      { label: 'Settings', path: '/settings/config', permission: 'settings:read', moduleKey: 'settings', icon: Settings },
     ],
   },
   {
-    title: 'System',
-    items: [
-      {
-        label: 'Settings',
-        icon: Settings,
-        subItems: [
-          { label: 'Users', path: '/settings/users', permission: 'users:read', icon: Users },
-          { label: 'Roles & Permissions', path: '/settings/roles', permission: 'settings:read' },
-          { label: 'System Config', path: '/settings/config', permission: 'settings:read' },
-        ],
-      },
-    ],
-  },
-  {
-    title: 'Developer',
+    title: 'Platform',
     items: [
       {
         label: 'Developer Admin',
         icon: Bot,
-        subItems: [
-          { label: 'Tenants', path: '/dev-admin/tenants', permission: 'dev_admin:read', icon: Database },
+        items: [
+          { label: 'Customers / Tenants', path: '/dev-admin/tenants', permission: 'dev_admin:read', icon: Database },
           { label: 'Subscription Plans', path: '/dev-admin/plans', permission: 'dev_admin:read', icon: CreditCard },
-          { label: 'Module Control', path: '/dev-admin/modules', permission: 'dev_admin:write', icon: PackageSearch },
+          { label: 'Module Control', path: '/dev-admin/modules', permission: 'dev_admin:write', icon: Boxes },
           { label: 'Billing Status', path: '/dev-admin/billing', permission: 'dev_admin:read', icon: Receipt },
         ],
       },
@@ -184,86 +119,67 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ]
 
-function NavGroup({
+function GroupItem({
   item,
-  location,
+  pathname,
   onClose,
 }: {
-  item: NavItem
-  location: ReturnType<typeof useLocation>
+  item: NavGroup
+  pathname: string
   onClose: () => void
 }) {
   const Icon = item.icon
-  const hasActiveSubItem = item.subItems?.some((sub) => location.pathname.startsWith(sub.path)) ?? false
-  const [open, setOpen] = useState(hasActiveSubItem)
-
-  const handleToggle = () => setOpen((o) => !o)
+  const [open, setOpen] = useState(item.items.some((entry) => pathname.startsWith(entry.path)))
+  const active = item.items.some((entry) => pathname.startsWith(entry.path))
 
   return (
     <div>
       <button
         type="button"
-        onClick={handleToggle}
+        onClick={() => setOpen((value) => !value)}
         className={clsx(
-          'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-colors duration-150',
-          hasActiveSubItem ? 'text-white' : 'text-white/60 hover:text-white/90'
+          'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors',
+          active ? 'bg-[#1E7A3A]/14 text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'
         )}
       >
-        <span
-          className={clsx(
-            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',
-            hasActiveSubItem ? 'bg-[#1E7A3A]/20 text-[#22c55e]' : 'text-white/40'
-          )}
-        >
-          <Icon className="h-[17px] w-[17px]" />
+        <span className={clsx('flex h-9 w-9 items-center justify-center rounded-xl border', active ? 'border-[#1E7A3A]/25 bg-[#1E7A3A]/14 text-[#4ade80]' : 'border-white/5 bg-white/[0.03] text-white/45')}>
+          <Icon className="h-4.5 w-4.5" />
         </span>
-        <span className="flex-1 text-[13px] font-medium tracking-[-0.01em]">{item.label}</span>
-        <ChevronDown
-          className={clsx(
-            'h-3.5 w-3.5 shrink-0 text-white/40 transition-transform duration-200',
-            open ? 'rotate-180' : ''
-          )}
-        />
+        <span className="flex-1 text-[13px] font-semibold">{item.label}</span>
+        <ChevronDown className={clsx('h-4 w-4 text-white/35 transition-transform', open && 'rotate-180')} />
       </button>
 
-      {open && (
-        <div className="mt-0.5 ml-[1.1rem] space-y-0.5 border-l border-white/8 pl-3">
-          {item.subItems!.map((sub) => {
-            const SubIcon = sub.icon
-            const isActive = location.pathname.startsWith(sub.path)
+      {open ? (
+        <div className="ml-5 mt-1 space-y-1 border-l border-white/8 pl-4">
+          {item.items.map((entry) => {
+            const EntryIcon = entry.icon
+            const activeEntry = pathname.startsWith(entry.path)
             return (
               <NavLink
-                key={sub.path}
-                to={sub.path}
+                key={entry.path}
+                to={entry.path}
                 onClick={() => {
                   if (window.innerWidth < 1024) onClose()
                 }}
                 className={clsx(
-                  'flex items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors duration-150',
-                  isActive
-                    ? 'bg-[#1E7A3A]/15 text-[#4ade80]'
-                    : 'text-white/50 hover:bg-white/5 hover:text-white/90'
+                  'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] font-medium transition-colors',
+                  activeEntry ? 'border-l-2 border-[#1E7A3A] bg-[#1E7A3A]/10 text-[#4ade80]' : 'text-white/55 hover:bg-white/5 hover:text-white/90'
                 )}
               >
-                {SubIcon && (
-                  <SubIcon className={clsx('h-3.5 w-3.5 shrink-0', isActive ? 'text-[#4ade80]' : 'text-white/30')} />
-                )}
-                {sub.label}
-                {isActive && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#22c55e]" />
-                )}
+                <EntryIcon className="h-3.5 w-3.5 shrink-0" />
+                {entry.label}
               </NavLink>
             )
           })}
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
 
 export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const location = useLocation()
-  const { hasPermission, user } = useAuth()
+  const { hasPermission, hasModuleAccess, tenant, user } = useAuth()
 
   const sections = useMemo(
     () =>
@@ -271,30 +187,29 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         ...section,
         items: section.items
           .map((item) => {
-            if (item.subItems) {
-              const subItems = item.subItems.filter((sub) => hasPermission(sub.permission))
-              return subItems.length ? { ...item, subItems } : null
+            if (isGroup(item)) {
+              const items = item.items.filter((entry) => hasPermission(entry.permission) && (!entry.moduleKey || hasModuleAccess(entry.moduleKey)))
+              return items.length ? { ...item, items } : null
             }
-            return item.permission && !hasPermission(item.permission) ? null : item
+            return hasPermission(item.permission) && (!item.moduleKey || hasModuleAccess(item.moduleKey)) ? item : null
           })
-          .filter(Boolean) as NavItem[],
-      })).filter((s) => s.items.length > 0),
-    [hasPermission]
+          .filter(Boolean) as Array<NavLinkItem | NavGroup>,
+      })).filter((section) => section.items.length > 0),
+    [hasModuleAccess, hasPermission]
   )
 
   const roleLabel = user?.role?.name ? ROLE_LABELS[user.role.name] ?? user.role.name : 'Team'
 
   return (
     <>
-      {/* Mobile overlay */}
-      {isOpen && (
+      {isOpen ? (
         <button
           type="button"
           aria-label="Close navigation"
           className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={onClose}
         />
-      )}
+      ) : null}
 
       <aside
         className={clsx(
@@ -303,66 +218,59 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         )}
         style={{ background: '#111827' }}
       >
-        {/* Header */}
         <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-4">
           <BrandMark />
           <button
             type="button"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-white/40 hover:bg-white/8 hover:text-white lg:hidden"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:bg-white/8 hover:text-white lg:hidden"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Role label */}
-        <div className="px-4 py-2.5">
-          <span className="inline-flex items-center rounded-md bg-[#1E7A3A]/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4ade80]">
+        <div className="space-y-2 border-b border-white/[0.07] px-4 py-3">
+          <span className="inline-flex items-center rounded-md bg-[#1E7A3A]/15 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4ade80]">
             {roleLabel}
           </span>
+          {tenant ? (
+            <div className="rounded-xl border border-white/6 bg-white/[0.03] px-3 py-2">
+              <div className="truncate text-[12px] font-semibold text-white/85">{tenant.name}</div>
+              <div className="mt-1 text-[11px] uppercase tracking-[0.14em] text-white/35">{tenant.plan} plan</div>
+            </div>
+          ) : null}
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-2 pb-4 sidebar-scroll">
+        <nav className="flex-1 overflow-y-auto px-2 pb-4 pt-3 sidebar-scroll">
           {sections.map((section) => (
-            <div key={section.title} className="mb-4">
-              <div className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/25">
+            <div key={section.title} className="mb-5">
+              <div className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/25">
                 {section.title}
               </div>
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {section.items.map((item) => {
-                  if (item.subItems) {
-                    return (
-                      <NavGroup
-                        key={item.label}
-                        item={item}
-                        location={location}
-                        onClose={onClose}
-                      />
-                    )
+                  if (isGroup(item)) {
+                    return <GroupItem key={item.label} item={item} pathname={location.pathname} onClose={onClose} />
                   }
+
                   const Icon = item.icon
-                  const isActive = item.path ? location.pathname.startsWith(item.path) : false
+                  const active = location.pathname.startsWith(item.path)
                   return (
                     <NavLink
                       key={item.path}
-                      to={item.path!}
-                      onClick={() => { if (window.innerWidth < 1024) onClose() }}
+                      to={item.path}
+                      onClick={() => {
+                        if (window.innerWidth < 1024) onClose()
+                      }}
                       className={clsx(
-                        'flex items-center gap-2.5 rounded-xl px-3 py-2 transition-colors duration-150',
-                        isActive ? 'bg-[#1E7A3A]/15 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white/90'
+                        'flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors',
+                        active ? 'border-l-2 border-[#1E7A3A] bg-[#1E7A3A]/12 text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'
                       )}
                     >
-                      <span
-                        className={clsx(
-                          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
-                          isActive ? 'bg-[#1E7A3A]/20 text-[#22c55e]' : 'text-white/40'
-                        )}
-                      >
-                        <Icon className="h-[17px] w-[17px]" />
+                      <span className={clsx('flex h-9 w-9 items-center justify-center rounded-xl border', active ? 'border-[#1E7A3A]/25 bg-[#1E7A3A]/14 text-[#4ade80]' : 'border-white/5 bg-white/[0.03] text-white/45')}>
+                        <Icon className="h-4.5 w-4.5" />
                       </span>
-                      <span className="text-[13px] font-medium tracking-[-0.01em]">{item.label}</span>
-                      {isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#22c55e]" />}
+                      <span className="text-[13px] font-semibold">{item.label}</span>
                     </NavLink>
                   )
                 })}
@@ -371,14 +279,13 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           ))}
         </nav>
 
-        {/* Footer */}
         <div className="border-t border-white/[0.07] px-4 py-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1E7A3A]/20 text-[11px] font-bold text-[#4ade80]">
-              {user?.full_name?.slice(0, 2).toUpperCase() ?? 'FM'}
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1E7A3A]/18 text-[11px] font-bold text-[#4ade80]">
+              {user?.full_name?.slice(0, 2).toUpperCase() ?? 'FX'}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[12px] font-semibold text-white/80">{user?.full_name ?? 'Loading…'}</div>
+              <div className="truncate text-[12px] font-semibold text-white/85">{user?.full_name ?? 'Loading...'}</div>
               <div className="truncate text-[11px] text-white/35">{user?.email ?? ''}</div>
             </div>
           </div>

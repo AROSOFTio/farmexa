@@ -15,7 +15,7 @@ from app.core.security import (
 )
 from app.core.config import settings
 from app.modules.auth.repository import AuthRepository
-from app.modules.auth.schemas import TokenPair, MeResponse, UserOut
+from app.modules.auth.schemas import MeResponse, TenantSessionOut, TokenPair, UserOut
 
 
 class AuthService:
@@ -96,7 +96,21 @@ class AuthService:
         permissions = []
         if user.role and user.role.role_permissions:
             permissions = [rp.permission.code for rp in user.role.role_permissions if rp.permission]
+        enabled_modules: list[str] = []
+        tenant = None
+        if user.tenant:
+            enabled_modules = [module.module_key for module in user.tenant.modules if module.is_enabled]
+            tenant = TenantSessionOut(
+                id=user.tenant.id,
+                name=user.tenant.name,
+                slug=user.tenant.slug,
+                plan=user.tenant.plan.value if hasattr(user.tenant.plan, "value") else str(user.tenant.plan),
+                is_suspended=user.tenant.is_suspended,
+                subscription_expiry=user.tenant.subscription_expiry,
+            )
         return MeResponse(
             user=UserOut.model_validate(user),
             permissions=permissions,
+            enabled_modules=enabled_modules,
+            tenant=tenant,
         )

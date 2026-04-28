@@ -3,20 +3,28 @@ Auth repository: database operations for auth flows.
 """
 
 from datetime import datetime, timezone
+
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.auth import RefreshToken, Role, RolePermission, Permission
-from app.models.user import User
 from app.core.security import hash_refresh_token
+from app.models.auth import Permission, RefreshToken, Role, RolePermission
+from app.models.tenant import Tenant
+from app.models.user import User
 
 
 def _user_with_permissions():
-    """Reusable eager-load option: user → role → permissions."""
     return selectinload(User.role).selectinload(
         Role.role_permissions
     ).selectinload(RolePermission.permission)
+
+
+def _user_with_relationships():
+    return (
+        _user_with_permissions(),
+        selectinload(User.tenant).selectinload(Tenant.modules),
+    )
 
 
 class AuthRepository:
@@ -27,7 +35,7 @@ class AuthRepository:
         result = await self.db.execute(
             select(User)
             .where(User.email == email, User.deleted_at.is_(None))
-            .options(_user_with_permissions())
+            .options(*_user_with_relationships())
         )
         return result.scalar_one_or_none()
 
@@ -55,7 +63,7 @@ class AuthRepository:
             select(RefreshToken)
             .where(RefreshToken.token_hash == hash_refresh_token(raw_token))
             .options(
-                selectinload(RefreshToken.user).options(_user_with_permissions())
+                selectinload(RefreshToken.user).options(*_user_with_relationships())
             )
         )
         return result.scalar_one_or_none()

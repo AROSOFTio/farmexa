@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     SEED_ADMIN_EMAIL: str = "admin@farmexa.local"
     SEED_ADMIN_PASSWORD: str = "Admin@2026!"
     SEED_ADMIN_FULL_NAME: str = "Farmexa System Administrator"
+    SEED_DEV_ADMIN_EMAIL: str = "devadmin@farmexa.local"
+    SEED_DEV_ADMIN_PASSWORD: str = "DevAdmin@2026!"
+    SEED_DEV_ADMIN_FULL_NAME: str = "Farmexa Developer Admin"
 
     @property
     def is_production(self) -> bool:
