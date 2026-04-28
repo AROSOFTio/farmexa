@@ -263,9 +263,7 @@
   }
 
   .sidebar {
-    background:
-      linear-gradient(180deg, rgba(37, 99, 235, 0.2) 0%, rgba(15, 39, 71, 0) 24%),
-      linear-gradient(180deg, #16345c 0%, #0f2747 46%, #0a1730 100%);
+    background: var(--sidebar-bg);
     color: #ffffff;
     box-shadow: var(--shadow-shell);
   }
