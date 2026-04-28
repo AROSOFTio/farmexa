@@ -23,30 +23,11 @@ MODULES_TABLE = sa.table(
     sa.column("is_active", sa.Boolean()),
 )
 
-PLANS_TABLE = sa.table(
-    "plans",
-    sa.column("code", sa.String()),
-    sa.column("name", sa.String()),
-    sa.column("description", sa.Text()),
-    sa.column("billing_cycle", sa.String()),
-    sa.column("is_custom", sa.Boolean()),
-    sa.column("is_active", sa.Boolean()),
-)
-
 PLAN_MODULES_TABLE = sa.table(
     "plan_modules",
     sa.column("plan_code", sa.String()),
     sa.column("module_key", sa.String()),
     sa.column("is_included", sa.Boolean()),
-)
-
-MODULE_PRICES_TABLE = sa.table(
-    "module_prices",
-    sa.column("module_key", sa.String()),
-    sa.column("billing_cycle", sa.String()),
-    sa.column("price", sa.Numeric()),
-    sa.column("currency", sa.String()),
-    sa.column("notes", sa.Text()),
 )
 
 
@@ -268,14 +249,15 @@ def upgrade() -> None:
         ],
     )
 
-    op.bulk_insert(
-        PLANS_TABLE,
-        [
-            {"code": "basic", "name": "Core", "description": "Core farm operation modules", "billing_cycle": "monthly", "is_custom": False, "is_active": True},
-            {"code": "standard", "name": "Standard", "description": "Operational, feed, inventory, and sales modules", "billing_cycle": "monthly", "is_custom": False, "is_active": True},
-            {"code": "premium", "name": "Premium", "description": "Full operational, compliance, finance, and admin suite", "billing_cycle": "monthly", "is_custom": False, "is_active": True},
-            {"code": "custom", "name": "Custom", "description": "Developer-admin configured package", "billing_cycle": "monthly", "is_custom": True, "is_active": True},
-        ],
+    op.execute(
+        """
+        INSERT INTO plans (code, name, description, billing_cycle, is_custom, is_active)
+        VALUES
+            ('basic', 'Core', 'Core farm operation modules', 'monthly'::billingcycle, false, true),
+            ('standard', 'Standard', 'Operational, feed, inventory, and sales modules', 'monthly'::billingcycle, false, true),
+            ('premium', 'Premium', 'Full operational, compliance, finance, and admin suite', 'monthly'::billingcycle, false, true),
+            ('custom', 'Custom', 'Developer-admin configured package', 'monthly'::billingcycle, true, true)
+        """
     )
 
     for plan_code, module_keys in {
@@ -288,13 +270,14 @@ def upgrade() -> None:
             [{"plan_code": plan_code, "module_key": module_key, "is_included": True} for module_key in module_keys],
         )
 
-    op.bulk_insert(
-        MODULE_PRICES_TABLE,
-        [
-            {"module_key": "slaughter_records", "billing_cycle": "monthly", "price": 150000, "currency": "UGX", "notes": "Advanced processing module"},
-            {"module_key": "compliance_documents", "billing_cycle": "monthly", "price": 100000, "currency": "UGX", "notes": "Compliance and reminders"},
-            {"module_key": "profit_loss", "billing_cycle": "monthly", "price": 120000, "currency": "UGX", "notes": "Advanced finance reporting"},
-        ],
+    op.execute(
+        """
+        INSERT INTO module_prices (module_key, billing_cycle, price, currency, notes)
+        VALUES
+            ('slaughter_records', 'monthly'::billingcycle, 150000, 'UGX', 'Advanced processing module'),
+            ('compliance_documents', 'monthly'::billingcycle, 100000, 'UGX', 'Compliance and reminders'),
+            ('profit_loss', 'monthly'::billingcycle, 120000, 'UGX', 'Advanced finance reporting')
+        """
     )
 
     op.execute(
