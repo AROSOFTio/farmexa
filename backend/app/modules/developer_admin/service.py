@@ -4,6 +4,7 @@ Developer Admin service for SaaS catalog, tenant onboarding, and subscription co
 
 from __future__ import annotations
 
+import logging
 import re
 from datetime import date, datetime, timedelta
 from typing import Iterable
@@ -39,6 +40,9 @@ from app.modules.developer_admin.schemas import (
     TenantCreate,
     TenantUpdate,
 )
+
+
+logger = logging.getLogger("farmexa.developer_admin")
 
 
 class DeveloperAdminService:
@@ -260,9 +264,17 @@ class DeveloperAdminService:
             )
             await self.db.commit()
             return await self._get_tenant(tenant.id)
+        except HTTPException:
+            await self.db.rollback()
+            raise
         except IntegrityError as exc:
             await self.db.rollback()
             raise HTTPException(status_code=400, detail="Vendor registration failed because some values are invalid or already in use.") from exc
+        except Exception as exc:
+            await self.db.rollback()
+            logger.exception("Unexpected vendor registration failure for tenant '%s'.", data.name)
+            root_error = str(getattr(exc, "orig", exc)).strip() or "Unexpected server error."
+            raise HTTPException(status_code=500, detail=f"Vendor registration failed: {root_error}") from exc
 
     async def update_tenant(self, tenant_id: int, data: TenantUpdate) -> Tenant:
         tenant = await self._get_tenant(tenant_id)
