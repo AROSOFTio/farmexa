@@ -21,6 +21,18 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class VendorRegistrationRequest(BaseModel):
+    name: str = Field(min_length=2)
+    business_name: str | None = None
+    contact_person: str | None = None
+    email: EmailStr
+    phone: str | None = None
+    address: str | None = None
+    country: str | None = None
+    domain: str | None = None
+    password: str = Field(min_length=8)
+
+
 class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
@@ -68,6 +80,19 @@ class TenantSessionOut(BaseModel):
     primary_domain: str | None = None
     is_suspended: bool
     subscription_expiry: date | None = None
+
+
+class VendorRegistrationOut(BaseModel):
+    tenant_id: int
+    tenant_name: str
+    admin_email: EmailStr
+    login_host: str
+    login_url: str
+    primary_domain: str
+    primary_domain_status: str
+    fallback_domain: str | None = None
+    custom_domain: str | None = None
+    custom_domain_status: str | None = None
 
 
 class MeResponse(BaseModel):

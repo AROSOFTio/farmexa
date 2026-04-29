@@ -58,6 +58,31 @@ export interface LoginRequest {
   password: string
 }
 
+export interface VendorRegistrationRequest {
+  name: string
+  business_name?: string
+  contact_person?: string
+  email: string
+  phone?: string
+  address?: string
+  country?: string
+  domain?: string
+  password: string
+}
+
+export interface VendorRegistrationResponse {
+  tenant_id: number
+  tenant_name: string
+  admin_email: string
+  login_host: string
+  login_url: string
+  primary_domain: string
+  primary_domain_status: string
+  fallback_domain?: string | null
+  custom_domain?: string | null
+  custom_domain_status?: string | null
+}
+
 export interface UserCreateRequest {
   email: string
   full_name: string

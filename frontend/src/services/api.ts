@@ -28,7 +28,7 @@ let failedQueue: Array<{
 function shouldBypassRefresh(url?: string) {
   if (!url) return false
 
-  return ['/auth/login', '/auth/refresh'].some((path) => url.includes(path))
+  return ['/auth/login', '/auth/refresh', '/auth/register-vendor'].some((path) => url.includes(path))
 }
 
 function processQueue(error: unknown, token: string | null = null) {

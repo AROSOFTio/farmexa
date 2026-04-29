@@ -11,7 +11,7 @@ import subprocess
 from datetime import UTC, date, datetime, timedelta
 from typing import Iterable
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,6 +49,7 @@ from app.modules.developer_admin.schemas import (
     TenantCreate,
     TenantUpdate,
 )
+from app.modules.auth.schemas import VendorRegistrationOut, VendorRegistrationRequest
 from app.modules.users.catalog import TENANT_ADMIN_ROLE_NAME
 from app.utils.audit import write_audit_log
 from app.utils.domains import infer_domain_type, normalize_host, strip_port, verify_domain_points_to_target
@@ -91,6 +92,10 @@ class DeveloperAdminService:
     @staticmethod
     def _build_temp_password() -> str:
         return f"Farmexa{secrets.token_hex(4).upper()}9"
+
+    @staticmethod
+    def _enum_value(value):
+        return value.value if hasattr(value, "value") else value
 
     def _default_platform_domain(self, slug: str) -> str:
         return f"{slug}.{settings.DEFAULT_TENANT_DOMAIN_SUFFIX}"
@@ -295,7 +300,7 @@ class DeveloperAdminService:
         await self.db.flush()
         return subscription
 
-    async def _create_tenant_admin(self, tenant: Tenant) -> User:
+    async def _create_tenant_admin(self, tenant: Tenant, password_override: str | None = None) -> User:
         existing_user = await self.db.execute(select(User).where(User.email == tenant.email, User.deleted_at.is_(None)))
         if existing_user.scalar_one_or_none():
             raise HTTPException(
@@ -304,7 +309,7 @@ class DeveloperAdminService:
             )
 
         role = await self._get_role(TENANT_ADMIN_ROLE_NAME)
-        temporary_password = self._build_temp_password()
+        temporary_password = password_override or self._build_temp_password()
         full_name = (tenant.contact_person or tenant.business_name or f"{tenant.name} Admin").strip()
         user = User(
             email=tenant.email,
@@ -319,6 +324,192 @@ class DeveloperAdminService:
         self.db.add(user)
         await self.db.flush()
         return user
+
+    async def _ensure_onboarding_domains(self, tenant: Tenant, requested_host: str | None) -> None:
+        await self._ensure_primary_domain(tenant, requested_host)
+        normalized = self._clean_host(requested_host)
+        if normalized and self._domain_type_for(normalized) == DomainType.CUSTOM:
+            await self._upsert_domain(tenant, None, is_primary=False)
+
+    async def _create_tenant_internal(
+        self,
+        data: TenantCreate,
+        *,
+        actor: User | None,
+        admin_password: str | None = None,
+        source: str = "developer_admin",
+    ) -> Tenant:
+        slug = self._slugify(data.slug or data.name)
+        if not slug:
+            raise HTTPException(status_code=422, detail="Tenant name or slug is invalid.")
+        if data.subscription_start and data.subscription_expiry and data.subscription_expiry < data.subscription_start:
+            raise HTTPException(status_code=422, detail="Subscription expiry cannot be earlier than the subscription start date.")
+
+        existing = await self.db.execute(select(Tenant).where((Tenant.slug == slug) | (Tenant.name == data.name)))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail="A tenant with the same name or slug already exists.")
+
+        onboarding_admin: TenantAdminCredentialOut | None = None
+
+        try:
+            plan = await self._get_plan(data.plan)
+            billing_cycle = self._parse_billing_cycle(data.billing_cycle)
+            tenant = Tenant(
+                name=data.name,
+                slug=slug,
+                business_name=data.business_name or data.name,
+                contact_person=data.contact_person,
+                email=data.email,
+                phone=data.phone,
+                address=data.address,
+                country=data.country,
+                status=TenantStatus.TRIAL if not data.subscription_expiry else TenantStatus.ACTIVE,
+                plan=plan.code,
+                billing_cycle=billing_cycle,
+                subscription_start=data.subscription_start,
+                subscription_expiry=data.subscription_expiry,
+                notes=data.notes,
+            )
+            self.db.add(tenant)
+            await self.db.flush()
+
+            module_keys = data.enabled_modules if plan.is_custom and data.enabled_modules else await self._get_plan_module_keys(plan.code)
+            module_keys = self._with_required_modules(module_keys)
+            await self._sync_tenant_modules(tenant.id, module_keys, disable_missing=True)
+            await self._ensure_onboarding_domains(tenant, data.domain)
+            await self._create_subscription(
+                tenant_id=tenant.id,
+                plan_code=plan.code,
+                billing_cycle=billing_cycle.value,
+                start_date=data.subscription_start,
+                expiry_date=data.subscription_expiry,
+                notes=data.notes,
+                status="trial" if not data.subscription_expiry else "active",
+            )
+            tenant_admin = await self._create_tenant_admin(tenant, password_override=admin_password)
+            await provision_tenant_operational_database(tenant, tenant_admin)
+            if admin_password is None:
+                onboarding_admin = TenantAdminCredentialOut(
+                    email=tenant_admin.email,
+                    full_name=tenant_admin.full_name,
+                    temporary_password=getattr(tenant_admin, "_temporary_password"),
+                    must_change_password=True,
+                )
+
+            event_type = "created" if actor else "self_registered"
+            self.db.add(
+                SubscriptionHistory(
+                    tenant_id=tenant.id,
+                    changed_by_user_id=actor.id if actor else None,
+                    event_type=event_type,
+                    new_plan=plan.code,
+                    notes=f"{'Tenant created' if actor else 'Vendor self-registration'} on {plan.name}",
+                )
+            )
+            await write_audit_log(
+                self.db,
+                user_id=actor.id if actor else None,
+                action="CREATE",
+                entity="tenant" if actor else "tenant_self_registration",
+                entity_id=tenant.id,
+                meta={
+                    "tenant_name": tenant.name,
+                    "plan": plan.code,
+                    "billing_cycle": billing_cycle.value,
+                    "domain": data.domain or self._default_platform_domain(tenant.slug),
+                    "enabled_modules": module_keys,
+                    "source": source,
+                },
+            )
+            await self.db.commit()
+            tenant_out = await self._get_tenant(tenant.id)
+            setattr(tenant_out, "onboarding_admin", onboarding_admin)
+            return tenant_out
+        except HTTPException:
+            await self.db.rollback()
+            raise
+        except IntegrityError as exc:
+            await self.db.rollback()
+            raise HTTPException(status_code=400, detail="Vendor registration failed because some values are invalid or already in use.") from exc
+        except Exception as exc:
+            await self.db.rollback()
+            logger.exception("Unexpected vendor registration failure for tenant '%s'.", data.name)
+            root_error = str(getattr(exc, "orig", exc)).strip() or "Unexpected server error."
+            raise HTTPException(status_code=500, detail=f"Vendor registration failed: {root_error}") from exc
+
+    @staticmethod
+    def _request_scheme(request: Request) -> str:
+        forwarded = request.headers.get("x-forwarded-proto")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+        return request.url.scheme
+
+    def _build_login_url(self, request: Request, host: str) -> str:
+        scheme = self._request_scheme(request)
+        port = request.url.port
+        is_local = request.url.hostname in {"localhost", "127.0.0.1"}
+        if is_local and port:
+            return f"{scheme}://{host}:{port}/login"
+        return f"{scheme}://{host}/login"
+
+    async def register_vendor(self, payload: VendorRegistrationRequest, request: Request) -> VendorRegistrationOut:
+        if getattr(request.state, "tenant_id", None) is not None:
+            raise HTTPException(
+                status_code=403,
+                detail="Vendor self-registration is only available from the platform sign-in domain.",
+            )
+
+        tenant_data = TenantCreate(
+            name=payload.name,
+            business_name=payload.business_name,
+            contact_person=payload.contact_person,
+            email=payload.email,
+            phone=payload.phone,
+            address=payload.address,
+            country=payload.country,
+            domain=payload.domain,
+            plan="basic",
+            billing_cycle="monthly",
+            enabled_modules=[],
+        )
+        tenant = await self._create_tenant_internal(
+            tenant_data,
+            actor=None,
+            admin_password=payload.password,
+            source="public_login_registration",
+        )
+        domains = sorted(tenant.domains, key=lambda item: (not item.is_primary, item.host))
+        primary_domain = next((domain for domain in domains if domain.is_primary), None)
+        active_domain = next(
+            (domain for domain in domains if self._enum_value(domain.status) == DomainStatus.ACTIVE.value),
+            None,
+        )
+        fallback_domain = next(
+            (
+                domain
+                for domain in domains
+                if self._enum_value(domain.domain_type) == DomainType.PLATFORM_SUBDOMAIN.value
+                and self._enum_value(domain.status) == DomainStatus.ACTIVE.value
+            ),
+            None,
+        )
+        custom_domain = next(
+            (domain for domain in domains if self._enum_value(domain.domain_type) == DomainType.CUSTOM.value),
+            None,
+        )
+        login_host = active_domain.host if active_domain else self._default_platform_domain(tenant.slug)
+        return VendorRegistrationOut(
+            tenant_id=tenant.id,
+            tenant_name=tenant.name,
+            admin_email=tenant.email,
+            login_host=login_host,
+            login_url=self._build_login_url(request, login_host),
+            primary_domain=primary_domain.host if primary_domain else login_host,
+            primary_domain_status=self._enum_value(primary_domain.status) if primary_domain else DomainStatus.ACTIVE.value,
+            fallback_domain=fallback_domain.host if fallback_domain and fallback_domain.host != login_host else None,
+            custom_domain=custom_domain.host if custom_domain else None,
+            custom_domain_status=self._enum_value(custom_domain.status) if custom_domain else None,
+        )
 
     def _certbot_command(self, host: str) -> list[str]:
         command = [
@@ -384,100 +575,7 @@ class DeveloperAdminService:
         return list(result.scalars().all())
 
     async def create_tenant(self, data: TenantCreate, actor: User) -> Tenant:
-        slug = self._slugify(data.slug or data.name)
-        if not slug:
-            raise HTTPException(status_code=422, detail="Tenant name or slug is invalid.")
-        if data.subscription_start and data.subscription_expiry and data.subscription_expiry < data.subscription_start:
-            raise HTTPException(status_code=422, detail="Subscription expiry cannot be earlier than the subscription start date.")
-
-        existing = await self.db.execute(select(Tenant).where((Tenant.slug == slug) | (Tenant.name == data.name)))
-        if existing.scalar_one_or_none():
-            raise HTTPException(status_code=409, detail="A tenant with the same name or slug already exists.")
-
-        onboarding_admin: TenantAdminCredentialOut | None = None
-
-        try:
-            plan = await self._get_plan(data.plan)
-            billing_cycle = self._parse_billing_cycle(data.billing_cycle)
-            tenant = Tenant(
-                name=data.name,
-                slug=slug,
-                business_name=data.business_name or data.name,
-                contact_person=data.contact_person,
-                email=data.email,
-                phone=data.phone,
-                address=data.address,
-                country=data.country,
-                status=TenantStatus.TRIAL if not data.subscription_expiry else TenantStatus.ACTIVE,
-                plan=plan.code,
-                billing_cycle=billing_cycle,
-                subscription_start=data.subscription_start,
-                subscription_expiry=data.subscription_expiry,
-                notes=data.notes,
-            )
-            self.db.add(tenant)
-            await self.db.flush()
-
-            module_keys = data.enabled_modules if plan.is_custom and data.enabled_modules else await self._get_plan_module_keys(plan.code)
-            module_keys = self._with_required_modules(module_keys)
-            await self._sync_tenant_modules(tenant.id, module_keys, disable_missing=True)
-            await self._ensure_primary_domain(tenant, data.domain)
-            await self._create_subscription(
-                tenant_id=tenant.id,
-                plan_code=plan.code,
-                billing_cycle=billing_cycle.value,
-                start_date=data.subscription_start,
-                expiry_date=data.subscription_expiry,
-                notes=data.notes,
-                status="trial" if not data.subscription_expiry else "active",
-            )
-            tenant_admin = await self._create_tenant_admin(tenant)
-            await provision_tenant_operational_database(tenant, tenant_admin)
-            onboarding_admin = TenantAdminCredentialOut(
-                email=tenant_admin.email,
-                full_name=tenant_admin.full_name,
-                temporary_password=getattr(tenant_admin, "_temporary_password"),
-                must_change_password=True,
-            )
-
-            self.db.add(
-                SubscriptionHistory(
-                    tenant_id=tenant.id,
-                    changed_by_user_id=actor.id,
-                    event_type="created",
-                    new_plan=plan.code,
-                    notes=f"Tenant created on {plan.name}",
-                )
-            )
-            await write_audit_log(
-                self.db,
-                user_id=actor.id,
-                action="CREATE",
-                entity="tenant",
-                entity_id=tenant.id,
-                meta={
-                    "tenant_name": tenant.name,
-                    "plan": plan.code,
-                    "billing_cycle": billing_cycle.value,
-                    "domain": data.domain or self._default_platform_domain(tenant.slug),
-                    "enabled_modules": module_keys,
-                },
-            )
-            await self.db.commit()
-            tenant_out = await self._get_tenant(tenant.id)
-            setattr(tenant_out, "onboarding_admin", onboarding_admin)
-            return tenant_out
-        except HTTPException:
-            await self.db.rollback()
-            raise
-        except IntegrityError as exc:
-            await self.db.rollback()
-            raise HTTPException(status_code=400, detail="Vendor registration failed because some values are invalid or already in use.") from exc
-        except Exception as exc:
-            await self.db.rollback()
-            logger.exception("Unexpected vendor registration failure for tenant '%s'.", data.name)
-            root_error = str(getattr(exc, "orig", exc)).strip() or "Unexpected server error."
-            raise HTTPException(status_code=500, detail=f"Vendor registration failed: {root_error}") from exc
+        return await self._create_tenant_internal(data, actor=actor, admin_password=None, source="developer_admin")
 
     async def update_tenant(self, tenant_id: int, data: TenantUpdate) -> Tenant:
         tenant = await self._get_tenant(tenant_id)
