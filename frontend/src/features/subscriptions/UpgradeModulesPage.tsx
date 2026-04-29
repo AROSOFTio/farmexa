@@ -204,7 +204,7 @@ export function UpgradeModulesPage() {
                             : [...current, module.key]
                         )
                       }
-                      className={`rounded-[18px] border px-4 py-4 text-left transition-colors ${
+                      className={`rounded-[16px] border px-3.5 py-3 text-left transition-colors ${
                         active
                           ? 'border-[var(--brand-primary)] bg-[rgba(52,168,83,0.08)]'
                           : 'border-[var(--border-subtle)] bg-[var(--surface-card)] hover:bg-[var(--surface-soft)]'
@@ -212,13 +212,13 @@ export function UpgradeModulesPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="text-sm font-semibold text-[var(--text-strong)]">{module.name}</div>
-                          <div className="mt-1 text-[12px] uppercase tracking-[0.12em] text-[var(--text-muted)]">{module.category.replace(/_/g, ' ')}</div>
+                          <div className="text-[13px] font-semibold text-[var(--text-strong)]">{module.name}</div>
+                          <div className="mt-1 text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">{module.category.replace(/_/g, ' ')}</div>
                         </div>
                         {active ? <CheckCircle2 className="h-4 w-4 text-[var(--brand-primary)]" /> : null}
                       </div>
-                      <p className="mt-3 text-[13px] text-[var(--text-muted)]">{module.description}</p>
-                      <div className="mt-4 text-sm font-semibold text-[var(--text-strong)]">
+                      <p className="mt-2 text-[12px] leading-5 text-[var(--text-muted)]">{module.description}</p>
+                      <div className="mt-3 text-[13px] font-semibold text-[var(--text-strong)]">
                         {formatMoney(module.monthly_price, module.currency)} / {data?.billing_cycle ?? 'month'}
                       </div>
                     </button>

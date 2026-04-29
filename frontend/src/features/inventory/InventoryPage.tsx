@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -7,6 +7,7 @@ import { ArrowLeftRight, Boxes, PackagePlus, TrendingDown } from 'lucide-react'
 import { toast } from 'sonner'
 
 import api from '@/services/api'
+import { Modal } from '@/components/Modal'
 
 type InventorySection = 'items' | 'movements' | 'medicine'
 
@@ -65,18 +66,27 @@ const movementSchema = z.object({
 type ItemFormValues = z.infer<typeof itemSchema>
 type MovementFormValues = z.infer<typeof movementSchema>
 
-const sectionCopy: Record<InventorySection, { title: string; description: string }> = {
+const sectionCopy: Record<
+  InventorySection,
+  { title: string; description: string; actionLabel: string; actionDescription: string }
+> = {
   items: {
-    title: 'Inventory items',
-    description: 'Current stock records.',
+    title: 'Inventory Items',
+    description: 'Maintain stock-controlled products, packaging, and reusable inventory from a single register.',
+    actionLabel: 'Add inventory item',
+    actionDescription: 'Register a stock-controlled item with opening quantity, cost, and reorder level.',
   },
   medicine: {
-    title: 'Medicine stock',
-    description: 'Vaccines, drugs, and treatment supplies with reorder visibility.',
+    title: 'Medicine Stock',
+    description: 'Vaccines, drugs, and treatment supplies with clean reorder visibility.',
+    actionLabel: 'Add medicine item',
+    actionDescription: 'Create a medicine or vaccine record with opening quantity and stock cost.',
   },
   movements: {
-    title: 'Stock movements',
-    description: 'Stock ledger activity.',
+    title: 'Stock Movements',
+    description: 'Track inbound, outbound, and adjustment activity against live inventory balances.',
+    actionLabel: 'Post movement',
+    actionDescription: 'Record stock in, stock out, or an adjustment against an existing item.',
   },
 }
 
@@ -84,9 +94,38 @@ function formatDate(value: string) {
   return new Date(value).toLocaleDateString('en-UG', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function emptyItemValues(isMedicineView: boolean): ItemFormValues {
+  return {
+    name: '',
+    sku: '',
+    category: isMedicineView ? 'medicine' : 'finished_product',
+    unit_of_measure: 'kg',
+    reorder_level: 0,
+    unit_price: 0,
+    description: '',
+    is_active: true,
+    initial_quantity: 0,
+    initial_unit_cost: 0,
+  }
+}
+
+function emptyMovementValues(): MovementFormValues {
+  return {
+    item_id: 0,
+    movement_type: 'in',
+    quantity: 0,
+    reference_type: '',
+    reference_id: undefined,
+    unit_cost: undefined,
+    notes: '',
+  }
+}
+
 export function InventoryPage({ section }: { section: InventorySection }) {
   const qc = useQueryClient()
   const copy = sectionCopy[section]
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false)
+  const [isMovementModalOpen, setIsMovementModalOpen] = useState(false)
   const isMedicineView = section === 'medicine'
   const itemsEndpoint = isMedicineView ? '/inventory/medicine/items' : '/inventory/items'
   const movementsEndpoint = isMedicineView ? '/inventory/medicine/movements' : '/inventory/movements'
@@ -104,31 +143,12 @@ export function InventoryPage({ section }: { section: InventorySection }) {
 
   const itemForm = useForm<ItemFormValues>({
     resolver: zodResolver(itemSchema),
-    defaultValues: {
-      name: '',
-      sku: '',
-      category: isMedicineView ? 'medicine' : 'finished_product',
-      unit_of_measure: 'kg',
-      reorder_level: 0,
-      unit_price: 0,
-      description: '',
-      is_active: true,
-      initial_quantity: 0,
-      initial_unit_cost: 0,
-    },
+    defaultValues: emptyItemValues(isMedicineView),
   })
 
   const movementForm = useForm<MovementFormValues>({
     resolver: zodResolver(movementSchema),
-    defaultValues: {
-      item_id: 0,
-      movement_type: 'in',
-      quantity: 0,
-      reference_type: '',
-      reference_id: undefined,
-      unit_cost: undefined,
-      notes: '',
-    },
+    defaultValues: emptyMovementValues(),
   })
 
   const createItem = useMutation({
@@ -141,18 +161,8 @@ export function InventoryPage({ section }: { section: InventorySection }) {
       toast.success(isMedicineView ? 'Medicine item created.' : 'Inventory item created.')
       qc.invalidateQueries({ queryKey: ['inventory-items'] })
       qc.invalidateQueries({ queryKey: ['inventory-items', section] })
-      itemForm.reset({
-        name: '',
-        sku: '',
-        category: isMedicineView ? 'medicine' : 'finished_product',
-        unit_of_measure: 'kg',
-        reorder_level: 0,
-        unit_price: 0,
-        description: '',
-        is_active: true,
-        initial_quantity: 0,
-        initial_unit_cost: 0,
-      })
+      itemForm.reset(emptyItemValues(isMedicineView))
+      setIsItemModalOpen(false)
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.detail ?? (isMedicineView ? 'Failed to create medicine item.' : 'Failed to create inventory item.'))
@@ -174,15 +184,8 @@ export function InventoryPage({ section }: { section: InventorySection }) {
       qc.invalidateQueries({ queryKey: ['inventory-movements'] })
       qc.invalidateQueries({ queryKey: ['inventory-items', section] })
       qc.invalidateQueries({ queryKey: ['inventory-movements', section] })
-      movementForm.reset({
-        item_id: 0,
-        movement_type: 'in',
-        quantity: 0,
-        reference_type: '',
-        reference_id: undefined,
-        unit_cost: undefined,
-        notes: '',
-      })
+      movementForm.reset(emptyMovementValues())
+      setIsMovementModalOpen(false)
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.detail ?? 'Failed to record stock movement.')
@@ -207,23 +210,34 @@ export function InventoryPage({ section }: { section: InventorySection }) {
     [visibleItems]
   )
 
-  const itemFormTitle = isMedicineView ? 'Add medicine item' : 'Create item'
-  const itemFormDescription = isMedicineView
-    ? 'Register medicines, vaccines, and treatment supplies with opening balances and reorder levels.'
-    : 'Add a stock-controlled item with opening quantity and cost.'
-  const registerTitle = isMedicineView ? 'Medicine register' : 'Item register'
-  const registerDescription = isMedicineView ? 'Available medicines and treatment supplies.' : 'Current stock and cost.'
+  const openItemModal = () => {
+    itemForm.reset(emptyItemValues(isMedicineView))
+    setIsItemModalOpen(true)
+  }
+
+  const openMovementModal = () => {
+    movementForm.reset(emptyMovementValues())
+    setIsMovementModalOpen(true)
+  }
 
   return (
-    <div className="animate-fade-in">
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="animate-fade-in space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-neutral-900">{copy.title}</h1>
-          <p className="mt-1 max-w-2xl text-sm font-medium text-neutral-500">{copy.description}</p>
+          <p className="mt-1 max-w-3xl text-sm font-medium text-neutral-500">{copy.description}</p>
         </div>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={section === 'movements' ? openMovementModal : openItemModal}
+        >
+          {section === 'movements' ? <ArrowLeftRight className="h-4 w-4" /> : <PackagePlus className="h-4 w-4" />}
+          {copy.actionLabel}
+        </button>
       </div>
 
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <div className="card p-5">
           <div className="mb-3 flex items-center gap-2 text-neutral-500">
             <Boxes className="h-4 w-4 text-brand-500" />
@@ -247,229 +261,254 @@ export function InventoryPage({ section }: { section: InventorySection }) {
         </div>
       </div>
 
-      {section !== 'movements' && (
-        <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-          <div className="card p-6">
-            <h2 className="text-lg font-bold text-neutral-900">{itemFormTitle}</h2>
-            <p className="mt-1 text-sm text-neutral-500">{itemFormDescription}</p>
-            <form className="mt-5 space-y-4" onSubmit={itemForm.handleSubmit((values) => createItem.mutate(values))}>
-              <div>
-                <label className="form-label">Item name</label>
-                <input className="form-input" {...itemForm.register('name')} />
-              </div>
-              <div>
-                <label className="form-label">SKU</label>
-                <input className="form-input" {...itemForm.register('sku')} />
-              </div>
-              {isMedicineView ? (
-                <div className="rounded-[18px] border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
-                  Category is locked to <span className="font-semibold text-neutral-900">Medicine</span> for this workflow.
-                </div>
-              ) : (
-                <div>
-                  <label className="form-label">Category</label>
-                  <select className="form-input" {...itemForm.register('category')}>
-                    <option value="raw_material">Raw material</option>
-                    <option value="packaging">Packaging</option>
-                    <option value="medicine">Medicine</option>
-                    <option value="finished_product">Finished product</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-              )}
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="form-label">Unit</label>
-                  <input className="form-input" {...itemForm.register('unit_of_measure')} />
-                </div>
-                <div>
-                  <label className="form-label">Reorder level</label>
-                  <input className="form-input" type="number" min={0} step="0.01" {...itemForm.register('reorder_level')} />
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="form-label">Unit price</label>
-                  <input className="form-input" type="number" min={0} step="0.01" {...itemForm.register('unit_price')} />
-                </div>
-                <div>
-                  <label className="form-label">Initial unit cost</label>
-                  <input className="form-input" type="number" min={0} step="0.01" {...itemForm.register('initial_unit_cost')} />
-                </div>
-              </div>
-              <div>
-                <label className="form-label">Initial quantity</label>
-                <input className="form-input" type="number" min={0} step="0.01" {...itemForm.register('initial_quantity')} />
-              </div>
-              <div>
-                <label className="form-label">Description</label>
-                <textarea className="form-input min-h-[120px]" {...itemForm.register('description')} />
-              </div>
-              <button className="btn-primary w-full" disabled={createItem.isPending} type="submit">
-                <PackagePlus className="h-4 w-4" />
-                {createItem.isPending ? 'Saving...' : isMedicineView ? 'Save medicine item' : 'Save item'}
-              </button>
-            </form>
+      <div className="card p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-neutral-900">{copy.actionLabel}</h2>
+            <p className="mt-1 text-sm text-neutral-500">{copy.actionDescription}</p>
           </div>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={section === 'movements' ? openMovementModal : openItemModal}
+          >
+            {section === 'movements' ? <ArrowLeftRight className="h-4 w-4" /> : <PackagePlus className="h-4 w-4" />}
+            {copy.actionLabel}
+          </button>
+        </div>
+      </div>
 
-          <div className="card overflow-hidden">
-            <div className="border-b border-neutral-100 px-6 py-5">
-              <h2 className="text-lg font-bold text-neutral-900">{registerTitle}</h2>
-              <p className="mt-1 text-sm text-neutral-500">{registerDescription}</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
+      {section !== 'movements' && (
+        <div className="card overflow-hidden">
+          <div className="border-b border-neutral-100 px-6 py-5">
+            <h2 className="text-lg font-bold text-neutral-900">{isMedicineView ? 'Medicine register' : 'Item register'}</h2>
+            <p className="mt-1 text-sm text-neutral-500">
+              {isMedicineView ? 'Available medicines and treatment supplies.' : 'Current inventory balances and unit costs.'}
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th className="pl-6">Item</th>
+                  <th>Category</th>
+                  <th>Quantity</th>
+                  <th>Average cost</th>
+                  <th className="pr-6">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleItems.length === 0 ? (
                   <tr>
-                    <th className="pl-6">Item</th>
-                    <th>Category</th>
-                    <th>Quantity</th>
-                    <th>Average cost</th>
-                    <th className="pr-6">Status</th>
+                    <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={5}>
+                      {isMedicineView ? 'No medicine stock items.' : 'No inventory items.'}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {visibleItems.length === 0 ? (
-                    <tr>
-                      <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={5}>
-                        {isMedicineView ? 'No medicine stock items.' : 'No inventory items.'}
-                      </td>
-                    </tr>
-                  ) : (
-                    visibleItems.map((item) => {
-                      const lowStock = item.current_quantity <= item.reorder_level
-                      return (
-                        <tr key={item.id}>
-                          <td className="pl-6">
-                            <div className="font-semibold text-neutral-900">{item.name}</div>
-                            <div className="text-xs text-neutral-500">{item.sku || 'No SKU'} | {item.unit_of_measure}</div>
-                          </td>
-                          <td>{item.category.replace('_', ' ')}</td>
-                          <td>{item.current_quantity.toLocaleString()} {item.unit_of_measure}</td>
-                          <td>UGX {item.average_cost.toLocaleString()}</td>
-                          <td className="pr-6">
-                            <span className={lowStock ? 'badge badge-warning' : 'badge badge-brand'}>
-                              {lowStock ? 'Low stock' : item.is_active ? 'Active' : 'Inactive'}
-                            </span>
-                          </td>
-                        </tr>
-                      )
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                ) : (
+                  visibleItems.map((item) => {
+                    const lowStock = item.current_quantity <= item.reorder_level
+                    return (
+                      <tr key={item.id}>
+                        <td className="pl-6">
+                          <div className="font-semibold text-neutral-900">{item.name}</div>
+                          <div className="text-xs text-neutral-500">{item.sku || 'No SKU'} | {item.unit_of_measure}</div>
+                        </td>
+                        <td>{item.category.replace('_', ' ')}</td>
+                        <td>{item.current_quantity.toLocaleString()} {item.unit_of_measure}</td>
+                        <td>UGX {item.average_cost.toLocaleString()}</td>
+                        <td className="pr-6">
+                          <span className={lowStock ? 'badge badge-warning' : 'badge badge-brand'}>
+                            {lowStock ? 'Low stock' : item.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
       {section === 'movements' && (
-        <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-          <div className="card p-6">
-            <h2 className="text-lg font-bold text-neutral-900">Post movement</h2>
-            <p className="mt-1 text-sm text-neutral-500">Record inbound, outbound, or adjustment activity against a real stock item.</p>
-            <form className="mt-5 space-y-4" onSubmit={movementForm.handleSubmit((values) => createMovement.mutate(values))}>
-              <div>
-                <label className="form-label">Stock item</label>
-                <select className="form-input" {...movementForm.register('item_id')}>
-                  <option value={0}>Choose item</option>
-                  {items.map((item) => (
-                    <option key={item.id} value={item.id}>{item.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="form-label">Movement type</label>
-                  <select className="form-input" {...movementForm.register('movement_type')}>
-                    <option value="in">Stock in</option>
-                    <option value="out">Stock out</option>
-                    <option value="adjustment">Adjustment</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="form-label">Quantity</label>
-                  <input className="form-input" type="number" min={0} step="0.01" {...movementForm.register('quantity')} />
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="form-label">Reference type</label>
-                  <input className="form-input" {...movementForm.register('reference_type')} />
-                </div>
-                <div>
-                  <label className="form-label">Reference ID</label>
-                  <input className="form-input" type="number" min={0} {...movementForm.register('reference_id')} />
-                </div>
-              </div>
-              <div>
-                <label className="form-label">Unit cost</label>
-                <input className="form-input" type="number" min={0} step="0.01" {...movementForm.register('unit_cost')} />
-              </div>
-              <div>
-                <label className="form-label">Notes</label>
-                <textarea className="form-input min-h-[120px]" {...movementForm.register('notes')} />
-              </div>
-              <button className="btn-primary w-full" disabled={createMovement.isPending} type="submit">
-                <ArrowLeftRight className="h-4 w-4" />
-                {createMovement.isPending ? 'Saving...' : 'Post movement'}
-              </button>
-            </form>
+        <div className="card overflow-hidden">
+          <div className="border-b border-neutral-100 px-6 py-5">
+            <h2 className="text-lg font-bold text-neutral-900">Movement log</h2>
+            <p className="mt-1 text-sm text-neutral-500">Recorded stock changes.</p>
           </div>
-
-          <div className="card overflow-hidden">
-            <div className="border-b border-neutral-100 px-6 py-5">
-              <h2 className="text-lg font-bold text-neutral-900">Movement log</h2>
-              <p className="mt-1 text-sm text-neutral-500">Recorded stock changes.</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th className="pl-6">Date</th>
+                  <th>Item</th>
+                  <th>Movement</th>
+                  <th>Balance</th>
+                  <th className="pr-6">Reference</th>
+                </tr>
+              </thead>
+              <tbody>
+                {movements.length === 0 ? (
                   <tr>
-                    <th className="pl-6">Date</th>
-                    <th>Item</th>
-                    <th>Movement</th>
-                    <th>Balance</th>
-                    <th className="pr-6">Reference</th>
+                    <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={5}>
+                      No stock movements.
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {movements.length === 0 ? (
-                    <tr>
-                      <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={5}>
-                        No stock movements.
-                      </td>
-                    </tr>
-                  ) : (
-                    movements.map((movement) => {
-                      const item = items.find((stockItem) => stockItem.id === movement.item_id)
-                      const isInbound = movement.movement_type === 'in'
-                      return (
-                        <tr key={movement.id}>
-                          <td className="pl-6">{formatDate(movement.created_at)}</td>
-                          <td>{item?.name || `Item #${movement.item_id}`}</td>
-                          <td>
-                            <span className={isInbound ? 'badge badge-success' : movement.movement_type === 'out' ? 'badge badge-warning' : 'badge badge-brand'}>
-                              {movement.movement_type}
-                            </span>
-                            <div className="mt-1 text-xs text-neutral-500">
-                              {movement.quantity.toLocaleString()} {item?.unit_of_measure || ''}
-                            </div>
-                          </td>
-                          <td>
-                            {movement.previous_quantity.toLocaleString()} to {movement.new_quantity.toLocaleString()}
-                          </td>
-                          <td className="pr-6">{movement.reference_type ? `${movement.reference_type}${movement.reference_id ? ` #${movement.reference_id}` : ''}` : 'Manual'}</td>
-                        </tr>
-                      )
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                ) : (
+                  movements.map((movement) => {
+                    const item = items.find((stockItem) => stockItem.id === movement.item_id)
+                    const isInbound = movement.movement_type === 'in'
+                    return (
+                      <tr key={movement.id}>
+                        <td className="pl-6">{formatDate(movement.created_at)}</td>
+                        <td>{item?.name || `Item #${movement.item_id}`}</td>
+                        <td>
+                          <span className={isInbound ? 'badge badge-success' : movement.movement_type === 'out' ? 'badge badge-warning' : 'badge badge-brand'}>
+                            {movement.movement_type}
+                          </span>
+                          <div className="mt-1 text-xs text-neutral-500">
+                            {movement.quantity.toLocaleString()} {item?.unit_of_measure || ''}
+                          </div>
+                        </td>
+                        <td>{movement.previous_quantity.toLocaleString()} to {movement.new_quantity.toLocaleString()}</td>
+                        <td className="pr-6">{movement.reference_type ? `${movement.reference_type}${movement.reference_id ? ` #${movement.reference_id}` : ''}` : 'Manual'}</td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
+
+      <Modal
+        isOpen={isItemModalOpen}
+        onClose={() => setIsItemModalOpen(false)}
+        title={copy.actionLabel}
+        description={copy.actionDescription}
+      >
+        <form className="space-y-4" onSubmit={itemForm.handleSubmit((values) => createItem.mutate(values))}>
+          <div>
+            <label className="form-label">Item name</label>
+            <input className="form-input" {...itemForm.register('name')} />
+          </div>
+          <div>
+            <label className="form-label">SKU</label>
+            <input className="form-input" {...itemForm.register('sku')} />
+          </div>
+          {isMedicineView ? (
+            <div className="rounded-[18px] border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
+              Category is locked to <span className="font-semibold text-neutral-900">Medicine</span> for this workflow.
+            </div>
+          ) : (
+            <div>
+              <label className="form-label">Category</label>
+              <select className="form-input" {...itemForm.register('category')}>
+                <option value="raw_material">Raw material</option>
+                <option value="packaging">Packaging</option>
+                <option value="medicine">Medicine</option>
+                <option value="finished_product">Finished product</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          )}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="form-label">Unit</label>
+              <input className="form-input" {...itemForm.register('unit_of_measure')} />
+            </div>
+            <div>
+              <label className="form-label">Reorder level</label>
+              <input className="form-input" type="number" min={0} step="0.01" {...itemForm.register('reorder_level')} />
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="form-label">Unit price</label>
+              <input className="form-input" type="number" min={0} step="0.01" {...itemForm.register('unit_price')} />
+            </div>
+            <div>
+              <label className="form-label">Initial unit cost</label>
+              <input className="form-input" type="number" min={0} step="0.01" {...itemForm.register('initial_unit_cost')} />
+            </div>
+          </div>
+          <div>
+            <label className="form-label">Initial quantity</label>
+            <input className="form-input" type="number" min={0} step="0.01" {...itemForm.register('initial_quantity')} />
+          </div>
+          <div>
+            <label className="form-label">Description</label>
+            <textarea className="form-input min-h-[120px]" {...itemForm.register('description')} />
+          </div>
+          <div className="flex justify-end gap-3">
+            <button type="button" className="btn-secondary" onClick={() => setIsItemModalOpen(false)}>Close</button>
+            <button className="btn-primary" disabled={createItem.isPending} type="submit">
+              <PackagePlus className="h-4 w-4" />
+              {createItem.isPending ? 'Saving...' : copy.actionLabel}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={isMovementModalOpen}
+        onClose={() => setIsMovementModalOpen(false)}
+        title="Post movement"
+        description={sectionCopy.movements.actionDescription}
+      >
+        <form className="space-y-4" onSubmit={movementForm.handleSubmit((values) => createMovement.mutate(values))}>
+          <div>
+            <label className="form-label">Stock item</label>
+            <select className="form-input" {...movementForm.register('item_id')}>
+              <option value={0}>Choose item</option>
+              {items.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="form-label">Movement type</label>
+              <select className="form-input" {...movementForm.register('movement_type')}>
+                <option value="in">Stock in</option>
+                <option value="out">Stock out</option>
+                <option value="adjustment">Adjustment</option>
+              </select>
+            </div>
+            <div>
+              <label className="form-label">Quantity</label>
+              <input className="form-input" type="number" min={0} step="0.01" {...movementForm.register('quantity')} />
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="form-label">Reference type</label>
+              <input className="form-input" {...movementForm.register('reference_type')} />
+            </div>
+            <div>
+              <label className="form-label">Reference ID</label>
+              <input className="form-input" type="number" min={0} {...movementForm.register('reference_id')} />
+            </div>
+          </div>
+          <div>
+            <label className="form-label">Unit cost</label>
+            <input className="form-input" type="number" min={0} step="0.01" {...movementForm.register('unit_cost')} />
+          </div>
+          <div>
+            <label className="form-label">Notes</label>
+            <textarea className="form-input min-h-[120px]" {...movementForm.register('notes')} />
+          </div>
+          <div className="flex justify-end gap-3">
+            <button type="button" className="btn-secondary" onClick={() => setIsMovementModalOpen(false)}>Close</button>
+            <button className="btn-primary" disabled={createMovement.isPending} type="submit">
+              <ArrowLeftRight className="h-4 w-4" />
+              {createMovement.isPending ? 'Saving...' : 'Post movement'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

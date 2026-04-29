@@ -1,14 +1,17 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { AlertTriangle, BadgeDollarSign, Boxes, ClipboardPlus, PackagePlus, ShoppingBasket, Truck, Wheat } from 'lucide-react'
 import { toast } from 'sonner'
+
 import api from '@/services/api'
+import { Modal } from '@/components/Modal'
 import { useAuth } from '@/features/auth/AuthContext'
 
 type FeedSection = 'stock' | 'purchases' | 'consumption' | 'suppliers'
+type FeedModal = 'supplier' | 'category' | 'item' | 'purchase' | 'consumption' | null
 
 interface Supplier {
   id: number
@@ -70,22 +73,33 @@ interface BatchOption {
   breed: string
 }
 
-const sectionCopy: Record<FeedSection, { title: string; description: string }> = {
+const sectionCopy: Record<
+  FeedSection,
+  {
+    title: string
+    description: string
+    actionDescription: string
+  }
+> = {
   stock: {
-    title: 'Feed stock',
-    description: 'Feed items and balances.',
+    title: 'Feed Stock',
+    description: 'Maintain feed categories, feed items, and reorder visibility in one register.',
+    actionDescription: 'Create feed categories and stock items from dedicated dialogs instead of pinning forms on the page.',
   },
   purchases: {
-    title: 'Feed purchases',
-    description: 'Purchase history and spend.',
+    title: 'Feed Purchases',
+    description: 'Capture supplier purchases and update stock cleanly from a single purchase dialog.',
+    actionDescription: 'Record one feed purchase at a time and push the stock update into the feed ledger.',
   },
   consumption: {
-    title: 'Feed consumption',
-    description: 'Consumption by batch.',
+    title: 'Feed Consumption',
+    description: 'Track daily consumption by batch without crowding the batch usage history.',
+    actionDescription: 'Select a batch, choose the feed item, and record daily usage from a focused modal.',
   },
   suppliers: {
     title: 'Suppliers',
-    description: 'Supplier directory.',
+    description: 'Keep the supplier directory and buying contacts tidy and easy to review.',
+    actionDescription: 'Add or update supplier contacts without forcing the entry form to live beside the register.',
   },
 }
 
@@ -138,13 +152,34 @@ function todayValue() {
 }
 
 function formatDate(value?: string | null) {
-  if (!value) return '—'
+  if (!value) return '-'
   return new Date(value).toLocaleDateString('en-UG', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function emptySupplierValues(): SupplierFormValues {
+  return { name: '', contact_person: '', phone: '', email: '', address: '' }
+}
+
+function emptyCategoryValues(): CategoryFormValues {
+  return { name: '', description: '' }
+}
+
+function emptyItemValues(): ItemFormValues {
+  return { name: '', category_id: 0, unit: 'kg', reorder_threshold: 0 }
+}
+
+function emptyPurchaseValues(): PurchaseFormValues {
+  return { supplier_id: 0, purchase_date: todayValue(), invoice_number: '', feed_item_id: 0, quantity: 0, unit_price: 0, notes: '' }
+}
+
+function emptyConsumptionValues(): ConsumptionFormValues {
+  return { batch_id: 0, feed_item_id: 0, record_date: todayValue(), quantity: 0, notes: '' }
 }
 
 export function FeedManagementPage({ section }: { section: FeedSection }) {
   const qc = useQueryClient()
   const { hasPermission } = useAuth()
+  const [activeModal, setActiveModal] = useState<FeedModal>(null)
   const copy = sectionCopy[section]
   const canManageFeed = hasPermission('feed:write')
 
@@ -187,27 +222,27 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
 
   const supplierForm = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierSchema),
-    defaultValues: { name: '', contact_person: '', phone: '', email: '', address: '' },
+    defaultValues: emptySupplierValues(),
   })
 
   const categoryForm = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
-    defaultValues: { name: '', description: '' },
+    defaultValues: emptyCategoryValues(),
   })
 
   const itemForm = useForm<ItemFormValues>({
     resolver: zodResolver(itemSchema),
-    defaultValues: { name: '', category_id: 0, unit: 'kg', reorder_threshold: 0 },
+    defaultValues: emptyItemValues(),
   })
 
   const purchaseForm = useForm<PurchaseFormValues>({
     resolver: zodResolver(purchaseSchema),
-    defaultValues: { supplier_id: 0, purchase_date: todayValue(), invoice_number: '', feed_item_id: 0, quantity: 0, unit_price: 0, notes: '' },
+    defaultValues: emptyPurchaseValues(),
   })
 
   const consumptionForm = useForm<ConsumptionFormValues>({
     resolver: zodResolver(consumptionSchema),
-    defaultValues: { batch_id: 0, feed_item_id: 0, record_date: todayValue(), quantity: 0, notes: '' },
+    defaultValues: emptyConsumptionValues(),
   })
 
   const createSupplier = useMutation({
@@ -215,7 +250,8 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
     onSuccess: () => {
       toast.success('Supplier saved.')
       qc.invalidateQueries({ queryKey: ['feed-suppliers'] })
-      supplierForm.reset({ name: '', contact_person: '', phone: '', email: '', address: '' })
+      supplierForm.reset(emptySupplierValues())
+      setActiveModal(null)
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.detail ?? 'Failed to save supplier.')
@@ -227,7 +263,8 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
     onSuccess: () => {
       toast.success('Feed category created.')
       qc.invalidateQueries({ queryKey: ['feed-categories'] })
-      categoryForm.reset({ name: '', description: '' })
+      categoryForm.reset(emptyCategoryValues())
+      setActiveModal(null)
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.detail ?? 'Failed to create category.')
@@ -239,7 +276,8 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
     onSuccess: () => {
       toast.success('Feed item created.')
       qc.invalidateQueries({ queryKey: ['feed-items'] })
-      itemForm.reset({ name: '', category_id: 0, unit: 'kg', reorder_threshold: 0 })
+      itemForm.reset(emptyItemValues())
+      setActiveModal(null)
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.detail ?? 'Failed to create feed item.')
@@ -269,7 +307,8 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
       toast.success('Purchase recorded.')
       qc.invalidateQueries({ queryKey: ['feed-purchases'] })
       qc.invalidateQueries({ queryKey: ['feed-items'] })
-      purchaseForm.reset({ supplier_id: 0, purchase_date: todayValue(), invoice_number: '', feed_item_id: 0, quantity: 0, unit_price: 0, notes: '' })
+      purchaseForm.reset(emptyPurchaseValues())
+      setActiveModal(null)
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.detail ?? 'Failed to record purchase.')
@@ -282,7 +321,8 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
       toast.success('Consumption recorded.')
       qc.invalidateQueries({ queryKey: ['feed-consumptions'] })
       qc.invalidateQueries({ queryKey: ['feed-items'] })
-      consumptionForm.reset({ batch_id: 0, feed_item_id: 0, record_date: todayValue(), quantity: 0, notes: '' })
+      consumptionForm.reset(emptyConsumptionValues())
+      setActiveModal(null)
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.detail ?? 'Failed to record consumption.')
@@ -299,16 +339,58 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
     [purchases]
   )
 
+  const openModal = (modal: FeedModal) => {
+    if (modal === 'supplier') supplierForm.reset(emptySupplierValues())
+    if (modal === 'category') categoryForm.reset(emptyCategoryValues())
+    if (modal === 'item') itemForm.reset(emptyItemValues())
+    if (modal === 'purchase') purchaseForm.reset(emptyPurchaseValues())
+    if (modal === 'consumption') consumptionForm.reset(emptyConsumptionValues())
+    setActiveModal(modal)
+  }
+
+  const actionButtons = (() => {
+    if (section === 'stock') {
+      return (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn-secondary" onClick={() => openModal('category')}>
+            <ClipboardPlus className="h-4 w-4" />
+            New category
+          </button>
+          <button type="button" className="btn-primary" onClick={() => openModal('item')}>
+            <PackagePlus className="h-4 w-4" />
+            New feed item
+          </button>
+        </div>
+      )
+    }
+
+    const config = {
+      suppliers: { modal: 'supplier' as const, label: 'Add supplier', icon: Truck },
+      purchases: { modal: 'purchase' as const, label: 'Record purchase', icon: ShoppingBasket },
+      consumption: { modal: 'consumption' as const, label: 'Record consumption', icon: Wheat },
+    }[section]
+
+    if (!config) return null
+    const Icon = config.icon
+    return (
+      <button type="button" className="btn-primary" onClick={() => openModal(config.modal)}>
+        <Icon className="h-4 w-4" />
+        {config.label}
+      </button>
+    )
+  })()
+
   return (
-    <div className="animate-fade-in">
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="animate-fade-in space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-ink-900">{copy.title}</h1>
-          <p className="mt-1 max-w-2xl text-base font-medium text-ink-500">{copy.description}</p>
+          <p className="mt-1 max-w-3xl text-base font-medium text-ink-500">{copy.description}</p>
         </div>
+        {actionButtons}
       </div>
 
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <div className="card p-5">
           <div className="mb-3 flex items-center gap-2 text-ink-500">
             <Boxes className="h-5 w-5 text-brand-600" />
@@ -337,380 +419,416 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
       </div>
 
       {!canManageFeed ? (
-        <div className="card mb-6 px-5 py-4 text-sm text-slate-500">
+        <div className="card px-5 py-4 text-sm text-slate-500">
           You can view feed records, but saving suppliers, purchases, stock items, and consumption requires the `feed:write` permission.
         </div>
       ) : null}
 
-      {section === 'suppliers' && (
-        <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-          <div className="card border border-neutral-150 bg-neutral-50 p-6">
-            <h2 className="text-xl font-bold text-ink-900">Add supplier</h2>
-            <p className="mt-1 text-base text-ink-500">Create a supplier record.</p>
-            <form className="mt-5 space-y-4" onSubmit={supplierForm.handleSubmit((values) => (canManageFeed ? createSupplier.mutate(values) : blockWriteAction()))}>
-              <div>
-                <label className="form-label">Supplier name</label>
-                <input className="form-input" {...supplierForm.register('name')} />
-                {supplierForm.formState.errors.name && <p className="form-error">{supplierForm.formState.errors.name.message}</p>}
-              </div>
-              <div>
-                <label className="form-label">Contact person</label>
-                <input className="form-input" {...supplierForm.register('contact_person')} />
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="form-label">Phone</label>
-                  <input className="form-input" {...supplierForm.register('phone')} />
-                </div>
-                <div>
-                  <label className="form-label">Email</label>
-                  <input className="form-input" type="email" {...supplierForm.register('email')} />
-                </div>
-              </div>
-              <div>
-                <label className="form-label">Address</label>
-                <textarea className="form-input min-h-[120px]" {...supplierForm.register('address')} />
-              </div>
-              <button className="btn-primary w-full" disabled={!canManageFeed || createSupplier.isPending} type="submit">
-                <Truck className="h-4 w-4" />
-                {createSupplier.isPending ? 'Saving...' : 'Save supplier'}
-              </button>
-            </form>
+      <div className="card p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-neutral-900">
+              {section === 'stock'
+                ? 'Feed register actions'
+                : section === 'suppliers'
+                  ? 'Supplier entry'
+                  : section === 'purchases'
+                    ? 'Purchase entry'
+                    : 'Consumption entry'}
+            </h2>
+            <p className="mt-1 text-sm text-neutral-500">{copy.actionDescription}</p>
           </div>
+          {actionButtons}
+        </div>
+      </div>
 
-          <div className="card overflow-hidden">
-            <div className="border-b border-neutral-150 bg-neutral-50 px-6 py-5">
-              <h2 className="text-xl font-bold text-ink-900">Supplier directory</h2>
-              <p className="mt-1 text-base text-ink-500">Saved suppliers.</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
+      {section === 'suppliers' && (
+        <div className="card overflow-hidden">
+          <div className="border-b border-neutral-150 bg-neutral-50 px-6 py-5">
+            <h2 className="text-xl font-bold text-ink-900">Supplier directory</h2>
+            <p className="mt-1 text-base text-ink-500">Saved suppliers.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th className="pl-6">Supplier</th>
+                  <th>Contact</th>
+                  <th>Email</th>
+                  <th className="pr-6">Phone</th>
+                </tr>
+              </thead>
+              <tbody>
+                {suppliers.length === 0 ? (
                   <tr>
-                    <th className="pl-6">Supplier</th>
-                    <th>Contact</th>
-                    <th>Email</th>
-                    <th className="pr-6">Phone</th>
+                    <td className="pl-6 py-14 text-center text-base font-medium text-ink-500" colSpan={4}>
+                      No suppliers.
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {suppliers.length === 0 ? (
-                    <tr>
-                      <td className="pl-6 py-14 text-center text-base font-medium text-ink-500" colSpan={4}>
-                        No suppliers.
+                ) : (
+                  suppliers.map((supplier) => (
+                    <tr key={supplier.id}>
+                      <td className="pl-6">
+                        <div className="font-bold text-ink-900">{supplier.name}</div>
+                        <div className="text-sm text-ink-500">{supplier.address || 'No address'}</div>
                       </td>
+                      <td>{supplier.contact_person || '-'}</td>
+                      <td>{supplier.email || '-'}</td>
+                      <td className="pr-6">{supplier.phone || '-'}</td>
                     </tr>
-                  ) : (
-                    suppliers.map((supplier) => (
-                      <tr key={supplier.id}>
-                        <td className="pl-6">
-                          <div className="font-bold text-ink-900">{supplier.name}</div>
-                          <div className="text-sm text-ink-500">{supplier.address || 'No address'}</div>
-                        </td>
-                        <td>{supplier.contact_person || '—'}</td>
-                        <td>{supplier.email || '—'}</td>
-                        <td className="pr-6">{supplier.phone || '—'}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
       {section === 'stock' && (
-        <div className="grid gap-6 xl:grid-cols-[420px_420px_minmax(0,1fr)]">
-          <div className="card border border-neutral-150 bg-neutral-50 p-6">
-            <h2 className="text-xl font-bold text-ink-900">Add category</h2>
-            <p className="mt-1 text-base text-ink-500">Create a feed category.</p>
-            <form className="mt-5 space-y-4" onSubmit={categoryForm.handleSubmit((values) => (canManageFeed ? createCategory.mutate(values) : blockWriteAction()))}>
-              <div>
-                <label className="form-label">Category name</label>
-                <input className="form-input" {...categoryForm.register('name')} />
-                {categoryForm.formState.errors.name && <p className="form-error">{categoryForm.formState.errors.name.message}</p>}
-              </div>
-              <div>
-                <label className="form-label">Description</label>
-                <textarea className="form-input min-h-[120px]" {...categoryForm.register('description')} />
-              </div>
-              <button className="btn-primary w-full" disabled={!canManageFeed || createCategory.isPending} type="submit">
-                <ClipboardPlus className="h-4 w-4" />
-                {createCategory.isPending ? 'Saving...' : 'Save category'}
-              </button>
-            </form>
+        <div className="card overflow-hidden">
+          <div className="border-b border-neutral-150 bg-neutral-50 px-6 py-5">
+            <h2 className="text-xl font-bold text-ink-900">Stock ledger</h2>
+            <p className="mt-1 text-base text-ink-500">Current feed stock and reorder status.</p>
           </div>
-
-          <div className="card border border-neutral-150 bg-neutral-50 p-6">
-            <h2 className="text-xl font-bold text-ink-900">Add feed item</h2>
-            <p className="mt-1 text-base text-ink-500">Create a feed item.</p>
-            <form className="mt-5 space-y-4" onSubmit={itemForm.handleSubmit((values) => (canManageFeed ? createItem.mutate(values) : blockWriteAction()))}>
-              <div>
-                <label className="form-label">Item name</label>
-                <input className="form-input" {...itemForm.register('name')} />
-                {itemForm.formState.errors.name && <p className="form-error">{itemForm.formState.errors.name.message}</p>}
-              </div>
-              <div>
-                <label className="form-label">Category</label>
-                <select className="form-input" {...itemForm.register('category_id')}>
-                  <option value={0}>Choose a category</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>{category.name}</option>
-                  ))}
-                </select>
-                {itemForm.formState.errors.category_id && <p className="form-error">{itemForm.formState.errors.category_id.message}</p>}
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="form-label">Unit</label>
-                  <input className="form-input" {...itemForm.register('unit')} />
-                </div>
-                <div>
-                  <label className="form-label">Reorder threshold</label>
-                  <input className="form-input" type="number" min={0} step="0.01" {...itemForm.register('reorder_threshold')} />
-                </div>
-              </div>
-              <button className="btn-primary w-full" disabled={!canManageFeed || createItem.isPending} type="submit">
-                <PackagePlus className="h-4 w-4" />
-                {createItem.isPending ? 'Saving...' : 'Save feed item'}
-              </button>
-            </form>
-          </div>
-
-          <div className="card overflow-hidden">
-            <div className="border-b border-neutral-150 bg-neutral-50 px-6 py-5">
-              <h2 className="text-xl font-bold text-ink-900">Stock ledger</h2>
-              <p className="mt-1 text-base text-ink-500">Current feed stock.</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th className="pl-6">Feed item</th>
+                  <th>Category</th>
+                  <th>Stock</th>
+                  <th className="pr-6">Reorder point</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.length === 0 ? (
                   <tr>
-                    <th className="pl-6">Feed item</th>
-                    <th>Category</th>
-                    <th>Stock</th>
-                    <th className="pr-6">Reorder point</th>
+                    <td className="pl-6 py-14 text-center text-base font-medium text-ink-500" colSpan={4}>
+                      No feed items.
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {items.length === 0 ? (
-                    <tr>
-                      <td className="pl-6 py-14 text-center text-base font-medium text-ink-500" colSpan={4}>
-                        No feed items.
-                      </td>
-                    </tr>
-                  ) : (
-                    items.map((item) => {
-                      const lowStock = item.current_stock <= item.reorder_threshold
-                      return (
-                        <tr key={item.id}>
-                          <td className="pl-6">
-                            <div className="font-bold text-ink-900">{item.name}</div>
-                            <div className="text-sm text-ink-500">Unit: {item.unit}</div>
-                          </td>
-                          <td>{item.category?.name || '—'}</td>
-                          <td>
-                            <span className={lowStock ? 'badge badge-warning' : 'badge badge-brand'}>
-                              {item.current_stock.toLocaleString()} {item.unit}
-                            </span>
-                          </td>
-                          <td className="pr-6">{item.reorder_threshold.toLocaleString()} {item.unit}</td>
-                        </tr>
-                      )
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                ) : (
+                  items.map((item) => {
+                    const lowStock = item.current_stock <= item.reorder_threshold
+                    return (
+                      <tr key={item.id}>
+                        <td className="pl-6">
+                          <div className="font-bold text-ink-900">{item.name}</div>
+                          <div className="text-sm text-ink-500">Unit: {item.unit}</div>
+                        </td>
+                        <td>{item.category?.name || '-'}</td>
+                        <td>
+                          <span className={lowStock ? 'badge badge-warning' : 'badge badge-brand'}>
+                            {item.current_stock.toLocaleString()} {item.unit}
+                          </span>
+                        </td>
+                        <td className="pr-6">{item.reorder_threshold.toLocaleString()} {item.unit}</td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
       {section === 'purchases' && (
-        <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-          <div className="card border border-neutral-150 bg-neutral-50 p-6">
-            <h2 className="text-xl font-bold text-ink-900">Record purchase</h2>
-            <p className="mt-1 text-base text-ink-500">Post a purchase.</p>
-            <form className="mt-5 space-y-4" onSubmit={purchaseForm.handleSubmit((values) => (canManageFeed ? createPurchase.mutate(values) : blockWriteAction()))}>
-              <div>
-                <label className="form-label">Supplier</label>
-                <select className="form-input" {...purchaseForm.register('supplier_id')}>
-                  <option value={0}>Choose supplier</option>
-                  {suppliers.map((supplier) => (
-                    <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="form-label">Feed item</label>
-                <select className="form-input" {...purchaseForm.register('feed_item_id')}>
-                  <option value={0}>Choose item</option>
-                  {items.map((item) => (
-                    <option key={item.id} value={item.id}>{item.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="form-label">Purchase date</label>
-                  <input className="form-input" type="date" {...purchaseForm.register('purchase_date')} />
-                </div>
-                <div>
-                  <label className="form-label">Invoice number</label>
-                  <input className="form-input" {...purchaseForm.register('invoice_number')} />
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="form-label">Quantity</label>
-                  <input className="form-input" type="number" min={0} step="0.01" {...purchaseForm.register('quantity')} />
-                </div>
-                <div>
-                  <label className="form-label">Unit price</label>
-                  <input className="form-input" type="number" min={0} step="0.01" {...purchaseForm.register('unit_price')} />
-                </div>
-              </div>
-              <div>
-                <label className="form-label">Notes</label>
-                <textarea className="form-input min-h-[120px]" {...purchaseForm.register('notes')} />
-              </div>
-              <button className="btn-primary w-full" disabled={!canManageFeed || createPurchase.isPending} type="submit">
-                <ShoppingBasket className="h-4 w-4" />
-                {createPurchase.isPending ? 'Saving...' : 'Record purchase'}
-              </button>
-            </form>
+        <div className="card overflow-hidden">
+          <div className="border-b border-neutral-150 bg-neutral-50 px-6 py-5">
+            <h2 className="text-xl font-bold text-ink-900">Purchase history</h2>
+            <p className="mt-1 text-base text-ink-500">Recorded purchases.</p>
           </div>
-
-          <div className="card overflow-hidden">
-            <div className="border-b border-neutral-150 bg-neutral-50 px-6 py-5">
-              <h2 className="text-xl font-bold text-ink-900">Purchase history</h2>
-              <p className="mt-1 text-base text-ink-500">Recorded purchases.</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th className="pl-6">Date</th>
+                  <th>Supplier</th>
+                  <th>Items</th>
+                  <th className="pr-6">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {purchases.length === 0 ? (
                   <tr>
-                    <th className="pl-6">Date</th>
-                    <th>Supplier</th>
-                    <th>Items</th>
-                    <th className="pr-6">Total</th>
+                    <td className="pl-6 py-14 text-center text-base font-medium text-ink-500" colSpan={4}>
+                      No feed purchases.
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {purchases.length === 0 ? (
-                    <tr>
-                      <td className="pl-6 py-14 text-center text-base font-medium text-ink-500" colSpan={4}>
-                        No feed purchases.
+                ) : (
+                  purchases.map((purchase) => (
+                    <tr key={purchase.id}>
+                      <td className="pl-6">
+                        <div className="font-bold text-ink-900">{formatDate(purchase.purchase_date)}</div>
+                        <div className="text-sm text-ink-500">{purchase.invoice_number || 'No invoice'}</div>
                       </td>
+                      <td>{purchase.supplier?.name || suppliers.find((supplier) => supplier.id === purchase.supplier_id)?.name || '-'}</td>
+                      <td>
+                        {purchase.items.map((item) => items.find((feedItem) => feedItem.id === item.feed_item_id)?.name || `Item #${item.feed_item_id}`).join(', ')}
+                      </td>
+                      <td className="pr-6 font-bold text-ink-900">UGX {purchase.total_amount.toLocaleString()}</td>
                     </tr>
-                  ) : (
-                    purchases.map((purchase) => (
-                      <tr key={purchase.id}>
-                        <td className="pl-6">
-                          <div className="font-bold text-ink-900">{formatDate(purchase.purchase_date)}</div>
-                          <div className="text-sm text-ink-500">{purchase.invoice_number || 'No invoice'}</div>
-                        </td>
-                        <td>{purchase.supplier?.name || suppliers.find((supplier) => supplier.id === purchase.supplier_id)?.name || '—'}</td>
-                        <td>
-                          {purchase.items.map((item) => items.find((feedItem) => feedItem.id === item.feed_item_id)?.name || `Item #${item.feed_item_id}`).join(', ')}
-                        </td>
-                        <td className="pr-6 font-bold text-ink-900">UGX {purchase.total_amount.toLocaleString()}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
       {section === 'consumption' && (
-        <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-          <div className="card border border-neutral-150 bg-neutral-50 p-6">
-            <h2 className="text-xl font-bold text-ink-900">Record consumption</h2>
-            <p className="mt-1 text-base text-ink-500">Post feed usage.</p>
-            <form className="mt-5 space-y-4" onSubmit={consumptionForm.handleSubmit((values) => (canManageFeed ? createConsumption.mutate(values) : blockWriteAction()))}>
-              <div>
-                <label className="form-label">Batch</label>
-                <select className="form-input" {...consumptionForm.register('batch_id')}>
-                  <option value={0}>Choose batch</option>
-                  {batches.map((batch) => (
-                    <option key={batch.id} value={batch.id}>{batch.batch_number} - {batch.breed}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="form-label">Feed item</label>
-                <select className="form-input" {...consumptionForm.register('feed_item_id')}>
-                  <option value={0}>Choose item</option>
-                  {items.map((item) => (
-                    <option key={item.id} value={item.id}>{item.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="form-label">Record date</label>
-                  <input className="form-input" type="date" {...consumptionForm.register('record_date')} />
-                </div>
-                <div>
-                  <label className="form-label">Quantity</label>
-                  <input className="form-input" type="number" min={0} step="0.01" {...consumptionForm.register('quantity')} />
-                </div>
-              </div>
-              <div>
-                <label className="form-label">Notes</label>
-                <textarea className="form-input min-h-[120px]" {...consumptionForm.register('notes')} />
-              </div>
-              <button className="btn-primary w-full" disabled={!canManageFeed || createConsumption.isPending} type="submit">
-                <Wheat className="h-4 w-4" />
-                {createConsumption.isPending ? 'Saving...' : 'Record consumption'}
-              </button>
-            </form>
+        <div className="card overflow-hidden">
+          <div className="border-b border-neutral-150 bg-neutral-50 px-6 py-5">
+            <h2 className="text-xl font-bold text-ink-900">Consumption history</h2>
+            <p className="mt-1 text-base text-ink-500">Recorded usage.</p>
           </div>
-
-          <div className="card overflow-hidden">
-            <div className="border-b border-neutral-150 bg-neutral-50 px-6 py-5">
-              <h2 className="text-xl font-bold text-ink-900">Consumption history</h2>
-              <p className="mt-1 text-base text-ink-500">Recorded usage.</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th className="pl-6">Date</th>
+                  <th>Batch</th>
+                  <th>Feed item</th>
+                  <th className="pr-6">Quantity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {consumptions.length === 0 ? (
                   <tr>
-                    <th className="pl-6">Date</th>
-                    <th>Batch</th>
-                    <th>Feed item</th>
-                    <th className="pr-6">Quantity</th>
+                    <td className="pl-6 py-14 text-center text-base font-medium text-ink-500" colSpan={4}>
+                      No feed consumption.
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {consumptions.length === 0 ? (
-                    <tr>
-                      <td className="pl-6 py-14 text-center text-base font-medium text-ink-500" colSpan={4}>
-                        No feed consumption.
+                ) : (
+                  consumptions.map((log) => (
+                    <tr key={log.id}>
+                      <td className="pl-6">{formatDate(log.record_date)}</td>
+                      <td>{batches.find((batch) => batch.id === log.batch_id)?.batch_number || `Batch #${log.batch_id}`}</td>
+                      <td>{items.find((item) => item.id === log.feed_item_id)?.name || `Item #${log.feed_item_id}`}</td>
+                      <td className="pr-6">
+                        {log.quantity.toLocaleString()} {items.find((item) => item.id === log.feed_item_id)?.unit || ''}
                       </td>
                     </tr>
-                  ) : (
-                    consumptions.map((log) => (
-                      <tr key={log.id}>
-                        <td className="pl-6">{formatDate(log.record_date)}</td>
-                        <td>{batches.find((batch) => batch.id === log.batch_id)?.batch_number || `Batch #${log.batch_id}`}</td>
-                        <td>{items.find((item) => item.id === log.feed_item_id)?.name || `Item #${log.feed_item_id}`}</td>
-                        <td className="pr-6">
-                          {log.quantity.toLocaleString()} {items.find((item) => item.id === log.feed_item_id)?.unit || ''}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
+
+      <Modal
+        isOpen={activeModal === 'supplier'}
+        onClose={() => setActiveModal(null)}
+        title="Add supplier"
+        description="Create a supplier contact for feed procurement."
+      >
+        <form className="space-y-4" onSubmit={supplierForm.handleSubmit((values) => (canManageFeed ? createSupplier.mutate(values) : blockWriteAction()))}>
+          <div>
+            <label className="form-label">Supplier name</label>
+            <input className="form-input" {...supplierForm.register('name')} />
+          </div>
+          <div>
+            <label className="form-label">Contact person</label>
+            <input className="form-input" {...supplierForm.register('contact_person')} />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="form-label">Phone</label>
+              <input className="form-input" {...supplierForm.register('phone')} />
+            </div>
+            <div>
+              <label className="form-label">Email</label>
+              <input className="form-input" type="email" {...supplierForm.register('email')} />
+            </div>
+          </div>
+          <div>
+            <label className="form-label">Address</label>
+            <textarea className="form-input min-h-[120px]" {...supplierForm.register('address')} />
+          </div>
+          <div className="flex justify-end gap-3">
+            <button type="button" className="btn-secondary" onClick={() => setActiveModal(null)}>Close</button>
+            <button className="btn-primary" disabled={!canManageFeed || createSupplier.isPending} type="submit">
+              <Truck className="h-4 w-4" />
+              {createSupplier.isPending ? 'Saving...' : 'Save supplier'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={activeModal === 'category'}
+        onClose={() => setActiveModal(null)}
+        title="New feed category"
+        description="Group feed items under clean category labels."
+      >
+        <form className="space-y-4" onSubmit={categoryForm.handleSubmit((values) => (canManageFeed ? createCategory.mutate(values) : blockWriteAction()))}>
+          <div>
+            <label className="form-label">Category name</label>
+            <input className="form-input" {...categoryForm.register('name')} />
+          </div>
+          <div>
+            <label className="form-label">Description</label>
+            <textarea className="form-input min-h-[120px]" {...categoryForm.register('description')} />
+          </div>
+          <div className="flex justify-end gap-3">
+            <button type="button" className="btn-secondary" onClick={() => setActiveModal(null)}>Close</button>
+            <button className="btn-primary" disabled={!canManageFeed || createCategory.isPending} type="submit">
+              <ClipboardPlus className="h-4 w-4" />
+              {createCategory.isPending ? 'Saving...' : 'Save category'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={activeModal === 'item'}
+        onClose={() => setActiveModal(null)}
+        title="New feed item"
+        description="Create a feed stock item and set its reorder threshold."
+      >
+        <form className="space-y-4" onSubmit={itemForm.handleSubmit((values) => (canManageFeed ? createItem.mutate(values) : blockWriteAction()))}>
+          <div>
+            <label className="form-label">Item name</label>
+            <input className="form-input" {...itemForm.register('name')} />
+          </div>
+          <div>
+            <label className="form-label">Category</label>
+            <select className="form-input" {...itemForm.register('category_id')}>
+              <option value={0}>Choose a category</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>{category.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="form-label">Unit</label>
+              <input className="form-input" {...itemForm.register('unit')} />
+            </div>
+            <div>
+              <label className="form-label">Reorder threshold</label>
+              <input className="form-input" type="number" min={0} step="0.01" {...itemForm.register('reorder_threshold')} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <button type="button" className="btn-secondary" onClick={() => setActiveModal(null)}>Close</button>
+            <button className="btn-primary" disabled={!canManageFeed || createItem.isPending} type="submit">
+              <PackagePlus className="h-4 w-4" />
+              {createItem.isPending ? 'Saving...' : 'Save feed item'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={activeModal === 'purchase'}
+        onClose={() => setActiveModal(null)}
+        title="Record purchase"
+        description="Post a supplier purchase and update feed stock."
+      >
+        <form className="space-y-4" onSubmit={purchaseForm.handleSubmit((values) => (canManageFeed ? createPurchase.mutate(values) : blockWriteAction()))}>
+          <div>
+            <label className="form-label">Supplier</label>
+            <select className="form-input" {...purchaseForm.register('supplier_id')}>
+              <option value={0}>Choose supplier</option>
+              {suppliers.map((supplier) => (
+                <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Feed item</label>
+            <select className="form-input" {...purchaseForm.register('feed_item_id')}>
+              <option value={0}>Choose item</option>
+              {items.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="form-label">Purchase date</label>
+              <input className="form-input" type="date" {...purchaseForm.register('purchase_date')} />
+            </div>
+            <div>
+              <label className="form-label">Invoice number</label>
+              <input className="form-input" {...purchaseForm.register('invoice_number')} />
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="form-label">Quantity</label>
+              <input className="form-input" type="number" min={0} step="0.01" {...purchaseForm.register('quantity')} />
+            </div>
+            <div>
+              <label className="form-label">Unit price</label>
+              <input className="form-input" type="number" min={0} step="0.01" {...purchaseForm.register('unit_price')} />
+            </div>
+          </div>
+          <div>
+            <label className="form-label">Notes</label>
+            <textarea className="form-input min-h-[120px]" {...purchaseForm.register('notes')} />
+          </div>
+          <div className="flex justify-end gap-3">
+            <button type="button" className="btn-secondary" onClick={() => setActiveModal(null)}>Close</button>
+            <button className="btn-primary" disabled={!canManageFeed || createPurchase.isPending} type="submit">
+              <ShoppingBasket className="h-4 w-4" />
+              {createPurchase.isPending ? 'Saving...' : 'Record purchase'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={activeModal === 'consumption'}
+        onClose={() => setActiveModal(null)}
+        title="Record consumption"
+        description="Post daily feed usage against a live batch."
+      >
+        <form className="space-y-4" onSubmit={consumptionForm.handleSubmit((values) => (canManageFeed ? createConsumption.mutate(values) : blockWriteAction()))}>
+          <div>
+            <label className="form-label">Batch</label>
+            <select className="form-input" {...consumptionForm.register('batch_id')}>
+              <option value={0}>Choose batch</option>
+              {batches.map((batch) => (
+                <option key={batch.id} value={batch.id}>{batch.batch_number} - {batch.breed}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Feed item</label>
+            <select className="form-input" {...consumptionForm.register('feed_item_id')}>
+              <option value={0}>Choose item</option>
+              {items.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="form-label">Record date</label>
+              <input className="form-input" type="date" {...consumptionForm.register('record_date')} />
+            </div>
+            <div>
+              <label className="form-label">Quantity</label>
+              <input className="form-input" type="number" min={0} step="0.01" {...consumptionForm.register('quantity')} />
+            </div>
+          </div>
+          <div>
+            <label className="form-label">Notes</label>
+            <textarea className="form-input min-h-[120px]" {...consumptionForm.register('notes')} />
+          </div>
+          <div className="flex justify-end gap-3">
+            <button type="button" className="btn-secondary" onClick={() => setActiveModal(null)}>Close</button>
+            <button className="btn-primary" disabled={!canManageFeed || createConsumption.isPending} type="submit">
+              <Wheat className="h-4 w-4" />
+              {createConsumption.isPending ? 'Saving...' : 'Record consumption'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -91,9 +93,9 @@
   body {
     margin: 0;
     min-height: 100vh;
-    font-family: "Segoe UI", Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-family: "Plus Jakarta Sans", "Segoe UI", Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
     font-size: 14px;
-    line-height: 1.5;
+    line-height: 1.46;
     background: var(--app-bg);
     color: var(--text-default);
   }
@@ -110,7 +112,7 @@
   h6 {
     margin: 0;
     color: var(--text-strong);
-    font-weight: 700;
+    font-weight: 800;
     letter-spacing: -0.02em;
   }
 
@@ -270,6 +272,10 @@
     @apply inline-flex items-center justify-center gap-2 rounded-[0.95rem] text-[13px] font-semibold transition-all disabled:pointer-events-none disabled:opacity-50;
   }
 
+  .btn-sm {
+    @apply gap-1.5 px-3 py-2 text-[12px];
+  }
+
   .btn-primary {
     @apply btn px-4 py-2.5 text-white;
     background: var(--brand-primary);
@@ -297,6 +303,16 @@
     background: var(--surface-muted);
     color: var(--text-default);
     border: 1px solid var(--border-subtle);
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent px-3 py-2;
+    color: var(--text-default);
+    border: 1px solid transparent;
+  }
+
+  .btn-ghost:hover {
+    background: var(--surface-soft);
   }
 
   .sidebar {

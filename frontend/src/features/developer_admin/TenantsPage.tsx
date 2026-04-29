@@ -828,14 +828,14 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
           {groupedModules.map(([category, modules]) => (
             <div key={category}>
               <div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{category.replace(/_/g, ' ')}</div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2.5 sm:grid-cols-2">
                 {modules.map((module) => {
                   const enabled = !!selectedTenant?.modules.find((tenantModule) => tenantModule.module_key === module.key && tenantModule.is_enabled)
                   return (
-                    <div key={module.key} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                      <div>
-                        <div className="font-semibold text-slate-900">{module.name}</div>
-                        <div className="mt-1 text-xs text-slate-500">{module.description}</div>
+                    <div key={module.key} className="flex items-center justify-between gap-3 rounded-[16px] border border-slate-200 bg-slate-50 px-3.5 py-2.5">
+                      <div className="min-w-0">
+                        <div className="truncate text-[13px] font-semibold text-slate-900">{module.name}</div>
+                        <div className="mt-0.5 text-[11px] leading-5 text-slate-500">{module.description}</div>
                       </div>
                       <button
                         type="button"
@@ -854,9 +854,9 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                             return { ...current, modules: modulesCopy }
                           })
                         }}
-                        className={`relative inline-flex h-6 w-11 rounded-full transition-colors ${enabled ? 'bg-slate-700' : 'bg-slate-300'}`}
+                        className={`relative inline-flex h-[22px] w-[40px] shrink-0 rounded-full transition-colors ${enabled ? 'bg-slate-700' : 'bg-slate-300'}`}
                       >
-                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                        <span className={`inline-block h-[18px] w-[18px] transform rounded-full bg-white transition-transform ${enabled ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
                       </button>
                     </div>
                   )

@@ -20,63 +20,76 @@ def _is_platform_admin(user) -> bool:
     return bool(user.role and user.role.name in {"super_manager", "developer_admin"})
 
 
-def _module_key_from_request_path(path: str) -> str | None:
+def _module_keys_from_request(request: Request) -> set[str] | None:
+    path = str(request.url.path)
+    method = request.method.upper()
     if "/api/v1/analytics/kpis" in path:
-        return "dashboard"
+        return {"dashboard"}
     if "/api/v1/analytics/" in path or "/api/v1/reports/" in path:
-        return "reports"
+        return {"reports"}
     if "/api/v1/eggs" in path:
-        return "egg_production"
+        return {"egg_production"}
     if "/api/v1/farm/houses" in path:
-        return "houses"
+        return {"houses"}
     if "/api/v1/farm/batches/" in path and "/mortality" in path:
-        return "mortality"
+        return {"mortality"}
     if "/api/v1/farm/batches/" in path and "/vaccinations" in path:
-        return "vaccination"
+        return {"vaccination"}
     if "/api/v1/farm/vaccinations/" in path:
-        return "vaccination"
+        return {"vaccination"}
     if "/api/v1/farm/batches/" in path and "/growth" in path:
-        return "growth_tracking"
+        return {"growth_tracking"}
     if "/api/v1/farm/batches" in path:
-        return "batches"
+        return {"batches"}
     if "/api/v1/feed/suppliers" in path:
-        return "feed_suppliers"
+        return {"feed_suppliers"}
     if "/api/v1/feed/purchases" in path:
-        return "feed_purchases"
+        return {"feed_purchases"}
     if "/api/v1/feed/consumptions" in path:
-        return "feed_consumption"
+        return {"feed_consumption"}
     if "/api/v1/feed/" in path:
-        return "feed_stock"
+        return {"feed_stock"}
     if "/api/v1/inventory/medicine/" in path:
-        return "medicine_supplies"
+        return {"medicine_supplies"}
     if "/api/v1/inventory/movements" in path:
-        return "inventory_movements"
+        return {"inventory_movements"}
     if "/api/v1/inventory/items" in path:
-        return "inventory_items"
+        return {"inventory_items"}
     if "/api/v1/slaughter/records/" in path and "/outputs" in path:
-        return "slaughter_outputs"
+        return {"slaughter_outputs", "slaughter_cut_parts", "slaughter_byproducts"}
     if "/api/v1/slaughter/records" in path:
-        return "slaughter_records"
+        if method == "POST":
+            return {"slaughter_records", "slaughter_planning"}
+        if method in {"PATCH", "PUT"}:
+            return {"slaughter_records", "slaughter_planning", "yield_analysis"}
+        return {
+            "slaughter_records",
+            "slaughter_planning",
+            "slaughter_outputs",
+            "slaughter_cut_parts",
+            "slaughter_byproducts",
+            "yield_analysis",
+        }
     if "/api/v1/sales/customers" in path:
-        return "customers"
+        return {"customers"}
     if "/api/v1/sales/orders" in path:
-        return "sales_orders"
+        return {"sales_orders"}
     if "/api/v1/sales/invoices/" in path and "/payments" in path:
-        return "payments"
+        return {"payments"}
     if "/api/v1/sales/invoices" in path:
-        return "invoices"
+        return {"invoices"}
     if "/api/v1/finance/expenses" in path:
-        return "expenses"
+        return {"expenses"}
     if "/api/v1/finance/incomes" in path:
-        return "income"
+        return {"income"}
     if "/api/v1/compliance/summary" in path:
-        return "compliance_alerts"
+        return {"compliance_alerts"}
     if "/api/v1/compliance/" in path:
-        return "compliance_documents"
+        return {"compliance_documents"}
     if "/api/v1/users" in path:
-        return "users"
+        return {"users"}
     if "/api/v1/settings" in path:
-        return "settings"
+        return {"settings"}
     return None
 
 
@@ -119,15 +132,15 @@ async def _ensure_tenant_module_access(user, request: Request, permission_code: 
                 detail="Your subscription has expired.",
             )
 
-    module_key = _module_key_from_request_path(str(request.url.path))
-    if module_key is None:
+    required_module_keys = _module_keys_from_request(request)
+    if required_module_keys is None:
         return
 
     enabled_modules = {module.module_key for module in tenant.modules if module.is_enabled}
-    if module_key not in enabled_modules:
+    if enabled_modules.isdisjoint(required_module_keys):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Module '{module_key}' is not enabled for your tenant.",
+            detail=f"One of the required modules is not enabled for your tenant: {', '.join(sorted(required_module_keys))}.",
         )
 
 

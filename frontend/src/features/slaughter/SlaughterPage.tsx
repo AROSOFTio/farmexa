@@ -3,13 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Boxes, ClipboardList, PackagePlus, Scissors, ShieldCheck, TrendingUp } from 'lucide-react'
+import { Boxes, CalendarDays, ClipboardList, PackagePlus, Scissors, ShieldCheck, TrendingUp } from 'lucide-react'
 import { toast } from 'sonner'
 
 import api from '@/services/api'
 import { Modal } from '@/components/Modal'
 
-type SlaughterSection = 'records' | 'outputs' | 'yield'
+type SlaughterSection = 'planning' | 'records' | 'cuts' | 'byproducts' | 'outputs' | 'yield'
 
 interface BatchOption {
   id: number
@@ -130,20 +130,53 @@ const productionOutputCatalog = [
   { value: 'head', label: 'Head', stockName: 'Head' },
 ] as const
 
+const saleableOutputTypes = new Set([
+  'dressed_chicken',
+  'chicken_breast',
+  'chicken_thighs',
+  'chicken_wings',
+  'chicken_drumsticks',
+  'gizzards',
+  'liver',
+  'neck_backs',
+])
+
+const byproductOutputTypes = new Set(['poultry_manure', 'feet', 'head'])
 const productionOutputStockNames = new Set(productionOutputCatalog.map((entry) => entry.stockName.toLowerCase()))
 
-function outputLabel(outputType: string) {
-  return productionOutputCatalog.find((entry) => entry.value === outputType)?.label ?? outputType.replace(/_/g, ' ')
-}
-
-const sectionCopy: Record<SlaughterSection, { title: string; description: string }> = {
+const sectionCopy: Record<
+  SlaughterSection,
+  { title: string; description: string; actionLabel?: string; actionDescription?: string }
+> = {
+  planning: {
+    title: 'Slaughter Planning',
+    description: 'Schedule and prepare one processing run at a time before final yield approval.',
+    actionLabel: 'Plan slaughter run',
+    actionDescription: 'Capture the date, batch, live birds, and pre-processing checks in a clean planning dialog.',
+  },
   records: {
     title: 'Slaughter Records',
     description: 'Capture one slaughter run at a time, then finalize yield and approval in a separate step.',
+    actionLabel: 'Enter slaughter record',
+    actionDescription: 'Record live birds, weight, waste classes, inspection details, and storage notes in one modal.',
+  },
+  cuts: {
+    title: 'Cut Parts',
+    description: 'Track saleable poultry cuts such as dressed chicken, breast, thighs, wings, drumsticks, liver, and gizzards.',
+    actionLabel: 'Post cut part output',
+    actionDescription: 'Push approved cut-part quantities into inventory for later sales fulfillment.',
+  },
+  byproducts: {
+    title: 'Byproducts',
+    description: 'Track manure and reusable byproducts separately so disposal and reusable stock stay visible.',
+    actionLabel: 'Post byproduct output',
+    actionDescription: 'Record manure, head, and feet quantities from an approved run.',
   },
   outputs: {
     title: 'Product Outputs',
-    description: 'Post approved finished products and reusable byproducts into inventory.',
+    description: 'Post approved finished products and reusable byproducts into inventory from completed runs.',
+    actionLabel: 'Post product output',
+    actionDescription: 'Select one approved run and transfer finished products into stock for sales and reporting.',
   },
   yield: {
     title: 'Yield Analysis',
@@ -163,6 +196,10 @@ function formatDate(value: string) {
   })
 }
 
+function outputLabel(outputType: string) {
+  return productionOutputCatalog.find((entry) => entry.value === outputType)?.label ?? outputType.replace(/_/g, ' ')
+}
+
 function statusBadge(status: string) {
   if (status === 'completed' || status === 'approved' || status === 'passed') return 'badge badge-success'
   if (status === 'cancelled' || status === 'failed' || status === 'rejected') return 'badge badge-danger'
@@ -170,10 +207,74 @@ function statusBadge(status: string) {
   return 'badge badge-neutral'
 }
 
+function isSaleableOutput(outputType: string) {
+  return saleableOutputTypes.has(outputType)
+}
+
+function isByproductOutput(outputType: string) {
+  return byproductOutputTypes.has(outputType)
+}
+
+function emptyRecordFormValues(): RecordFormValues {
+  return {
+    batch_id: 0,
+    slaughter_date: todayValue(),
+    live_birds_count: 0,
+    mortality_birds_count: 0,
+    condemned_birds_count: 0,
+    total_live_weight: 0,
+    waste_weight: 0,
+    blood_weight: 0,
+    feathers_weight: 0,
+    offal_weight: 0,
+    head_weight: 0,
+    feet_weight: 0,
+    reusable_byproducts_weight: 0,
+    waste_disposal_notes: '',
+    quality_inspection_status: 'pending',
+    cold_room_location: '',
+    notes: '',
+  }
+}
+
+function emptyCompletionValues(): CompletionFormValues {
+  return {
+    record_id: 0,
+    status: 'completed',
+    total_dressed_weight: undefined,
+    waste_weight: 0,
+    mortality_birds_count: 0,
+    condemned_birds_count: 0,
+    blood_weight: 0,
+    feathers_weight: 0,
+    offal_weight: 0,
+    head_weight: 0,
+    feet_weight: 0,
+    reusable_byproducts_weight: 0,
+    waste_disposal_notes: '',
+    quality_inspection_status: 'pending',
+    approval_status: 'pending',
+    cold_room_location: '',
+    notes: '',
+  }
+}
+
+function emptyOutputValues(defaultOutputType = 'dressed_chicken'): OutputFormValues {
+  return {
+    record_id: 0,
+    stock_item_id: 0,
+    output_type: defaultOutputType,
+    quantity: 0,
+    unit_cost: undefined,
+  }
+}
+
 export function SlaughterPage({ section }: { section: SlaughterSection }) {
   const qc = useQueryClient()
   const copy = sectionCopy[section]
   const [selectedRecord, setSelectedRecord] = useState<SlaughterRecord | null>(null)
+  const [isRecordModalOpen, setIsRecordModalOpen] = useState(false)
+  const [isOutputModalOpen, setIsOutputModalOpen] = useState(false)
 
   const { data: records = [] } = useQuery({
     queryKey: ['slaughter-records'],
@@ -192,85 +293,26 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
 
   const recordForm = useForm<RecordFormValues>({
     resolver: zodResolver(recordSchema),
-    defaultValues: {
-      batch_id: 0,
-      slaughter_date: todayValue(),
-      live_birds_count: 0,
-      mortality_birds_count: 0,
-      condemned_birds_count: 0,
-      total_live_weight: 0,
-      waste_weight: 0,
-      blood_weight: 0,
-      feathers_weight: 0,
-      offal_weight: 0,
-      head_weight: 0,
-      feet_weight: 0,
-      reusable_byproducts_weight: 0,
-      waste_disposal_notes: '',
-      quality_inspection_status: 'pending',
-      cold_room_location: '',
-      notes: '',
-    },
+    defaultValues: emptyRecordFormValues(),
   })
 
   const completionForm = useForm<CompletionFormValues>({
     resolver: zodResolver(completionSchema),
-    defaultValues: {
-      record_id: 0,
-      status: 'completed',
-      total_dressed_weight: undefined,
-      waste_weight: 0,
-      mortality_birds_count: 0,
-      condemned_birds_count: 0,
-      blood_weight: 0,
-      feathers_weight: 0,
-      offal_weight: 0,
-      head_weight: 0,
-      feet_weight: 0,
-      reusable_byproducts_weight: 0,
-      waste_disposal_notes: '',
-      quality_inspection_status: 'pending',
-      approval_status: 'pending',
-      cold_room_location: '',
-      notes: '',
-    },
+    defaultValues: emptyCompletionValues(),
   })
 
   const outputForm = useForm<OutputFormValues>({
     resolver: zodResolver(outputSchema),
-    defaultValues: {
-      record_id: 0,
-      stock_item_id: 0,
-      output_type: 'dressed_chicken',
-      quantity: 0,
-      unit_cost: undefined,
-    },
+    defaultValues: emptyOutputValues(),
   })
 
   const createRecord = useMutation({
     mutationFn: (values: RecordFormValues) => api.post('/slaughter/records', values),
     onSuccess: () => {
-      toast.success('Slaughter record created.')
+      toast.success(section === 'planning' ? 'Slaughter plan saved.' : 'Slaughter record created.')
       qc.invalidateQueries({ queryKey: ['slaughter-records'] })
-      recordForm.reset({
-        batch_id: 0,
-        slaughter_date: todayValue(),
-        live_birds_count: 0,
-        mortality_birds_count: 0,
-        condemned_birds_count: 0,
-        total_live_weight: 0,
-        waste_weight: 0,
-        blood_weight: 0,
-        feathers_weight: 0,
-        offal_weight: 0,
-        head_weight: 0,
-        feet_weight: 0,
-        reusable_byproducts_weight: 0,
-        waste_disposal_notes: '',
-        quality_inspection_status: 'pending',
-        cold_room_location: '',
-        notes: '',
-      })
+      recordForm.reset(emptyRecordFormValues())
+      setIsRecordModalOpen(false)
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.detail ?? 'Failed to create slaughter record.')
@@ -301,6 +343,7 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
       toast.success('Slaughter yield finalized.')
       qc.invalidateQueries({ queryKey: ['slaughter-records'] })
       setSelectedRecord(null)
+      completionForm.reset(emptyCompletionValues())
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.detail ?? 'Failed to update slaughter record.')
@@ -320,18 +363,28 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
       qc.invalidateQueries({ queryKey: ['slaughter-records'] })
       qc.invalidateQueries({ queryKey: ['inventory-items'] })
       qc.invalidateQueries({ queryKey: ['inventory-movements'] })
-      outputForm.reset({
-        record_id: 0,
-        stock_item_id: 0,
-        output_type: 'dressed_chicken',
-        quantity: 0,
-        unit_cost: undefined,
-      })
+      outputForm.reset(emptyOutputValues(outputCatalogForSection[0]?.value ?? 'dressed_chicken'))
+      setIsOutputModalOpen(false)
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.detail ?? 'Failed to post slaughter output.')
     },
   })
+
+  const approvedRecords = useMemo(
+    () => records.filter((record) => record.status === 'completed' && record.approval_status === 'approved'),
+    [records]
+  )
+
+  const completedRecords = useMemo(
+    () => records.filter((record) => record.status === 'completed'),
+    [records]
+  )
+
+  const planningRecords = useMemo(
+    () => records.filter((record) => record.status === 'scheduled' || record.status === 'in_progress'),
+    [records]
+  )
 
   const allOutputs = useMemo(
     () =>
@@ -345,26 +398,38 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
     [records]
   )
 
+  const outputCatalogForSection = useMemo(() => {
+    if (section === 'cuts') {
+      return productionOutputCatalog.filter((entry) => isSaleableOutput(entry.value))
+    }
+    if (section === 'byproducts') {
+      return productionOutputCatalog.filter((entry) => isByproductOutput(entry.value))
+    }
+    return productionOutputCatalog
+  }, [section])
+
+  const visibleOutputs = useMemo(() => {
+    if (section === 'cuts') return allOutputs.filter((output) => isSaleableOutput(output.output_type))
+    if (section === 'byproducts') return allOutputs.filter((output) => isByproductOutput(output.output_type))
+    return allOutputs
+  }, [allOutputs, section])
+
   const averageYield =
-    records.filter((record) => record.yield_percentage != null).length > 0
+    completedRecords.filter((record) => record.yield_percentage != null).length > 0
       ? `${(
-          records
+          completedRecords
             .filter((record) => record.yield_percentage != null)
             .reduce((sum, record) => sum + Number(record.yield_percentage || 0), 0) /
-          records.filter((record) => record.yield_percentage != null).length
+          completedRecords.filter((record) => record.yield_percentage != null).length
         ).toFixed(1)}%`
       : 'No data'
-
-  const approvedRecords = useMemo(
-    () => records.filter((record) => record.status === 'completed' && record.approval_status === 'approved'),
-    [records]
-  )
-  const selectedOutputType = outputForm.watch('output_type')
 
   const outputInventoryItems = useMemo(() => {
     const matched = stockItems.filter((item) => productionOutputStockNames.has(item.name.trim().toLowerCase()))
     return matched.length > 0 ? matched : stockItems
   }, [stockItems])
+
+  const selectedOutputType = outputForm.watch('output_type')
 
   useEffect(() => {
     const preferredStockName = productionOutputCatalog.find((entry) => entry.value === selectedOutputType)?.stockName
@@ -378,10 +443,14 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
     }
   }, [outputForm, outputInventoryItems, selectedOutputType])
 
-  const completedRecords = useMemo(
-    () => records.filter((record) => record.status === 'completed'),
-    [records]
-  )
+  useEffect(() => {
+    if (!isOutputModalOpen) return
+    const allowedTypes = new Set(outputCatalogForSection.map((entry) => entry.value))
+    const currentType = outputForm.getValues('output_type')
+    if (!allowedTypes.has(currentType)) {
+      outputForm.setValue('output_type', outputCatalogForSection[0]?.value ?? 'dressed_chicken')
+    }
+  }, [isOutputModalOpen, outputCatalogForSection, outputForm])
 
   const yieldSummary = useMemo(
     () =>
@@ -415,13 +484,57 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
   )
 
   const selectedBatch = batches.find((batch) => batch.id === recordForm.watch('batch_id'))
+  const recordRows = section === 'planning' ? planningRecords : records
+  const isOutputSection = section === 'outputs' || section === 'cuts' || section === 'byproducts'
+
+  const openRecordModal = () => {
+    recordForm.reset(emptyRecordFormValues())
+    setIsRecordModalOpen(true)
+  }
+
+  const openOutputModal = () => {
+    outputForm.reset(
+      emptyOutputValues(outputCatalogForSection[0]?.value ?? 'dressed_chicken')
+    )
+    if (approvedRecords[0]) {
+      outputForm.setValue('record_id', approvedRecords[0].id, { shouldValidate: true })
+    }
+    setIsOutputModalOpen(true)
+  }
+
+  const openFinalizeModal = (record: SlaughterRecord) => {
+    setSelectedRecord(record)
+    completionForm.reset({
+      record_id: record.id,
+      status: record.status,
+      total_dressed_weight: record.total_dressed_weight ?? undefined,
+      waste_weight: record.waste_weight,
+      mortality_birds_count: record.mortality_birds_count,
+      condemned_birds_count: record.condemned_birds_count,
+      blood_weight: record.blood_weight,
+      feathers_weight: record.feathers_weight,
+      offal_weight: record.offal_weight,
+      head_weight: record.head_weight,
+      feet_weight: record.feet_weight,
+      reusable_byproducts_weight: record.reusable_byproducts_weight,
+      waste_disposal_notes: record.waste_disposal_notes ?? '',
+      quality_inspection_status: record.quality_inspection_status as CompletionFormValues['quality_inspection_status'],
+      approval_status: record.approval_status as CompletionFormValues['approval_status'],
+      cold_room_location: record.cold_room_location ?? '',
+      notes: record.notes ?? '',
+    })
+  }
+
+  const recordModalTitle = section === 'planning' ? 'Plan slaughter run' : 'Enter slaughter record'
+  const outputModalTitle =
+    section === 'cuts' ? 'Post cut part output' : section === 'byproducts' ? 'Post byproduct output' : 'Post product output'
 
   return (
     <div className="animate-fade-in space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-neutral-900">{copy.title}</h1>
-          <p className="mt-1 max-w-2xl text-sm font-medium text-neutral-500">{copy.description}</p>
+          <p className="mt-1 max-w-3xl text-sm font-medium text-neutral-500">{copy.description}</p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
           <Scissors className="h-3.5 w-3.5" />
@@ -456,92 +569,31 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
         </div>
       </div>
 
-      {section === 'records' && (
-        <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-          <div className="card p-6">
-            <h2 className="text-lg font-bold text-neutral-900">New slaughter record</h2>
-            <p className="mt-1 text-sm text-neutral-500">Capture live bird counts, live weights, waste categories, and initial inspection details.</p>
-            <form className="mt-5 space-y-4" onSubmit={recordForm.handleSubmit((values) => createRecord.mutate(values))}>
+      {(section === 'planning' || section === 'records') && (
+        <div className="space-y-4">
+          <div className="card p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <label className="form-label">Batch</label>
-                <select className="form-input" {...recordForm.register('batch_id')}>
-                  <option value={0}>Choose batch</option>
-                  {batches.map((batch) => (
-                    <option key={batch.id} value={batch.id}>
-                      {batch.batch_number} - {batch.breed}
-                    </option>
-                  ))}
-                </select>
-                {selectedBatch ? <p className="form-hint">House: {selectedBatch.house?.name ?? `House #${selectedBatch.house_id ?? '-'}`}</p> : null}
+                <h2 className="text-lg font-bold text-neutral-900">{copy.actionLabel}</h2>
+                <p className="mt-1 text-sm text-neutral-500">{copy.actionDescription}</p>
               </div>
-              <div>
-                <label className="form-label">Slaughter date</label>
-                <input className="form-input" type="date" {...recordForm.register('slaughter_date')} />
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="form-label">Live birds count</label>
-                  <input className="form-input" type="number" min={0} {...recordForm.register('live_birds_count')} />
-                </div>
-                <div>
-                  <label className="form-label">Mortality before process</label>
-                  <input className="form-input" type="number" min={0} {...recordForm.register('mortality_birds_count')} />
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="form-label">Condemned birds</label>
-                  <input className="form-input" type="number" min={0} {...recordForm.register('condemned_birds_count')} />
-                </div>
-                <div>
-                  <label className="form-label">Total live weight (kg)</label>
-                  <input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('total_live_weight')} />
-                </div>
-              </div>
-              <div className="rounded-[18px] border border-neutral-200 bg-neutral-50 p-4">
-                <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Byproduct and waste categories</div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div><label className="form-label">Blood weight</label><input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('blood_weight')} /></div>
-                  <div><label className="form-label">Feathers weight</label><input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('feathers_weight')} /></div>
-                  <div><label className="form-label">Offal weight</label><input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('offal_weight')} /></div>
-                  <div><label className="form-label">Head weight</label><input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('head_weight')} /></div>
-                  <div><label className="form-label">Feet weight</label><input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('feet_weight')} /></div>
-                  <div><label className="form-label">Reusable byproducts</label><input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('reusable_byproducts_weight')} /></div>
-                  <div><label className="form-label">Waste weight</label><input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('waste_weight')} /></div>
-                  <div>
-                    <label className="form-label">Quality inspection</label>
-                    <select className="form-input" {...recordForm.register('quality_inspection_status')}>
-                      <option value="pending">Pending</option>
-                      <option value="passed">Passed</option>
-                      <option value="failed">Failed</option>
-                      <option value="rework">Rework</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label className="form-label">Cold-room / storage location</label>
-                <input className="form-input" {...recordForm.register('cold_room_location')} />
-              </div>
-              <div>
-                <label className="form-label">Waste disposal record</label>
-                <textarea className="form-input min-h-[88px]" {...recordForm.register('waste_disposal_notes')} />
-              </div>
-              <div>
-                <label className="form-label">Processing notes</label>
-                <textarea className="form-input min-h-[88px]" {...recordForm.register('notes')} />
-              </div>
-              <button className="btn-primary w-full" disabled={createRecord.isPending} type="submit">
-                <Scissors className="h-4 w-4" />
-                {createRecord.isPending ? 'Saving...' : 'Create record'}
+              <button type="button" className="btn-primary" onClick={openRecordModal}>
+                <CalendarDays className="h-4 w-4" />
+                {copy.actionLabel}
               </button>
-            </form>
+            </div>
           </div>
 
           <div className="card overflow-hidden">
             <div className="border-b border-neutral-100 px-6 py-5">
-              <h2 className="text-lg font-bold text-neutral-900">Processing runs</h2>
-              <p className="mt-1 text-sm text-neutral-500">Finalize yield, approval, and cold-room posting one record at a time.</p>
+              <h2 className="text-lg font-bold text-neutral-900">
+                {section === 'planning' ? 'Scheduled and active runs' : 'Processing runs'}
+              </h2>
+              <p className="mt-1 text-sm text-neutral-500">
+                {section === 'planning'
+                  ? 'Monitor scheduled and in-progress batches before they reach yield approval.'
+                  : 'Finalize yield, approval, and cold-room posting one record at a time.'}
+              </p>
             </div>
             <div className="overflow-x-auto">
               <table className="data-table">
@@ -550,64 +602,40 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
                     <th className="pl-6">Date</th>
                     <th>Batch / House</th>
                     <th>Status</th>
+                    <th>Live birds</th>
                     <th>Yield</th>
                     <th>Approval</th>
-                    <th className="pr-6 text-right">Action</th>
+                    <th>Outputs</th>
+                    <th className="pr-6">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {records.length === 0 ? (
+                  {recordRows.length === 0 ? (
                     <tr>
-                      <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={6}>
-                        No slaughter records.
+                      <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={8}>
+                        {section === 'planning' ? 'No scheduled slaughter runs yet.' : 'No slaughter records.'}
                       </td>
                     </tr>
                   ) : (
-                    records.map((record) => {
+                    recordRows.map((record) => {
                       const batch = batches.find((entry) => entry.id === record.batch_id)
                       return (
                         <tr key={record.id}>
                           <td className="pl-6">{formatDate(record.slaughter_date)}</td>
                           <td>
                             <div className="font-semibold text-neutral-900">{batch?.batch_number || `Batch #${record.batch_id}`}</div>
-                            <div className="mt-1 text-xs text-neutral-500">{batch?.house?.name ?? 'House not loaded'}</div>
+                            <div className="mt-1 text-xs text-neutral-500">{batch?.house?.name || 'No house assigned'}</div>
                           </td>
-                          <td><span className={statusBadge(record.status)}>{record.status}</span></td>
+                          <td><span className={statusBadge(record.status)}>{record.status.replace(/_/g, ' ')}</span></td>
                           <td>
-                            <div>{record.yield_percentage != null ? `${record.yield_percentage.toFixed(1)}%` : 'Pending'}</div>
-                            <div className="mt-1 text-xs text-neutral-500">Loss {record.loss_percentage != null ? `${record.loss_percentage.toFixed(1)}%` : '-'}</div>
+                            <div>{record.live_birds_count.toLocaleString()} birds</div>
+                            <div className="mt-1 text-xs text-neutral-500">{record.total_live_weight.toLocaleString()} kg live</div>
                           </td>
-                          <td>
-                            <span className={statusBadge(record.approval_status)}>{record.approval_status}</span>
-                            <div className="mt-1 text-xs text-neutral-500">{record.quality_inspection_status}</div>
-                          </td>
-                          <td className="pr-6 text-right">
-                            <button
-                              type="button"
-                              className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                              onClick={() => {
-                                setSelectedRecord(record)
-                                completionForm.reset({
-                                  record_id: record.id,
-                                  status: record.status === 'cancelled' ? 'cancelled' : 'completed',
-                                  total_dressed_weight: record.total_dressed_weight ?? undefined,
-                                  waste_weight: record.waste_weight,
-                                  mortality_birds_count: record.mortality_birds_count,
-                                  condemned_birds_count: record.condemned_birds_count,
-                                  blood_weight: record.blood_weight,
-                                  feathers_weight: record.feathers_weight,
-                                  offal_weight: record.offal_weight,
-                                  head_weight: record.head_weight,
-                                  feet_weight: record.feet_weight,
-                                  reusable_byproducts_weight: record.reusable_byproducts_weight,
-                                  waste_disposal_notes: record.waste_disposal_notes ?? '',
-                                  quality_inspection_status: record.quality_inspection_status as CompletionFormValues['quality_inspection_status'],
-                                  approval_status: record.approval_status as CompletionFormValues['approval_status'],
-                                  cold_room_location: record.cold_room_location ?? '',
-                                  notes: record.notes ?? '',
-                                })
-                              }}
-                            >
+                          <td>{record.yield_percentage != null ? `${record.yield_percentage.toFixed(1)}%` : 'Pending'}</td>
+                          <td><span className={statusBadge(record.approval_status)}>{record.approval_status}</span></td>
+                          <td>{record.outputs?.length?.toLocaleString() ?? 0}</td>
+                          <td className="pr-6">
+                            <button type="button" className="btn-secondary btn-sm" onClick={() => openFinalizeModal(record)}>
                               Finalize Yield
                             </button>
                           </td>
@@ -622,65 +650,43 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
         </div>
       )}
 
-      {section === 'outputs' && (
-        <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-          <div className="card p-6">
-            <h2 className="text-lg font-bold text-neutral-900">Post product output</h2>
-            <p className="mt-1 text-sm text-neutral-500">Only approved slaughter runs can post finished products or reusable byproducts.</p>
-            <form className="mt-5 space-y-4" onSubmit={outputForm.handleSubmit((values) => createOutput.mutate(values))}>
+      {isOutputSection && (
+        <div className="space-y-4">
+          <div className="card p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <label className="form-label">Approved slaughter record</label>
-                <select className="form-input" {...outputForm.register('record_id')}>
-                  <option value={0}>Choose record</option>
-                  {approvedRecords.map((record) => (
-                    <option key={record.id} value={record.id}>
-                      Record #{record.id} - {formatDate(record.slaughter_date)}
-                    </option>
-                  ))}
-                </select>
+                <h2 className="text-lg font-bold text-neutral-900">{copy.actionLabel}</h2>
+                <p className="mt-1 text-sm text-neutral-500">{copy.actionDescription}</p>
               </div>
-              <div>
-                <label className="form-label">Produced item</label>
-                <select className="form-input" {...outputForm.register('output_type')}>
-                  {productionOutputCatalog.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="form-label">Inventory item</label>
-                <select className="form-input" {...outputForm.register('stock_item_id')}>
-                  <option value={0}>Choose stock item</option>
-                  {outputInventoryItems.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="form-label">Quantity</label>
-                  <input className="form-input" type="number" min={0} step="0.01" {...outputForm.register('quantity')} />
-                </div>
-                <div>
-                  <label className="form-label">Unit cost</label>
-                  <input className="form-input" type="number" min={0} step="0.01" {...outputForm.register('unit_cost')} />
-                </div>
-              </div>
-              <button className="btn-primary w-full" disabled={createOutput.isPending} type="submit">
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={openOutputModal}
+                disabled={approvedRecords.length === 0}
+              >
                 <PackagePlus className="h-4 w-4" />
-                {createOutput.isPending ? 'Saving...' : 'Post output'}
+                {copy.actionLabel}
               </button>
-            </form>
+            </div>
+            {approvedRecords.length === 0 ? (
+              <div className="mt-4 rounded-[16px] border border-dashed border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-500">
+                Approve at least one completed slaughter run before posting inventory outputs.
+              </div>
+            ) : null}
           </div>
 
           <div className="card overflow-hidden">
             <div className="border-b border-neutral-100 px-6 py-5">
-              <h2 className="text-lg font-bold text-neutral-900">Output ledger</h2>
-              <p className="mt-1 text-sm text-neutral-500">Finished product, byproduct, and waste output lines transferred into inventory.</p>
+              <h2 className="text-lg font-bold text-neutral-900">
+                {section === 'cuts' ? 'Cut-part ledger' : section === 'byproducts' ? 'Byproduct ledger' : 'Output ledger'}
+              </h2>
+              <p className="mt-1 text-sm text-neutral-500">
+                {section === 'cuts'
+                  ? 'Saleable cut parts and processed poultry products already moved into stock.'
+                  : section === 'byproducts'
+                    ? 'Manure and reusable byproducts captured from approved runs.'
+                    : 'Finished product, cut-part, and byproduct lines transferred into inventory.'}
+              </p>
             </div>
             <div className="overflow-x-auto">
               <table className="data-table">
@@ -695,14 +701,18 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {allOutputs.length === 0 ? (
+                  {visibleOutputs.length === 0 ? (
                     <tr>
                       <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={6}>
-                        No slaughter outputs posted yet.
+                        {section === 'cuts'
+                          ? 'No cut parts posted yet.'
+                          : section === 'byproducts'
+                            ? 'No byproducts posted yet.'
+                            : 'No slaughter outputs posted yet.'}
                       </td>
                     </tr>
                   ) : (
-                    allOutputs.map((output) => (
+                    visibleOutputs.map((output) => (
                       <tr key={`${output.record_id}-${output.id}`}>
                         <td className="pl-6">{formatDate(output.slaughter_date)}</td>
                         <td>Record #{output.record_id}</td>
@@ -730,7 +740,9 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
           <div className="card overflow-hidden">
             <div className="border-b border-neutral-100 px-6 py-5">
               <h2 className="text-lg font-bold text-neutral-900">Yield and loss report</h2>
-              <p className="mt-1 text-sm text-neutral-500">Completed runs with dressing performance, quality inspection, approval, and storage posting status.</p>
+              <p className="mt-1 text-sm text-neutral-500">
+                Completed runs with dressing performance, quality inspection, approval, and storage posting status.
+              </p>
             </div>
             <div className="overflow-x-auto">
               <table className="data-table">
@@ -842,8 +854,171 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
       )}
 
       <Modal
+        isOpen={isRecordModalOpen}
+        onClose={() => setIsRecordModalOpen(false)}
+        title={recordModalTitle}
+        description={copy.actionDescription}
+      >
+        <form className="space-y-5" onSubmit={recordForm.handleSubmit((values) => createRecord.mutate(values))}>
+          <div className="rounded-[18px] border border-neutral-200 bg-neutral-50 p-4">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Run identification</div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="form-label">Batch</label>
+                <select className="form-input" {...recordForm.register('batch_id')}>
+                  <option value={0}>Choose batch</option>
+                  {batches.map((batch) => (
+                    <option key={batch.id} value={batch.id}>
+                      {batch.batch_number} - {batch.breed}
+                    </option>
+                  ))}
+                </select>
+                {selectedBatch ? (
+                  <p className="form-hint">House: {selectedBatch.house?.name ?? `House #${selectedBatch.house_id ?? '-'}`}</p>
+                ) : null}
+              </div>
+              <div>
+                <label className="form-label">Slaughter date</label>
+                <input className="form-input" type="date" {...recordForm.register('slaughter_date')} />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[18px] border border-neutral-200 bg-neutral-50 p-4">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Live bird intake</div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="form-label">Live birds count</label>
+                <input className="form-input" type="number" min={0} {...recordForm.register('live_birds_count')} />
+              </div>
+              <div>
+                <label className="form-label">Total live weight (kg)</label>
+                <input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('total_live_weight')} />
+              </div>
+              <div>
+                <label className="form-label">Mortality before process</label>
+                <input className="form-input" type="number" min={0} {...recordForm.register('mortality_birds_count')} />
+              </div>
+              <div>
+                <label className="form-label">Condemned birds</label>
+                <input className="form-input" type="number" min={0} {...recordForm.register('condemned_birds_count')} />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[18px] border border-neutral-200 bg-neutral-50 p-4">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Waste and byproduct classes</div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div><label className="form-label">Waste weight (kg)</label><input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('waste_weight')} /></div>
+              <div><label className="form-label">Blood (kg)</label><input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('blood_weight')} /></div>
+              <div><label className="form-label">Feathers (kg)</label><input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('feathers_weight')} /></div>
+              <div><label className="form-label">Offal (kg)</label><input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('offal_weight')} /></div>
+              <div><label className="form-label">Head (kg)</label><input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('head_weight')} /></div>
+              <div><label className="form-label">Feet (kg)</label><input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('feet_weight')} /></div>
+              <div className="md:col-span-2"><label className="form-label">Reusable byproducts (kg)</label><input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('reusable_byproducts_weight')} /></div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="form-label">Quality inspection status</label>
+              <select className="form-input" {...recordForm.register('quality_inspection_status')}>
+                <option value="pending">Pending</option>
+                <option value="passed">Passed</option>
+                <option value="failed">Failed</option>
+                <option value="rework">Rework</option>
+              </select>
+            </div>
+            <div>
+              <label className="form-label">Cold-room / storage location</label>
+              <input className="form-input" {...recordForm.register('cold_room_location')} />
+            </div>
+          </div>
+
+          <div>
+            <label className="form-label">Waste disposal record</label>
+            <textarea className="form-input min-h-[88px]" {...recordForm.register('waste_disposal_notes')} />
+          </div>
+          <div>
+            <label className="form-label">Notes</label>
+            <textarea className="form-input min-h-[88px]" {...recordForm.register('notes')} />
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button type="button" className="btn-secondary" onClick={() => setIsRecordModalOpen(false)}>Close</button>
+            <button className="btn-primary" disabled={createRecord.isPending} type="submit">
+              <CalendarDays className="h-4 w-4" />
+              {createRecord.isPending ? 'Saving...' : recordModalTitle}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={isOutputModalOpen}
+        onClose={() => setIsOutputModalOpen(false)}
+        title={outputModalTitle}
+        description={copy.actionDescription}
+      >
+        <form className="space-y-4" onSubmit={outputForm.handleSubmit((values) => createOutput.mutate(values))}>
+          <div>
+            <label className="form-label">Approved slaughter record</label>
+            <select className="form-input" {...outputForm.register('record_id')}>
+              <option value={0}>Choose record</option>
+              {approvedRecords.map((record) => (
+                <option key={record.id} value={record.id}>
+                  Record #{record.id} - {formatDate(record.slaughter_date)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Produced item</label>
+            <select className="form-input" {...outputForm.register('output_type')}>
+              {outputCatalogForSection.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Inventory item</label>
+            <select className="form-input" {...outputForm.register('stock_item_id')}>
+              <option value={0}>Choose stock item</option>
+              {outputInventoryItems.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="form-label">Quantity</label>
+              <input className="form-input" type="number" min={0} step="0.01" {...outputForm.register('quantity')} />
+            </div>
+            <div>
+              <label className="form-label">Unit cost</label>
+              <input className="form-input" type="number" min={0} step="0.01" {...outputForm.register('unit_cost')} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <button type="button" className="btn-secondary" onClick={() => setIsOutputModalOpen(false)}>Close</button>
+            <button className="btn-primary" disabled={createOutput.isPending} type="submit">
+              <PackagePlus className="h-4 w-4" />
+              {createOutput.isPending ? 'Saving...' : outputModalTitle}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
         isOpen={!!selectedRecord}
-        onClose={() => setSelectedRecord(null)}
+        onClose={() => {
+          setSelectedRecord(null)
+          completionForm.reset(emptyCompletionValues())
+        }}
         title={selectedRecord ? `Finalize Yield - Record #${selectedRecord.id}` : 'Finalize Yield'}
         description="Update dressed weight, inspection result, approval status, storage location, and loss categories for one record."
       >

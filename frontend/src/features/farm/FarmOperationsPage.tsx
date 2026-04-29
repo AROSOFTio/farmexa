@@ -3,9 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Activity, CalendarDays, ClipboardList, HeartPulse, Pill, Scale, Skull, TrendingUp } from 'lucide-react'
+import { Activity, ClipboardList, HeartPulse, Pill, Scale, Skull, TrendingUp } from 'lucide-react'
 import { toast } from 'sonner'
+
 import api from '@/services/api'
+import { Modal } from '@/components/Modal'
 
 type FarmOperationMode = 'mortality' | 'vaccination' | 'growth'
 
@@ -72,29 +74,35 @@ type MortalityFormValues = z.infer<typeof mortalitySchema>
 type VaccinationFormValues = z.infer<typeof vaccinationSchema>
 type GrowthFormValues = z.infer<typeof growthSchema>
 
-const modeCopy: Record<FarmOperationMode, { title: string; description: string; path: string; icon: ElementType }> = {
+const modeCopy: Record<
+  FarmOperationMode,
+  { title: string; description: string; path: string; icon: ElementType; actionLabel: string }
+> = {
   mortality: {
     title: 'Mortality',
-    description: 'Mortality by batch.',
+    description: 'Capture mortality events by batch without crowding the history view.',
     path: 'mortality',
     icon: Skull,
+    actionLabel: 'Record mortality',
   },
   vaccination: {
     title: 'Vaccination',
-    description: 'Vaccination status by batch.',
+    description: 'Manage vaccination scheduling and administered doses in a single batch context.',
     path: 'vaccinations',
     icon: Pill,
+    actionLabel: 'Add vaccination log',
   },
   growth: {
     title: 'Growth',
-    description: 'Growth records by batch.',
+    description: 'Log growth and weight checks while keeping the batch history clean and readable.',
     path: 'growth',
     icon: Scale,
+    actionLabel: 'Record growth reading',
   },
 }
 
 function formatDate(value?: string | null) {
-  if (!value) return '—'
+  if (!value) return '-'
   return new Date(value).toLocaleDateString('en-UG', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
@@ -102,9 +110,22 @@ function todayValue() {
   return new Date().toISOString().slice(0, 10)
 }
 
+function emptyMortalityValues(): MortalityFormValues {
+  return { record_date: todayValue(), quantity: 1, cause: '', notes: '' }
+}
+
+function emptyVaccinationValues(): VaccinationFormValues {
+  return { vaccine_name: '', scheduled_date: todayValue(), administered_date: '', status: 'pending', notes: '' }
+}
+
+function emptyGrowthValues(): GrowthFormValues {
+  return { record_date: todayValue(), avg_weight_grams: 0, notes: '' }
+}
+
 export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
   const qc = useQueryClient()
   const [selectedBatchId, setSelectedBatchId] = useState<number | ''>('')
+  const [isEntryModalOpen, setIsEntryModalOpen] = useState(false)
   const copy = modeCopy[mode]
   const ModeIcon = copy.icon
 
@@ -135,17 +156,17 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
 
   const mortalityForm = useForm<MortalityFormValues>({
     resolver: zodResolver(mortalitySchema),
-    defaultValues: { record_date: todayValue(), quantity: 1, cause: '', notes: '' },
+    defaultValues: emptyMortalityValues(),
   })
 
   const vaccinationForm = useForm<VaccinationFormValues>({
     resolver: zodResolver(vaccinationSchema),
-    defaultValues: { vaccine_name: '', scheduled_date: todayValue(), administered_date: '', status: 'pending', notes: '' },
+    defaultValues: emptyVaccinationValues(),
   })
 
   const growthForm = useForm<GrowthFormValues>({
     resolver: zodResolver(growthSchema),
-    defaultValues: { record_date: todayValue(), avg_weight_grams: 0, notes: '' },
+    defaultValues: emptyGrowthValues(),
   })
 
   const mutation = useMutation({
@@ -161,11 +182,10 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
       toast.success(`${copy.title} updated.`)
       qc.invalidateQueries({ queryKey: ['farm-batches'] })
       qc.invalidateQueries({ queryKey: ['farm-operations', mode, selectedBatchId] })
-      if (mode === 'mortality') mortalityForm.reset({ record_date: todayValue(), quantity: 1, cause: '', notes: '' })
-      if (mode === 'vaccination') {
-        vaccinationForm.reset({ vaccine_name: '', scheduled_date: todayValue(), administered_date: '', status: 'pending', notes: '' })
-      }
-      if (mode === 'growth') growthForm.reset({ record_date: todayValue(), avg_weight_grams: 0, notes: '' })
+      mortalityForm.reset(emptyMortalityValues())
+      vaccinationForm.reset(emptyVaccinationValues())
+      growthForm.reset(emptyGrowthValues())
+      setIsEntryModalOpen(false)
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.detail ?? `Failed to update ${copy.title.toLowerCase()}.`)
@@ -174,7 +194,7 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
 
   const summary = useMemo(() => {
     if (!selectedBatch) {
-      return { primary: '—', secondary: '—', tertiary: '—' }
+      return { primary: '-', secondary: '-', tertiary: '-' }
     }
 
     if (mode === 'mortality') {
@@ -200,7 +220,7 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
     }
 
     const latest = [...(logs as GrowthLog[])].sort((a, b) => b.record_date.localeCompare(a.record_date))[0]
-    const avgWeight = latest ? `${latest.avg_weight_grams.toLocaleString()} g` : '—'
+    const avgWeight = latest ? `${latest.avg_weight_grams.toLocaleString()} g` : '-'
     return {
       primary: avgWeight,
       secondary: (logs as GrowthLog[]).length.toLocaleString(),
@@ -210,27 +230,40 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
 
   const tableColumnCount = mode === 'mortality' ? 4 : mode === 'vaccination' ? 5 : 3
 
+  const openEntryModal = () => {
+    mortalityForm.reset(emptyMortalityValues())
+    vaccinationForm.reset(emptyVaccinationValues())
+    growthForm.reset(emptyGrowthValues())
+    setIsEntryModalOpen(true)
+  }
+
   return (
-    <div className="animate-fade-in">
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="animate-fade-in space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-ink-900">{copy.title}</h1>
-          <p className="mt-1 max-w-2xl text-base font-medium text-ink-500">{copy.description}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-ink-900">{copy.title}</h1>
+          <p className="mt-1 max-w-3xl text-sm font-medium text-ink-500">{copy.description}</p>
         </div>
-        <div className="flex min-w-[280px] flex-col gap-2">
-          <label className="form-label mb-0">Select batch</label>
-          <select
-            className="form-input"
-            value={selectedBatchId}
-            onChange={(event) => setSelectedBatchId(event.target.value ? Number(event.target.value) : '')}
-          >
-            <option value="">Choose a batch</option>
-            {batches.map((batch) => (
-              <option key={batch.id} value={batch.id}>
-                {batch.batch_number} - {batch.house?.name ?? 'Unassigned house'}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="min-w-[260px]">
+            <label className="form-label mb-2">Select batch</label>
+            <select
+              className="form-input"
+              value={selectedBatchId}
+              onChange={(event) => setSelectedBatchId(event.target.value ? Number(event.target.value) : '')}
+            >
+              <option value="">Choose a batch</option>
+              {batches.map((batch) => (
+                <option key={batch.id} value={batch.id}>
+                  {batch.batch_number} - {batch.house?.name ?? 'Unassigned house'}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button type="button" className="btn-primary" onClick={openEntryModal} disabled={!selectedBatchId}>
+            <ModeIcon className="h-4 w-4" />
+            {copy.actionLabel}
+          </button>
         </div>
       </div>
 
@@ -245,22 +278,22 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
         </div>
       ) : (
         <>
-          <div className="mb-6 grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-3">
             <div className="card p-5">
               <div className="mb-3 flex items-center gap-2 text-ink-500">
                 <ClipboardList className="h-5 w-5 text-brand-600" />
                 <span className="text-sm font-bold uppercase tracking-[0.12em]">Batch</span>
               </div>
-              <p className="text-2xl font-bold text-ink-900">{selectedBatch?.batch_number ?? '—'}</p>
+              <p className="text-2xl font-bold text-ink-900">{selectedBatch?.batch_number ?? '-'}</p>
               <p className="mt-1 text-base text-ink-500">
-                {selectedBatch?.breed ?? '—'} in {selectedBatch?.house?.name ?? 'Unassigned house'}
+                {selectedBatch?.breed ?? '-'} in {selectedBatch?.house?.name ?? 'Unassigned house'}
               </p>
             </div>
             <div className="card p-5">
               <div className="mb-3 flex items-center gap-2 text-ink-500">
                 <HeartPulse className="h-5 w-5 text-brand-600" />
                 <span className="text-sm font-bold uppercase tracking-[0.12em]">
-                  {mode === 'mortality' ? 'Recorded Losses' : mode === 'vaccination' ? 'Completed Doses' : 'Latest Weight'}
+                  {mode === 'mortality' ? 'Recorded losses' : mode === 'vaccination' ? 'Completed doses' : 'Latest weight'}
                 </span>
               </div>
               <p className="text-2xl font-bold text-ink-900">{summary.primary}</p>
@@ -276,181 +309,196 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
               <div className="mb-3 flex items-center gap-2 text-ink-500">
                 <Activity className="h-5 w-5 text-brand-600" />
                 <span className="text-sm font-bold uppercase tracking-[0.12em]">
-                  {mode === 'vaccination' ? 'Total Vaccine Logs' : 'Active Birds'}
+                  {mode === 'vaccination' ? 'Total vaccine logs' : 'Active birds'}
                 </span>
               </div>
               <p className="text-2xl font-bold text-ink-900">{summary.tertiary}</p>
-              <p className="mt-1 text-base text-ink-500">
-                Arrived on {formatDate(selectedBatch?.arrival_date)}
-              </p>
+              <p className="mt-1 text-base text-ink-500">Arrived on {formatDate(selectedBatch?.arrival_date)}</p>
             </div>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_420px]">
-            <div className="card overflow-hidden">
-              <div className="border-b border-neutral-150 bg-neutral-50 px-6 py-5">
-                <h2 className="text-xl font-bold text-ink-900">History</h2>
-                <p className="mt-1 text-base text-ink-500">{selectedBatch?.batch_number}</p>
+          <div className="card p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-neutral-900">{copy.actionLabel}</h2>
+                <p className="mt-1 text-sm text-neutral-500">
+                  Capture the selected batch entry from a dedicated dialog instead of pinning the form beside the table.
+                </p>
               </div>
-              <div className="overflow-x-auto">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th className="pl-6">Date</th>
-                      {mode === 'mortality' && <th>Quantity</th>}
-                      {mode === 'mortality' && <th>Cause</th>}
-                      {mode === 'vaccination' && <th>Vaccine</th>}
-                      {mode === 'vaccination' && <th>Status</th>}
-                      {mode === 'vaccination' && <th>Administered</th>}
-                      {mode === 'growth' && <th>Average Weight</th>}
-                      <th className="pr-6">Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {logsLoading ? (
-                      <tr>
-                        <td className="pl-6 py-12 text-center text-base font-medium text-ink-500" colSpan={tableColumnCount}>
-                          Loading records...
-                        </td>
-                      </tr>
-                    ) : logs.length === 0 ? (
-                      <tr>
-                        <td className="pl-6 py-14 text-center text-base font-medium text-ink-500" colSpan={tableColumnCount}>
-                          No records.
-                        </td>
-                      </tr>
-                    ) : mode === 'mortality' ? (
-                      (logs as MortalityLog[]).map((log) => (
-                        <tr key={log.id}>
-                          <td className="pl-6">{formatDate(log.record_date)}</td>
-                          <td>{log.quantity.toLocaleString()} birds</td>
-                          <td>{log.cause || '—'}</td>
-                          <td className="pr-6">{log.notes || '—'}</td>
-                        </tr>
-                      ))
-                    ) : mode === 'vaccination' ? (
-                      (logs as VaccinationLog[]).map((log) => (
-                        <tr key={log.id}>
-                          <td className="pl-6">{formatDate(log.scheduled_date)}</td>
-                          <td>{log.vaccine_name}</td>
-                          <td>
-                            <span className={log.status === 'completed' ? 'badge badge-success' : 'badge badge-warning'}>
-                              {log.status}
-                            </span>
-                          </td>
-                          <td>{formatDate(log.administered_date)}</td>
-                          <td className="pr-6">{log.notes || '—'}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      (logs as GrowthLog[]).map((log) => (
-                        <tr key={log.id}>
-                          <td className="pl-6">{formatDate(log.record_date)}</td>
-                          <td>{log.avg_weight_grams.toLocaleString()} g</td>
-                          <td className="pr-6" colSpan={2}>{log.notes || '—'}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <button type="button" className="btn-secondary" onClick={openEntryModal} disabled={!selectedBatchId}>
+                <ModeIcon className="h-4 w-4" />
+                {copy.actionLabel}
+              </button>
             </div>
+          </div>
 
-            <div className="card border border-neutral-150 bg-neutral-50 p-6">
-              <div className="mb-5">
-                <h2 className="text-xl font-bold text-ink-900">Add entry</h2>
-                <p className="mt-1 text-base text-ink-500">{selectedBatch?.batch_number ?? 'Selected batch'}</p>
-              </div>
-
-              {mode === 'mortality' && (
-                <form className="space-y-4" onSubmit={mortalityForm.handleSubmit((values) => mutation.mutate(values))}>
-                  <div>
-                    <label className="form-label">Record date</label>
-                    <input className="form-input" type="date" {...mortalityForm.register('record_date')} />
-                    {mortalityForm.formState.errors.record_date && <p className="form-error">{mortalityForm.formState.errors.record_date.message}</p>}
-                  </div>
-                  <div>
-                    <label className="form-label">Lost birds</label>
-                    <input className="form-input" type="number" min={1} {...mortalityForm.register('quantity')} />
-                    {mortalityForm.formState.errors.quantity && <p className="form-error">{mortalityForm.formState.errors.quantity.message}</p>}
-                  </div>
-                  <div>
-                    <label className="form-label">Cause</label>
-                    <input className="form-input" {...mortalityForm.register('cause')} />
-                  </div>
-                  <div>
-                    <label className="form-label">Notes</label>
-                    <textarea className="form-input min-h-[120px]" {...mortalityForm.register('notes')} />
-                  </div>
-                  <button className="btn-primary w-full" disabled={mutation.isPending} type="submit">
-                    <Skull className="h-4 w-4" />
-                    {mutation.isPending ? 'Saving...' : 'Record mortality'}
-                  </button>
-                </form>
-              )}
-
-              {mode === 'vaccination' && (
-                <form className="space-y-4" onSubmit={vaccinationForm.handleSubmit((values) => mutation.mutate(values))}>
-                  <div>
-                    <label className="form-label">Vaccine name</label>
-                    <input className="form-input" {...vaccinationForm.register('vaccine_name')} />
-                    {vaccinationForm.formState.errors.vaccine_name && <p className="form-error">{vaccinationForm.formState.errors.vaccine_name.message}</p>}
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="form-label">Scheduled date</label>
-                      <input className="form-input" type="date" {...vaccinationForm.register('scheduled_date')} />
-                    </div>
-                    <div>
-                      <label className="form-label">Administered date</label>
-                      <input className="form-input" type="date" {...vaccinationForm.register('administered_date')} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="form-label">Status</label>
-                    <select className="form-input" {...vaccinationForm.register('status')}>
-                      <option value="pending">Pending</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="form-label">Notes</label>
-                    <textarea className="form-input min-h-[120px]" {...vaccinationForm.register('notes')} />
-                  </div>
-                  <button className="btn-primary w-full" disabled={mutation.isPending} type="submit">
-                    <Pill className="h-4 w-4" />
-                    {mutation.isPending ? 'Saving...' : 'Add vaccination log'}
-                  </button>
-                </form>
-              )}
-
-              {mode === 'growth' && (
-                <form className="space-y-4" onSubmit={growthForm.handleSubmit((values) => mutation.mutate(values))}>
-                  <div>
-                    <label className="form-label">Record date</label>
-                    <input className="form-input" type="date" {...growthForm.register('record_date')} />
-                    {growthForm.formState.errors.record_date && <p className="form-error">{growthForm.formState.errors.record_date.message}</p>}
-                  </div>
-                  <div>
-                    <label className="form-label">Average weight (grams)</label>
-                    <input className="form-input" type="number" min={1} step="0.01" {...growthForm.register('avg_weight_grams')} />
-                    {growthForm.formState.errors.avg_weight_grams && <p className="form-error">{growthForm.formState.errors.avg_weight_grams.message}</p>}
-                  </div>
-                  <div>
-                    <label className="form-label">Notes</label>
-                    <textarea className="form-input min-h-[120px]" {...growthForm.register('notes')} />
-                  </div>
-                  <button className="btn-primary w-full" disabled={mutation.isPending} type="submit">
-                    <TrendingUp className="h-4 w-4" />
-                    {mutation.isPending ? 'Saving...' : 'Record growth reading'}
-                  </button>
-                </form>
-              )}
+          <div className="card overflow-hidden">
+            <div className="border-b border-neutral-150 bg-neutral-50 px-6 py-5">
+              <h2 className="text-xl font-bold text-ink-900">History</h2>
+              <p className="mt-1 text-base text-ink-500">{selectedBatch?.batch_number}</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th className="pl-6">Date</th>
+                    {mode === 'mortality' && <th>Quantity</th>}
+                    {mode === 'mortality' && <th>Cause</th>}
+                    {mode === 'vaccination' && <th>Vaccine</th>}
+                    {mode === 'vaccination' && <th>Status</th>}
+                    {mode === 'vaccination' && <th>Administered</th>}
+                    {mode === 'growth' && <th>Average weight</th>}
+                    <th className="pr-6">Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logsLoading ? (
+                    <tr>
+                      <td className="pl-6 py-12 text-center text-base font-medium text-ink-500" colSpan={tableColumnCount}>
+                        Loading records...
+                      </td>
+                    </tr>
+                  ) : logs.length === 0 ? (
+                    <tr>
+                      <td className="pl-6 py-14 text-center text-base font-medium text-ink-500" colSpan={tableColumnCount}>
+                        No records.
+                      </td>
+                    </tr>
+                  ) : mode === 'mortality' ? (
+                    (logs as MortalityLog[]).map((log) => (
+                      <tr key={log.id}>
+                        <td className="pl-6">{formatDate(log.record_date)}</td>
+                        <td>{log.quantity.toLocaleString()} birds</td>
+                        <td>{log.cause || '-'}</td>
+                        <td className="pr-6">{log.notes || '-'}</td>
+                      </tr>
+                    ))
+                  ) : mode === 'vaccination' ? (
+                    (logs as VaccinationLog[]).map((log) => (
+                      <tr key={log.id}>
+                        <td className="pl-6">{formatDate(log.scheduled_date)}</td>
+                        <td>{log.vaccine_name}</td>
+                        <td>
+                          <span className={log.status === 'completed' ? 'badge badge-success' : 'badge badge-warning'}>
+                            {log.status}
+                          </span>
+                        </td>
+                        <td>{formatDate(log.administered_date)}</td>
+                        <td className="pr-6">{log.notes || '-'}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    (logs as GrowthLog[]).map((log) => (
+                      <tr key={log.id}>
+                        <td className="pl-6">{formatDate(log.record_date)}</td>
+                        <td>{log.avg_weight_grams.toLocaleString()} g</td>
+                        <td className="pr-6">{log.notes || '-'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </>
       )}
+
+      <Modal
+        isOpen={isEntryModalOpen}
+        onClose={() => setIsEntryModalOpen(false)}
+        title={copy.actionLabel}
+        description={selectedBatch ? `${selectedBatch.batch_number} • ${selectedBatch.house?.name ?? 'Unassigned house'}` : copy.description}
+      >
+        {mode === 'mortality' && (
+          <form className="space-y-4" onSubmit={mortalityForm.handleSubmit((values) => mutation.mutate(values))}>
+            <div>
+              <label className="form-label">Record date</label>
+              <input className="form-input" type="date" {...mortalityForm.register('record_date')} />
+            </div>
+            <div>
+              <label className="form-label">Lost birds</label>
+              <input className="form-input" type="number" min={1} {...mortalityForm.register('quantity')} />
+            </div>
+            <div>
+              <label className="form-label">Cause</label>
+              <input className="form-input" {...mortalityForm.register('cause')} />
+            </div>
+            <div>
+              <label className="form-label">Notes</label>
+              <textarea className="form-input min-h-[120px]" {...mortalityForm.register('notes')} />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" className="btn-secondary" onClick={() => setIsEntryModalOpen(false)}>Close</button>
+              <button className="btn-primary" disabled={mutation.isPending} type="submit">
+                <Skull className="h-4 w-4" />
+                {mutation.isPending ? 'Saving...' : 'Record mortality'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {mode === 'vaccination' && (
+          <form className="space-y-4" onSubmit={vaccinationForm.handleSubmit((values) => mutation.mutate(values))}>
+            <div>
+              <label className="form-label">Vaccine name</label>
+              <input className="form-input" {...vaccinationForm.register('vaccine_name')} />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="form-label">Scheduled date</label>
+                <input className="form-input" type="date" {...vaccinationForm.register('scheduled_date')} />
+              </div>
+              <div>
+                <label className="form-label">Administered date</label>
+                <input className="form-input" type="date" {...vaccinationForm.register('administered_date')} />
+              </div>
+            </div>
+            <div>
+              <label className="form-label">Status</label>
+              <select className="form-input" {...vaccinationForm.register('status')}>
+                <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label className="form-label">Notes</label>
+              <textarea className="form-input min-h-[120px]" {...vaccinationForm.register('notes')} />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" className="btn-secondary" onClick={() => setIsEntryModalOpen(false)}>Close</button>
+              <button className="btn-primary" disabled={mutation.isPending} type="submit">
+                <Pill className="h-4 w-4" />
+                {mutation.isPending ? 'Saving...' : 'Add vaccination log'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {mode === 'growth' && (
+          <form className="space-y-4" onSubmit={growthForm.handleSubmit((values) => mutation.mutate(values))}>
+            <div>
+              <label className="form-label">Record date</label>
+              <input className="form-input" type="date" {...growthForm.register('record_date')} />
+            </div>
+            <div>
+              <label className="form-label">Average weight (grams)</label>
+              <input className="form-input" type="number" min={1} step="0.01" {...growthForm.register('avg_weight_grams')} />
+            </div>
+            <div>
+              <label className="form-label">Notes</label>
+              <textarea className="form-input min-h-[120px]" {...growthForm.register('notes')} />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" className="btn-secondary" onClick={() => setIsEntryModalOpen(false)}>Close</button>
+              <button className="btn-primary" disabled={mutation.isPending} type="submit">
+                <TrendingUp className="h-4 w-4" />
+                {mutation.isPending ? 'Saving...' : 'Record growth reading'}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   )
 }

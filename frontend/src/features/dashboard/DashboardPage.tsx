@@ -5,11 +5,13 @@ import {
   AlertTriangle,
   ArrowRight,
   Bird,
+  Boxes,
   ClipboardCheck,
   Egg,
   FilePlus2,
   Package,
   Receipt,
+  Scissors,
   Skull,
   Wheat,
 } from 'lucide-react'
@@ -78,6 +80,11 @@ interface SlaughterRecord {
   slaughter_date: string
   live_birds_count: number
   total_dressed_weight?: number | null
+  outputs?: Array<{
+    id: number
+    output_type: string
+    quantity: number
+  }>
 }
 
 interface MortalityLog {
@@ -105,6 +112,19 @@ const chartTooltipStyle = {
   background: 'var(--surface-card)',
   boxShadow: '0 12px 24px -20px rgba(0, 0, 0, 0.72)',
 }
+
+const saleableOutputTypes = new Set([
+  'dressed_chicken',
+  'chicken_breast',
+  'chicken_thighs',
+  'chicken_wings',
+  'chicken_drumsticks',
+  'gizzards',
+  'liver',
+  'neck_backs',
+])
+
+const byproductOutputTypes = new Set(['poultry_manure', 'feet', 'head'])
 
 function sameDay(value: string) {
   return new Date(value).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)
@@ -216,6 +236,27 @@ export function DashboardPage() {
   )
 
   const salesThisMonth = useMemo(() => data?.kpis.total_revenue ?? 0, [data?.kpis.total_revenue])
+
+  const processingOutputs = useMemo(
+    () =>
+      (data?.slaughterRecords ?? []).flatMap((record) =>
+        (record.outputs ?? []).map((output) => ({
+          ...output,
+          slaughter_date: record.slaughter_date,
+        }))
+      ),
+    [data?.slaughterRecords]
+  )
+
+  const processingSummary = useMemo(() => {
+    const cutLines = processingOutputs.filter((output) => saleableOutputTypes.has(output.output_type))
+    const byproductLines = processingOutputs.filter((output) => byproductOutputTypes.has(output.output_type))
+    return {
+      cutLines: cutLines.length,
+      byproductLines: byproductLines.length,
+      totalKg: processingOutputs.reduce((sum, output) => sum + Number(output.quantity || 0), 0),
+    }
+  }, [processingOutputs])
 
   const productionTrend = useMemo(
     () =>
@@ -446,6 +487,36 @@ export function DashboardPage() {
           </div>
         </div>
       </section>
+
+      {hasPermission('slaughter:read') &&
+      (hasModuleAccess('slaughter_outputs') || hasModuleAccess('slaughter_cut_parts') || hasModuleAccess('slaughter_byproducts')) ? (
+        <section className="grid gap-3 md:grid-cols-3">
+          <div className="card p-4">
+            <div className="flex items-center gap-2 text-[var(--text-muted)]">
+              <Scissors className="h-4 w-4 text-[var(--brand-primary)]" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.16em]">Cut parts</span>
+            </div>
+            <div className="mt-3 text-[1.6rem] font-semibold text-[var(--text-strong)]">{processingSummary.cutLines}</div>
+            <div className="mt-1 text-[13px] text-[var(--text-muted)]">Saleable cuts and processed poultry items already posted.</div>
+          </div>
+          <div className="card p-4">
+            <div className="flex items-center gap-2 text-[var(--text-muted)]">
+              <Boxes className="h-4 w-4 text-[var(--brand-primary)]" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.16em]">Byproducts</span>
+            </div>
+            <div className="mt-3 text-[1.6rem] font-semibold text-[var(--text-strong)]">{processingSummary.byproductLines}</div>
+            <div className="mt-1 text-[13px] text-[var(--text-muted)]">Manure, feet, and head batches transferred into inventory.</div>
+          </div>
+          <div className="card p-4">
+            <div className="flex items-center gap-2 text-[var(--text-muted)]">
+              <Package className="h-4 w-4 text-[var(--brand-primary)]" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.16em]">Processed kg</span>
+            </div>
+            <div className="mt-3 text-[1.6rem] font-semibold text-[var(--text-strong)]">{processingSummary.totalKg.toLocaleString()} kg</div>
+            <div className="mt-1 text-[13px] text-[var(--text-muted)]">Combined output quantity from approved slaughter postings.</div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid gap-5 xl:grid-cols-[1fr_0.9fr]">
         <div className="card p-5">

@@ -198,11 +198,41 @@ export default function App() {
           <Route path="slaughter">
             <Route index element={<Navigate to="/slaughter/records" replace />} />
             <Route
+              path="planning"
+              element={
+                <ProtectedRoute permission="slaughter:read">
+                  <ModuleGuard moduleKey="slaughter_planning">
+                    <SlaughterPage section="planning" />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="records"
               element={
                 <ProtectedRoute permission="slaughter:read">
                   <ModuleGuard moduleKey="slaughter_records">
                     <SlaughterPage section="records" />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="cuts"
+              element={
+                <ProtectedRoute permission="slaughter:read">
+                  <ModuleGuard moduleKey="slaughter_cut_parts">
+                    <SlaughterPage section="cuts" />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="byproducts"
+              element={
+                <ProtectedRoute permission="slaughter:read">
+                  <ModuleGuard moduleKey="slaughter_byproducts">
+                    <SlaughterPage section="byproducts" />
                   </ModuleGuard>
                 </ProtectedRoute>
               }
@@ -221,7 +251,7 @@ export default function App() {
               path="yield"
               element={
                 <ProtectedRoute permission="slaughter:read">
-                  <ModuleGuard moduleKey="slaughter_records">
+                  <ModuleGuard moduleKey="yield_analysis">
                     <SlaughterPage section="yield" />
                   </ModuleGuard>
                 </ProtectedRoute>
