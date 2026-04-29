@@ -5,29 +5,38 @@
 @layer base {
   :root {
     color-scheme: light;
-    --app-bg: #171717;
-    --surface-card: #232323;
-    --surface-soft: #292929;
-    --surface-muted: #313131;
-    --sidebar-bg: #1d1d1d;
+    --app-bg: #f4f7fb;
+    --surface-card: #ffffff;
+    --surface-soft: #f8fafc;
+    --surface-muted: #f1f5f9;
+    --sidebar-bg: #ffffff;
     --sidebar-active: #34a853;
-    --topbar-bg: rgba(28, 28, 28, 0.94);
-    --border-subtle: #343434;
-    --border-strong: #3e3e3e;
-    --text-strong: #f7f7f7;
-    --text-default: #dddddd;
-    --text-muted: #9b9b9b;
+    --topbar-bg: rgba(255, 255, 255, 0.94);
+    --border-subtle: #e6ebf2;
+    --border-strong: #d7dee8;
+    --text-strong: #1f2937;
+    --text-default: #334155;
+    --text-muted: #7b8794;
     --brand-primary: #34a853;
     --brand-accent: #34a853;
     --success: #34a853;
     --warning: #e0a12b;
     --danger: #f16a6a;
     --info: #34a853;
-    --shadow-card: 0 14px 30px -26px rgba(0, 0, 0, 0.7);
-    --shadow-card-hover: 0 18px 34px -26px rgba(0, 0, 0, 0.78);
-    --shadow-shell: 0 24px 44px -32px rgba(0, 0, 0, 0.72);
-    --chart-grid: #333333;
-    --chart-axis: #9b9b9b;
+    --shadow-card: 0 18px 40px -30px rgba(15, 23, 42, 0.16);
+    --shadow-card-hover: 0 22px 44px -30px rgba(15, 23, 42, 0.2);
+    --shadow-shell: 0 20px 46px -34px rgba(15, 23, 42, 0.18);
+    --chart-grid: #e9eef5;
+    --chart-axis: #8a94a6;
+    --sidebar-text: #3b4859;
+    --sidebar-text-muted: #7b8794;
+    --sidebar-heading: #1f2937;
+    --sidebar-hover: #f3f6fa;
+    --sidebar-active-bg: #24b33d;
+    --sidebar-active-text: #ffffff;
+    --sidebar-icon: #4e5968;
+    --sidebar-panel: #f8fafc;
+    --sidebar-panel-border: #e6ebf2;
   }
 
   [data-theme='dark'] {
@@ -55,6 +64,15 @@
     --shadow-shell: 0 18px 34px -24px rgba(0, 0, 0, 0.55);
     --chart-grid: #313131;
     --chart-axis: #b8b8b8;
+    --sidebar-text: rgba(255, 255, 255, 0.72);
+    --sidebar-text-muted: rgba(255, 255, 255, 0.54);
+    --sidebar-heading: rgba(255, 255, 255, 0.9);
+    --sidebar-hover: rgba(255, 255, 255, 0.04);
+    --sidebar-active-bg: #3a3a3a;
+    --sidebar-active-text: #ffffff;
+    --sidebar-icon: rgba(255, 255, 255, 0.48);
+    --sidebar-panel: rgba(255, 255, 255, 0.025);
+    --sidebar-panel-border: rgba(255, 255, 255, 0.08);
   }
 
   *,
@@ -123,8 +141,12 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #4a4a4a;
+    background: #b8c2cf;
     border-radius: 999px;
+  }
+
+  [data-theme='dark'] ::-webkit-scrollbar-thumb {
+    background: #4a4a4a;
   }
 }
 
@@ -279,7 +301,7 @@
 
   .sidebar {
     background: var(--sidebar-bg);
-    color: #ffffff;
+    color: var(--sidebar-text);
     box-shadow: var(--shadow-shell);
   }
 
