@@ -80,11 +80,26 @@ class TenantModuleOut(BaseModel):
 class TenantDomainOut(BaseModel):
     id: int
     host: str
+    normalized_host: str
+    domain_type: str
     is_primary: bool
     status: str
+    verification_target: Optional[str] = None
+    dns_verified_at: Optional[datetime] = None
+    ssl_requested_at: Optional[datetime] = None
+    ssl_issued_at: Optional[datetime] = None
+    activated_at: Optional[datetime] = None
+    last_error: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class TenantAdminCredentialOut(BaseModel):
+    email: str
+    full_name: str
+    temporary_password: str
+    must_change_password: bool = True
 
 
 class SubscriptionOut(BaseModel):
@@ -122,6 +137,7 @@ class TenantOut(BaseModel):
     modules: List[TenantModuleOut] = Field(default_factory=list)
     domains: List[TenantDomainOut] = Field(default_factory=list)
     subscriptions: List[SubscriptionOut] = Field(default_factory=list)
+    onboarding_admin: TenantAdminCredentialOut | None = None
 
     model_config = {"from_attributes": True}
 

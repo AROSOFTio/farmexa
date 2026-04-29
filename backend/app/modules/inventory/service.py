@@ -1,20 +1,23 @@
-﻿from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
-from app.models.inventory import StockItem, StockMovement, MovementType
+from sqlalchemy.orm import Session
+
+from app.models.inventory import MovementType, StockCategory, StockItem, StockMovement
+
 from . import schemas
 
-class InventoryService:
-    def get_items(self, db: Session, skip: int = 0, limit: int = 100):
-        return db.query(StockItem).offset(skip).limit(limit).all()
 
-    def get_movements(self, db: Session, skip: int = 0, limit: int = 100):
-        return (
-            db.query(StockMovement)
-            .order_by(StockMovement.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+class InventoryService:
+    def get_items(self, db: Session, skip: int = 0, limit: int = 100, category: StockCategory | None = None):
+        query = db.query(StockItem)
+        if category is not None:
+            query = query.filter(StockItem.category == category)
+        return query.offset(skip).limit(limit).all()
+
+    def get_movements(self, db: Session, skip: int = 0, limit: int = 100, category: StockCategory | None = None):
+        query = db.query(StockMovement)
+        if category is not None:
+            query = query.join(StockItem, StockItem.id == StockMovement.item_id).filter(StockItem.category == category)
+        return query.order_by(StockMovement.created_at.desc()).offset(skip).limit(limit).all()
 
     def get_item(self, db: Session, item_id: int):
         return db.query(StockItem).filter(StockItem.id == item_id).first()
@@ -30,20 +33,23 @@ class InventoryService:
             description=item.description,
             is_active=item.is_active,
             current_quantity=0.0,
-            average_cost=item.initial_unit_cost
+            average_cost=item.initial_unit_cost,
         )
         db.add(db_item)
         db.flush()
 
         if item.initial_quantity > 0:
-            self.create_movement(db, schemas.StockMovementCreate(
-                item_id=db_item.id,
-                movement_type=MovementType.IN,
-                quantity=item.initial_quantity,
-                reference_type="initial_stock",
-                unit_cost=item.initial_unit_cost,
-                notes="Initial stock entry"
-            ))
+            self.create_movement(
+                db,
+                schemas.StockMovementCreate(
+                    item_id=db_item.id,
+                    movement_type=MovementType.IN,
+                    quantity=item.initial_quantity,
+                    reference_type="initial_stock",
+                    unit_cost=item.initial_unit_cost,
+                    notes="Initial stock entry",
+                ),
+            )
 
         db.commit()
         db.refresh(db_item)
@@ -60,7 +66,6 @@ class InventoryService:
         if movement.movement_type == MovementType.IN:
             new_qty += movement.quantity
             if new_qty > 0 and movement.unit_cost is not None:
-                # Update moving average cost
                 total_value = (prev_qty * item.average_cost) + (movement.quantity * movement.unit_cost)
                 item.average_cost = total_value / new_qty
         elif movement.movement_type == MovementType.OUT:
@@ -68,7 +73,6 @@ class InventoryService:
                 raise HTTPException(status_code=400, detail="Insufficient stock")
             new_qty -= movement.quantity
         elif movement.movement_type == MovementType.ADJUSTMENT:
-            # For adjustment, quantity is the difference (can be negative)
             new_qty += movement.quantity
             if new_qty < 0:
                 raise HTTPException(status_code=400, detail="Adjustment results in negative stock")
@@ -82,14 +86,15 @@ class InventoryService:
             reference_type=movement.reference_type,
             reference_id=movement.reference_id,
             unit_cost=movement.unit_cost or item.average_cost,
-            notes=movement.notes
+            notes=movement.notes,
         )
-        
+
         item.current_quantity = new_qty
-        
+
         db.add(db_movement)
         db.commit()
         db.refresh(db_movement)
         return db_movement
+
 
 inventory_service = InventoryService()

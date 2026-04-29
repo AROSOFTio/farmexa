@@ -3,11 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeftRight, Boxes, PackagePlus, TrendingDown, TrendingUp } from 'lucide-react'
+import { ArrowLeftRight, Boxes, PackagePlus, TrendingDown } from 'lucide-react'
 import { toast } from 'sonner'
+
 import api from '@/services/api'
 
-type InventorySection = 'items' | 'movements'
+type InventorySection = 'items' | 'movements' | 'medicine'
 
 interface StockItem {
   id: number
@@ -69,6 +70,10 @@ const sectionCopy: Record<InventorySection, { title: string; description: string
     title: 'Inventory items',
     description: 'Current stock records.',
   },
+  medicine: {
+    title: 'Medicine stock',
+    description: 'Vaccines, drugs, and treatment supplies with reorder visibility.',
+  },
   movements: {
     title: 'Stock movements',
     description: 'Stock ledger activity.',
@@ -82,16 +87,19 @@ function formatDate(value: string) {
 export function InventoryPage({ section }: { section: InventorySection }) {
   const qc = useQueryClient()
   const copy = sectionCopy[section]
+  const isMedicineView = section === 'medicine'
+  const itemsEndpoint = isMedicineView ? '/inventory/medicine/items' : '/inventory/items'
+  const movementsEndpoint = isMedicineView ? '/inventory/medicine/movements' : '/inventory/movements'
 
   const { data: items = [] } = useQuery({
-    queryKey: ['inventory-items'],
-    queryFn: () => api.get<StockItem[]>('/inventory/items').then((response) => response.data),
+    queryKey: ['inventory-items', section],
+    queryFn: () => api.get<StockItem[]>(itemsEndpoint).then((response) => response.data),
   })
 
   const { data: movements = [] } = useQuery({
-    queryKey: ['inventory-movements'],
-    queryFn: () => api.get<StockMovement[]>('/inventory/movements').then((response) => response.data),
-    enabled: section === 'movements',
+    queryKey: ['inventory-movements', section],
+    queryFn: () => api.get<StockMovement[]>(movementsEndpoint).then((response) => response.data),
+    enabled: section === 'movements' || section === 'medicine',
   })
 
   const itemForm = useForm<ItemFormValues>({
@@ -99,7 +107,7 @@ export function InventoryPage({ section }: { section: InventorySection }) {
     defaultValues: {
       name: '',
       sku: '',
-      category: 'finished_product',
+      category: isMedicineView ? 'medicine' : 'finished_product',
       unit_of_measure: 'kg',
       reorder_level: 0,
       unit_price: 0,
@@ -124,14 +132,19 @@ export function InventoryPage({ section }: { section: InventorySection }) {
   })
 
   const createItem = useMutation({
-    mutationFn: (values: ItemFormValues) => api.post('/inventory/items', values),
+    mutationFn: (values: ItemFormValues) =>
+      api.post(itemsEndpoint, {
+        ...values,
+        category: isMedicineView ? 'medicine' : values.category,
+      }),
     onSuccess: () => {
-      toast.success('Inventory item created.')
+      toast.success(isMedicineView ? 'Medicine item created.' : 'Inventory item created.')
       qc.invalidateQueries({ queryKey: ['inventory-items'] })
+      qc.invalidateQueries({ queryKey: ['inventory-items', section] })
       itemForm.reset({
         name: '',
         sku: '',
-        category: 'finished_product',
+        category: isMedicineView ? 'medicine' : 'finished_product',
         unit_of_measure: 'kg',
         reorder_level: 0,
         unit_price: 0,
@@ -142,7 +155,7 @@ export function InventoryPage({ section }: { section: InventorySection }) {
       })
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.detail ?? 'Failed to create inventory item.')
+      toast.error(error?.response?.data?.detail ?? (isMedicineView ? 'Failed to create medicine item.' : 'Failed to create inventory item.'))
     },
   })
 
@@ -159,6 +172,8 @@ export function InventoryPage({ section }: { section: InventorySection }) {
       toast.success('Stock movement recorded.')
       qc.invalidateQueries({ queryKey: ['inventory-items'] })
       qc.invalidateQueries({ queryKey: ['inventory-movements'] })
+      qc.invalidateQueries({ queryKey: ['inventory-items', section] })
+      qc.invalidateQueries({ queryKey: ['inventory-movements', section] })
       movementForm.reset({
         item_id: 0,
         movement_type: 'in',
@@ -174,10 +189,30 @@ export function InventoryPage({ section }: { section: InventorySection }) {
     },
   })
 
-  const lowStockCount = useMemo(
-    () => items.filter((item) => item.current_quantity <= item.reorder_level).length,
-    [items]
+  const visibleItems = useMemo(
+    () => (isMedicineView ? items.filter((item) => item.category === 'medicine') : items),
+    [isMedicineView, items]
   )
+
+  const visibleMovements = useMemo(
+    () =>
+      isMedicineView
+        ? movements.filter((movement) => items.find((item) => item.id === movement.item_id)?.category === 'medicine')
+        : movements,
+    [isMedicineView, items, movements]
+  )
+
+  const lowStockCount = useMemo(
+    () => visibleItems.filter((item) => item.current_quantity <= item.reorder_level).length,
+    [visibleItems]
+  )
+
+  const itemFormTitle = isMedicineView ? 'Add medicine item' : 'Create item'
+  const itemFormDescription = isMedicineView
+    ? 'Register medicines, vaccines, and treatment supplies with opening balances and reorder levels.'
+    : 'Add a stock-controlled item with opening quantity and cost.'
+  const registerTitle = isMedicineView ? 'Medicine register' : 'Item register'
+  const registerDescription = isMedicineView ? 'Available medicines and treatment supplies.' : 'Current stock and cost.'
 
   return (
     <div className="animate-fade-in">
@@ -194,7 +229,7 @@ export function InventoryPage({ section }: { section: InventorySection }) {
             <Boxes className="h-4 w-4 text-brand-500" />
             <span className="text-xs font-semibold uppercase tracking-[0.12em]">Tracked items</span>
           </div>
-          <p className="text-xl font-bold text-neutral-900">{items.length.toLocaleString()}</p>
+          <p className="text-xl font-bold text-neutral-900">{visibleItems.length.toLocaleString()}</p>
         </div>
         <div className="card p-5">
           <div className="mb-3 flex items-center gap-2 text-neutral-500">
@@ -208,15 +243,15 @@ export function InventoryPage({ section }: { section: InventorySection }) {
             <ArrowLeftRight className="h-4 w-4 text-brand-500" />
             <span className="text-xs font-semibold uppercase tracking-[0.12em]">Recent movements</span>
           </div>
-          <p className="text-xl font-bold text-neutral-900">{movements.length.toLocaleString()}</p>
+          <p className="text-xl font-bold text-neutral-900">{visibleMovements.length.toLocaleString()}</p>
         </div>
       </div>
 
-      {section === 'items' && (
+      {section !== 'movements' && (
         <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
           <div className="card p-6">
-            <h2 className="text-lg font-bold text-neutral-900">Create item</h2>
-            <p className="mt-1 text-sm text-neutral-500">Add a stock-controlled item with opening quantity and cost.</p>
+            <h2 className="text-lg font-bold text-neutral-900">{itemFormTitle}</h2>
+            <p className="mt-1 text-sm text-neutral-500">{itemFormDescription}</p>
             <form className="mt-5 space-y-4" onSubmit={itemForm.handleSubmit((values) => createItem.mutate(values))}>
               <div>
                 <label className="form-label">Item name</label>
@@ -226,16 +261,22 @@ export function InventoryPage({ section }: { section: InventorySection }) {
                 <label className="form-label">SKU</label>
                 <input className="form-input" {...itemForm.register('sku')} />
               </div>
-              <div>
-                <label className="form-label">Category</label>
-                <select className="form-input" {...itemForm.register('category')}>
-                  <option value="raw_material">Raw material</option>
-                  <option value="packaging">Packaging</option>
-                  <option value="medicine">Medicine</option>
-                  <option value="finished_product">Finished product</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
+              {isMedicineView ? (
+                <div className="rounded-[18px] border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
+                  Category is locked to <span className="font-semibold text-neutral-900">Medicine</span> for this workflow.
+                </div>
+              ) : (
+                <div>
+                  <label className="form-label">Category</label>
+                  <select className="form-input" {...itemForm.register('category')}>
+                    <option value="raw_material">Raw material</option>
+                    <option value="packaging">Packaging</option>
+                    <option value="medicine">Medicine</option>
+                    <option value="finished_product">Finished product</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              )}
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="form-label">Unit</label>
@@ -266,15 +307,15 @@ export function InventoryPage({ section }: { section: InventorySection }) {
               </div>
               <button className="btn-primary w-full" disabled={createItem.isPending} type="submit">
                 <PackagePlus className="h-4 w-4" />
-                {createItem.isPending ? 'Saving...' : 'Save item'}
+                {createItem.isPending ? 'Saving...' : isMedicineView ? 'Save medicine item' : 'Save item'}
               </button>
             </form>
           </div>
 
           <div className="card overflow-hidden">
             <div className="border-b border-neutral-100 px-6 py-5">
-              <h2 className="text-lg font-bold text-neutral-900">Item register</h2>
-              <p className="mt-1 text-sm text-neutral-500">Current stock and cost.</p>
+              <h2 className="text-lg font-bold text-neutral-900">{registerTitle}</h2>
+              <p className="mt-1 text-sm text-neutral-500">{registerDescription}</p>
             </div>
             <div className="overflow-x-auto">
               <table className="data-table">
@@ -288,20 +329,20 @@ export function InventoryPage({ section }: { section: InventorySection }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.length === 0 ? (
+                  {visibleItems.length === 0 ? (
                     <tr>
                       <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={5}>
-                        No inventory items.
+                        {isMedicineView ? 'No medicine stock items.' : 'No inventory items.'}
                       </td>
                     </tr>
                   ) : (
-                    items.map((item) => {
+                    visibleItems.map((item) => {
                       const lowStock = item.current_quantity <= item.reorder_level
                       return (
                         <tr key={item.id}>
                           <td className="pl-6">
                             <div className="font-semibold text-neutral-900">{item.name}</div>
-                            <div className="text-xs text-neutral-500">{item.sku || 'No SKU'} · {item.unit_of_measure}</div>
+                            <div className="text-xs text-neutral-500">{item.sku || 'No SKU'} | {item.unit_of_measure}</div>
                           </td>
                           <td>{item.category.replace('_', ' ')}</td>
                           <td>{item.current_quantity.toLocaleString()} {item.unit_of_measure}</td>

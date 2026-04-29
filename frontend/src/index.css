@@ -92,8 +92,8 @@
     margin: 0;
     min-height: 100vh;
     font-family: "Segoe UI", Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
-    font-size: 13px;
-    line-height: 1.45;
+    font-size: 14px;
+    line-height: 1.5;
     background: var(--app-bg);
     color: var(--text-default);
   }
@@ -157,7 +157,7 @@
   }
 
   .page-container {
-    @apply mx-auto w-full max-w-[1680px] px-4 py-4 sm:px-5 lg:px-6 lg:py-5;
+    @apply mx-auto w-full max-w-[1680px] px-4 py-4 sm:px-5 lg:px-6 lg:py-4;
   }
 
   .card {
@@ -240,7 +240,7 @@
   }
 
   .form-input {
-    @apply w-full rounded-[0.95rem] px-4 py-2.5 text-[13px] transition-all disabled:cursor-not-allowed;
+    @apply w-full rounded-[0.95rem] px-4 py-2.5 text-[14px] transition-all disabled:cursor-not-allowed;
     background: var(--surface-card);
     color: var(--text-strong);
     border: 1px solid var(--border-subtle);

@@ -24,6 +24,7 @@ import { EggProductionPage } from '@/features/farm/EggProductionPage'
 import { TenantsPage } from '@/features/developer_admin/TenantsPage'
 import { ModuleGuard, ModuleDisabledPage } from '@/components/ModuleGuard'
 import { CompliancePage } from '@/features/compliance/CompliancePage'
+import { UpgradeModulesPage } from '@/features/subscriptions/UpgradeModulesPage'
 
 export default function App() {
   return (
@@ -187,7 +188,7 @@ export default function App() {
               element={
                 <ProtectedRoute permission="inventory:read">
                   <ModuleGuard moduleKey="medicine_supplies">
-                    <InventoryPage section="items" /> {/* using items page for now */}
+                    <InventoryPage section="medicine" />
                   </ModuleGuard>
                 </ProtectedRoute>
               }
@@ -221,7 +222,7 @@ export default function App() {
               element={
                 <ProtectedRoute permission="slaughter:read">
                   <ModuleGuard moduleKey="slaughter_records">
-                    <SlaughterPage section="records" /> {/* mapped to records */}
+                    <SlaughterPage section="yield" />
                   </ModuleGuard>
                 </ProtectedRoute>
               }
@@ -437,6 +438,14 @@ export default function App() {
           />
 
           <Route path="module-disabled" element={<ModuleDisabledPage />} />
+          <Route
+            path="upgrade/modules"
+            element={
+              <ProtectedRoute>
+                <UpgradeModulesPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
 

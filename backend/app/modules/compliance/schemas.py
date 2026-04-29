@@ -12,6 +12,7 @@ class ComplianceDocumentOut(BaseModel):
     issuing_authority: Optional[str]
     issue_date: Optional[date]
     expiry_date: Optional[date]
+    reminder_date: Optional[date]
     renewal_date: Optional[date]
     responsible_person: Optional[str]
     file_url: Optional[str]

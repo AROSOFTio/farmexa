@@ -35,6 +35,19 @@ class AuthService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Your account has been deactivated. Contact an administrator.",
             )
+        resolved_tenant_id = getattr(request.state, "tenant_id", None)
+        role_name = user.role.name if user.role else None
+        if resolved_tenant_id is not None:
+            if role_name in {"super_manager", "developer_admin"}:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Platform administrator accounts must use the platform domain.",
+                )
+            if user.tenant_id != resolved_tenant_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="This user does not belong to the tenant identified by the current domain.",
+                )
 
         access_token = create_access_token(
             subject=str(user.id),
@@ -100,7 +113,10 @@ class AuthService:
         tenant = None
         if user.tenant:
             enabled_modules = [module.module_key for module in user.tenant.modules if module.is_enabled]
-            domains = sorted(user.tenant.domains, key=lambda domain: not domain.is_primary)
+            domains = sorted(
+                [domain for domain in user.tenant.domains if getattr(domain.status, "value", domain.status) == "active"],
+                key=lambda domain: not domain.is_primary,
+            )
             subscriptions = sorted(
                 user.tenant.subscriptions,
                 key=lambda record: (record.start_date, record.created_at),

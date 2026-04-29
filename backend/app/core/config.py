@@ -54,6 +54,16 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost,http://localhost:5173"
+    PRIMARY_PLATFORM_DOMAIN: str = "farmexa.arosoft.io"
+    PLATFORM_HOSTS: str = "farmexa.arosoft.io,localhost,127.0.0.1"
+    DEFAULT_TENANT_DOMAIN_SUFFIX: str = "farmexa.arosoft.io"
+    TENANT_DOMAIN_TARGET_IP: str | None = None
+    DOMAIN_VERIFY_TIMEOUT_SECONDS: int = 5
+    CERTBOT_BIN: str = "/usr/bin/certbot"
+    CERTBOT_WEBROOT: str = "/var/www/certbot"
+    CERTBOT_EMAIL: str | None = None
+    ENABLE_AUTOMATIC_SSL_PROVISIONING: bool = False
+    PAYMENT_CALLBACK_SECRET: str | None = None
 
     SEED_ADMIN_EMAIL: str = "admin@farmexa.local"
     SEED_ADMIN_PASSWORD: str = "Admin@2026!"
@@ -77,6 +87,10 @@ class Settings(BaseSettings):
     @property
     def is_development(self) -> bool:
         return self.APP_ENV == "development"
+
+    @property
+    def platform_hosts(self) -> list[str]:
+        return [host.strip().lower() for host in self.PLATFORM_HOSTS.split(",") if host.strip()]
 
 
 @lru_cache

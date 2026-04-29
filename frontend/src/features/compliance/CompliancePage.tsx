@@ -19,6 +19,7 @@ interface ComplianceDocument {
   issuing_authority?: string | null
   issue_date?: string | null
   expiry_date?: string | null
+  reminder_date?: string | null
   renewal_date?: string | null
   responsible_person?: string | null
   file_url?: string | null
@@ -52,6 +53,7 @@ const documentSchema = z.object({
   issuing_authority: z.string().optional(),
   issue_date: z.string().optional(),
   expiry_date: z.string().optional(),
+  reminder_date: z.string().optional(),
   renewal_date: z.string().optional(),
   responsible_person: z.string().optional(),
   notes: z.string().optional(),
@@ -66,6 +68,9 @@ const documentTypes = [
   { value: 'veterinary_permit', label: 'Veterinary Permit' },
   { value: 'farm_registration', label: 'Farm Registration' },
   { value: 'nssf_paye', label: 'NSSF / PAYE' },
+  { value: 'nema_permit', label: 'NEMA Permit' },
+  { value: 'health_certificate', label: 'Health Certificate' },
+  { value: 'food_safety_certificate', label: 'Food Safety Certificate' },
   { value: 'contract', label: 'Contract' },
   { value: 'insurance', label: 'Insurance' },
   { value: 'inspection_report', label: 'Inspection Report' },
@@ -103,6 +108,7 @@ export function CompliancePage({ section = 'documents' }: { section?: Compliance
       issuing_authority: '',
       issue_date: '',
       expiry_date: '',
+      reminder_date: '',
       renewal_date: '',
       responsible_person: '',
       notes: '',
@@ -144,6 +150,7 @@ export function CompliancePage({ section = 'documents' }: { section?: Compliance
         issuing_authority: '',
         issue_date: '',
         expiry_date: '',
+        reminder_date: '',
         renewal_date: '',
         responsible_person: '',
         notes: '',
@@ -246,12 +253,21 @@ export function CompliancePage({ section = 'documents' }: { section?: Compliance
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
+                <label className="form-label">Reminder date</label>
+                <input type="date" className="form-input" {...form.register('reminder_date')} />
+              </div>
+              <div>
                 <label className="form-label">Renewal date</label>
                 <input type="date" className="form-input" {...form.register('renewal_date')} />
               </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="form-label">Responsible person</label>
+                <label className="form-label">Responsible officer</label>
                 <input className="form-input" {...form.register('responsible_person')} />
+              </div>
+              <div className="rounded-[14px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3 text-[13px] text-[var(--text-muted)]">
+                Optional reminder dates complement the automatic 30 / 15 / 7 day expiry reminders.
               </div>
             </div>
             <div>

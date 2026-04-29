@@ -132,6 +132,56 @@ async def assign_domain(
     return await DeveloperAdminService(db).assign_domain(tenant_id, data, current_user)
 
 
+@router.post("/tenants/{tenant_id}/domains/{domain_id}/verify", response_model=TenantOut)
+async def verify_domain(
+    tenant_id: int,
+    domain_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("dev_admin:write")),
+):
+    return await DeveloperAdminService(db).verify_domain(tenant_id, domain_id, current_user)
+
+
+@router.post("/tenants/{tenant_id}/domains/{domain_id}/ssl", response_model=TenantOut)
+async def provision_domain_ssl(
+    tenant_id: int,
+    domain_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("dev_admin:write")),
+):
+    return await DeveloperAdminService(db).provision_domain_ssl(tenant_id, domain_id, current_user)
+
+
+@router.post("/tenants/{tenant_id}/domains/{domain_id}/activate", response_model=TenantOut)
+async def activate_domain(
+    tenant_id: int,
+    domain_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("dev_admin:write")),
+):
+    return await DeveloperAdminService(db).activate_domain(tenant_id, domain_id, current_user)
+
+
+@router.post("/tenants/{tenant_id}/domains/{domain_id}/disable", response_model=TenantOut)
+async def disable_domain(
+    tenant_id: int,
+    domain_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("dev_admin:write")),
+):
+    return await DeveloperAdminService(db).disable_domain(tenant_id, domain_id, current_user)
+
+
+@router.post("/tenants/{tenant_id}/domains/{domain_id}/retry", response_model=TenantOut)
+async def retry_domain_setup(
+    tenant_id: int,
+    domain_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("dev_admin:write")),
+):
+    return await DeveloperAdminService(db).retry_domain_setup(tenant_id, domain_id, current_user)
+
+
 @router.post("/tenants/{tenant_id}/suspend", response_model=TenantOut)
 async def suspend_tenant(
     tenant_id: int,

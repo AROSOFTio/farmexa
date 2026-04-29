@@ -15,8 +15,12 @@ from app.models.finance import ExpenseCategory, Expense, IncomeCategory, Income 
 from app.models.settings import ProductCatalog, SystemConfig  # noqa: F401
 from app.models.egg_production import EggProductionLog  # noqa: F401
 from app.models.tenant import (  # noqa: F401
+    BillingInvoice,
+    BillingPayment,
     Tenant,
     TenantModule,
+    TenantModuleRequest,
+    TenantModuleRequestItem,
     SubscriptionHistory,
     PlatformModule,
     PlanDefinition,
@@ -24,6 +28,7 @@ from app.models.tenant import (  # noqa: F401
     TenantDomain,
     Subscription,
     ModulePrice,
+    PaymentCallbackLog,
 )
 
 __all__ = [
@@ -63,8 +68,12 @@ __all__ = [
     "ProductCatalog",
     "SystemConfig",
     "EggProductionLog",
+    "BillingInvoice",
+    "BillingPayment",
     "Tenant",
     "TenantModule",
+    "TenantModuleRequest",
+    "TenantModuleRequestItem",
     "SubscriptionHistory",
     "PlatformModule",
     "PlanDefinition",
@@ -72,4 +81,5 @@ __all__ = [
     "TenantDomain",
     "Subscription",
     "ModulePrice",
+    "PaymentCallbackLog",
 ]

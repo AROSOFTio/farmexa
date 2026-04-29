@@ -18,6 +18,7 @@ from app.db.seeder import run_seed
 from app.db.session import engine
 from app.middleware.error_handler import register_exception_handlers
 from app.middleware.request_logging import RequestLoggingMiddleware
+from app.middleware.tenant_domain import TenantDomainResolverMiddleware
 
 
 setup_logging()
@@ -42,6 +43,7 @@ app = FastAPI(
 )
 
 app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(TenantDomainResolverMiddleware)
 
 origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
 if settings.ALLOWED_ORIGINS.strip().startswith("["):

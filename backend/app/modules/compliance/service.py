@@ -81,16 +81,19 @@ class ComplianceService:
             )
         )
 
-        if document.expiry_date is None:
-            return
+        scheduled_dates: set[tuple[str, date]] = set()
+        if document.reminder_date is not None:
+            scheduled_dates.add(("custom_date", document.reminder_date))
+        if document.expiry_date is not None:
+            for offset in REMINDER_OFFSETS:
+                scheduled_dates.add((f"{offset}_day", document.expiry_date - timedelta(days=offset)))
 
-        for offset in REMINDER_OFFSETS:
-            scheduled_for = document.expiry_date - timedelta(days=offset)
+        for reminder_type, scheduled_for in sorted(scheduled_dates, key=lambda item: item[1]):
             self.db.add(
                 DocumentReminder(
                     tenant_id=document.tenant_id,
                     document_id=document.id,
-                    reminder_type=f"{offset}_day",
+                    reminder_type=reminder_type,
                     scheduled_for=scheduled_for,
                     status=ReminderStatus.PENDING,
                 )
@@ -120,6 +123,7 @@ class ComplianceService:
         issuing_authority: str | None,
         issue_date: date | None,
         expiry_date: date | None,
+        reminder_date: date | None,
         renewal_date: date | None,
         responsible_person: str | None,
         notes: str | None,
@@ -136,6 +140,7 @@ class ComplianceService:
           issuing_authority=issuing_authority or None,
           issue_date=issue_date,
           expiry_date=expiry_date,
+          reminder_date=reminder_date,
           renewal_date=renewal_date,
           responsible_person=responsible_person or None,
           file_url=file_url,
@@ -158,7 +163,7 @@ class ComplianceService:
                 reminder_offsets = [
                     int(reminder.reminder_type.split("_")[0])
                     for reminder in document.reminders
-                    if reminder.reminder_type.endswith("_day")
+                    if reminder.reminder_type.endswith("_day") and reminder.reminder_type.split("_")[0].isdigit()
                 ]
                 alerts.append(
                     ComplianceAlertOut(

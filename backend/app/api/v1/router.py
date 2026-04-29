@@ -17,6 +17,7 @@ from app.modules.compliance.router import router as compliance_router
 from app.modules.settings.router import router as settings_router
 from app.modules.egg_production.router import router as egg_production_router
 from app.modules.developer_admin.router import router as developer_admin_router
+from app.modules.subscriptions.router import router as subscriptions_router
 
 api_router = APIRouter()
 
@@ -33,3 +34,4 @@ api_router.include_router(compliance_router)
 api_router.include_router(settings_router)
 api_router.include_router(egg_production_router)
 api_router.include_router(developer_admin_router)
+api_router.include_router(subscriptions_router)

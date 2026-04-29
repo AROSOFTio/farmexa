@@ -20,6 +20,9 @@ class ComplianceDocumentType(str, enum.Enum):
     TAX_CLEARANCE = "tax_clearance"
     FARM_REGISTRATION = "farm_registration"
     NSSF_PAYE = "nssf_paye"
+    NEMA_PERMIT = "nema_permit"
+    HEALTH_CERTIFICATE = "health_certificate"
+    FOOD_SAFETY_CERTIFICATE = "food_safety_certificate"
     CONTRACT = "contract"
     INSURANCE = "insurance"
     INSPECTION_REPORT = "inspection_report"
@@ -53,6 +56,7 @@ class ComplianceDocument(Base):
     issuing_authority: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     issue_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     expiry_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    reminder_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     renewal_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     responsible_person: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     file_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
@@ -92,4 +96,3 @@ class DocumentReminder(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     document: Mapped["ComplianceDocument"] = relationship("ComplianceDocument", back_populates="reminders")
-

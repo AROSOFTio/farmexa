@@ -43,9 +43,32 @@ class SubscriptionStatus(str, enum.Enum):
 
 
 class DomainStatus(str, enum.Enum):
-    PENDING = "pending"
+    PENDING_DNS = "pending_dns"
+    DNS_VERIFIED = "dns_verified"
+    SSL_PENDING = "ssl_pending"
     ACTIVE = "active"
+    FAILED = "failed"
     DISABLED = "disabled"
+
+
+class DomainType(str, enum.Enum):
+    PLATFORM_SUBDOMAIN = "platform_subdomain"
+    CUSTOM = "custom"
+
+
+class ModuleRequestStatus(str, enum.Enum):
+    PENDING_PAYMENT = "pending_payment"
+    PAID = "paid"
+    ACTIVATED = "activated"
+    CANCELLED = "cancelled"
+    REJECTED = "rejected"
+
+
+class PaymentStatus(str, enum.Enum):
+    PENDING = "pending"
+    SUCCESSFUL = "successful"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class Tenant(Base):
@@ -98,6 +121,18 @@ class Tenant(Base):
     )
     compliance_documents: Mapped[list["ComplianceDocument"]] = relationship(
         "ComplianceDocument", back_populates="tenant", cascade="all, delete-orphan"
+    )
+    module_requests: Mapped[list["TenantModuleRequest"]] = relationship(
+        "TenantModuleRequest", back_populates="tenant", cascade="all, delete-orphan"
+    )
+    billing_invoices: Mapped[list["BillingInvoice"]] = relationship(
+        "BillingInvoice", back_populates="tenant", cascade="all, delete-orphan"
+    )
+    billing_payments: Mapped[list["BillingPayment"]] = relationship(
+        "BillingPayment", back_populates="tenant", cascade="all, delete-orphan"
+    )
+    payment_callbacks: Mapped[list["PaymentCallbackLog"]] = relationship(
+        "PaymentCallbackLog", back_populates="tenant", cascade="all, delete-orphan"
     )
 
 
@@ -196,10 +231,22 @@ class TenantDomain(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
     host: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    normalized_host: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    domain_type: Mapped[DomainType] = mapped_column(
+        db_enum(DomainType, name="domaintype"), default=DomainType.PLATFORM_SUBDOMAIN
+    )
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
     status: Mapped[DomainStatus] = mapped_column(
-        db_enum(DomainStatus, name="domainstatus"), default=DomainStatus.PENDING
+        db_enum(DomainStatus, name="domainstatus"), default=DomainStatus.PENDING_DNS
     )
+    verification_target: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    dns_verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    ssl_requested_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    ssl_issued_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    activated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    disabled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -277,3 +324,140 @@ class SubscriptionHistory(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="subscription_history")
+
+
+class TenantModuleRequest(Base):
+    """Pending tenant module upgrade or downgrade request."""
+
+    __tablename__ = "tenant_module_requests"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    requested_by_user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    status: Mapped[ModuleRequestStatus] = mapped_column(
+        db_enum(ModuleRequestStatus, name="modulerequeststatus"),
+        default=ModuleRequestStatus.PENDING_PAYMENT,
+        index=True,
+    )
+    billing_cycle: Mapped[BillingCycle] = mapped_column(
+        db_enum(BillingCycle, name="billingcycle"), default=BillingCycle.MONTHLY
+    )
+    total_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    currency: Mapped[str] = mapped_column(String(10), default="UGX")
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    activated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="module_requests")
+    requested_by_user: Mapped[Optional["User"]] = relationship("User")
+    items: Mapped[list["TenantModuleRequestItem"]] = relationship(
+        "TenantModuleRequestItem", back_populates="request", cascade="all, delete-orphan"
+    )
+    invoice: Mapped[Optional["BillingInvoice"]] = relationship(
+        "BillingInvoice", back_populates="request", uselist=False
+    )
+
+
+class TenantModuleRequestItem(Base):
+    """Individual module line item in an upgrade request."""
+
+    __tablename__ = "tenant_module_request_items"
+    __table_args__ = (UniqueConstraint("request_id", "module_key", name="uq_tenant_module_request_item"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    request_id: Mapped[int] = mapped_column(ForeignKey("tenant_module_requests.id", ondelete="CASCADE"), index=True)
+    module_key: Mapped[str] = mapped_column(ForeignKey("modules.key", ondelete="CASCADE"), index=True)
+    price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    currency: Mapped[str] = mapped_column(String(10), default="UGX")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    request: Mapped["TenantModuleRequest"] = relationship("TenantModuleRequest", back_populates="items")
+    module: Mapped["PlatformModule"] = relationship("PlatformModule")
+
+
+class BillingInvoice(Base):
+    """Billing invoice generated from a tenant module request."""
+
+    __tablename__ = "billing_invoices"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    request_id: Mapped[int] = mapped_column(
+        ForeignKey("tenant_module_requests.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    invoice_number: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(10), default="UGX")
+    status: Mapped[PaymentStatus] = mapped_column(
+        db_enum(PaymentStatus, name="paymentstatus"), default=PaymentStatus.PENDING, index=True
+    )
+    due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    payment_reference: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    payment_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="billing_invoices")
+    request: Mapped["TenantModuleRequest"] = relationship("TenantModuleRequest", back_populates="invoice")
+    payments: Mapped[list["BillingPayment"]] = relationship(
+        "BillingPayment", back_populates="invoice", cascade="all, delete-orphan"
+    )
+    callbacks: Mapped[list["PaymentCallbackLog"]] = relationship(
+        "PaymentCallbackLog", back_populates="invoice", cascade="all, delete-orphan"
+    )
+
+
+class BillingPayment(Base):
+    """Payment record against a SaaS billing invoice."""
+
+    __tablename__ = "billing_payments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
+    invoice_id: Mapped[int] = mapped_column(ForeignKey("billing_invoices.id", ondelete="CASCADE"), index=True)
+    amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(10), default="UGX")
+    status: Mapped[PaymentStatus] = mapped_column(
+        db_enum(PaymentStatus, name="paymentstatus"), default=PaymentStatus.PENDING, index=True
+    )
+    provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    reference: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    raw_response: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="billing_payments")
+    invoice: Mapped["BillingInvoice"] = relationship("BillingInvoice", back_populates="payments")
+
+
+class PaymentCallbackLog(Base):
+    """Audit trail for inbound payment callbacks."""
+
+    __tablename__ = "payment_callbacks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=True)
+    invoice_id: Mapped[Optional[int]] = mapped_column(ForeignKey("billing_invoices.id", ondelete="CASCADE"), index=True, nullable=True)
+    event_type: Mapped[str] = mapped_column(String(80), index=True)
+    status: Mapped[PaymentStatus] = mapped_column(
+        db_enum(PaymentStatus, name="paymentstatus"), default=PaymentStatus.PENDING, index=True
+    )
+    source_ip: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    payload: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    tenant: Mapped[Optional["Tenant"]] = relationship("Tenant", back_populates="payment_callbacks")
+    invoice: Mapped[Optional["BillingInvoice"]] = relationship("BillingInvoice", back_populates="callbacks")

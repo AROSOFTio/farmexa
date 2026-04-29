@@ -47,6 +47,8 @@ def _module_key_from_request_path(path: str) -> str | None:
         return "feed_consumption"
     if "/api/v1/feed/" in path:
         return "feed_stock"
+    if "/api/v1/inventory/medicine/" in path:
+        return "medicine_supplies"
     if "/api/v1/inventory/movements" in path:
         return "inventory_movements"
     if "/api/v1/inventory/items" in path:
@@ -130,6 +132,7 @@ async def _ensure_tenant_module_access(user, request: Request, permission_code: 
 
 
 async def get_current_user(
+    request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security_scheme)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -153,6 +156,18 @@ async def get_current_user(
     user = await repo.get_by_id(int(user_id))
     if user is None or not user.is_active:
         raise credentials_exception
+    resolved_tenant_id = getattr(request.state, "tenant_id", None)
+    if resolved_tenant_id is not None:
+        if _is_platform_admin(user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Platform administrator accounts must use the platform domain.",
+            )
+        if user.tenant_id != resolved_tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You cannot access another tenant's workspace from this domain.",
+            )
     return user
 
 

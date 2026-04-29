@@ -14,6 +14,7 @@ import {
   PowerOff,
 } from 'lucide-react'
 import { toast } from 'sonner'
+
 import api from '@/services/api'
 import { Modal } from '@/components/Modal'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -29,8 +30,16 @@ interface TenantModule {
 interface TenantDomain {
   id: number
   host: string
+  normalized_host: string
+  domain_type: string
   is_primary: boolean
   status: string
+  verification_target?: string | null
+  dns_verified_at?: string | null
+  ssl_requested_at?: string | null
+  ssl_issued_at?: string | null
+  activated_at?: string | null
+  last_error?: string | null
 }
 
 interface Subscription {
@@ -60,6 +69,12 @@ interface Tenant {
   modules: TenantModule[]
   domains: TenantDomain[]
   subscriptions: Subscription[]
+  onboarding_admin?: {
+    email: string
+    full_name: string
+    temporary_password: string
+    must_change_password: boolean
+  } | null
 }
 
 interface CatalogModule {
@@ -164,7 +179,7 @@ function formatMoney(value: string | null, currency = 'UGX') {
 function sectionMeta(section: AdminSection) {
   switch (section) {
     case 'domains':
-      return { title: 'Domains', subtitle: 'Map and monitor tenant domains and subdomains.' }
+      return { title: 'Domains', subtitle: 'Map customer custom domains, verify DNS, and control SSL activation.' }
     case 'plans':
       return { title: 'Plans', subtitle: 'Review plan structure and included modules.' }
     case 'modules':
@@ -174,7 +189,7 @@ function sectionMeta(section: AdminSection) {
     case 'control':
       return { title: 'Tenant Control', subtitle: 'Suspend, reactivate, and manage tenant access.' }
     default:
-      return { title: 'Tenants', subtitle: 'Onboard farms, assign plans, and manage module access.' }
+      return { title: 'Tenants', subtitle: 'Onboard farms, assign plans, manage domains, and stage module access.' }
   }
 }
 
@@ -185,6 +200,8 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
   const [isModulesModalOpen, setIsModulesModalOpen] = useState(false)
   const [isDomainModalOpen, setIsDomainModalOpen] = useState(false)
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null)
+  const [createdTenant, setCreatedTenant] = useState<Tenant | null>(null)
+  const [selectedModuleKeys, setSelectedModuleKeys] = useState<string[]>([])
 
   const meta = sectionMeta(section)
   const canManageTenants = hasPermission('dev_admin:write')
@@ -204,10 +221,11 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
     queryFn: async () => (await api.get('/dev-admin/billing')).data,
   })
 
-  const { register, handleSubmit, reset, setValue, getValues, formState: { errors } } = useForm<TenantFormValues>({
+  const { register, handleSubmit, reset, setValue, getValues, watch, formState: { errors } } = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),
     defaultValues: { plan: '', billing_cycle: 'monthly' },
   })
+  const selectedPlan = watch('plan')
 
   useEffect(() => {
     const firstPlan = catalog?.plans?.[0]
@@ -230,28 +248,34 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
     defaultValues: { is_primary: true },
   })
 
+  const refreshTenantQueries = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['dev-admin-tenants'] })
+    await queryClient.invalidateQueries({ queryKey: ['dev-admin-billing'] })
+  }
+
   const createTenantMutation = useMutation({
     mutationFn: (payload: TenantFormValues) =>
       api.post('/dev-admin/tenants', {
         ...payload,
         subscription_start: payload.subscription_start || null,
         subscription_expiry: payload.subscription_expiry || null,
+        enabled_modules: selectedModuleKeys,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dev-admin-tenants'] })
-      queryClient.invalidateQueries({ queryKey: ['dev-admin-billing'] })
+    onSuccess: async (response) => {
+      await refreshTenantQueries()
       toast.success('Tenant onboarded')
+      setCreatedTenant(response.data)
       setIsTenantModalOpen(false)
       reset()
+      setSelectedModuleKeys([])
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to create tenant.')),
   })
 
   const suspendMutation = useMutation({
     mutationFn: (tenantId: number) => api.post(`/dev-admin/tenants/${tenantId}/suspend`, { reason: 'Suspended by developer admin' }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dev-admin-tenants'] })
-      queryClient.invalidateQueries({ queryKey: ['dev-admin-billing'] })
+    onSuccess: async () => {
+      await refreshTenantQueries()
       toast.success('Tenant suspended')
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to suspend tenant.')),
@@ -259,9 +283,8 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
 
   const reactivateMutation = useMutation({
     mutationFn: (tenantId: number) => api.post(`/dev-admin/tenants/${tenantId}/reactivate`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dev-admin-tenants'] })
-      queryClient.invalidateQueries({ queryKey: ['dev-admin-billing'] })
+    onSuccess: async () => {
+      await refreshTenantQueries()
       toast.success('Tenant reactivated')
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to reactivate tenant.')),
@@ -273,8 +296,8 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
         module_key: payload.moduleKey,
         is_enabled: payload.isEnabled,
       }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dev-admin-tenants'] })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['dev-admin-tenants'] })
       toast.success('Module access updated')
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to update module access.')),
@@ -283,14 +306,23 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
   const addDomainMutation = useMutation({
     mutationFn: (payload: { tenantId: number; values: DomainFormValues }) =>
       api.post(`/dev-admin/tenants/${payload.tenantId}/domains`, payload.values),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dev-admin-tenants'] })
-      queryClient.invalidateQueries({ queryKey: ['dev-admin-billing'] })
+    onSuccess: async () => {
+      await refreshTenantQueries()
       toast.success('Domain saved')
       setIsDomainModalOpen(false)
       resetDomain()
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to save domain.')),
+  })
+
+  const domainActionMutation = useMutation({
+    mutationFn: (payload: { tenantId: number; domainId: number; action: 'verify' | 'ssl' | 'activate' | 'disable' | 'retry' }) =>
+      api.post(`/dev-admin/tenants/${payload.tenantId}/domains/${payload.domainId}/${payload.action}`),
+    onSuccess: async () => {
+      await refreshTenantQueries()
+      toast.success('Domain action completed.')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to complete the domain action.')),
   })
 
   const monthlyPriceMap = useMemo(() => {
@@ -315,11 +347,15 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
     () =>
       (tenants ?? []).flatMap((tenant) =>
         tenant.domains.map((domain) => ({
+          id: domain.id,
+          tenantId: tenant.id,
           tenantName: tenant.name,
           plan: tenant.plan,
           host: domain.host,
+          domain_type: domain.domain_type,
           status: domain.status,
           isPrimary: domain.is_primary,
+          last_error: domain.last_error,
         }))
       ),
     [tenants]
@@ -336,7 +372,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
       <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Vendor Directory</h2>
-          <p className="mt-1 text-sm text-slate-500">Each vendor workspace includes plan, module, domain, and status state.</p>
+          <p className="mt-1 text-sm text-slate-500">Each vendor workspace includes plan, module, domain, and suspension state.</p>
         </div>
         <button onClick={() => setIsTenantModalOpen(true)} className="btn-primary" disabled={!canManageTenants}>
           <Plus className="h-4 w-4" />
@@ -362,7 +398,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
               </tr>
             ) : tenants?.length ? (
               tenants.map((tenant) => {
-                const primaryDomain = tenant.domains.find((domain) => domain.is_primary)?.host ?? 'Not assigned'
+                const primaryDomain = tenant.domains.find((domain) => domain.is_primary)
                 return (
                   <tr key={tenant.id}>
                     <td>
@@ -370,7 +406,12 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                       <div className="mt-1 text-xs text-slate-500">{tenant.email}</div>
                     </td>
                     <td><span className="badge badge-brand uppercase">{tenant.plan}</span></td>
-                    <td className="text-slate-600">{primaryDomain}</td>
+                    <td>
+                      <div className="text-slate-700">{primaryDomain?.host ?? 'Not assigned'}</div>
+                      <div className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-400">
+                        {(primaryDomain?.status ?? 'pending_dns').replace(/_/g, ' ')}
+                      </div>
+                    </td>
                     <td className="text-slate-600">{tenant.modules.filter((module) => module.is_enabled).length} enabled</td>
                     <td>
                       <span className={`badge ${tenant.is_suspended ? 'badge-danger' : 'badge-success'}`}>
@@ -449,23 +490,49 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
             <tr>
               <th>Tenant</th>
               <th>Domain</th>
+              <th>Type</th>
               <th>Primary</th>
               <th>Status</th>
               <th>Plan</th>
+              <th className="text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {domainRows.length ? domainRows.map((row) => (
               <tr key={`${row.tenantName}-${row.host}`}>
                 <td className="font-semibold text-slate-900">{row.tenantName}</td>
-                <td>{row.host}</td>
+                <td>
+                  <div>{row.host}</div>
+                  {row.last_error ? <div className="mt-1 text-xs text-rose-600">{row.last_error}</div> : null}
+                </td>
+                <td className="capitalize">{row.domain_type.replace(/_/g, ' ')}</td>
                 <td>{row.isPrimary ? 'Yes' : 'No'}</td>
                 <td><span className="badge badge-neutral uppercase">{row.status}</span></td>
                 <td><span className="badge badge-brand uppercase">{row.plan}</span></td>
+                <td className="text-right">
+                  {canManageTenants ? (
+                    <div className="flex justify-end gap-2">
+                      {(['verify', 'ssl', 'activate', 'retry', 'disable'] as const).map((action) => (
+                        <button
+                          key={action}
+                          type="button"
+                          className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
+                            action === 'disable'
+                              ? 'border-rose-100 text-rose-600 hover:bg-rose-50'
+                              : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                          }`}
+                          onClick={() => domainActionMutation.mutate({ tenantId: row.tenantId, domainId: row.id, action })}
+                        >
+                          {action === 'ssl' ? 'SSL' : action.charAt(0).toUpperCase() + action.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </td>
               </tr>
             )) : (
               <tr>
-                <td colSpan={5} className="py-10 text-center text-slate-500">No domains assigned yet.</td>
+                <td colSpan={7} className="py-10 text-center text-slate-500">No domains assigned yet.</td>
               </tr>
             )}
           </tbody>
@@ -597,8 +664,8 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
       </div>
 
       {(section === 'tenants' || section === 'control') && billing ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="kpi-card">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="kpi-card">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tenants</div>
@@ -650,6 +717,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
         onClose={() => {
           setIsTenantModalOpen(false)
           reset()
+          setSelectedModuleKeys([])
         }}
         title="Register Vendor"
         description="Create the vendor workspace, assign the plan, and provision the initial domain and subscription."
@@ -680,6 +748,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
           <div>
             <label className="form-label">Domain / Subdomain</label>
             <input className="form-input" placeholder="farm.example.com" {...register('domain')} />
+            <p className="form-hint">Custom domains start in `pending_dns` until DNS and SSL are confirmed.</p>
           </div>
           <div>
             <label className="form-label">Plan</label>
@@ -706,6 +775,36 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
           <div className="md:col-span-2">
             <label className="form-label">Notes</label>
             <textarea className="form-input min-h-[108px]" {...register('notes')} />
+          </div>
+          <div className="md:col-span-2">
+            <label className="form-label">Initial module selection</label>
+            <div className="grid gap-2 rounded-[18px] border border-slate-200 bg-slate-50 p-3 md:grid-cols-2">
+              {(catalog?.modules ?? []).map((module) => {
+                const checked = selectedModuleKeys.includes(module.key)
+                const impliedByPlan = selectedPlan && !catalog?.plans.find((plan) => plan.code === selectedPlan)?.is_custom
+                return (
+                  <label key={module.key} className="flex items-start gap-3 rounded-[14px] px-3 py-2 hover:bg-white">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={!!impliedByPlan}
+                      onChange={(event) => {
+                        setSelectedModuleKeys((current) =>
+                          event.target.checked ? [...current, module.key] : current.filter((item) => item !== module.key)
+                        )
+                      }}
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-slate-900">{module.name}</span>
+                      <span className="mt-1 block text-xs text-slate-500">{module.description}</span>
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+            {selectedPlan && !catalog?.plans.find((plan) => plan.code === selectedPlan)?.is_custom ? (
+              <p className="form-hint">Standard plans still use the plan catalog. Custom module selection is mainly for the Custom plan.</p>
+            ) : null}
           </div>
           <div className="md:col-span-2 flex justify-end gap-3 pt-2">
             <button type="button" className="btn-secondary" onClick={() => setIsTenantModalOpen(false)}>Cancel</button>
@@ -776,7 +875,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
           resetDomain()
         }}
         title={selectedTenant ? `Assign Domain - ${selectedTenant.name}` : 'Assign Domain'}
-        description="Set or replace the primary domain for the tenant."
+        description="Custom domains are saved as pending DNS until they are verified and activated."
       >
         <form onSubmit={handleSubmitDomain(onSubmitDomain)} className="space-y-4">
           <div>
@@ -795,6 +894,32 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={!!createdTenant}
+        onClose={() => setCreatedTenant(null)}
+        title={createdTenant ? `${createdTenant.name} onboarded` : 'Tenant onboarded'}
+        description="Keep the generated tenant administrator credentials secure. The tenant can only use the custom domain after DNS and SSL reach active state."
+      >
+        {createdTenant?.onboarding_admin ? (
+          <div className="space-y-4">
+            <div className="rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tenant admin</div>
+              <div className="mt-3 text-sm text-slate-700">
+                <div><span className="font-semibold text-slate-900">Name:</span> {createdTenant.onboarding_admin.full_name}</div>
+                <div className="mt-2"><span className="font-semibold text-slate-900">Email:</span> {createdTenant.onboarding_admin.email}</div>
+                <div className="mt-2"><span className="font-semibold text-slate-900">Temporary password:</span> {createdTenant.onboarding_admin.temporary_password}</div>
+              </div>
+            </div>
+            <div className="rounded-[18px] border border-amber-100 bg-amber-50 px-4 py-4 text-[13px] text-amber-800">
+              The generated password is only shown once here. Ask the tenant administrator to sign in and change it immediately.
+            </div>
+            <div className="flex justify-end">
+              <button type="button" className="btn-primary" onClick={() => setCreatedTenant(null)}>Close</button>
+            </div>
+          </div>
+        ) : null}
       </Modal>
     </div>
   )

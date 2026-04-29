@@ -17,7 +17,7 @@ def list_records(
     db: Session = Depends(get_sync_db),
     current_user=Depends(require_permission("slaughter:read")),
 ):
-    return service.slaughter_service.get_records(db, skip, limit)
+    return service.slaughter_service.get_records(db, current_user, skip, limit)
 
 
 @router.post("/records", response_model=schemas.SlaughterRecordOut)
@@ -26,7 +26,7 @@ def create_record(
     db: Session = Depends(get_sync_db),
     current_user=Depends(require_permission("slaughter:write")),
 ):
-    return service.slaughter_service.create_record(db, record)
+    return service.slaughter_service.create_record(db, record, current_user)
 
 
 @router.patch("/records/{record_id}", response_model=schemas.SlaughterRecordOut)
@@ -36,7 +36,7 @@ def update_record(
     db: Session = Depends(get_sync_db),
     current_user=Depends(require_permission("slaughter:write")),
 ):
-    return service.slaughter_service.update_record(db, record_id, updates)
+    return service.slaughter_service.update_record(db, record_id, updates, current_user)
 
 
 @router.post("/records/{record_id}/outputs", response_model=schemas.SlaughterOutputOut)
@@ -46,4 +46,4 @@ def add_output(
     db: Session = Depends(get_sync_db),
     current_user=Depends(require_permission("slaughter:write")),
 ):
-    return service.slaughter_service.add_output(db, record_id, output)
+    return service.slaughter_service.add_output(db, record_id, output, current_user)
