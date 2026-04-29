@@ -113,7 +113,7 @@ const chartTooltipStyle = {
   boxShadow: '0 12px 24px -20px rgba(0, 0, 0, 0.72)',
 }
 
-const saleableOutputTypes = new Set([
+const saleableOutputTypes = new Set<string>([
   'dressed_chicken',
   'chicken_breast',
   'chicken_thighs',
@@ -124,7 +124,7 @@ const saleableOutputTypes = new Set([
   'neck_backs',
 ])
 
-const byproductOutputTypes = new Set(['poultry_manure', 'feet', 'head'])
+const byproductOutputTypes = new Set<string>(['poultry_manure', 'feet', 'head'])
 
 function sameDay(value: string) {
   return new Date(value).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)

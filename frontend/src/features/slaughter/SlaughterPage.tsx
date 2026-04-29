@@ -130,7 +130,7 @@ const productionOutputCatalog = [
   { value: 'head', label: 'Head', stockName: 'Head' },
 ] as const
 
-const saleableOutputTypes = new Set([
+const saleableOutputTypes = new Set<string>([
   'dressed_chicken',
   'chicken_breast',
   'chicken_thighs',
@@ -141,8 +141,8 @@ const saleableOutputTypes = new Set([
   'neck_backs',
 ])
 
-const byproductOutputTypes = new Set(['poultry_manure', 'feet', 'head'])
-const productionOutputStockNames = new Set(productionOutputCatalog.map((entry) => entry.stockName.toLowerCase()))
+const byproductOutputTypes = new Set<string>(['poultry_manure', 'feet', 'head'])
+const productionOutputStockNames = new Set<string>(productionOutputCatalog.map((entry) => entry.stockName.toLowerCase()))
 
 const sectionCopy: Record<
   SlaughterSection,
@@ -445,7 +445,7 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
 
   useEffect(() => {
     if (!isOutputModalOpen) return
-    const allowedTypes = new Set(outputCatalogForSection.map((entry) => entry.value))
+    const allowedTypes = new Set<string>(outputCatalogForSection.map((entry) => entry.value))
     const currentType = outputForm.getValues('output_type')
     if (!allowedTypes.has(currentType)) {
       outputForm.setValue('output_type', outputCatalogForSection[0]?.value ?? 'dressed_chicken')
