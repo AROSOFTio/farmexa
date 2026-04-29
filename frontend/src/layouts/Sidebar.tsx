@@ -166,6 +166,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   )
 
   const roleLabel = user?.role?.name ? ROLE_LABELS[user.role.name] ?? user.role.name : 'Team'
+  const userTitle = user?.job_title ?? roleLabel
 
   return (
     <>
@@ -255,7 +256,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
             </div>
             <div className="min-w-0">
               <div className="truncate text-[11.5px] font-semibold text-[var(--sidebar-heading)]">{user?.full_name ?? 'Loading...'}</div>
-              <div className="truncate text-[9.5px] text-[var(--sidebar-text-muted)]">{user?.email ?? ''}</div>
+              <div className="truncate text-[9.5px] text-[var(--sidebar-text-muted)]">{userTitle}</div>
             </div>
           </div>
         </div>

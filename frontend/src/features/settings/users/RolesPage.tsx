@@ -13,8 +13,8 @@ export function RolesPage() {
     <div className="animate-fade-in space-y-6">
       <div className="section-header">
         <div>
-          <h1 className="section-title">Users & Roles</h1>
-          <p className="section-subtitle">Live role catalog and permission coverage from the backend.</p>
+          <h1 className="section-title">Access Roles</h1>
+          <p className="section-subtitle">Tenant staff roles are seeded from the backend. Use job titles on staff profiles for office designations.</p>
         </div>
       </div>
 
@@ -26,7 +26,7 @@ export function RolesPage() {
             </div>
             <div>
               <h2 className="text-xl font-semibold">System Roles</h2>
-              <p className="text-sm text-[var(--text-muted)]">Roles seeded in the current environment.</p>
+              <p className="text-sm text-[var(--text-muted)]">Available access roles in the current environment.</p>
             </div>
           </div>
 

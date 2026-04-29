@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password, verify_password
 from app.models.auth import Role
+from app.modules.users.catalog import PLATFORM_ROLE_NAMES
 from app.modules.users.repository import UserRepository
 from app.modules.users.schemas import (
     UserCreateRequest, UserUpdateRequest, ChangePasswordRequest,
@@ -22,7 +23,7 @@ class UserService:
         self.db = db
 
     def _is_platform_admin(self, current_user) -> bool:
-        return bool(current_user.role and current_user.role.name in {"super_manager", "developer_admin"})
+        return bool(current_user.role and current_user.role.name in PLATFORM_ROLE_NAMES)
 
     async def _get_role_name(self, role_id: int) -> str | None:
         result = await self.db.execute(select(Role).where(Role.id == role_id))
@@ -63,11 +64,12 @@ class UserService:
         role_name = await self._get_role_name(payload.role_id)
         if not role_name:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected role was not found.")
-        if not self._is_platform_admin(current_user) and role_name in {"super_manager", "developer_admin"}:
+        if not self._is_platform_admin(current_user) and role_name in PLATFORM_ROLE_NAMES:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Platform roles cannot be assigned inside a tenant.")
         user = await self.repo.create(
             email=payload.email,
             full_name=payload.full_name,
+            job_title=payload.job_title,
             hashed_password=hash_password(payload.password),
             phone=payload.phone,
             role_id=payload.role_id,
@@ -90,7 +92,7 @@ class UserService:
             role_name = await self._get_role_name(updates["role_id"])
             if not role_name:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected role was not found.")
-            if not self._is_platform_admin(current_user) and role_name in {"super_manager", "developer_admin"}:
+            if not self._is_platform_admin(current_user) and role_name in PLATFORM_ROLE_NAMES:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Platform roles cannot be assigned inside a tenant.")
         if "tenant_id" in updates and not self._is_platform_admin(current_user):
             updates.pop("tenant_id")

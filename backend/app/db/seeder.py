@@ -5,7 +5,7 @@ Seeds roles, permissions, and the initial super manager account if not present.
 
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,20 +15,15 @@ from app.db.session import AsyncSessionLocal
 from app.modules.developer_admin.catalog import (
     DEFAULT_MODULE_PRICES,
     DEFAULT_MODULES,
+    MANDATORY_TENANT_MODULE_KEYS,
     DEFAULT_PLAN_MODULES,
     DEFAULT_PLANS,
 )
+from app.modules.users.catalog import ROLE_DEFINITIONS, ROLE_PERMISSIONS, TENANT_ADMIN_ROLE_NAME
 
 logger = logging.getLogger("farmexa.seeder")
 
-ROLES = [
-    {"name": "super_manager", "description": "Full system access"},
-    {"name": "developer_admin", "description": "Platform-level tenant and subscription administration"},
-    {"name": "farm_manager", "description": "Farm and production operations"},
-    {"name": "inventory_officer", "description": "Inventory and stock management"},
-    {"name": "sales_officer", "description": "Sales, customers, and invoices"},
-    {"name": "finance_officer", "description": "Finance, expenses, and reports"},
-]
+ROLES = ROLE_DEFINITIONS
 
 PERMISSIONS = [
     ("dashboard:read", "View dashboard", "dashboard"),
@@ -61,53 +56,6 @@ PERMISSIONS = [
     ("dev_admin:write", "Manage tenants, plans, and modules", "developer_admin"),
 ]
 
-ROLE_PERMISSIONS: dict[str, list[str]] = {
-    "super_manager": [permission[0] for permission in PERMISSIONS],
-    "developer_admin": [
-        "dashboard:read",
-        "reports:read",
-        "users:read",
-        "dev_admin:read",
-        "dev_admin:write",
-    ],
-    "farm_manager": [
-        "dashboard:read",
-        "farm:read",
-        "farm:write",
-        "feed:read",
-        "feed:write",
-        "slaughter:read",
-        "slaughter:write",
-        "inventory:read",
-        "inventory:write",
-        "reports:read",
-    ],
-    "inventory_officer": [
-        "dashboard:read",
-        "inventory:read",
-        "inventory:write",
-        "feed:read",
-        "feed:write",
-        "reports:read",
-    ],
-    "sales_officer": [
-        "dashboard:read",
-        "sales:read",
-        "sales:write",
-        "inventory:read",
-        "reports:read",
-    ],
-    "finance_officer": [
-        "dashboard:read",
-        "finance:read",
-        "finance:write",
-        "sales:read",
-        "reports:read",
-        "reports:export",
-    ],
-}
-
-
 async def run_seed() -> None:
     """Idempotent seeder that is safe to run on every startup."""
     logger.info("Starting database seed process.")
@@ -115,6 +63,7 @@ async def run_seed() -> None:
         try:
             await _seed_roles_and_permissions(db)
             await _seed_saas_catalog(db)
+            await _backfill_tenant_staff_access(db)
             await _seed_admin(db)
             await _seed_developer_admin(db)
             await db.commit()
@@ -133,7 +82,13 @@ async def _seed_roles_and_permissions(db: AsyncSession) -> None:
         statement = (
             insert(Permission)
             .values(code=code, description=description, module=module)
-            .on_conflict_do_nothing(index_elements=["code"])
+            .on_conflict_do_update(
+                index_elements=["code"],
+                set_={
+                    "description": description,
+                    "module": module,
+                },
+            )
         )
         await db.execute(statement)
 
@@ -144,7 +99,14 @@ async def _seed_roles_and_permissions(db: AsyncSession) -> None:
     logger.info("Seeding roles.")
     role_map = {}
     for role_data in ROLES:
-        statement = insert(Role).values(**role_data).on_conflict_do_nothing(index_elements=["name"])
+        statement = (
+            insert(Role)
+            .values(**role_data)
+            .on_conflict_do_update(
+                index_elements=["name"],
+                set_={"description": role_data["description"]},
+            )
+        )
         await db.execute(statement)
 
         result = await db.execute(select(Role).where(Role.name == role_data["name"]))
@@ -157,6 +119,28 @@ async def _seed_roles_and_permissions(db: AsyncSession) -> None:
         if not role:
             continue
 
+        target_permission_ids = {
+            permission_map[code].id
+            for code in permission_codes
+            if code in permission_map
+        }
+
+        current_permission_ids = set(
+            (
+                await db.execute(
+                    select(RolePermission.permission_id).where(RolePermission.role_id == role.id)
+                )
+            ).scalars().all()
+        )
+
+        for permission_id in current_permission_ids - target_permission_ids:
+            await db.execute(
+                delete(RolePermission).where(
+                    RolePermission.role_id == role.id,
+                    RolePermission.permission_id == permission_id,
+                )
+            )
+
         for code in permission_codes:
             permission = permission_map.get(code)
             if not permission:
@@ -166,6 +150,51 @@ async def _seed_roles_and_permissions(db: AsyncSession) -> None:
                 insert(RolePermission)
                 .values(role_id=role.id, permission_id=permission.id)
                 .on_conflict_do_nothing(index_elements=["role_id", "permission_id"])
+            )
+            await db.execute(statement)
+
+
+async def _backfill_tenant_staff_access(db: AsyncSession) -> None:
+    from app.models.auth import Role
+    from app.models.tenant import Tenant, TenantModule
+    from app.models.user import User
+
+    logger.info("Backfilling tenant staff administration access.")
+
+    tenant_admin_role = (
+        await db.execute(select(Role).where(Role.name == TENANT_ADMIN_ROLE_NAME))
+    ).scalar_one_or_none()
+    farm_manager_role = (
+        await db.execute(select(Role).where(Role.name == "farm_manager"))
+    ).scalar_one_or_none()
+
+    if tenant_admin_role and farm_manager_role:
+        tenant_admin_users = (
+            await db.execute(
+                select(User, Tenant)
+                .join(Tenant, Tenant.id == User.tenant_id)
+                .where(
+                    User.deleted_at.is_(None),
+                    User.email == Tenant.email,
+                    User.role_id == farm_manager_role.id,
+                )
+            )
+        ).all()
+        for user, _tenant in tenant_admin_users:
+            user.role_id = tenant_admin_role.id
+            if not user.job_title:
+                user.job_title = "Tenant Administrator"
+
+    tenants = (await db.execute(select(Tenant.id))).scalars().all()
+    for tenant_id in tenants:
+        for module_key in MANDATORY_TENANT_MODULE_KEYS:
+            statement = (
+                insert(TenantModule)
+                .values(tenant_id=tenant_id, module_key=module_key, is_enabled=True)
+                .on_conflict_do_update(
+                    index_elements=["tenant_id", "module_key"],
+                    set_={"is_enabled": True},
+                )
             )
             await db.execute(statement)
 

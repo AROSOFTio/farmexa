@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.core.deps import get_current_user, require_permission
+from app.modules.users.catalog import PLATFORM_ROLE_NAMES, role_sort_key
 from app.modules.users.schemas import (
     UserCreateRequest, UserUpdateRequest, ChangePasswordRequest,
     UserOut, UserListResponse, RoleOut
@@ -52,9 +53,10 @@ async def get_roles(
         .options(selectinload(Role.role_permissions).selectinload(RolePermission.permission))
         .order_by(Role.name)
     )
-    roles = result.scalars().all()
-    if current_user.role and current_user.role.name not in {"super_manager", "developer_admin"}:
-        roles = [role for role in roles if role.name not in {"super_manager", "developer_admin"}]
+    roles = list(result.scalars().all())
+    if current_user.role and current_user.role.name not in PLATFORM_ROLE_NAMES:
+        roles = [role for role in roles if role.name not in PLATFORM_ROLE_NAMES]
+    roles.sort(key=lambda role: role_sort_key(role.name))
     return [
         RoleOut(
             id=role.id,

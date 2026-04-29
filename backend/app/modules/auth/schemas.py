@@ -50,6 +50,7 @@ class UserOut(BaseModel):
     email: str
     full_name: str
     phone: str | None = None
+    job_title: str | None = None
     avatar_url: str | None = None
     is_active: bool
     role: RoleOut | None = None

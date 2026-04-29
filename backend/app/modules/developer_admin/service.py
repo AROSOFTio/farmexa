@@ -38,6 +38,7 @@ from app.models.tenant import (
     TenantStatus,
 )
 from app.models.user import User
+from app.modules.developer_admin.catalog import MANDATORY_TENANT_MODULE_KEYS
 from app.modules.developer_admin.schemas import (
     DomainAssignRequest,
     ModulePriceUpdate,
@@ -48,6 +49,7 @@ from app.modules.developer_admin.schemas import (
     TenantCreate,
     TenantUpdate,
 )
+from app.modules.users.catalog import TENANT_ADMIN_ROLE_NAME
 from app.utils.audit import write_audit_log
 from app.utils.domains import infer_domain_type, normalize_host, strip_port, verify_domain_points_to_target
 
@@ -131,6 +133,11 @@ class DeveloperAdminService:
             )
         )
         return list(result.scalars().all())
+
+    @staticmethod
+    def _with_required_modules(module_keys: Iterable[str]) -> list[str]:
+        ordered = list(dict.fromkeys([*module_keys, *sorted(MANDATORY_TENANT_MODULE_KEYS)]))
+        return ordered
 
     async def _get_tenant_modules(self, tenant_id: int) -> list[TenantModule]:
         result = await self.db.execute(
@@ -296,12 +303,13 @@ class DeveloperAdminService:
                 detail="The tenant email is already assigned to another user account.",
             )
 
-        role = await self._get_role("farm_manager")
+        role = await self._get_role(TENANT_ADMIN_ROLE_NAME)
         temporary_password = self._build_temp_password()
         full_name = (tenant.contact_person or tenant.business_name or f"{tenant.name} Admin").strip()
         user = User(
             email=tenant.email,
             full_name=full_name,
+            job_title="Tenant Administrator",
             hashed_password=hash_password(temporary_password),
             is_active=True,
             role_id=role.id,
@@ -411,6 +419,7 @@ class DeveloperAdminService:
             await self.db.flush()
 
             module_keys = data.enabled_modules if plan.is_custom and data.enabled_modules else await self._get_plan_module_keys(plan.code)
+            module_keys = self._with_required_modules(module_keys)
             await self._sync_tenant_modules(tenant.id, module_keys, disable_missing=True)
             await self._ensure_primary_domain(tenant, data.domain)
             await self._create_subscription(
@@ -499,7 +508,7 @@ class DeveloperAdminService:
         tenant.subscription_start = date.today()
         tenant.status = TenantStatus.ACTIVE
 
-        module_keys = await self._get_plan_module_keys(plan.code)
+        module_keys = self._with_required_modules(await self._get_plan_module_keys(plan.code))
         if not plan.is_custom:
             await self._sync_tenant_modules(tenant.id, module_keys, disable_missing=True)
 
@@ -537,6 +546,8 @@ class DeveloperAdminService:
     async def toggle_module(self, tenant_id: int, data: ModuleToggle, actor: User) -> TenantModule:
         await self._get_tenant(tenant_id)
         await self._get_module(data.module_key)
+        if data.module_key in MANDATORY_TENANT_MODULE_KEYS and not data.is_enabled:
+            raise HTTPException(status_code=409, detail=f"Module '{data.module_key}' is mandatory for tenant administration and cannot be disabled.")
 
         result = await self.db.execute(
             select(TenantModule).where(

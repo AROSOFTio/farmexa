@@ -48,9 +48,11 @@ DEFAULT_MODULES = [
     {"key": "compliance_documents", "name": "Compliance Documents", "category": "compliance", "description": "Licences, permits, and tax documents", "is_core": False},
     {"key": "compliance_alerts", "name": "Compliance Alerts", "category": "compliance", "description": "Expiry and renewal alerts", "is_core": False},
     {"key": "reports", "name": "Reports", "category": "reports", "description": "Operational and management reports", "is_core": True},
-    {"key": "users", "name": "Users", "category": "administration", "description": "User administration", "is_core": False},
-    {"key": "settings", "name": "Settings", "category": "administration", "description": "Tenant settings", "is_core": False},
+    {"key": "users", "name": "Users", "category": "administration", "description": "User administration", "is_core": True},
+    {"key": "settings", "name": "Settings", "category": "administration", "description": "Tenant settings", "is_core": True},
 ]
+
+MANDATORY_TENANT_MODULE_KEYS = {"dashboard", "users", "settings"}
 
 DEFAULT_PLANS = [
     {"code": "basic", "name": "Core", "description": "Core farm operation modules", "billing_cycle": "monthly", "is_custom": False},
@@ -62,6 +64,8 @@ DEFAULT_PLANS = [
 DEFAULT_PLAN_MODULES = {
     "basic": [
         "dashboard",
+        "users",
+        "settings",
         "farm_profile",
         "houses",
         "batches",
@@ -73,6 +77,8 @@ DEFAULT_PLAN_MODULES = {
     ],
     "standard": [
         "dashboard",
+        "users",
+        "settings",
         "farm_profile",
         "houses",
         "batches",
@@ -104,4 +110,3 @@ DEFAULT_MODULE_PRICES = [
     {"module_key": "compliance_documents", "billing_cycle": "monthly", "price": 100000, "currency": "UGX", "notes": "Compliance and reminders"},
     {"module_key": "profit_loss", "billing_cycle": "monthly", "price": 120000, "currency": "UGX", "notes": "Advanced finance reporting"},
 ]
-

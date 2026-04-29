@@ -63,7 +63,7 @@ class UserRepository:
 
         if search:
             like = f"%{search}%"
-            search_filter = or_(User.full_name.ilike(like), User.email.ilike(like))
+            search_filter = or_(User.full_name.ilike(like), User.email.ilike(like), User.job_title.ilike(like))
             query = query.where(search_filter)
             count_query = count_query.where(search_filter)
         if role_id is not None:

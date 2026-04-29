@@ -20,6 +20,7 @@ from app.models.compliance import (
     ReminderStatus,
 )
 from app.models.user import User
+from app.modules.users.catalog import COMPLIANCE_NOTIFICATION_ROLES
 from app.modules.compliance.schemas import ComplianceAlertOut
 
 
@@ -233,7 +234,7 @@ async def _send_reminder_email(db: AsyncSession, reminder: DocumentReminder) -> 
     )
     for user in users_result.scalars().all():
         role_name = user.role.name if user.role else ""
-        if role_name in {"super_manager", "farm_manager", "developer_admin"} and user.email:
+        if role_name in COMPLIANCE_NOTIFICATION_ROLES and user.email:
             recipients.add(user.email)
 
     if not recipients:

@@ -9,7 +9,7 @@ import { ROLE_LABELS } from '@/lib/branding'
 import { THEME_STORAGE_KEY, applyTheme, type ThemeMode } from '@/lib/theme'
 
 export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
-  const { user, logout, hasPermission, tenant } = useAuth()
+  const { user, logout, hasPermission } = useAuth()
   const navigate = useNavigate()
   const [profileOpen, setProfileOpen] = useState(false)
   const [quickOpen, setQuickOpen] = useState(false)
@@ -32,6 +32,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   )
 
   const roleLabel = user?.role?.name ? ROLE_LABELS[user.role.name] ?? user.role.name : 'User'
+  const profileLabel = user?.job_title ?? roleLabel
   const quickActions = [
     { label: 'Batch', icon: ClipboardPlus, path: '/farm/batches' },
     { label: 'Eggs', icon: Egg, path: '/farm/eggs' },
@@ -146,7 +147,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand-primary)] text-[11px] font-bold text-white">{initials}</div>
           <div className="hidden text-left sm:block">
             <div className="text-[12px] font-semibold leading-tight text-[var(--text-strong)]">{user?.full_name ?? 'Loading...'}</div>
-            <div className="text-[11px] leading-tight text-[var(--text-muted)]">{tenant?.name ?? roleLabel}</div>
+            <div className="text-[11px] leading-tight text-[var(--text-muted)]">{profileLabel}</div>
           </div>
           <ChevronDown className={clsx('hidden h-[15px] w-[15px] text-[var(--text-muted)] sm:block', profileOpen && 'rotate-180')} />
         </button>
@@ -158,6 +159,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
               <div className="border-b border-[var(--border-subtle)] px-4 py-4">
                 <div className="text-sm font-semibold text-[var(--text-strong)]">{user?.full_name}</div>
                 <div className="mt-1 text-xs text-[var(--text-muted)]">{user?.email}</div>
+                <div className="mt-1 text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">{profileLabel}</div>
               </div>
               <div className="p-2">
                 {hasPermission('settings:read') ? (

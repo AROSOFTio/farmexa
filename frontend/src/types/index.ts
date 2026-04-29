@@ -18,6 +18,7 @@ export interface User {
   email: string
   full_name: string
   phone: string | null
+  job_title: string | null
   avatar_url: string | null
   is_active: boolean
   role: Role | null
@@ -62,6 +63,7 @@ export interface UserCreateRequest {
   full_name: string
   password: string
   phone?: string
+  job_title?: string
   role_id: number
   tenant_id?: number | null
 }
@@ -69,6 +71,7 @@ export interface UserCreateRequest {
 export interface UserUpdateRequest {
   full_name?: string
   phone?: string
+  job_title?: string
   role_id?: number
   is_active?: boolean
   tenant_id?: number | null

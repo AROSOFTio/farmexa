@@ -12,8 +12,22 @@ class UserCreateRequest(BaseModel):
     full_name: str = Field(min_length=2, max_length=150)
     password: str = Field(min_length=8)
     phone: str | None = Field(default=None, max_length=20)
-    role_id: int
+    job_title: str | None = Field(default=None, max_length=120)
+    role_id: int = Field(ge=1)
     tenant_id: int | None = None
+
+    @field_validator("full_name")
+    @classmethod
+    def full_name_clean(cls, v: str) -> str:
+        return v.strip()
+
+    @field_validator("phone", "job_title", mode="before")
+    @classmethod
+    def blank_to_none(cls, v):
+        if v is None:
+            return None
+        cleaned = str(v).strip()
+        return cleaned or None
 
     @field_validator("password")
     @classmethod
@@ -28,9 +42,23 @@ class UserCreateRequest(BaseModel):
 class UserUpdateRequest(BaseModel):
     full_name: str | None = Field(default=None, min_length=2, max_length=150)
     phone: str | None = Field(default=None, max_length=20)
-    role_id: int | None = None
+    job_title: str | None = Field(default=None, max_length=120)
+    role_id: int | None = Field(default=None, ge=1)
     is_active: bool | None = None
     tenant_id: int | None = None
+
+    @field_validator("full_name")
+    @classmethod
+    def update_full_name_clean(cls, v: str | None) -> str | None:
+        return v.strip() if v is not None else None
+
+    @field_validator("phone", "job_title", mode="before")
+    @classmethod
+    def update_blank_to_none(cls, v):
+        if v is None:
+            return None
+        cleaned = str(v).strip()
+        return cleaned or None
 
 
 class ChangePasswordRequest(BaseModel):
@@ -66,6 +94,7 @@ class UserOut(BaseModel):
     email: str
     full_name: str
     phone: str | None = None
+    job_title: str | None = None
     avatar_url: str | None = None
     is_active: bool
     role: RoleOut | None = None

@@ -10,7 +10,7 @@ from threading import RLock
 from typing import Any
 
 from fastapi import Depends, HTTPException, status
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine, URL, make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
@@ -158,6 +158,7 @@ def _build_user_snapshot(user: User | None) -> dict[str, Any] | None:
         "id": int(user.id),
         "email": user.email,
         "full_name": user.full_name,
+        "job_title": user.job_title,
         "hashed_password": user.hashed_password,
         "is_active": user.is_active,
         "phone": user.phone,
@@ -250,9 +251,19 @@ def _ensure_schema_ready_sync(database_name: str) -> sessionmaker[Session]:
             needs_schema_init = True
     if needs_schema_init:
         Base.metadata.create_all(bind=engine)
+        _apply_runtime_schema_patches(engine)
         with _cache_lock:
             _schema_initialized.add(database_name)
     return factory
+
+
+def _apply_runtime_schema_patches(engine: Engine) -> None:
+    inspector = inspect(engine)
+    if inspector.has_table("users"):
+        user_columns = {column["name"] for column in inspector.get_columns("users")}
+        if "job_title" not in user_columns:
+            with engine.begin() as connection:
+                connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS job_title VARCHAR(120)"))
 
 
 def _upsert_tenant_identity(session: Session, tenant_snapshot: dict[str, Any]) -> None:
@@ -329,6 +340,7 @@ def _upsert_user_identity(session: Session, user_snapshot: dict[str, Any] | None
             id=user_snapshot["id"],
             email=user_snapshot["email"],
             full_name=user_snapshot["full_name"],
+            job_title=user_snapshot["job_title"],
             hashed_password=user_snapshot["hashed_password"],
             is_active=user_snapshot["is_active"],
             phone=user_snapshot["phone"],
@@ -342,6 +354,7 @@ def _upsert_user_identity(session: Session, user_snapshot: dict[str, Any] | None
 
     user.email = user_snapshot["email"]
     user.full_name = user_snapshot["full_name"]
+    user.job_title = user_snapshot["job_title"]
     user.hashed_password = user_snapshot["hashed_password"]
     user.is_active = user_snapshot["is_active"]
     user.phone = user_snapshot["phone"]
