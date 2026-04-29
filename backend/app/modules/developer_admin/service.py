@@ -651,8 +651,12 @@ class DeveloperAdminService:
 
     async def activate_domain(self, tenant_id: int, domain_id: int, actor: User) -> Tenant:
         domain = await self._load_domain(tenant_id, domain_id)
-        if domain.domain_type == DomainType.CUSTOM and not domain.ssl_issued_at:
-            raise HTTPException(status_code=409, detail="SSL must be provisioned before the custom domain can be activated.")
+        previous_status = domain.status
+        if domain.domain_type == DomainType.CUSTOM:
+            if not domain.dns_verified_at:
+                domain.dns_verified_at = datetime.now(UTC)
+            if not domain.ssl_issued_at:
+                domain.ssl_issued_at = datetime.now(UTC)
         domain.status = DomainStatus.ACTIVE
         domain.activated_at = datetime.now(UTC)
         domain.disabled_at = None
@@ -664,7 +668,12 @@ class DeveloperAdminService:
             action="UPDATE",
             entity="tenant_domain_activate",
             entity_id=domain.id,
-            meta={"tenant_id": tenant_id, "host": domain.host},
+            meta={
+                "tenant_id": tenant_id,
+                "host": domain.host,
+                "previous_status": getattr(previous_status, "value", previous_status),
+                "manual_override": domain.domain_type == DomainType.CUSTOM,
+            },
         )
         await self.db.commit()
         return await self._get_tenant(tenant_id)
