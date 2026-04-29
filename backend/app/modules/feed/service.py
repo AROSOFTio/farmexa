@@ -30,9 +30,13 @@ class FeedService:
         return SupplierOut.model_validate(item)
 
     async def create_supplier(self, data: SupplierCreate) -> SupplierOut:
-        item = await self.repo.create_supplier(data)
-        await self.db.commit()
-        return SupplierOut.model_validate(item)
+        try:
+            item = await self.repo.create_supplier(data)
+            await self.db.commit()
+            return SupplierOut.model_validate(item)
+        except IntegrityError:
+            await self.db.rollback()
+            raise HTTPException(status_code=400, detail="Supplier could not be saved. Check for duplicate or invalid values.")
 
     async def update_supplier(self, id: int, data: SupplierUpdate) -> SupplierOut:
         item = await self.repo.get_supplier(id)

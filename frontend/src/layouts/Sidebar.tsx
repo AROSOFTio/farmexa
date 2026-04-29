@@ -117,7 +117,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: 'Developer Admin',
     items: [
-      { label: 'Tenants', path: '/dev-admin/tenants', permission: 'dev_admin:read', icon: Building2 },
+      { label: 'Vendors', path: '/dev-admin/tenants', permission: 'dev_admin:read', icon: Building2 },
       { label: 'Domains', path: '/dev-admin/domains', permission: 'dev_admin:read', icon: Activity },
       { label: 'Plans', path: '/dev-admin/plans', permission: 'dev_admin:read', icon: CreditCard },
       { label: 'Modules', path: '/dev-admin/modules', permission: 'dev_admin:read', icon: Package },
@@ -148,11 +148,11 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
       <aside
         className={clsx(
-          'sidebar fixed inset-y-0 left-0 z-50 flex w-[240px] flex-col overflow-hidden transition-transform duration-300 lg:translate-x-0',
+          'sidebar fixed inset-y-0 left-0 z-50 flex w-[272px] flex-col overflow-hidden transition-transform duration-300 lg:translate-x-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex items-center justify-between border-b border-white/15 px-4 py-4">
+        <div className="flex items-center justify-between border-b border-white/15 px-5 py-5">
           <BrandMark light showTagline />
           <button
             type="button"
@@ -164,24 +164,24 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           </button>
         </div>
 
-        <div className="border-b border-white/15 px-4 py-4">
-          <div className="inline-flex rounded-full border border-white/20 bg-white/14 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
+        <div className="border-b border-white/15 px-5 py-4">
+          <div className="inline-flex rounded-full border border-white/20 bg-white/14 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/92">
             {roleLabel}
           </div>
           {tenant ? (
-            <div className="mt-3 rounded-2xl border border-white/15 bg-white/10 px-3 py-3">
+            <div className="mt-3 rounded-[1.6rem] border border-white/15 bg-white/10 px-4 py-3.5">
               <div className="truncate text-sm font-semibold text-white">{tenant.name}</div>
-              <div className="mt-1 text-xs uppercase tracking-[0.16em] text-white/80">
+              <div className="mt-1 text-[11px] uppercase tracking-[0.16em] text-white/78">
                 {tenant.plan} {tenant.primary_domain ? `- ${tenant.primary_domain}` : ''}
               </div>
             </div>
           ) : null}
         </div>
 
-        <nav className="sidebar-scroll flex-1 overflow-y-auto px-3 py-4">
+        <nav className="sidebar-scroll flex-1 overflow-y-auto px-4 py-5">
           {sections.map((section) => (
             <div key={section.title} className="mb-6">
-              <div className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/75">{section.title}</div>
+              <div className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.24em] text-white/70">{section.title}</div>
               <div className="space-y-1">
                 {section.items.map((item) => {
                   const Icon = item.icon
@@ -194,20 +194,20 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                         if (window.innerWidth < 1024) onClose()
                       }}
                       className={clsx(
-                        'group flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors',
-                        active ? 'bg-white text-slate-950 shadow-[0_16px_32px_-20px_rgba(255,255,255,0.95)]' : 'text-white/95 hover:bg-[rgba(51,65,85,0.28)] hover:text-white'
+                        'group flex items-center gap-3 rounded-[1.35rem] px-3 py-3 transition-colors',
+                        active ? 'bg-white text-slate-950 shadow-[0_18px_34px_-20px_rgba(255,255,255,0.95)]' : 'text-white/95 hover:bg-white/12 hover:text-white'
                       )}
                     >
                       <span
                         className={clsx(
                           'flex h-9 w-9 items-center justify-center rounded-xl border transition-colors',
-                          active ? 'border-slate-200 bg-slate-100 text-slate-700' : 'border-white/15 bg-white/8 text-white group-hover:bg-white/16'
+                          active ? 'border-sky-100 bg-sky-50 text-sky-700' : 'border-white/15 bg-white/8 text-white group-hover:bg-white/16'
                         )}
                       >
                         <Icon className="h-4.5 w-4.5" />
                       </span>
                       <span className="flex-1 text-[13px] font-bold tracking-[0.01em]">{item.label}</span>
-                      <ChevronRight className={clsx('h-4 w-4 transition-opacity', active ? 'text-slate-700 opacity-100' : 'text-white/80 opacity-0 group-hover:opacity-90')} />
+                      <ChevronRight className={clsx('h-4 w-4 transition-opacity', active ? 'text-sky-700 opacity-100' : 'text-white/80 opacity-0 group-hover:opacity-90')} />
                     </NavLink>
                   )
                 })}
@@ -216,8 +216,8 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           ))}
         </nav>
 
-        <div className="border-t border-white/15 px-4 py-4">
-          <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 px-3 py-3">
+        <div className="border-t border-white/15 px-5 py-4">
+          <div className="flex items-center gap-3 rounded-[1.55rem] border border-white/15 bg-white/10 px-3 py-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/18 text-xs font-bold text-white">
               {user?.full_name?.slice(0, 2).toUpperCase() ?? 'FX'}
             </div>

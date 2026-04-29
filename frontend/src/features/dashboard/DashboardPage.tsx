@@ -99,7 +99,7 @@ interface DashboardOverview {
 }
 
 const chartTooltipStyle = {
-  border: '1px solid #E2E8F0',
+  border: '1px solid #dbe8f6',
   borderRadius: '16px',
   background: '#FFFFFF',
   boxShadow: '0 18px 35px -28px rgba(15, 23, 42, 0.32)',
@@ -291,7 +291,7 @@ export function DashboardPage() {
     { label: 'Record Feed Usage', icon: Wheat, path: '/feed/consumption' },
     { label: 'Record Mortality', icon: Skull, path: '/farm/mortality' },
     hasPermission('dev_admin:read')
-      ? { label: 'Upload Document', icon: FilePlus2, path: '/dev-admin/tenants' }
+      ? { label: 'Register Vendor', icon: FilePlus2, path: '/dev-admin/tenants' }
       : { label: 'Create Sale', icon: Receipt, path: '/sales/orders' },
     { label: 'Open Reports', icon: ClipboardCheck, path: '/reports/production' },
   ]
@@ -317,7 +317,31 @@ export function DashboardPage() {
       <section className="section-header">
         <div>
           <h1 className="section-title">Operations Dashboard</h1>
-          <p className="section-subtitle">Today’s priorities, key farm signals, and recent operational activity.</p>
+          <p className="section-subtitle">Today's priorities, key farm signals, and recent operational activity.</p>
+        </div>
+      </section>
+
+      <section className="hero-surface overflow-hidden rounded-[2rem] px-6 py-6 text-white">
+        <div className="grid gap-6 xl:grid-cols-[1.35fr_0.9fr] xl:items-end">
+          <div>
+            <div className="hero-pill">Admin workspace</div>
+            <h2 className="mt-4 font-display text-4xl uppercase leading-none tracking-[0.04em] text-white sm:text-5xl">
+              Welcome back
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm text-white/80 sm:text-base">
+              Review live performance, act on alerts quickly, and keep vendor, stock, and farm operations moving from one clean control center.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-[1.6rem] border border-white/16 bg-white/10 px-4 py-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/72">Revenue</div>
+              <div className="mt-2 text-2xl font-bold text-white">{formatCurrency(salesThisMonth)}</div>
+            </div>
+            <div className="rounded-[1.6rem] border border-white/16 bg-white/10 px-4 py-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/72">Active Alerts</div>
+              <div className="mt-2 text-2xl font-bold text-white">{alerts.length.toLocaleString()}</div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -344,7 +368,7 @@ export function DashboardPage() {
         <div className="card p-5">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">Today’s Tasks</h2>
+              <h2 className="text-lg font-semibold text-slate-900">Today's Tasks</h2>
               <p className="mt-1 text-sm text-slate-500">Immediate actions for the team.</p>
             </div>
             <ClipboardCheck className="h-5 w-5 text-blue-600" />
@@ -382,11 +406,11 @@ export function DashboardPage() {
           <div className="mt-4 h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={productionTrend}>
-                <CartesianGrid stroke="#E2E8F0" vertical={false} />
-                <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
+                <CartesianGrid stroke="#d9e7f5" vertical={false} />
+                <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: '#5d7691', fontSize: 12 }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5d7691', fontSize: 12 }} />
                 <Tooltip contentStyle={chartTooltipStyle} />
-                <Line type="monotone" dataKey="eggs" stroke="#2563EB" strokeWidth={3} dot={false} />
+                <Line type="monotone" dataKey="eggs" stroke="#1b74d8" strokeWidth={3} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>

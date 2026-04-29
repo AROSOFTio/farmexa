@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { AlertTriangle, BadgeDollarSign, Boxes, ClipboardPlus, PackagePlus, ShoppingBasket, Truck, Wheat } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
+import { useAuth } from '@/features/auth/AuthContext'
 
 type FeedSection = 'stock' | 'purchases' | 'consumption' | 'suppliers'
 
@@ -143,7 +144,13 @@ function formatDate(value?: string | null) {
 
 export function FeedManagementPage({ section }: { section: FeedSection }) {
   const qc = useQueryClient()
+  const { hasPermission } = useAuth()
   const copy = sectionCopy[section]
+  const canManageFeed = hasPermission('feed:write')
+
+  const blockWriteAction = () => {
+    toast.error('You need write access to save changes here.')
+  }
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ['feed-suppliers'],
@@ -329,12 +336,18 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
         </div>
       </div>
 
+      {!canManageFeed ? (
+        <div className="card mb-6 px-5 py-4 text-sm text-slate-500">
+          You can view feed records, but saving suppliers, purchases, stock items, and consumption requires the `feed:write` permission.
+        </div>
+      ) : null}
+
       {section === 'suppliers' && (
         <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
           <div className="card border border-neutral-150 bg-neutral-50 p-6">
             <h2 className="text-xl font-bold text-ink-900">Add supplier</h2>
             <p className="mt-1 text-base text-ink-500">Create a supplier record.</p>
-            <form className="mt-5 space-y-4" onSubmit={supplierForm.handleSubmit((values) => createSupplier.mutate(values))}>
+            <form className="mt-5 space-y-4" onSubmit={supplierForm.handleSubmit((values) => (canManageFeed ? createSupplier.mutate(values) : blockWriteAction()))}>
               <div>
                 <label className="form-label">Supplier name</label>
                 <input className="form-input" {...supplierForm.register('name')} />
@@ -358,7 +371,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
                 <label className="form-label">Address</label>
                 <textarea className="form-input min-h-[120px]" {...supplierForm.register('address')} />
               </div>
-              <button className="btn-primary w-full" disabled={createSupplier.isPending} type="submit">
+              <button className="btn-primary w-full" disabled={!canManageFeed || createSupplier.isPending} type="submit">
                 <Truck className="h-4 w-4" />
                 {createSupplier.isPending ? 'Saving...' : 'Save supplier'}
               </button>
@@ -412,7 +425,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
           <div className="card border border-neutral-150 bg-neutral-50 p-6">
             <h2 className="text-xl font-bold text-ink-900">Add category</h2>
             <p className="mt-1 text-base text-ink-500">Create a feed category.</p>
-            <form className="mt-5 space-y-4" onSubmit={categoryForm.handleSubmit((values) => createCategory.mutate(values))}>
+            <form className="mt-5 space-y-4" onSubmit={categoryForm.handleSubmit((values) => (canManageFeed ? createCategory.mutate(values) : blockWriteAction()))}>
               <div>
                 <label className="form-label">Category name</label>
                 <input className="form-input" {...categoryForm.register('name')} />
@@ -422,7 +435,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
                 <label className="form-label">Description</label>
                 <textarea className="form-input min-h-[120px]" {...categoryForm.register('description')} />
               </div>
-              <button className="btn-primary w-full" disabled={createCategory.isPending} type="submit">
+              <button className="btn-primary w-full" disabled={!canManageFeed || createCategory.isPending} type="submit">
                 <ClipboardPlus className="h-4 w-4" />
                 {createCategory.isPending ? 'Saving...' : 'Save category'}
               </button>
@@ -432,7 +445,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
           <div className="card border border-neutral-150 bg-neutral-50 p-6">
             <h2 className="text-xl font-bold text-ink-900">Add feed item</h2>
             <p className="mt-1 text-base text-ink-500">Create a feed item.</p>
-            <form className="mt-5 space-y-4" onSubmit={itemForm.handleSubmit((values) => createItem.mutate(values))}>
+            <form className="mt-5 space-y-4" onSubmit={itemForm.handleSubmit((values) => (canManageFeed ? createItem.mutate(values) : blockWriteAction()))}>
               <div>
                 <label className="form-label">Item name</label>
                 <input className="form-input" {...itemForm.register('name')} />
@@ -458,7 +471,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
                   <input className="form-input" type="number" min={0} step="0.01" {...itemForm.register('reorder_threshold')} />
                 </div>
               </div>
-              <button className="btn-primary w-full" disabled={createItem.isPending} type="submit">
+              <button className="btn-primary w-full" disabled={!canManageFeed || createItem.isPending} type="submit">
                 <PackagePlus className="h-4 w-4" />
                 {createItem.isPending ? 'Saving...' : 'Save feed item'}
               </button>
@@ -519,7 +532,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
           <div className="card border border-neutral-150 bg-neutral-50 p-6">
             <h2 className="text-xl font-bold text-ink-900">Record purchase</h2>
             <p className="mt-1 text-base text-ink-500">Post a purchase.</p>
-            <form className="mt-5 space-y-4" onSubmit={purchaseForm.handleSubmit((values) => createPurchase.mutate(values))}>
+            <form className="mt-5 space-y-4" onSubmit={purchaseForm.handleSubmit((values) => (canManageFeed ? createPurchase.mutate(values) : blockWriteAction()))}>
               <div>
                 <label className="form-label">Supplier</label>
                 <select className="form-input" {...purchaseForm.register('supplier_id')}>
@@ -562,7 +575,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
                 <label className="form-label">Notes</label>
                 <textarea className="form-input min-h-[120px]" {...purchaseForm.register('notes')} />
               </div>
-              <button className="btn-primary w-full" disabled={createPurchase.isPending} type="submit">
+              <button className="btn-primary w-full" disabled={!canManageFeed || createPurchase.isPending} type="submit">
                 <ShoppingBasket className="h-4 w-4" />
                 {createPurchase.isPending ? 'Saving...' : 'Record purchase'}
               </button>
@@ -618,7 +631,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
           <div className="card border border-neutral-150 bg-neutral-50 p-6">
             <h2 className="text-xl font-bold text-ink-900">Record consumption</h2>
             <p className="mt-1 text-base text-ink-500">Post feed usage.</p>
-            <form className="mt-5 space-y-4" onSubmit={consumptionForm.handleSubmit((values) => createConsumption.mutate(values))}>
+            <form className="mt-5 space-y-4" onSubmit={consumptionForm.handleSubmit((values) => (canManageFeed ? createConsumption.mutate(values) : blockWriteAction()))}>
               <div>
                 <label className="form-label">Batch</label>
                 <select className="form-input" {...consumptionForm.register('batch_id')}>
@@ -651,7 +664,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
                 <label className="form-label">Notes</label>
                 <textarea className="form-input min-h-[120px]" {...consumptionForm.register('notes')} />
               </div>
-              <button className="btn-primary w-full" disabled={createConsumption.isPending} type="submit">
+              <button className="btn-primary w-full" disabled={!canManageFeed || createConsumption.isPending} type="submit">
                 <Wheat className="h-4 w-4" />
                 {createConsumption.isPending ? 'Saving...' : 'Record consumption'}
               </button>

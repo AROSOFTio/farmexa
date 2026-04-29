@@ -30,7 +30,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
     { label: 'Record Eggs', icon: Egg, path: '/farm/eggs' },
     { label: 'Record Mortality', icon: Skull, path: '/farm/mortality' },
     hasPermission('dev_admin:read')
-      ? { label: 'Upload Document', icon: FilePlus2, path: '/dev-admin/tenants' }
+      ? { label: 'Register Vendor', icon: FilePlus2, path: '/dev-admin/tenants' }
       : { label: 'Settings', icon: Settings, path: '/settings/config' },
   ]
 
@@ -58,13 +58,13 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         <BrandMark compact />
       </div>
 
-      <div className="hidden w-full max-w-md lg:block">
+      <div className="hidden w-full max-w-lg lg:block">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="search"
-            placeholder="Search batches, customers, invoices..."
-            className="form-input h-11 rounded-2xl border-slate-200 bg-slate-50 pl-10"
+            placeholder="Search batches, suppliers, invoices..."
+            className="form-input h-11 rounded-2xl border-slate-200/80 bg-white/80 pl-10"
           />
         </div>
       </div>
@@ -75,7 +75,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         <button
           type="button"
           onClick={() => setQuickOpen((open) => !open)}
-          className="btn-secondary rounded-2xl border-slate-200 bg-white"
+          className="btn-secondary rounded-2xl border-slate-200 bg-white/90"
         >
           <ClipboardPlus className="h-4 w-4 text-slate-600" />
           Quick Actions
@@ -109,11 +109,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         ) : null}
       </div>
 
-      <button
-        type="button"
-        className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600"
-        aria-label="Notifications"
-      >
+      <button type="button" className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white/90 text-slate-600" aria-label="Notifications">
         <Bell className="h-4.5 w-4.5" />
         <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-white" />
       </button>
@@ -122,9 +118,9 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         <button
           type="button"
           onClick={() => setProfileOpen((open) => !open)}
-          className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2"
+          className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/90 px-3 py-2"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-700 text-xs font-bold text-white">{initials}</div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-blue-700 text-xs font-bold text-white">{initials}</div>
           <div className="hidden text-left sm:block">
             <div className="text-sm font-semibold text-slate-900">{user?.full_name ?? 'Loading...'}</div>
             <div className="text-xs text-slate-500">{tenant?.name ?? roleLabel}</div>

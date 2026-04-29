@@ -2,34 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&display=swap');
 
 @layer base {
   :root {
     color-scheme: light;
-    --app-bg: #f8fafc;
+    --app-bg: radial-gradient(circle at top left, #d9ebff 0%, #b7d6fb 22%, #edf4fb 58%, #f7fbff 100%);
     --surface-card: #ffffff;
-    --surface-soft: #f8fafc;
-    --surface-muted: #eef2f7;
-    --sidebar-bg: #475569;
-    --sidebar-active: #334155;
-    --topbar-bg: rgba(255, 255, 255, 0.92);
-    --border-subtle: #e2e8f0;
-    --border-strong: #cbd5e1;
+    --surface-soft: #f3f8ff;
+    --surface-muted: #e7f0fb;
+    --sidebar-bg: linear-gradient(180deg, #0f5fbf 0%, #1573d4 36%, #0c4f9b 100%);
+    --sidebar-active: #0c4c95;
+    --topbar-bg: rgba(255, 255, 255, 0.84);
+    --border-subtle: #dbe8f6;
+    --border-strong: #bfd3ea;
     --text-strong: #0f172a;
-    --text-default: #1e293b;
-    --text-muted: #64748b;
-    --brand-primary: #334155;
-    --brand-accent: #f59e0b;
+    --text-default: #243448;
+    --text-muted: #68809a;
+    --brand-primary: #1166c2;
+    --brand-accent: #2f9bff;
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
-    --info: #3b82f6;
-    --shadow-card: 0 16px 30px -22px rgba(15, 23, 42, 0.22);
-    --shadow-card-hover: 0 22px 45px -26px rgba(15, 23, 42, 0.24);
-    --shadow-shell: 0 22px 40px -30px rgba(15, 23, 42, 0.35);
-    --chart-grid: #e2e8f0;
-    --chart-axis: #64748b;
+    --info: #2563eb;
+    --shadow-card: 0 18px 44px -28px rgba(17, 70, 136, 0.18);
+    --shadow-card-hover: 0 26px 55px -30px rgba(17, 70, 136, 0.22);
+    --shadow-shell: 0 28px 70px -32px rgba(11, 75, 142, 0.48);
+    --chart-grid: #d9e7f5;
+    --chart-axis: #5d7691;
   }
 
   *,
@@ -48,7 +48,7 @@
   body {
     margin: 0;
     min-height: 100vh;
-    font-family: Inter, "Segoe UI", sans-serif;
+    font-family: Manrope, "Segoe UI", sans-serif;
     font-size: 14px;
     line-height: 1.5;
     background: var(--app-bg);
@@ -115,9 +115,10 @@
 
   .card {
     @apply rounded-3xl;
-    background: var(--surface-card);
-    border: 1px solid var(--border-subtle);
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(219, 232, 246, 0.95);
     box-shadow: var(--shadow-card);
+    backdrop-filter: blur(16px);
   }
 
   .card-hover {
@@ -131,8 +132,8 @@
 
   .kpi-card {
     @apply rounded-3xl p-5;
-    background: var(--surface-card);
-    border: 1px solid var(--border-subtle);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(243, 248, 255, 0.96) 100%);
+    border: 1px solid rgba(219, 232, 246, 0.95);
     box-shadow: var(--shadow-card);
   }
 
@@ -196,7 +197,7 @@
   }
 
   .badge-brand {
-    background: rgba(51, 65, 85, 0.12);
+    background: rgba(17, 102, 194, 0.1);
     color: var(--brand-primary);
   }
 
@@ -234,14 +235,14 @@
 
   .btn-primary {
     @apply btn px-4 py-2.5 text-white;
-    background: var(--brand-primary);
-    border: 1px solid var(--brand-primary);
-    box-shadow: 0 12px 28px -20px rgba(51, 65, 85, 0.45);
+    background: linear-gradient(135deg, #0f5fbf 0%, #2f91f7 100%);
+    border: 1px solid rgba(17, 102, 194, 0.75);
+    box-shadow: 0 18px 34px -22px rgba(17, 102, 194, 0.5);
   }
 
   .btn-primary:hover {
-    background: var(--sidebar-active);
-    border-color: var(--sidebar-active);
+    background: linear-gradient(135deg, #0c54aa 0%, #207fdd 100%);
+    border-color: rgba(12, 84, 170, 0.9);
   }
 
   .btn-secondary {
@@ -275,17 +276,34 @@
 
   .topbar {
     background: var(--topbar-bg);
-    border-bottom: 1px solid var(--border-subtle);
-    box-shadow: 0 10px 30px -26px rgba(15, 23, 42, 0.38);
-    backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(219, 232, 246, 0.82);
+    box-shadow: 0 12px 30px -26px rgba(15, 23, 42, 0.2);
+    backdrop-filter: blur(18px);
   }
 
   .status-dot {
     @apply inline-block h-2.5 w-2.5 rounded-full;
   }
+
+  .hero-surface {
+    background: linear-gradient(135deg, rgba(14, 94, 189, 0.97) 0%, rgba(31, 132, 230, 0.94) 55%, rgba(109, 190, 255, 0.88) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 30px 65px -35px rgba(11, 75, 142, 0.48);
+  }
+
+  .hero-pill {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em];
+    background: rgba(255, 255, 255, 0.16);
+    color: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+  }
 }
 
 @layer utilities {
+  .font-display {
+    font-family: Oswald, Impact, sans-serif;
+  }
+
   .text-balance {
     text-wrap: balance;
   }

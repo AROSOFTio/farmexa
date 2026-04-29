@@ -10,6 +10,7 @@ from typing import Iterable
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -207,55 +208,61 @@ class DeveloperAdminService:
         slug = self._slugify(data.slug or data.name)
         if not slug:
             raise HTTPException(status_code=422, detail="Tenant name or slug is invalid.")
+        if data.subscription_start and data.subscription_expiry and data.subscription_expiry < data.subscription_start:
+            raise HTTPException(status_code=422, detail="Subscription expiry cannot be earlier than the subscription start date.")
         existing = await self.db.execute(select(Tenant).where((Tenant.slug == slug) | (Tenant.name == data.name)))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=409, detail="A tenant with the same name or slug already exists.")
 
-        plan = await self._get_plan(data.plan)
-        billing_cycle = self._parse_billing_cycle(data.billing_cycle)
-        tenant = Tenant(
-            name=data.name,
-            slug=slug,
-            business_name=data.business_name or data.name,
-            contact_person=data.contact_person,
-            email=data.email,
-            phone=data.phone,
-            address=data.address,
-            country=data.country,
-            status=TenantStatus.TRIAL if not data.subscription_expiry else TenantStatus.ACTIVE,
-            plan=plan.code,
-            billing_cycle=billing_cycle,
-            subscription_start=data.subscription_start,
-            subscription_expiry=data.subscription_expiry,
-            notes=data.notes,
-        )
-        self.db.add(tenant)
-        await self.db.flush()
-
-        module_keys = data.enabled_modules if plan.is_custom and data.enabled_modules else await self._get_plan_module_keys(plan.code)
-        await self._sync_tenant_modules(tenant, module_keys, disable_missing=True)
-        await self._ensure_primary_domain(tenant, data.domain)
-        await self._create_subscription(
-            tenant,
-            plan_code=plan.code,
-            billing_cycle=billing_cycle.value,
-            start_date=data.subscription_start,
-            expiry_date=data.subscription_expiry,
-            notes=data.notes,
-            status="trial" if not data.subscription_expiry else "active",
-        )
-
-        self.db.add(
-            SubscriptionHistory(
-                tenant_id=tenant.id,
-                changed_by_user_id=actor.id,
-                event_type="created",
-                new_plan=plan.code,
-                notes=f"Tenant created on {plan.name}",
+        try:
+            plan = await self._get_plan(data.plan)
+            billing_cycle = self._parse_billing_cycle(data.billing_cycle)
+            tenant = Tenant(
+                name=data.name,
+                slug=slug,
+                business_name=data.business_name or data.name,
+                contact_person=data.contact_person,
+                email=data.email,
+                phone=data.phone,
+                address=data.address,
+                country=data.country,
+                status=TenantStatus.TRIAL if not data.subscription_expiry else TenantStatus.ACTIVE,
+                plan=plan.code,
+                billing_cycle=billing_cycle,
+                subscription_start=data.subscription_start,
+                subscription_expiry=data.subscription_expiry,
+                notes=data.notes,
             )
-        )
-        await self.db.commit()
-        return await self._get_tenant(tenant.id)
+            self.db.add(tenant)
+            await self.db.flush()
+
+            module_keys = data.enabled_modules if plan.is_custom and data.enabled_modules else await self._get_plan_module_keys(plan.code)
+            await self._sync_tenant_modules(tenant, module_keys, disable_missing=True)
+            await self._ensure_primary_domain(tenant, data.domain)
+            await self._create_subscription(
+                tenant,
+                plan_code=plan.code,
+                billing_cycle=billing_cycle.value,
+                start_date=data.subscription_start,
+                expiry_date=data.subscription_expiry,
+                notes=data.notes,
+                status="trial" if not data.subscription_expiry else "active",
+            )
+
+            self.db.add(
+                SubscriptionHistory(
+                    tenant_id=tenant.id,
+                    changed_by_user_id=actor.id,
+                    event_type="created",
+                    new_plan=plan.code,
+                    notes=f"Tenant created on {plan.name}",
+                )
+            )
+            await self.db.commit()
+            return await self._get_tenant(tenant.id)
+        except IntegrityError as exc:
+            await self.db.rollback()
+            raise HTTPException(status_code=400, detail="Vendor registration failed because some values are invalid or already in use.") from exc
 
     async def update_tenant(self, tenant_id: int, data: TenantUpdate) -> Tenant:
         tenant = await self._get_tenant(tenant_id)

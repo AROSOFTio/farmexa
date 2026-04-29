@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner'
 import api from '@/services/api'
 import { Modal } from '@/components/Modal'
+import { useAuth } from '@/features/auth/AuthContext'
 
 type AdminSection = 'tenants' | 'domains' | 'plans' | 'modules' | 'billing' | 'control'
 
@@ -179,12 +180,14 @@ function sectionMeta(section: AdminSection) {
 
 export function TenantsPage({ section = 'tenants' }: { section?: AdminSection }) {
   const queryClient = useQueryClient()
+  const { hasPermission } = useAuth()
   const [isTenantModalOpen, setIsTenantModalOpen] = useState(false)
   const [isModulesModalOpen, setIsModulesModalOpen] = useState(false)
   const [isDomainModalOpen, setIsDomainModalOpen] = useState(false)
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null)
 
   const meta = sectionMeta(section)
+  const canManageTenants = hasPermission('dev_admin:write')
 
   const { data: tenants, isLoading } = useQuery<Tenant[]>({
     queryKey: ['dev-admin-tenants'],
@@ -321,12 +324,12 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
     <div className="card overflow-hidden">
       <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">Tenant Directory</h2>
-          <p className="mt-1 text-sm text-slate-500">Each tenant includes plan, module, domain, and status state.</p>
+          <h2 className="text-lg font-semibold text-slate-900">Vendor Directory</h2>
+          <p className="mt-1 text-sm text-slate-500">Each vendor workspace includes plan, module, domain, and status state.</p>
         </div>
-        <button onClick={() => setIsTenantModalOpen(true)} className="btn-primary">
+        <button onClick={() => setIsTenantModalOpen(true)} className="btn-primary" disabled={!canManageTenants}>
           <Plus className="h-4 w-4" />
-          Onboard Tenant
+          Register Vendor
         </button>
       </div>
       <div className="overflow-x-auto">
@@ -371,6 +374,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                             setSelectedTenant(tenant)
                             setIsModulesModalOpen(true)
                           }}
+                          disabled={!canManageTenants}
                           className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                         >
                           Modules
@@ -382,6 +386,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                             setIsDomainModalOpen(true)
                             resetDomain({ host: tenant.domains.find((domain) => domain.is_primary)?.host ?? '', is_primary: true })
                           }}
+                          disabled={!canManageTenants}
                           className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                         >
                           Domain
@@ -390,6 +395,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                           <button
                             type="button"
                             onClick={() => reactivateMutation.mutate(tenant.id)}
+                            disabled={!canManageTenants}
                             className="rounded-xl border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
                           >
                             <Power className="h-4 w-4" />
@@ -398,6 +404,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                           <button
                             type="button"
                             onClick={() => suspendMutation.mutate(tenant.id)}
+                            disabled={!canManageTenants}
                             className="rounded-xl border border-amber-200 px-3 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50"
                           >
                             <PowerOff className="h-4 w-4" />
@@ -579,8 +586,8 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
       </div>
 
       {(section === 'tenants' || section === 'control') && billing ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="kpi-card">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="kpi-card">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tenants</div>
@@ -621,14 +628,20 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
 
       {renderSection()}
 
+      {!canManageTenants ? (
+        <div className="card px-5 py-4 text-sm text-slate-500">
+          You currently have read-only access in developer admin. Vendor registration and status changes require the `dev_admin:write` permission.
+        </div>
+      ) : null}
+
       <Modal
         isOpen={isTenantModalOpen}
         onClose={() => {
           setIsTenantModalOpen(false)
           reset()
         }}
-        title="Onboard Tenant"
-        description="Create the tenant, assign the plan, and provision the initial domain and subscription."
+        title="Register Vendor"
+        description="Create the vendor workspace, assign the plan, and provision the initial domain and subscription."
       >
         <form onSubmit={handleSubmit(onSubmitTenant)} className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
@@ -686,7 +699,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
           <div className="md:col-span-2 flex justify-end gap-3 pt-2">
             <button type="button" className="btn-secondary" onClick={() => setIsTenantModalOpen(false)}>Cancel</button>
             <button type="submit" className="btn-primary" disabled={createTenantMutation.isPending}>
-              {createTenantMutation.isPending ? 'Saving...' : 'Create Tenant'}
+              {createTenantMutation.isPending ? 'Saving...' : 'Create Vendor'}
             </button>
           </div>
         </form>
