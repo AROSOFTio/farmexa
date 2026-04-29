@@ -3,7 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { Sidebar } from '@/layouts/Sidebar'
 import { Topbar } from '@/layouts/Topbar'
 
-const SIDEBAR_WIDTH = 228
+const SIDEBAR_WIDTH = 220
 
 export function AppLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -22,8 +22,8 @@ export function AppLayout() {
 
         <Topbar onOpenSidebar={() => setIsSidebarOpen(true)} />
 
-        <main className="main-offset relative flex-1" style={{ paddingTop: '4.5rem', minHeight: '100vh' }}>
-          <div className="relative mx-auto w-full max-w-[1720px] px-4 py-4 sm:px-5 lg:px-6 lg:py-5">
+        <main className="main-offset relative flex-1" style={{ paddingTop: '4.15rem', minHeight: '100vh' }}>
+          <div className="relative mx-auto w-full max-w-[1760px] px-4 py-4 sm:px-5 lg:px-6 lg:py-5">
             <Outlet />
           </div>
         </main>

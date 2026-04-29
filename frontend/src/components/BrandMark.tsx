@@ -37,15 +37,15 @@ export function BrandMark({
 
       {!compact && (
         <div className="min-w-0">
-          <div className={clsx('text-[15px] font-semibold leading-tight tracking-[0.01em]', textClass)}>
+          <div className={clsx('text-[14.5px] font-semibold leading-tight', textClass)}>
             {APP_SHORT_NAME}
           </div>
           {showTagline ? (
-            <div className={clsx('mt-0.5 max-w-[120px] text-[11px] font-medium leading-[1.2] tracking-[0.01em]', mutedClass)}>
+            <div className={clsx('mt-0.5 max-w-[118px] text-[10.5px] font-medium leading-[1.2]', mutedClass)}>
               {APP_TAGLINE}
             </div>
           ) : (
-            <div className={clsx('text-xs font-medium tracking-[0.08em]', mutedClass)}>
+            <div className={clsx('text-[11px] font-medium tracking-[0.04em]', mutedClass)}>
               ERP
             </div>
           )}

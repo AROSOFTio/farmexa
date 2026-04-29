@@ -174,11 +174,11 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
       <aside
         className={clsx(
-          'sidebar fixed inset-y-0 left-0 z-50 flex w-[228px] flex-col overflow-hidden transition-transform duration-300 lg:translate-x-0',
+          'sidebar fixed inset-y-0 left-0 z-50 flex w-[220px] flex-col overflow-hidden transition-transform duration-300 lg:translate-x-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex items-center justify-between border-b px-3.5 py-3">
+        <div className="flex items-center justify-between border-b px-3 py-3">
           <BrandMark light showTagline />
           <button
             type="button"
@@ -190,14 +190,14 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           </button>
         </div>
 
-        <div className="border-b px-3.5 py-2">
-          <div className="inline-flex rounded-full border border-[var(--sidebar-panel-border)] bg-[var(--sidebar-panel)] px-3 py-1 text-[8.5px] font-semibold uppercase tracking-[0.18em] text-[var(--sidebar-text-muted)]">
+        <div className="border-b px-3 py-2.5">
+          <div className="inline-flex rounded-full border border-[var(--sidebar-panel-border)] bg-[var(--sidebar-panel)] px-3 py-1 text-[8px] font-semibold uppercase tracking-[0.14em] text-[var(--sidebar-text-muted)]">
             {roleLabel}
           </div>
           {tenant ? (
-            <div className="mt-2 rounded-[13px] border border-[var(--sidebar-panel-border)] bg-[var(--sidebar-panel)] px-3 py-2">
-              <div className="truncate text-[11.5px] font-semibold text-[var(--sidebar-heading)]">{tenant.name}</div>
-              <div className="mt-1 truncate text-[9.5px] tracking-[0.02em] text-[var(--sidebar-text-muted)]">
+            <div className="mt-2 rounded-[12px] border border-[var(--sidebar-panel-border)] bg-[var(--sidebar-panel)] px-3 py-2.5">
+              <div className="truncate text-[11.5px] font-semibold leading-tight text-[var(--sidebar-heading)]">{tenant.name}</div>
+              <div className="mt-1 truncate text-[9.5px] text-[var(--sidebar-text-muted)]">
                 {tenant.plan} {tenant.primary_domain ? `| ${tenant.primary_domain}` : ''}
               </div>
             </div>
@@ -207,8 +207,8 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         <nav className="sidebar-scroll flex-1 overflow-y-auto px-2 py-2.5">
           {sections.map((section) => (
             <div key={section.title} className="mb-3">
-              <div className="mb-1 px-2 text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--sidebar-heading)]">{section.title}</div>
-              <div className="space-y-0.5">
+              <div className="mb-1.5 px-2 text-[8.5px] font-semibold uppercase tracking-[0.14em] text-[var(--sidebar-text-muted)]">{section.title}</div>
+              <div className="space-y-1">
                 {section.items.map((item) => {
                   const Icon = item.icon
                   const active = location.pathname.startsWith(item.path)
@@ -220,7 +220,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                         if (window.innerWidth < 1024) onClose()
                       }}
                       className={clsx(
-                        'group flex items-center gap-1.5 rounded-[10px] px-2 py-1.25 transition-colors',
+                        'group flex items-center gap-2 rounded-[11px] px-2.5 py-2 transition-colors',
                         active
                           ? 'bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)]'
                           : 'text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-heading)]'
@@ -228,13 +228,13 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                     >
                       <span
                         className={clsx(
-                          'flex h-[22px] w-[22px] items-center justify-center rounded-md transition-colors',
-                          active ? 'bg-black/10 text-white' : 'bg-transparent text-[var(--sidebar-icon)] group-hover:text-[var(--brand-primary)]'
+                          'flex h-[20px] w-[20px] items-center justify-center rounded-md transition-colors',
+                          active ? 'bg-transparent text-white' : 'bg-transparent text-[var(--sidebar-icon)] group-hover:text-[var(--brand-primary)]'
                         )}
                       >
-                        <Icon className="h-[13px] w-[13px] stroke-[2.05]" />
+                        <Icon className="h-[13px] w-[13px] stroke-[2]" />
                       </span>
-                      <span className="flex-1 text-[12px] font-medium leading-[1.15rem] tracking-[0.003em]">{item.label}</span>
+                      <span className="flex-1 text-[12.5px] font-medium leading-[1.15rem]">{item.label}</span>
                       <ChevronRight
                         className={clsx(
                           'h-[13px] w-[13px] transition-opacity',
@@ -249,14 +249,14 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           ))}
         </nav>
 
-        <div className="border-t px-3.5 py-2">
-          <div className="flex items-center gap-2.5 rounded-[13px] border border-[var(--sidebar-panel-border)] bg-[var(--sidebar-panel)] px-3 py-2">
+        <div className="border-t px-3 py-2.5">
+          <div className="flex items-center gap-2.5 rounded-[12px] border border-[var(--sidebar-panel-border)] bg-[var(--sidebar-panel)] px-3 py-2.5">
             <div className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[var(--surface-muted)] text-[10px] font-semibold text-[var(--sidebar-heading)]">
               {user?.full_name?.slice(0, 2).toUpperCase() ?? 'FX'}
             </div>
             <div className="min-w-0">
-              <div className="truncate text-[11.5px] font-semibold text-[var(--sidebar-heading)]">{user?.full_name ?? 'Loading...'}</div>
-              <div className="truncate text-[9.5px] text-[var(--sidebar-text-muted)]">{userTitle}</div>
+              <div className="truncate text-[11.5px] font-semibold leading-tight text-[var(--sidebar-heading)]">{user?.full_name ?? 'Loading...'}</div>
+              <div className="truncate text-[9.5px] leading-tight text-[var(--sidebar-text-muted)]">{userTitle}</div>
             </div>
           </div>
         </div>

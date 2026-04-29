@@ -108,9 +108,9 @@ interface DashboardOverview {
 
 const chartTooltipStyle = {
   border: '1px solid var(--border-subtle)',
-  borderRadius: '14px',
+  borderRadius: '12px',
   background: 'var(--surface-card)',
-  boxShadow: '0 12px 24px -20px rgba(0, 0, 0, 0.72)',
+  boxShadow: '0 16px 32px -28px rgba(15, 23, 42, 0.28)',
 }
 
 const saleableOutputTypes = new Set<string>([
@@ -376,11 +376,11 @@ export function DashboardPage() {
   ]
 
   return (
-    <div className="animate-fade-in space-y-4 pb-5">
+    <div className="animate-fade-in space-y-5 pb-5">
       <section className="section-header">
         <div>
           <h1 className="section-title">Dashboard</h1>
-          <p className="section-subtitle">Overview</p>
+          <p className="section-subtitle">Operational snapshot</p>
         </div>
       </section>
 
@@ -407,10 +407,10 @@ export function DashboardPage() {
             <div key={card.title} className="kpi-card px-5 py-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">{card.title}</div>
+                  <div className="text-[11px] font-semibold tracking-[0.08em] text-[var(--text-muted)]">{card.title}</div>
                   <div className="mt-2 text-[1.05rem] font-semibold text-[var(--text-strong)] sm:text-[1.75rem]">{card.value}</div>
                 </div>
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(52,168,83,0.1)] text-[var(--brand-primary)]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(36,179,90,0.08)] text-[var(--brand-primary)]">
                   <Icon className="h-4 w-4" />
                 </div>
               </div>
@@ -431,7 +431,7 @@ export function DashboardPage() {
                 key={task.title}
                 type="button"
                 onClick={() => navigate(task.path)}
-                className="flex w-full items-start justify-between rounded-[14px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3 text-left hover:bg-[var(--surface-muted)]"
+                className="flex w-full items-start justify-between rounded-[12px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3 text-left hover:bg-[var(--surface-muted)]"
               >
                 <div>
                   <div className="text-[14px] font-semibold text-[var(--text-strong)]">{task.title}</div>
@@ -440,7 +440,7 @@ export function DashboardPage() {
                 <ArrowRight className="mt-1 h-4 w-4 text-[var(--brand-primary)]" />
               </button>
             )) : (
-              <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-8 text-center text-[13px] text-[var(--text-muted)]">
+              <div className="rounded-[12px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-8 text-center text-[13px] text-[var(--text-muted)]">
                 No tasks
               </div>
             )}
@@ -472,7 +472,7 @@ export function DashboardPage() {
           </div>
           <div className="mt-4 space-y-2.5">
             {alerts.length ? alerts.map((alert) => (
-              <div key={`${alert.title}-${alert.detail}`} className="rounded-[14px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+              <div key={`${alert.title}-${alert.detail}`} className="rounded-[12px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
                 <div className="flex items-center gap-2">
                   <span className="status-dot bg-[var(--brand-primary)]" />
                   <div className="text-[14px] font-semibold text-[var(--text-strong)]">{alert.title}</div>
@@ -480,7 +480,7 @@ export function DashboardPage() {
                 <div className="mt-0.5 text-[13px] text-[var(--text-muted)]">{alert.detail}</div>
               </div>
             )) : (
-              <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-8 text-center text-[13px] text-[var(--text-muted)]">
+              <div className="rounded-[12px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-8 text-center text-[13px] text-[var(--text-muted)]">
                 No alerts
               </div>
             )}
@@ -494,7 +494,7 @@ export function DashboardPage() {
           <div className="card p-4">
             <div className="flex items-center gap-2 text-[var(--text-muted)]">
               <Scissors className="h-4 w-4 text-[var(--brand-primary)]" />
-              <span className="text-[11px] font-bold uppercase tracking-[0.16em]">Cut parts</span>
+              <span className="text-[11px] font-semibold tracking-[0.08em]">Cut parts</span>
             </div>
             <div className="mt-3 text-[1.6rem] font-semibold text-[var(--text-strong)]">{processingSummary.cutLines}</div>
             <div className="mt-1 text-[13px] text-[var(--text-muted)]">Saleable cuts and processed poultry items already posted.</div>
@@ -502,7 +502,7 @@ export function DashboardPage() {
           <div className="card p-4">
             <div className="flex items-center gap-2 text-[var(--text-muted)]">
               <Boxes className="h-4 w-4 text-[var(--brand-primary)]" />
-              <span className="text-[11px] font-bold uppercase tracking-[0.16em]">Byproducts</span>
+              <span className="text-[11px] font-semibold tracking-[0.08em]">Byproducts</span>
             </div>
             <div className="mt-3 text-[1.6rem] font-semibold text-[var(--text-strong)]">{processingSummary.byproductLines}</div>
             <div className="mt-1 text-[13px] text-[var(--text-muted)]">Manure, feet, and head batches transferred into inventory.</div>
@@ -510,7 +510,7 @@ export function DashboardPage() {
           <div className="card p-4">
             <div className="flex items-center gap-2 text-[var(--text-muted)]">
               <Package className="h-4 w-4 text-[var(--brand-primary)]" />
-              <span className="text-[11px] font-bold uppercase tracking-[0.16em]">Processed kg</span>
+              <span className="text-[11px] font-semibold tracking-[0.08em]">Processed kg</span>
             </div>
             <div className="mt-3 text-[1.6rem] font-semibold text-[var(--text-strong)]">{processingSummary.totalKg.toLocaleString()} kg</div>
             <div className="mt-1 text-[13px] text-[var(--text-muted)]">Combined output quantity from approved slaughter postings.</div>
@@ -523,17 +523,17 @@ export function DashboardPage() {
           <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Recent</h2>
           <div className="mt-4 space-y-2.5">
             {recentActivity.length ? recentActivity.map((entry) => (
-              <div key={`${entry.type}-${entry.detail}-${entry.date}`} className="flex items-start justify-between rounded-[14px] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-3">
+              <div key={`${entry.type}-${entry.detail}-${entry.date}`} className="flex items-start justify-between rounded-[12px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
                 <div>
                   <div className="text-[14px] font-semibold text-[var(--text-strong)]">{entry.type}</div>
                   <div className="mt-0.5 text-[13px] text-[var(--text-muted)]">{entry.detail}</div>
                 </div>
-                <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--text-muted)]">
                   {new Date(entry.date).toLocaleDateString('en-UG', { month: 'short', day: 'numeric' })}
                 </div>
               </div>
             )) : (
-              <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-8 text-center text-[13px] text-[var(--text-muted)]">
+              <div className="rounded-[12px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-8 text-center text-[13px] text-[var(--text-muted)]">
                 No activity
               </div>
             )}
@@ -550,9 +550,9 @@ export function DashboardPage() {
                   key={action.label}
                   type="button"
                   onClick={() => navigate(action.path)}
-                  className="flex items-center gap-3 rounded-[14px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-2.5 text-left hover:bg-[var(--surface-muted)]"
+                  className="flex items-center gap-3 rounded-[12px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-2.5 text-left hover:bg-[var(--surface-muted)]"
                 >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(52,168,83,0.1)] text-[var(--brand-primary)]">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(36,179,90,0.08)] text-[var(--brand-primary)]">
                     <Icon className="h-4 w-4" />
                   </span>
                   <span className="text-[14px] font-semibold text-[var(--text-strong)]">{action.label}</span>

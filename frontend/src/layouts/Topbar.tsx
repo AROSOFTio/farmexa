@@ -59,7 +59,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   }
 
   return (
-    <header className="topbar fixed right-0 top-0 z-30 flex h-[68px] items-center gap-2.5 px-4 sm:px-5 lg:px-5">
+    <header className="topbar fixed right-0 top-0 z-30 flex h-[64px] items-center gap-2.5 px-4 sm:px-5 lg:px-5">
       <button
         type="button"
         onClick={onOpenSidebar}
@@ -76,7 +76,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
       <div className="hidden w-full max-w-[390px] lg:block">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[var(--text-muted)]" />
-          <input type="search" placeholder="Search" className="form-input h-9 rounded-full border-white/5 bg-[var(--surface-card)] pl-10" />
+          <input type="search" placeholder="Search" className="form-input h-10 rounded-full border-[var(--border-subtle)] bg-[var(--surface-soft)] pl-10" />
         </div>
       </div>
 
@@ -106,9 +106,9 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                       setQuickOpen(false)
                       navigate(action.path)
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
+                    className="flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2.5 text-left text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
                   >
-                    <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[rgba(52,168,83,0.1)] text-[var(--brand-primary)]">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[rgba(36,179,90,0.1)] text-[var(--brand-primary)]">
                       <Icon className="h-[15px] w-[15px]" />
                     </span>
                     {action.label}
@@ -159,7 +159,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
               <div className="border-b border-[var(--border-subtle)] px-4 py-4">
                 <div className="text-sm font-semibold text-[var(--text-strong)]">{user?.full_name}</div>
                 <div className="mt-1 text-xs text-[var(--text-muted)]">{user?.email}</div>
-                <div className="mt-1 text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">{profileLabel}</div>
+                <div className="mt-1 text-[11px] uppercase tracking-[0.08em] text-[var(--text-muted)]">{profileLabel}</div>
               </div>
               <div className="p-2">
                 {hasPermission('settings:read') ? (
@@ -169,9 +169,9 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                       setProfileOpen(false)
                       navigate('/settings/config')
                     }}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
+                    className="flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
                   >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(52,168,83,0.1)] text-[var(--brand-primary)]">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(36,179,90,0.1)] text-[var(--brand-primary)]">
                       <Settings className="h-4 w-4" />
                     </span>
                     Settings
@@ -180,9 +180,9 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
+                  className="flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
                 >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(52,168,83,0.1)] text-[var(--brand-primary)]">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(36,179,90,0.1)] text-[var(--brand-primary)]">
                     <LogOut className="h-4 w-4" />
                   </span>
                   Sign out
