@@ -15,11 +15,11 @@ export function BrandMark({
   showTagline = false,
 }: BrandMarkProps) {
   const textClass = light ? 'text-white' : 'text-ink-900'
-  const mutedClass = light ? 'text-white/70' : 'text-ink-500'
+  const mutedClass = light ? 'text-white/58' : 'text-ink-500'
 
   return (
-    <div className={clsx('flex items-center gap-3', className)}>
-      <svg viewBox="0 0 96 96" aria-hidden="true" className={clsx(compact ? 'h-10 w-10' : 'h-12 w-12', 'shrink-0')}>
+    <div className={clsx('flex items-center gap-2.5', className)}>
+      <svg viewBox="0 0 96 96" aria-hidden="true" className={clsx(compact ? 'h-9 w-9' : 'h-11 w-11', 'shrink-0')}>
         <path
           d="M17 60c0-19 10-35 30-47-10 10-15 21-15 34 0 11 4 20 13 28 8 7 18 11 29 11-8 5-17 7-26 7-19 0-31-12-31-33Z"
           fill="#34a853"
@@ -33,11 +33,11 @@ export function BrandMark({
 
       {!compact && (
         <div className="min-w-0">
-          <div className={clsx('text-xl font-semibold tracking-[0.02em]', textClass)}>
+          <div className={clsx('text-[15px] font-semibold leading-tight tracking-[0.01em]', textClass)}>
             {APP_SHORT_NAME}
           </div>
           {showTagline ? (
-            <div className={clsx('text-[0.72rem] font-medium tracking-[0.06em]', mutedClass)}>
+            <div className={clsx('mt-0.5 max-w-[120px] text-[11px] font-medium leading-[1.2] tracking-[0.01em]', mutedClass)}>
               {APP_TAGLINE}
             </div>
           ) : (

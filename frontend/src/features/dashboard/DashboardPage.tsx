@@ -310,7 +310,7 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="animate-fade-in space-y-5 pb-6">
+    <div className="animate-fade-in space-y-4 pb-5">
       <section className="section-header">
         <div>
           <h1 className="section-title">Dashboard</h1>
@@ -318,18 +318,18 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {primaryCards.map((card) => {
           const Icon = card.icon
           return (
-            <div key={card.title} className="kpi-card">
+            <div key={card.title} className="kpi-card px-5 py-4">
               <div className="flex items-start justify-between">
                 <div>
                   <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">{card.title}</div>
-                  <div className="mt-2.5 text-[1.05rem] font-semibold text-[var(--text-strong)] sm:text-[1.9rem]">{card.value}</div>
+                  <div className="mt-2 text-[1.05rem] font-semibold text-[var(--text-strong)] sm:text-[1.75rem]">{card.value}</div>
                 </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(52,168,83,0.1)] text-[var(--brand-primary)]">
-                  <Icon className="h-[18px] w-[18px]" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(52,168,83,0.1)] text-[var(--brand-primary)]">
+                  <Icon className="h-4 w-4" />
                 </div>
               </div>
             </div>
@@ -337,23 +337,23 @@ export function DashboardPage() {
         })}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.15fr_0.9fr]">
+      <section className="grid gap-5 xl:grid-cols-[0.9fr_1.2fr_0.82fr]">
         <div className="card p-5">
           <div className="flex items-center justify-between">
             <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Tasks</h2>
             <ClipboardCheck className="h-[18px] w-[18px] text-[var(--brand-primary)]" />
           </div>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 space-y-2.5">
             {todayTasks.length ? todayTasks.map((task) => (
               <button
                 key={task.title}
                 type="button"
                 onClick={() => navigate(task.path)}
-                className="flex w-full items-start justify-between rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3 text-left hover:bg-[var(--surface-muted)]"
+                className="flex w-full items-start justify-between rounded-[14px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3 text-left hover:bg-[var(--surface-muted)]"
               >
                 <div>
                   <div className="text-[14px] font-semibold text-[var(--text-strong)]">{task.title}</div>
-                  <div className="mt-1 text-[13px] text-[var(--text-muted)]">{task.detail}</div>
+                  <div className="mt-0.5 text-[13px] text-[var(--text-muted)]">{task.detail}</div>
                 </div>
                 <ArrowRight className="mt-1 h-4 w-4 text-[var(--brand-primary)]" />
               </button>
@@ -370,7 +370,7 @@ export function DashboardPage() {
             <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Production</h2>
             <Egg className="h-[18px] w-[18px] text-[var(--brand-primary)]" />
           </div>
-          <div className="mt-4 h-[300px]">
+          <div className="mt-3 h-[292px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={productionTrend}>
                 <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
@@ -388,14 +388,14 @@ export function DashboardPage() {
             <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Alerts</h2>
             <AlertTriangle className="h-[18px] w-[18px] text-[var(--brand-primary)]" />
           </div>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 space-y-2.5">
             {alerts.length ? alerts.map((alert) => (
-              <div key={`${alert.title}-${alert.detail}`} className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+              <div key={`${alert.title}-${alert.detail}`} className="rounded-[14px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
                 <div className="flex items-center gap-2">
                   <span className="status-dot bg-[var(--brand-primary)]" />
                   <div className="text-[14px] font-semibold text-[var(--text-strong)]">{alert.title}</div>
                 </div>
-                <div className="mt-1 text-[13px] text-[var(--text-muted)]">{alert.detail}</div>
+                <div className="mt-0.5 text-[13px] text-[var(--text-muted)]">{alert.detail}</div>
               </div>
             )) : (
               <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-8 text-center text-[13px] text-[var(--text-muted)]">
@@ -406,15 +406,15 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
+      <section className="grid gap-5 xl:grid-cols-[1fr_0.9fr]">
         <div className="card p-5">
           <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Recent</h2>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 space-y-2.5">
             {recentActivity.length ? recentActivity.map((entry) => (
-              <div key={`${entry.type}-${entry.detail}-${entry.date}`} className="flex items-start justify-between rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-3">
+              <div key={`${entry.type}-${entry.detail}-${entry.date}`} className="flex items-start justify-between rounded-[14px] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-3">
                 <div>
                   <div className="text-[14px] font-semibold text-[var(--text-strong)]">{entry.type}</div>
-                  <div className="mt-1 text-[13px] text-[var(--text-muted)]">{entry.detail}</div>
+                  <div className="mt-0.5 text-[13px] text-[var(--text-muted)]">{entry.detail}</div>
                 </div>
                 <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text-muted)]">
                   {new Date(entry.date).toLocaleDateString('en-UG', { month: 'short', day: 'numeric' })}
@@ -430,7 +430,7 @@ export function DashboardPage() {
 
         <div className="card p-5">
           <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Quick</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
             {quickActions.map((action) => {
               const Icon = action.icon
               return (
@@ -438,10 +438,10 @@ export function DashboardPage() {
                   key={action.label}
                   type="button"
                   onClick={() => navigate(action.path)}
-                  className="flex items-center gap-3 rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3 text-left hover:bg-[var(--surface-muted)]"
+                  className="flex items-center gap-3 rounded-[14px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-2.5 text-left hover:bg-[var(--surface-muted)]"
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(52,168,83,0.1)] text-[var(--brand-primary)]">
-                    <Icon className="h-[18px] w-[18px]" />
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(52,168,83,0.1)] text-[var(--brand-primary)]">
+                    <Icon className="h-4 w-4" />
                   </span>
                   <span className="text-[14px] font-semibold text-[var(--text-strong)]">{action.label}</span>
                 </button>

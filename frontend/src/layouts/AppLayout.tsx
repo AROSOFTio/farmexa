@@ -3,7 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { Sidebar } from '@/layouts/Sidebar'
 import { Topbar } from '@/layouts/Topbar'
 
-const SIDEBAR_WIDTH = 272
+const SIDEBAR_WIDTH = 248
 
 export function AppLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)

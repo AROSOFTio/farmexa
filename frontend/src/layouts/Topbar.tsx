@@ -58,7 +58,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   }
 
   return (
-    <header className="topbar fixed right-0 top-0 z-30 flex h-[72px] items-center gap-3 px-4 sm:px-5 lg:px-6">
+    <header className="topbar fixed right-0 top-0 z-30 flex h-[68px] items-center gap-2.5 px-4 sm:px-5 lg:px-5">
       <button
         type="button"
         onClick={onOpenSidebar}
@@ -72,10 +72,10 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         <BrandMark compact />
       </div>
 
-      <div className="hidden w-full max-w-sm lg:block">
+      <div className="hidden w-full max-w-[390px] lg:block">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
-          <input type="search" placeholder="Search" className="form-input h-10 border-white/5 bg-[var(--surface-card)] pl-10" />
+          <Search className="absolute left-3 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[var(--text-muted)]" />
+          <input type="search" placeholder="Search" className="form-input h-9 rounded-full border-white/5 bg-[var(--surface-card)] pl-10" />
         </div>
       </div>
 
@@ -85,11 +85,11 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         <button
           type="button"
           onClick={() => setQuickOpen((open) => !open)}
-          className="btn-secondary h-10 rounded-full px-4"
+          className="btn-secondary h-9 rounded-full px-4"
         >
-          <ClipboardPlus className="h-4 w-4 text-[var(--brand-primary)]" />
+          <ClipboardPlus className="h-[15px] w-[15px] text-[var(--brand-primary)]" />
           Quick
-          <ChevronDown className={clsx('h-4 w-4 text-[var(--text-muted)] transition-transform', quickOpen && 'rotate-180')} />
+          <ChevronDown className={clsx('h-[15px] w-[15px] text-[var(--text-muted)] transition-transform', quickOpen && 'rotate-180')} />
         </button>
         {quickOpen ? (
           <>
@@ -105,10 +105,10 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                       setQuickOpen(false)
                       navigate(action.path)
                     }}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
                   >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(52,168,83,0.1)] text-[var(--brand-primary)]">
-                      <Icon className="h-4 w-4" />
+                    <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[rgba(52,168,83,0.1)] text-[var(--brand-primary)]">
+                      <Icon className="h-[15px] w-[15px]" />
                     </span>
                     {action.label}
                   </button>
@@ -122,18 +122,18 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
       <button
         type="button"
         onClick={toggleTheme}
-        className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--brand-primary)]"
+        className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--brand-primary)]"
         aria-label="Toggle theme"
       >
-        {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+        {theme === 'light' ? <Moon className="h-[15px] w-[15px]" /> : <Sun className="h-[15px] w-[15px]" />}
       </button>
 
       <button
         type="button"
-        className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-default)]"
+        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-default)]"
         aria-label="Notifications"
       >
-        <Bell className="h-4 w-4" />
+        <Bell className="h-[15px] w-[15px]" />
         <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-[var(--brand-primary)] ring-2 ring-[var(--surface-card)]" />
       </button>
 
@@ -141,14 +141,14 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         <button
           type="button"
           onClick={() => setProfileOpen((open) => !open)}
-          className="flex items-center gap-3 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-1.5"
+          className="flex items-center gap-2.5 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-1.5"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--brand-primary)] text-xs font-bold text-white">{initials}</div>
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand-primary)] text-[11px] font-bold text-white">{initials}</div>
           <div className="hidden text-left sm:block">
-            <div className="text-[13px] font-semibold leading-tight text-[var(--text-strong)]">{user?.full_name ?? 'Loading...'}</div>
+            <div className="text-[12px] font-semibold leading-tight text-[var(--text-strong)]">{user?.full_name ?? 'Loading...'}</div>
             <div className="text-[11px] leading-tight text-[var(--text-muted)]">{tenant?.name ?? roleLabel}</div>
           </div>
-          <ChevronDown className={clsx('hidden h-4 w-4 text-[var(--text-muted)] sm:block', profileOpen && 'rotate-180')} />
+          <ChevronDown className={clsx('hidden h-[15px] w-[15px] text-[var(--text-muted)] sm:block', profileOpen && 'rotate-180')} />
         </button>
 
         {profileOpen ? (
