@@ -96,6 +96,7 @@ interface DashboardOverview {
   invoices: Invoice[]
   slaughterRecords: SlaughterRecord[]
   mortalityByBatch: Record<number, MortalityLog[]>
+  partialErrors: string[]
 }
 
 const chartTooltipStyle = {
@@ -115,29 +116,59 @@ function formatCurrency(value: number) {
 
 export function DashboardPage() {
   const navigate = useNavigate()
-  const { hasPermission, permissions } = useAuth()
+  const { enabledModules, hasModuleAccess, hasPermission, permissions } = useAuth()
 
   const overview = useQuery<DashboardOverview>({
-    queryKey: ['dashboard-overview-v3', permissions.join('|')],
+    queryKey: ['dashboard-overview-v4', permissions.join('|'), enabledModules.join('|')],
     queryFn: async () => {
-      const canFarm = hasPermission('farm:read')
-      const canFeed = hasPermission('feed:read')
-      const canSales = hasPermission('sales:read')
-      const canSlaughter = hasPermission('slaughter:read')
+      const canBatches = hasPermission('farm:read') && hasModuleAccess('batches')
+      const canEggProduction = hasPermission('farm:read') && hasModuleAccess('egg_production')
+      const canFeedStock = hasPermission('feed:read') && hasModuleAccess('feed_stock')
+      const canFeedConsumption = hasPermission('feed:read') && hasModuleAccess('feed_consumption')
+      const canSalesInvoices = hasPermission('sales:read') && hasModuleAccess('invoices')
+      const canSlaughterRecords = hasPermission('slaughter:read') && hasModuleAccess('slaughter_records')
+      const canMortality = hasPermission('farm:read') && hasModuleAccess('mortality')
+      const partialErrors: string[] = []
+
+      const loadOrFallback = async <T,>(label: string, enabled: boolean, fallback: T, request: () => Promise<T>) => {
+        if (!enabled) return fallback
+        try {
+          return await request()
+        } catch {
+          partialErrors.push(label)
+          return fallback
+        }
+      }
 
       const [kpis, batches, feedItems, consumptions, eggSummary, eggLogs, invoices, slaughterRecords] = await Promise.all([
-        api.get<KpiData>('/analytics/kpis').then((response) => response.data),
-        canFarm ? api.get<Batch[]>('/farm/batches').then((response) => response.data) : Promise.resolve([] as Batch[]),
-        canFeed ? api.get<FeedItem[]>('/feed/items').then((response) => response.data) : Promise.resolve([] as FeedItem[]),
-        canFeed ? api.get<FeedConsumption[]>('/feed/consumptions').then((response) => response.data) : Promise.resolve([] as FeedConsumption[]),
-        canFarm ? api.get<EggSummary>('/eggs/summary').then((response) => response.data) : Promise.resolve({ total_eggs: 0, total_good: 0, avg_production_rate: null }),
-        canFarm ? api.get<EggLog[]>('/eggs').then((response) => response.data) : Promise.resolve([] as EggLog[]),
-        canSales ? api.get<Invoice[]>('/sales/invoices').then((response) => response.data) : Promise.resolve([] as Invoice[]),
-        canSlaughter ? api.get<SlaughterRecord[]>('/slaughter/records').then((response) => response.data) : Promise.resolve([] as SlaughterRecord[]),
+        loadOrFallback('overview', true, { total_revenue: 0 }, () =>
+          api.get<KpiData>('/analytics/kpis').then((response) => response.data)
+        ),
+        loadOrFallback('batches', canBatches, [] as Batch[], () =>
+          api.get<Batch[]>('/farm/batches').then((response) => response.data)
+        ),
+        loadOrFallback('feed stock', canFeedStock, [] as FeedItem[], () =>
+          api.get<FeedItem[]>('/feed/items').then((response) => response.data)
+        ),
+        loadOrFallback('feed usage', canFeedConsumption, [] as FeedConsumption[], () =>
+          api.get<FeedConsumption[]>('/feed/consumptions').then((response) => response.data)
+        ),
+        loadOrFallback('egg summary', canEggProduction, { total_eggs: 0, total_good: 0, avg_production_rate: null }, () =>
+          api.get<EggSummary>('/eggs/summary').then((response) => response.data)
+        ),
+        loadOrFallback('egg logs', canEggProduction, [] as EggLog[], () =>
+          api.get<EggLog[]>('/eggs').then((response) => response.data)
+        ),
+        loadOrFallback('invoices', canSalesInvoices, [] as Invoice[], () =>
+          api.get<Invoice[]>('/sales/invoices').then((response) => response.data)
+        ),
+        loadOrFallback('slaughter', canSlaughterRecords, [] as SlaughterRecord[], () =>
+          api.get<SlaughterRecord[]>('/slaughter/records').then((response) => response.data)
+        ),
       ])
 
       const mortalityByBatch: Record<number, MortalityLog[]> = {}
-      if (canFarm && batches.length) {
+      if (canMortality && batches.length) {
         const results = await Promise.all(
           batches.slice(0, 6).map((batch) =>
             api
@@ -161,6 +192,7 @@ export function DashboardPage() {
         invoices,
         slaughterRecords,
         mortalityByBatch,
+        partialErrors,
       }
     },
     refetchInterval: 60_000,
@@ -283,15 +315,17 @@ export function DashboardPage() {
   }, [data?.eggLogs, data?.invoices, data?.slaughterRecords])
 
   const quickActions = [
-    { label: 'Batch', icon: Bird, path: '/farm/batches' },
-    { label: 'Eggs', icon: Egg, path: '/farm/eggs' },
-    { label: 'Feed', icon: Wheat, path: '/feed/consumption' },
-    { label: 'Mortality', icon: Skull, path: '/farm/mortality' },
+    hasPermission('farm:read') && hasModuleAccess('batches') ? { label: 'Batch', icon: Bird, path: '/farm/batches' } : null,
+    hasPermission('farm:read') && hasModuleAccess('egg_production') ? { label: 'Eggs', icon: Egg, path: '/farm/eggs' } : null,
+    hasPermission('feed:read') && hasModuleAccess('feed_consumption') ? { label: 'Feed', icon: Wheat, path: '/feed/consumption' } : null,
+    hasPermission('farm:read') && hasModuleAccess('mortality') ? { label: 'Mortality', icon: Skull, path: '/farm/mortality' } : null,
     hasPermission('dev_admin:read')
       ? { label: 'Vendor', icon: FilePlus2, path: '/dev-admin/tenants' }
-      : { label: 'Sale', icon: Receipt, path: '/sales/orders' },
-    { label: 'Reports', icon: ClipboardCheck, path: '/reports/production' },
-  ]
+      : hasPermission('sales:read') && hasModuleAccess('sales_orders')
+        ? { label: 'Sale', icon: Receipt, path: '/sales/orders' }
+        : null,
+    hasPermission('reports:read') && hasModuleAccess('reports') ? { label: 'Reports', icon: ClipboardCheck, path: '/reports/production' } : null,
+  ].filter((item): item is { label: string; icon: typeof Bird; path: string } => item !== null)
 
   const primaryCards = [
     { title: 'Birds', value: activeBirds.toLocaleString(), icon: Bird },
@@ -299,15 +333,6 @@ export function DashboardPage() {
     { title: 'Feed', value: `${feedRemaining.toLocaleString()} kg`, icon: Package },
     { title: 'Sales', value: formatCurrency(salesThisMonth), icon: Receipt },
   ]
-
-  if (overview.isError) {
-    return (
-      <div className="card flex items-center gap-4 p-6 text-[var(--text-default)]">
-        <AlertTriangle className="h-6 w-6 text-[var(--brand-primary)]" />
-        <div className="font-semibold">Dashboard data could not be loaded.</div>
-      </div>
-    )
-  }
 
   return (
     <div className="animate-fade-in space-y-4 pb-5">
@@ -317,6 +342,22 @@ export function DashboardPage() {
           <p className="section-subtitle">Overview</p>
         </div>
       </section>
+
+      {overview.isError ? (
+        <div className="card flex items-center gap-4 p-6 text-[var(--text-default)]">
+          <AlertTriangle className="h-6 w-6 text-[var(--brand-primary)]" />
+          <div className="font-semibold">Dashboard data could not be loaded.</div>
+        </div>
+      ) : null}
+
+      {!overview.isError && (data?.partialErrors?.length ?? 0) > 0 ? (
+        <div className="card flex items-center gap-4 p-4 text-[var(--text-default)]">
+          <AlertTriangle className="h-5 w-5 text-[var(--brand-primary)]" />
+          <div className="text-[13px] font-medium">
+            Some dashboard widgets are unavailable right now: {data?.partialErrors.join(', ')}.
+          </div>
+        </div>
+      ) : null}
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {primaryCards.map((card) => {
