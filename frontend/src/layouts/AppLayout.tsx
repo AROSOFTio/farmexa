@@ -22,8 +22,8 @@ export function AppLayout() {
 
         <Topbar onOpenSidebar={() => setIsSidebarOpen(true)} />
 
-        <main className="main-offset relative flex-1" style={{ paddingTop: '3.75rem', minHeight: '100vh' }}>
-          <div className="relative mx-auto w-full max-w-[1720px] px-4 py-5 sm:px-6 lg:px-8">
+        <main className="main-offset relative flex-1" style={{ paddingTop: '4.5rem', minHeight: '100vh' }}>
+          <div className="relative mx-auto w-full max-w-[1720px] px-4 py-4 sm:px-5 lg:px-6 lg:py-5">
             <Outlet />
           </div>
         </main>

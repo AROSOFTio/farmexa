@@ -152,27 +152,27 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex items-center justify-between border-b border-white/15 px-5 py-5">
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
           <BrandMark light showTagline />
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-white/90 hover:bg-white/15 lg:hidden"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-white/82 hover:bg-white/10 lg:hidden"
             aria-label="Close navigation"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="border-b border-white/10 px-5 py-4">
-          <div className="inline-flex rounded-full border border-white/12 bg-white/6 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-white/82">
+        <div className="border-b border-white/8 px-6 py-4">
+          <div className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/78">
             {roleLabel}
           </div>
           {tenant ? (
-            <div className="mt-3 rounded-[1.2rem] border border-white/10 bg-white/4 px-4 py-3">
-              <div className="truncate text-sm font-medium text-white">{tenant.name}</div>
-              <div className="mt-1 text-[11px] tracking-[0.04em] text-white/68">
-                {tenant.plan} {tenant.primary_domain ? `- ${tenant.primary_domain}` : ''}
+            <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
+              <div className="truncate text-[13px] font-semibold text-white">{tenant.name}</div>
+              <div className="mt-1 text-[11px] tracking-[0.03em] text-white/56">
+                {tenant.plan} {tenant.primary_domain ? `| ${tenant.primary_domain}` : ''}
               </div>
             </div>
           ) : null}
@@ -180,9 +180,9 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
         <nav className="sidebar-scroll flex-1 overflow-y-auto px-4 py-5">
           {sections.map((section) => (
-            <div key={section.title} className="mb-6">
-              <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/52">{section.title}</div>
-              <div className="space-y-1">
+            <div key={section.title} className="mb-5">
+              <div className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/54">{section.title}</div>
+              <div className="space-y-1.5">
                 {section.items.map((item) => {
                   const Icon = item.icon
                   const active = location.pathname.startsWith(item.path)
@@ -194,20 +194,20 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                         if (window.innerWidth < 1024) onClose()
                       }}
                       className={clsx(
-                        'group flex items-center gap-3 rounded-[1rem] px-3 py-3 transition-colors',
-                        active ? 'bg-[#343434] text-white' : 'text-white/78 hover:bg-white/6 hover:text-white'
+                        'group flex items-center gap-3 rounded-[1rem] px-3 py-2.5 transition-colors',
+                        active ? 'bg-[#343434] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]' : 'text-white/74 hover:bg-white/[0.05] hover:text-white'
                       )}
                     >
                       <span
                         className={clsx(
-                          'flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
-                          active ? 'bg-transparent text-[#34a853]' : 'bg-transparent text-white/62 group-hover:text-[#34a853]'
+                          'flex h-8 w-8 items-center justify-center rounded-lg transition-colors',
+                          active ? 'bg-black/10 text-[#34a853]' : 'bg-transparent text-white/54 group-hover:text-[#34a853]'
                         )}
                       >
-                        <Icon className="h-4.5 w-4.5" />
+                        <Icon className="h-[17px] w-[17px] stroke-[2.1]" />
                       </span>
-                      <span className="flex-1 text-[13px] font-medium tracking-[0.01em]">{item.label}</span>
-                      <ChevronRight className={clsx('h-4 w-4 transition-opacity', active ? 'text-[#34a853] opacity-100' : 'text-white/40 opacity-0 group-hover:opacity-80')} />
+                      <span className="flex-1 text-[14px] font-medium tracking-[0.005em]">{item.label}</span>
+                      <ChevronRight className={clsx('h-4 w-4 transition-opacity', active ? 'text-[#34a853] opacity-100' : 'text-white/34 opacity-0 group-hover:opacity-80')} />
                     </NavLink>
                   )
                 })}
@@ -216,14 +216,14 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           ))}
         </nav>
 
-        <div className="border-t border-white/10 px-5 py-4">
-          <div className="flex items-center gap-3 rounded-[1.1rem] border border-white/10 bg-white/4 px-3 py-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#343434] text-xs font-semibold text-white">
+        <div className="border-t border-white/8 px-5 py-4">
+          <div className="flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#343434] text-xs font-semibold text-white">
               {user?.full_name?.slice(0, 2).toUpperCase() ?? 'FX'}
             </div>
             <div className="min-w-0">
-              <div className="truncate text-sm font-medium text-white">{user?.full_name ?? 'Loading...'}</div>
-              <div className="truncate text-xs text-white/62">{user?.email ?? ''}</div>
+              <div className="truncate text-[13px] font-semibold text-white">{user?.full_name ?? 'Loading...'}</div>
+              <div className="truncate text-[11px] text-white/56">{user?.email ?? ''}</div>
             </div>
           </div>
         </div>

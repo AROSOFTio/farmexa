@@ -58,14 +58,14 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   }
 
   return (
-    <header className="topbar fixed right-0 top-0 z-30 flex h-[72px] items-center gap-3 px-4 sm:px-6">
+    <header className="topbar fixed right-0 top-0 z-30 flex h-[72px] items-center gap-3 px-4 sm:px-5 lg:px-6">
       <button
         type="button"
         onClick={onOpenSidebar}
-        className="flex h-10 w-10 items-center justify-center rounded-2xl border bg-[var(--surface-card)] text-[var(--text-default)] lg:hidden"
+        className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-default)] lg:hidden"
         aria-label="Open navigation"
       >
-        <Menu className="h-4.5 w-4.5" />
+        <Menu className="h-4 w-4" />
       </button>
 
       <div className="lg:hidden">
@@ -75,7 +75,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
       <div className="hidden w-full max-w-sm lg:block">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
-          <input type="search" placeholder="Search" className="form-input h-11 pl-10" />
+          <input type="search" placeholder="Search" className="form-input h-10 border-white/5 bg-[var(--surface-card)] pl-10" />
         </div>
       </div>
 
@@ -85,7 +85,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         <button
           type="button"
           onClick={() => setQuickOpen((open) => !open)}
-          className="btn-secondary"
+          className="btn-secondary h-10 rounded-full px-4"
         >
           <ClipboardPlus className="h-4 w-4 text-[var(--brand-primary)]" />
           Quick
@@ -105,9 +105,9 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                       setQuickOpen(false)
                       navigate(action.path)
                     }}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
                   >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-soft)] text-[var(--brand-primary)]">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(52,168,83,0.1)] text-[var(--brand-primary)]">
                       <Icon className="h-4 w-4" />
                     </span>
                     {action.label}
@@ -122,18 +122,18 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
       <button
         type="button"
         onClick={toggleTheme}
-        className="flex h-10 w-10 items-center justify-center rounded-2xl border bg-[var(--surface-card)] text-[var(--brand-primary)]"
+        className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--brand-primary)]"
         aria-label="Toggle theme"
       >
-        {theme === 'light' ? <Moon className="h-4.5 w-4.5" /> : <Sun className="h-4.5 w-4.5" />}
+        {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
       </button>
 
       <button
         type="button"
-        className="relative flex h-10 w-10 items-center justify-center rounded-2xl border bg-[var(--surface-card)] text-[var(--text-default)]"
+        className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-default)]"
         aria-label="Notifications"
       >
-        <Bell className="h-4.5 w-4.5" />
+        <Bell className="h-4 w-4" />
         <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-[var(--brand-primary)] ring-2 ring-[var(--surface-card)]" />
       </button>
 
@@ -141,12 +141,12 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         <button
           type="button"
           onClick={() => setProfileOpen((open) => !open)}
-          className="flex items-center gap-3 rounded-2xl border bg-[var(--surface-card)] px-3 py-2"
+          className="flex items-center gap-3 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-1.5"
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[var(--brand-primary)] text-xs font-bold text-white">{initials}</div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--brand-primary)] text-xs font-bold text-white">{initials}</div>
           <div className="hidden text-left sm:block">
-            <div className="text-sm font-semibold text-[var(--text-strong)]">{user?.full_name ?? 'Loading...'}</div>
-            <div className="text-xs text-[var(--text-muted)]">{tenant?.name ?? roleLabel}</div>
+            <div className="text-[13px] font-semibold leading-tight text-[var(--text-strong)]">{user?.full_name ?? 'Loading...'}</div>
+            <div className="text-[11px] leading-tight text-[var(--text-muted)]">{tenant?.name ?? roleLabel}</div>
           </div>
           <ChevronDown className={clsx('hidden h-4 w-4 text-[var(--text-muted)] sm:block', profileOpen && 'rotate-180')} />
         </button>
@@ -155,7 +155,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
           <>
             <button type="button" className="fixed inset-0 z-30" onClick={() => setProfileOpen(false)} />
             <div className="card absolute right-0 top-full z-40 mt-2 w-72 overflow-hidden">
-              <div className="border-b px-4 py-4">
+              <div className="border-b border-[var(--border-subtle)] px-4 py-4">
                 <div className="text-sm font-semibold text-[var(--text-strong)]">{user?.full_name}</div>
                 <div className="mt-1 text-xs text-[var(--text-muted)]">{user?.email}</div>
               </div>
@@ -167,9 +167,9 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                       setProfileOpen(false)
                       navigate('/settings/config')
                     }}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
                   >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-soft)] text-[var(--brand-primary)]">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(52,168,83,0.1)] text-[var(--brand-primary)]">
                       <Settings className="h-4 w-4" />
                     </span>
                     Settings
@@ -178,9 +178,9 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
                 >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-soft)] text-[var(--brand-primary)]">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(52,168,83,0.1)] text-[var(--brand-primary)]">
                     <LogOut className="h-4 w-4" />
                   </span>
                   Sign out
