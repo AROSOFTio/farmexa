@@ -62,6 +62,14 @@ class Settings(BaseSettings):
     SEED_DEV_ADMIN_PASSWORD: str = "DevAdmin@2026!"
     SEED_DEV_ADMIN_FULL_NAME: str = "Farmexa Developer Admin"
 
+    UPLOAD_DIR: str = "/app/uploads"
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_FROM_EMAIL: str | None = None
+    SMTP_USE_TLS: bool = True
+
     @property
     def is_production(self) -> bool:
         return self.APP_ENV == "production"

@@ -67,6 +67,10 @@ def _module_key_from_request_path(path: str) -> str | None:
         return "expenses"
     if "/api/v1/finance/incomes" in path:
         return "income"
+    if "/api/v1/compliance/summary" in path:
+        return "compliance_alerts"
+    if "/api/v1/compliance/" in path:
+        return "compliance_documents"
     if "/api/v1/users" in path:
         return "users"
     if "/api/v1/settings" in path:

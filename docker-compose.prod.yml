@@ -44,6 +44,8 @@ services:
     container_name: farmexa_backend
     restart: unless-stopped
     env_file: .env
+    volumes:
+      - farmexa_uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -60,6 +62,8 @@ services:
     container_name: farmexa_celery_worker
     restart: unless-stopped
     env_file: .env
+    volumes:
+      - farmexa_uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -76,6 +80,8 @@ services:
     container_name: farmexa_celery_beat
     restart: unless-stopped
     env_file: .env
+    volumes:
+      - farmexa_uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -127,6 +133,7 @@ services:
 volumes:
   farmexa_postgres_data:
   farmexa_redis_data:
+  farmexa_uploads:
 
 networks:
   farmexa_net:

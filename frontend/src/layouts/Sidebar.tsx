@@ -9,6 +9,7 @@ import {
   CreditCard,
   Droplets,
   Egg,
+  FileBadge2,
   FileText,
   LayoutDashboard,
   Package,
@@ -100,6 +101,13 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Expenses', path: '/finance/expenses', permission: 'finance:read', moduleKey: 'expenses', icon: Receipt },
       { label: 'Income', path: '/finance/incomes', permission: 'finance:read', moduleKey: 'income', icon: CreditCard },
       { label: 'Profit & Loss', path: '/analytics', permission: 'reports:read', moduleKey: 'reports', icon: FileText },
+    ],
+  },
+  {
+    title: 'Compliance',
+    items: [
+      { label: 'Documents', path: '/compliance/documents', permission: 'farm:read', moduleKey: 'compliance_documents', icon: FileBadge2 },
+      { label: 'Alerts', path: '/compliance/alerts', permission: 'farm:read', moduleKey: 'compliance_alerts', icon: Shield },
     ],
   },
   {

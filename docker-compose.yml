@@ -48,6 +48,7 @@ services:
       - .env
     volumes:
       - ./backend:/app
+      - uploads_data:/app/uploads
     ports:
       - "8000:8000"
     depends_on:
@@ -70,6 +71,7 @@ services:
       - .env
     volumes:
       - ./backend:/app
+      - uploads_data:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -89,6 +91,7 @@ services:
       - .env
     volumes:
       - ./backend:/app
+      - uploads_data:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -129,6 +132,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  uploads_data:
 
 networks:
   perp_net:

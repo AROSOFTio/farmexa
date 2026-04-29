@@ -23,6 +23,7 @@ import { NotFoundPage } from '@/components/NotFoundPage'
 import { EggProductionPage } from '@/features/farm/EggProductionPage'
 import { TenantsPage } from '@/features/developer_admin/TenantsPage'
 import { ModuleGuard, ModuleDisabledPage } from '@/components/ModuleGuard'
+import { CompliancePage } from '@/features/compliance/CompliancePage'
 
 export default function App() {
   return (
@@ -289,6 +290,30 @@ export default function App() {
                 <ProtectedRoute permission="finance:read">
                   <ModuleGuard moduleKey="income">
                     <IncomesPage />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+          </Route>
+
+          <Route path="compliance">
+            <Route index element={<Navigate to="/compliance/documents" replace />} />
+            <Route
+              path="documents"
+              element={
+                <ProtectedRoute permission="farm:read">
+                  <ModuleGuard moduleKey="compliance_documents">
+                    <CompliancePage section="documents" />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="alerts"
+              element={
+                <ProtectedRoute permission="farm:read">
+                  <ModuleGuard moduleKey="compliance_alerts">
+                    <CompliancePage section="alerts" />
                   </ModuleGuard>
                 </ProtectedRoute>
               }

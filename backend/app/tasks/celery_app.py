@@ -3,6 +3,7 @@ Celery application configuration.
 """
 
 from celery import Celery
+from celery.schedules import crontab
 
 from app.core.config import settings
 
@@ -22,5 +23,10 @@ celery_app.conf.update(
     task_track_started=True,
     task_acks_late=True,
     worker_prefetch_multiplier=1,
-    beat_schedule={},
+    beat_schedule={
+        "process-compliance-reminders-daily": {
+            "task": "tasks.process_compliance_reminders",
+            "schedule": crontab(hour=6, minute=0),
+        },
+    },
 )

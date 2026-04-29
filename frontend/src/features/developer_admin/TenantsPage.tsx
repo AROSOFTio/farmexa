@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -204,10 +204,21 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
     queryFn: async () => (await api.get('/dev-admin/billing')).data,
   })
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<TenantFormValues>({
+  const { register, handleSubmit, reset, setValue, getValues, formState: { errors } } = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),
-    defaultValues: { plan: 'basic', billing_cycle: 'monthly' },
+    defaultValues: { plan: '', billing_cycle: 'monthly' },
   })
+
+  useEffect(() => {
+    const firstPlan = catalog?.plans?.[0]
+    if (!firstPlan) return
+    if (!getValues('plan')) {
+      setValue('plan', firstPlan.code)
+    }
+    if (!getValues('billing_cycle')) {
+      setValue('billing_cycle', firstPlan.billing_cycle || 'monthly')
+    }
+  }, [catalog?.plans, getValues, setValue])
 
   const {
     register: registerDomain,
