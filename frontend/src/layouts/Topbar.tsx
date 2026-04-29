@@ -105,9 +105,9 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                       setQuickOpen(false)
                       navigate(action.path)
                     }}
-                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-medium text-[var(--text-default)] hover:bg-[var(--surface-soft)]"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
                   >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[rgba(52,168,83,0.12)] text-[var(--brand-primary)]">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-soft)] text-[var(--brand-primary)]">
                       <Icon className="h-4 w-4" />
                     </span>
                     {action.label}
@@ -167,7 +167,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                       setProfileOpen(false)
                       navigate('/settings/config')
                     }}
-                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-[var(--text-default)] hover:bg-[var(--surface-soft)]"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
                   >
                     <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-soft)] text-[var(--brand-primary)]">
                       <Settings className="h-4 w-4" />
@@ -178,7 +178,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-[var(--text-default)] hover:bg-[var(--surface-soft)]"
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
                 >
                   <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-soft)] text-[var(--brand-primary)]">
                     <LogOut className="h-4 w-4" />

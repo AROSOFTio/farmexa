@@ -164,14 +164,14 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           </button>
         </div>
 
-        <div className="border-b border-white/15 px-5 py-4">
-          <div className="inline-flex rounded-full border border-white/20 bg-white/14 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/92">
+        <div className="border-b border-white/10 px-5 py-4">
+          <div className="inline-flex rounded-full border border-white/12 bg-white/6 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-white/82">
             {roleLabel}
           </div>
           {tenant ? (
-            <div className="mt-3 rounded-[1.6rem] border border-white/15 bg-white/10 px-4 py-3.5">
-              <div className="truncate text-sm font-semibold text-white">{tenant.name}</div>
-              <div className="mt-1 text-[11px] uppercase tracking-[0.16em] text-white/78">
+            <div className="mt-3 rounded-[1.2rem] border border-white/10 bg-white/4 px-4 py-3">
+              <div className="truncate text-sm font-medium text-white">{tenant.name}</div>
+              <div className="mt-1 text-[11px] tracking-[0.04em] text-white/68">
                 {tenant.plan} {tenant.primary_domain ? `- ${tenant.primary_domain}` : ''}
               </div>
             </div>
@@ -181,7 +181,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         <nav className="sidebar-scroll flex-1 overflow-y-auto px-4 py-5">
           {sections.map((section) => (
             <div key={section.title} className="mb-6">
-              <div className="mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.24em] text-white/70">{section.title}</div>
+              <div className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/52">{section.title}</div>
               <div className="space-y-1">
                 {section.items.map((item) => {
                   const Icon = item.icon
@@ -194,20 +194,20 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                         if (window.innerWidth < 1024) onClose()
                       }}
                       className={clsx(
-                        'group flex items-center gap-3 rounded-[1.35rem] px-3 py-3 transition-colors',
-                        active ? 'bg-white text-[#202020] shadow-[0_18px_34px_-20px_rgba(255,255,255,0.95)]' : 'text-white/95 hover:bg-white/10 hover:text-white'
+                        'group flex items-center gap-3 rounded-[1rem] px-3 py-3 transition-colors',
+                        active ? 'bg-[#343434] text-white' : 'text-white/78 hover:bg-white/6 hover:text-white'
                       )}
                     >
                       <span
                         className={clsx(
-                          'flex h-9 w-9 items-center justify-center rounded-xl border transition-colors',
-                          active ? 'border-[#34a853]/20 bg-[#34a853]/12 text-[#34a853]' : 'border-white/15 bg-white/8 text-white group-hover:bg-white/16'
+                          'flex h-9 w-9 items-center justify-center rounded-xl transition-colors',
+                          active ? 'bg-transparent text-[#34a853]' : 'bg-transparent text-white/62 group-hover:text-[#34a853]'
                         )}
                       >
                         <Icon className="h-4.5 w-4.5" />
                       </span>
-                      <span className="flex-1 text-[13px] font-bold tracking-[0.01em]">{item.label}</span>
-                      <ChevronRight className={clsx('h-4 w-4 transition-opacity', active ? 'text-[#34a853] opacity-100' : 'text-white/80 opacity-0 group-hover:opacity-90')} />
+                      <span className="flex-1 text-[13px] font-medium tracking-[0.01em]">{item.label}</span>
+                      <ChevronRight className={clsx('h-4 w-4 transition-opacity', active ? 'text-[#34a853] opacity-100' : 'text-white/40 opacity-0 group-hover:opacity-80')} />
                     </NavLink>
                   )
                 })}
@@ -216,14 +216,14 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           ))}
         </nav>
 
-        <div className="border-t border-white/15 px-5 py-4">
-          <div className="flex items-center gap-3 rounded-[1.55rem] border border-white/15 bg-white/10 px-3 py-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/18 text-xs font-bold text-white">
+        <div className="border-t border-white/10 px-5 py-4">
+          <div className="flex items-center gap-3 rounded-[1.1rem] border border-white/10 bg-white/4 px-3 py-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#343434] text-xs font-semibold text-white">
               {user?.full_name?.slice(0, 2).toUpperCase() ?? 'FX'}
             </div>
             <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-white">{user?.full_name ?? 'Loading...'}</div>
-              <div className="truncate text-xs text-white/80">{user?.email ?? ''}</div>
+              <div className="truncate text-sm font-medium text-white">{user?.full_name ?? 'Loading...'}</div>
+              <div className="truncate text-xs text-white/62">{user?.email ?? ''}</div>
             </div>
           </div>
         </div>
