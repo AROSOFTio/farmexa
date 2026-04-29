@@ -95,7 +95,7 @@ sync_db_password() {
   log "Synchronizing PostgreSQL user password from .env..."
   $DC -f "$COMPOSE_FILE" exec -T db sh -lc '
     psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-      -c "ALTER USER \"$POSTGRES_USER\" WITH PASSWORD '\''$POSTGRES_PASSWORD'\'';"
+      -c "ALTER USER \"$POSTGRES_USER\" WITH PASSWORD '\''$POSTGRES_PASSWORD'\'' CREATEDB;"
   ' >/dev/null
   success "PostgreSQL password synchronized."
 }

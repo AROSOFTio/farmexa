@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_permission
-from app.db.session import get_sync_db
+from app.db.tenant_db import get_tenant_sync_db
 from app.modules.slaughter import schemas, service
 
 router = APIRouter(prefix="/slaughter", tags=["Slaughter"])
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/slaughter", tags=["Slaughter"])
 def list_records(
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_sync_db),
+    db: Session = Depends(get_tenant_sync_db),
     current_user=Depends(require_permission("slaughter:read")),
 ):
     return service.slaughter_service.get_records(db, current_user, skip, limit)
@@ -23,7 +23,7 @@ def list_records(
 @router.post("/records", response_model=schemas.SlaughterRecordOut)
 def create_record(
     record: schemas.SlaughterRecordCreate,
-    db: Session = Depends(get_sync_db),
+    db: Session = Depends(get_tenant_sync_db),
     current_user=Depends(require_permission("slaughter:write")),
 ):
     return service.slaughter_service.create_record(db, record, current_user)
@@ -33,7 +33,7 @@ def create_record(
 def update_record(
     record_id: int,
     updates: schemas.SlaughterRecordUpdate,
-    db: Session = Depends(get_sync_db),
+    db: Session = Depends(get_tenant_sync_db),
     current_user=Depends(require_permission("slaughter:write")),
 ):
     return service.slaughter_service.update_record(db, record_id, updates, current_user)
@@ -43,7 +43,7 @@ def update_record(
 def add_output(
     record_id: int,
     output: schemas.SlaughterOutputCreate,
-    db: Session = Depends(get_sync_db),
+    db: Session = Depends(get_tenant_sync_db),
     current_user=Depends(require_permission("slaughter:write")),
 ):
     return service.slaughter_service.add_output(db, record_id, output, current_user)

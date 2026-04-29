@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import require_permission
-from app.db.session import get_db
+from app.db.tenant_db import get_tenant_db
 from app.modules.farm.schemas import (
     BatchCreate,
     BatchOut,
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/farm", tags=["Farm Management"])
 
 @router.get("/houses", response_model=list[PoultryHouseOut])
 async def list_houses(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:read")),
 ):
     return await FarmService(db).get_houses()
@@ -34,7 +34,7 @@ async def list_houses(
 @router.get("/houses/{house_id}", response_model=PoultryHouseOut)
 async def get_house(
     house_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:read")),
 ):
     return await FarmService(db).get_house(house_id)
@@ -43,7 +43,7 @@ async def get_house(
 @router.post("/houses", response_model=PoultryHouseOut, status_code=status.HTTP_201_CREATED)
 async def create_house(
     data: PoultryHouseCreate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:write")),
 ):
     return await FarmService(db).create_house(data)
@@ -53,7 +53,7 @@ async def create_house(
 async def update_house(
     house_id: int,
     data: PoultryHouseUpdate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:write")),
 ):
     return await FarmService(db).update_house(house_id, data)
@@ -61,7 +61,7 @@ async def update_house(
 
 @router.get("/batches", response_model=list[BatchOut])
 async def list_batches(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:read")),
 ):
     return await FarmService(db).get_batches()
@@ -70,7 +70,7 @@ async def list_batches(
 @router.get("/batches/{batch_id}", response_model=BatchOut)
 async def get_batch(
     batch_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:read")),
 ):
     return await FarmService(db).get_batch(batch_id)
@@ -79,7 +79,7 @@ async def get_batch(
 @router.post("/batches", response_model=BatchOut, status_code=status.HTTP_201_CREATED)
 async def create_batch(
     data: BatchCreate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:write")),
 ):
     return await FarmService(db).create_batch(data)
@@ -89,7 +89,7 @@ async def create_batch(
 async def update_batch(
     batch_id: int,
     data: BatchUpdate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:write")),
 ):
     return await FarmService(db).update_batch(batch_id, data)
@@ -98,7 +98,7 @@ async def update_batch(
 @router.get("/batches/{batch_id}/mortality", response_model=list[MortalityLogOut])
 async def list_mortality(
     batch_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:read")),
 ):
     return await FarmService(db).get_mortality_logs(batch_id)
@@ -108,7 +108,7 @@ async def list_mortality(
 async def create_mortality(
     batch_id: int,
     data: MortalityLogCreate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:write")),
 ):
     data.batch_id = batch_id
@@ -118,7 +118,7 @@ async def create_mortality(
 @router.get("/batches/{batch_id}/vaccinations", response_model=list[VaccinationLogOut])
 async def list_vaccinations(
     batch_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:read")),
 ):
     return await FarmService(db).get_vaccination_logs(batch_id)
@@ -128,7 +128,7 @@ async def list_vaccinations(
 async def create_vaccination(
     batch_id: int,
     data: VaccinationLogCreate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:write")),
 ):
     data.batch_id = batch_id
@@ -139,7 +139,7 @@ async def create_vaccination(
 async def update_vaccination(
     log_id: int,
     data: VaccinationLogUpdate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:write")),
 ):
     return await FarmService(db).update_vaccination_log(log_id, data)
@@ -148,7 +148,7 @@ async def update_vaccination(
 @router.get("/batches/{batch_id}/growth", response_model=list[GrowthLogOut])
 async def list_growth(
     batch_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:read")),
 ):
     return await FarmService(db).get_growth_logs(batch_id)
@@ -158,7 +158,7 @@ async def list_growth(
 async def create_growth(
     batch_id: int,
     data: GrowthLogCreate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:write")),
 ):
     data.batch_id = batch_id

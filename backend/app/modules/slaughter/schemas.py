@@ -1,11 +1,33 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Literal, Optional, List
 from datetime import date, datetime
 from app.models.slaughter import SlaughterStatus
 
+SlaughterOutputType = Literal[
+    "finished_product",
+    "cut_part",
+    "blood",
+    "feathers",
+    "offal",
+    "byproduct",
+    "waste",
+    "dressed_chicken",
+    "chicken_breast",
+    "chicken_thighs",
+    "chicken_wings",
+    "chicken_drumsticks",
+    "gizzards",
+    "liver",
+    "neck_backs",
+    "poultry_manure",
+    "feet",
+    "head",
+]
+
+
 class SlaughterOutputBase(BaseModel):
     stock_item_id: int
-    output_type: str = "finished_product"
+    output_type: SlaughterOutputType = "dressed_chicken"
     quantity: float
     unit_cost: Optional[float] = None
 

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_permission
-from app.db.session import get_sync_db
+from app.db.tenant_db import get_tenant_sync_db
 from app.modules.finance import schemas, service
 
 router = APIRouter(prefix="/finance", tags=["Finance"])
@@ -12,7 +12,7 @@ router = APIRouter(prefix="/finance", tags=["Finance"])
 
 @router.get("/expenses/categories", response_model=List[schemas.ExpenseCategoryOut])
 def list_expense_categories(
-    db: Session = Depends(get_sync_db),
+    db: Session = Depends(get_tenant_sync_db),
     current_user=Depends(require_permission("finance:read")),
 ):
     return service.finance_service.get_expense_categories(db)
@@ -21,7 +21,7 @@ def list_expense_categories(
 @router.post("/expenses/categories", response_model=schemas.ExpenseCategoryOut)
 def create_expense_category(
     category: schemas.ExpenseCategoryCreate,
-    db: Session = Depends(get_sync_db),
+    db: Session = Depends(get_tenant_sync_db),
     current_user=Depends(require_permission("finance:write")),
 ):
     return service.finance_service.create_expense_category(db, category)
@@ -31,7 +31,7 @@ def create_expense_category(
 def list_expenses(
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_sync_db),
+    db: Session = Depends(get_tenant_sync_db),
     current_user=Depends(require_permission("finance:read")),
 ):
     return service.finance_service.get_expenses(db, skip, limit)
@@ -40,7 +40,7 @@ def list_expenses(
 @router.post("/expenses", response_model=schemas.ExpenseOut)
 def create_expense(
     expense: schemas.ExpenseCreate,
-    db: Session = Depends(get_sync_db),
+    db: Session = Depends(get_tenant_sync_db),
     current_user=Depends(require_permission("finance:write")),
 ):
     return service.finance_service.create_expense(db, expense)
@@ -48,7 +48,7 @@ def create_expense(
 
 @router.get("/incomes/categories", response_model=List[schemas.IncomeCategoryOut])
 def list_income_categories(
-    db: Session = Depends(get_sync_db),
+    db: Session = Depends(get_tenant_sync_db),
     current_user=Depends(require_permission("finance:read")),
 ):
     return service.finance_service.get_income_categories(db)
@@ -57,7 +57,7 @@ def list_income_categories(
 @router.post("/incomes/categories", response_model=schemas.IncomeCategoryOut)
 def create_income_category(
     category: schemas.IncomeCategoryCreate,
-    db: Session = Depends(get_sync_db),
+    db: Session = Depends(get_tenant_sync_db),
     current_user=Depends(require_permission("finance:write")),
 ):
     return service.finance_service.create_income_category(db, category)
@@ -67,7 +67,7 @@ def create_income_category(
 def list_incomes(
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_sync_db),
+    db: Session = Depends(get_tenant_sync_db),
     current_user=Depends(require_permission("finance:read")),
 ):
     return service.finance_service.get_incomes(db, skip, limit)
@@ -76,7 +76,7 @@ def list_incomes(
 @router.post("/incomes", response_model=schemas.IncomeOut)
 def create_income(
     income: schemas.IncomeCreate,
-    db: Session = Depends(get_sync_db),
+    db: Session = Depends(get_tenant_sync_db),
     current_user=Depends(require_permission("finance:write")),
 ):
     return service.finance_service.create_income(db, income)

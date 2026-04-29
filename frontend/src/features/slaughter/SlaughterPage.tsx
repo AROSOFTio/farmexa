@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -116,6 +116,26 @@ type RecordFormValues = z.infer<typeof recordSchema>
 type CompletionFormValues = z.infer<typeof completionSchema>
 type OutputFormValues = z.infer<typeof outputSchema>
 
+const productionOutputCatalog = [
+  { value: 'dressed_chicken', label: 'Dressed chicken (whole chicken)', stockName: 'Dressed chicken' },
+  { value: 'chicken_breast', label: 'Chicken breast', stockName: 'Chicken breast' },
+  { value: 'chicken_thighs', label: 'Chicken thighs', stockName: 'Chicken thighs' },
+  { value: 'chicken_wings', label: 'Chicken wings', stockName: 'Chicken wings' },
+  { value: 'chicken_drumsticks', label: 'Chicken drumsticks', stockName: 'Chicken drumsticks' },
+  { value: 'gizzards', label: 'Gizzards', stockName: 'Gizzards' },
+  { value: 'liver', label: 'Liver', stockName: 'Liver' },
+  { value: 'neck_backs', label: 'Neck/backs', stockName: 'Neck/backs' },
+  { value: 'poultry_manure', label: 'Poultry manure', stockName: 'Poultry manure' },
+  { value: 'feet', label: 'Feet', stockName: 'Feet' },
+  { value: 'head', label: 'Head', stockName: 'Head' },
+] as const
+
+const productionOutputStockNames = new Set(productionOutputCatalog.map((entry) => entry.stockName.toLowerCase()))
+
+function outputLabel(outputType: string) {
+  return productionOutputCatalog.find((entry) => entry.value === outputType)?.label ?? outputType.replace(/_/g, ' ')
+}
+
 const sectionCopy: Record<SlaughterSection, { title: string; description: string }> = {
   records: {
     title: 'Slaughter Records',
@@ -221,7 +241,7 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
     defaultValues: {
       record_id: 0,
       stock_item_id: 0,
-      output_type: 'finished_product',
+      output_type: 'dressed_chicken',
       quantity: 0,
       unit_cost: undefined,
     },
@@ -303,7 +323,7 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
       outputForm.reset({
         record_id: 0,
         stock_item_id: 0,
-        output_type: 'finished_product',
+        output_type: 'dressed_chicken',
         quantity: 0,
         unit_cost: undefined,
       })
@@ -339,6 +359,24 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
     () => records.filter((record) => record.status === 'completed' && record.approval_status === 'approved'),
     [records]
   )
+  const selectedOutputType = outputForm.watch('output_type')
+
+  const outputInventoryItems = useMemo(() => {
+    const matched = stockItems.filter((item) => productionOutputStockNames.has(item.name.trim().toLowerCase()))
+    return matched.length > 0 ? matched : stockItems
+  }, [stockItems])
+
+  useEffect(() => {
+    const preferredStockName = productionOutputCatalog.find((entry) => entry.value === selectedOutputType)?.stockName
+    if (!preferredStockName) return
+
+    const matchingItem = outputInventoryItems.find(
+      (item) => item.name.trim().toLowerCase() === preferredStockName.toLowerCase()
+    )
+    if (matchingItem && outputForm.getValues('stock_item_id') !== matchingItem.id) {
+      outputForm.setValue('stock_item_id', matchingItem.id, { shouldValidate: true })
+    }
+  }, [outputForm, outputInventoryItems, selectedOutputType])
 
   const completedRecords = useMemo(
     () => records.filter((record) => record.status === 'completed'),
@@ -602,24 +640,20 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
                 </select>
               </div>
               <div>
-                <label className="form-label">Output category</label>
+                <label className="form-label">Produced item</label>
                 <select className="form-input" {...outputForm.register('output_type')}>
-                  <option value="finished_product">Finished product</option>
-                  <option value="cut_part">Cut part</option>
-                  <option value="blood">Blood</option>
-                  <option value="feathers">Feathers</option>
-                  <option value="offal">Offal</option>
-                  <option value="head">Head</option>
-                  <option value="feet">Feet</option>
-                  <option value="byproduct">Reusable byproduct</option>
-                  <option value="waste">Waste disposal</option>
+                  {productionOutputCatalog.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className="form-label">Inventory item</label>
                 <select className="form-input" {...outputForm.register('stock_item_id')}>
                   <option value={0}>Choose stock item</option>
-                  {stockItems.map((item) => (
+                  {outputInventoryItems.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.name}
                     </option>
@@ -672,7 +706,7 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
                       <tr key={`${output.record_id}-${output.id}`}>
                         <td className="pl-6">{formatDate(output.slaughter_date)}</td>
                         <td>Record #{output.record_id}</td>
-                        <td className="capitalize">{output.output_type.replace(/_/g, ' ')}</td>
+                        <td>{outputLabel(output.output_type)}</td>
                         <td>{stockItems.find((item) => item.id === output.stock_item_id)?.name || `Item #${output.stock_item_id}`}</td>
                         <td>
                           {output.quantity.toLocaleString()}{' '}

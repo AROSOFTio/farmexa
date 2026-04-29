@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import require_permission
-from app.db.session import get_db
+from app.db.tenant_db import get_tenant_db
 from app.modules.analytics import schemas, service
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
@@ -20,7 +20,7 @@ def resolve_dates(start_date: date | None, end_date: date | None) -> tuple[date,
 async def get_kpis(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("dashboard:read")),
 ):
     resolved_start, resolved_end = resolve_dates(start_date, end_date)
@@ -31,7 +31,7 @@ async def get_kpis(
 async def get_profit_timeline(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("reports:read")),
 ):
     resolved_start, resolved_end = resolve_dates(start_date, end_date)
@@ -42,7 +42,7 @@ async def get_profit_timeline(
 async def get_sales_report(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("reports:read")),
 ):
     resolved_start, resolved_end = resolve_dates(start_date, end_date)

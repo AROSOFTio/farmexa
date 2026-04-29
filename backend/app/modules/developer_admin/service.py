@@ -19,6 +19,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.security import hash_password
+from app.db.tenant_db import provision_tenant_operational_database
 from app.models.auth import Role
 from app.models.tenant import (
     BillingCycle,
@@ -287,7 +288,7 @@ class DeveloperAdminService:
         await self.db.flush()
         return subscription
 
-    async def _create_tenant_admin(self, tenant: Tenant) -> TenantAdminCredentialOut:
+    async def _create_tenant_admin(self, tenant: Tenant) -> User:
         existing_user = await self.db.execute(select(User).where(User.email == tenant.email, User.deleted_at.is_(None)))
         if existing_user.scalar_one_or_none():
             raise HTTPException(
@@ -298,23 +299,18 @@ class DeveloperAdminService:
         role = await self._get_role("farm_manager")
         temporary_password = self._build_temp_password()
         full_name = (tenant.contact_person or tenant.business_name or f"{tenant.name} Admin").strip()
-        self.db.add(
-            User(
-                email=tenant.email,
-                full_name=full_name,
-                hashed_password=hash_password(temporary_password),
-                is_active=True,
-                role_id=role.id,
-                tenant_id=tenant.id,
-            )
-        )
-        await self.db.flush()
-        return TenantAdminCredentialOut(
+        user = User(
             email=tenant.email,
             full_name=full_name,
-            temporary_password=temporary_password,
-            must_change_password=True,
+            hashed_password=hash_password(temporary_password),
+            is_active=True,
+            role_id=role.id,
+            tenant_id=tenant.id,
         )
+        setattr(user, "_temporary_password", temporary_password)
+        self.db.add(user)
+        await self.db.flush()
+        return user
 
     def _certbot_command(self, host: str) -> list[str]:
         command = [
@@ -426,7 +422,14 @@ class DeveloperAdminService:
                 notes=data.notes,
                 status="trial" if not data.subscription_expiry else "active",
             )
-            onboarding_admin = await self._create_tenant_admin(tenant)
+            tenant_admin = await self._create_tenant_admin(tenant)
+            await provision_tenant_operational_database(tenant, tenant_admin)
+            onboarding_admin = TenantAdminCredentialOut(
+                email=tenant_admin.email,
+                full_name=tenant_admin.full_name,
+                temporary_password=getattr(tenant_admin, "_temporary_password"),
+                must_change_password=True,
+            )
 
             self.db.add(
                 SubscriptionHistory(

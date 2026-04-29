@@ -133,6 +133,10 @@ class TenantOut(BaseModel):
     subscription_expiry: Optional[date]
     is_suspended: bool
     notes: Optional[str]
+    operational_db_name: Optional[str] = None
+    operational_db_status: str = "pending"
+    operational_db_ready_at: Optional[datetime] = None
+    operational_db_last_error: Optional[str] = None
     created_at: datetime
     modules: List[TenantModuleOut] = Field(default_factory=list)
     domains: List[TenantDomainOut] = Field(default_factory=list)

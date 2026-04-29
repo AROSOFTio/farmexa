@@ -101,6 +101,10 @@ class Tenant(Base):
     is_suspended: Mapped[bool] = mapped_column(Boolean, default=False)
 
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    operational_db_name: Mapped[Optional[str]] = mapped_column(String(120), unique=True, nullable=True)
+    operational_db_status: Mapped[str] = mapped_column(String(30), default="pending", server_default="pending")
+    operational_db_ready_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    operational_db_last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

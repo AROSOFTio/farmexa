@@ -15,7 +15,8 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.db.seeder import run_seed
-from app.db.session import engine
+from app.db.session import engine, sync_engine
+from app.db.tenant_db import dispose_tenant_engines
 from app.middleware.error_handler import register_exception_handlers
 from app.middleware.request_logging import RequestLoggingMiddleware
 from app.middleware.tenant_domain import TenantDomainResolverMiddleware
@@ -29,7 +30,9 @@ async def lifespan(app: FastAPI):
     Path(settings.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
     await run_seed()
     yield
+    await dispose_tenant_engines()
     await engine.dispose()
+    sync_engine.dispose()
 
 
 app = FastAPI(
