@@ -7,7 +7,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 
-revision = "007_domain_upgrades_and_slaughter_workflow"
+revision = "007_saas_domain_billing"
 down_revision = "006_saas_foundation"
 branch_labels = None
 depends_on = None
