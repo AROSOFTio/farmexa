@@ -144,7 +144,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
   return (
     <>
-      {isOpen ? <button type="button" className="fixed inset-0 z-40 bg-slate-950/45 lg:hidden" onClick={onClose} /> : null}
+      {isOpen ? <button type="button" className="fixed inset-0 z-40 bg-black/45 lg:hidden" onClick={onClose} /> : null}
 
       <aside
         className={clsx(
@@ -195,19 +195,19 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                       }}
                       className={clsx(
                         'group flex items-center gap-3 rounded-[1.35rem] px-3 py-3 transition-colors',
-                        active ? 'bg-white text-slate-950 shadow-[0_18px_34px_-20px_rgba(255,255,255,0.95)]' : 'text-white/95 hover:bg-white/12 hover:text-white'
+                        active ? 'bg-white text-[#202020] shadow-[0_18px_34px_-20px_rgba(255,255,255,0.95)]' : 'text-white/95 hover:bg-white/10 hover:text-white'
                       )}
                     >
                       <span
                         className={clsx(
                           'flex h-9 w-9 items-center justify-center rounded-xl border transition-colors',
-                          active ? 'border-sky-100 bg-sky-50 text-sky-700' : 'border-white/15 bg-white/8 text-white group-hover:bg-white/16'
+                          active ? 'border-[#34a853]/20 bg-[#34a853]/12 text-[#34a853]' : 'border-white/15 bg-white/8 text-white group-hover:bg-white/16'
                         )}
                       >
                         <Icon className="h-4.5 w-4.5" />
                       </span>
                       <span className="flex-1 text-[13px] font-bold tracking-[0.01em]">{item.label}</span>
-                      <ChevronRight className={clsx('h-4 w-4 transition-opacity', active ? 'text-sky-700 opacity-100' : 'text-white/80 opacity-0 group-hover:opacity-90')} />
+                      <ChevronRight className={clsx('h-4 w-4 transition-opacity', active ? 'text-[#34a853] opacity-100' : 'text-white/80 opacity-0 group-hover:opacity-90')} />
                     </NavLink>
                   )
                 })}

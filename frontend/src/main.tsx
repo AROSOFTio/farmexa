@@ -33,14 +33,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           position="top-right"
           toastOptions={{
             style: {
-              fontFamily: 'Manrope, system-ui, sans-serif',
+              fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
               fontSize: '0.9rem',
             },
             classNames: {
               toast: 'shadow-modal',
             },
           }}
-          richColors
           closeButton
         />
       </BrowserRouter>

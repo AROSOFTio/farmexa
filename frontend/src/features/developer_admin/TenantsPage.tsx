@@ -396,7 +396,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                             type="button"
                             onClick={() => reactivateMutation.mutate(tenant.id)}
                             disabled={!canManageTenants}
-                            className="rounded-xl border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
+                            className="rounded-xl border border-[#34a853]/20 px-3 py-2 text-sm font-semibold text-[#34a853] hover:bg-[#34a853]/10"
                           >
                             <Power className="h-4 w-4" />
                           </button>
@@ -405,7 +405,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                             type="button"
                             onClick={() => suspendMutation.mutate(tenant.id)}
                             disabled={!canManageTenants}
-                            className="rounded-xl border border-amber-200 px-3 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50"
+                            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                           >
                             <PowerOff className="h-4 w-4" />
                           </button>
@@ -611,7 +611,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Plans</div>
                 <div className="mt-3 text-3xl font-bold text-slate-900">{catalog?.plans.length ?? 0}</div>
               </div>
-              <Layers3 className="h-5 w-5 text-amber-500" />
+              <Layers3 className="h-5 w-5 text-[#34a853]" />
             </div>
           </div>
           <div className="kpi-card">
@@ -620,7 +620,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Expiring Soon</div>
                 <div className="mt-3 text-3xl font-bold text-slate-900">{billing.expiring_soon}</div>
               </div>
-              <BadgeDollarSign className="h-5 w-5 text-emerald-600" />
+              <BadgeDollarSign className="h-5 w-5 text-[#34a853]" />
             </div>
           </div>
         </div>

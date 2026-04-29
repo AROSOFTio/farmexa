@@ -99,10 +99,10 @@ interface DashboardOverview {
 }
 
 const chartTooltipStyle = {
-  border: '1px solid #dbe8f6',
+  border: '1px solid var(--border-subtle)',
   borderRadius: '16px',
-  background: '#FFFFFF',
-  boxShadow: '0 18px 35px -28px rgba(15, 23, 42, 0.32)',
+  background: 'var(--surface-card)',
+  boxShadow: '0 10px 28px -20px rgba(0, 0, 0, 0.14)',
 }
 
 function sameDay(value: string) {
@@ -198,16 +198,15 @@ export function DashboardPage() {
   )
 
   const alerts = useMemo(() => {
-    const items: Array<{ tone: 'warning' | 'danger' | 'info'; title: string; detail: string }> = []
+    const items: Array<{ title: string; detail: string }> = []
 
     ;(data?.feedItems ?? [])
       .filter((item) => item.current_stock <= item.reorder_threshold)
       .slice(0, 2)
       .forEach((item) => {
         items.push({
-          tone: 'warning',
-          title: 'Low Feed',
-          detail: `${item.name} is below reorder level with ${item.current_stock.toLocaleString()} ${item.unit} left.`,
+          title: 'Low feed',
+          detail: `${item.name}: ${item.current_stock.toLocaleString()} ${item.unit}`,
         })
       })
 
@@ -217,9 +216,8 @@ export function DashboardPage() {
       .slice(0, 2)
       .forEach((entry) => {
         items.push({
-          tone: 'danger',
-          title: 'High Mortality',
-          detail: `Batch #${entry.batchId} has ${entry.total.toLocaleString()} recorded mortalities.`,
+          title: 'Mortality',
+          detail: `Batch ${entry.batchId}: ${entry.total.toLocaleString()}`,
         })
       })
 
@@ -228,9 +226,8 @@ export function DashboardPage() {
       .slice(0, 2)
       .forEach((invoice) => {
         items.push({
-          tone: 'info',
-          title: 'Overdue Invoice',
-          detail: `${invoice.invoice_number} is overdue with ${formatCurrency(invoice.total_amount - invoice.paid_amount)} outstanding.`,
+          title: 'Overdue',
+          detail: `${invoice.invoice_number}: ${formatCurrency(invoice.total_amount - invoice.paid_amount)}`,
         })
       })
 
@@ -241,41 +238,41 @@ export function DashboardPage() {
     const items: Array<{ title: string; detail: string; path: string }> = []
 
     if ((data?.batches?.length ?? 0) > 0 && eggsToday === 0) {
-      items.push({ title: 'Record egg collection', detail: 'No egg collection has been logged today.', path: '/farm/eggs' })
+      items.push({ title: 'Record eggs', detail: 'No entry today', path: '/farm/eggs' })
     }
 
     const feedLoggedToday = (data?.consumptions ?? []).some((entry) => sameDay(entry.record_date))
     if ((data?.batches?.length ?? 0) > 0 && !feedLoggedToday) {
-      items.push({ title: 'Capture feed usage', detail: 'Feed usage has not been recorded for today.', path: '/feed/consumption' })
+      items.push({ title: 'Record feed', detail: 'No entry today', path: '/feed/consumption' })
     }
 
     const overdueInvoice = (data?.invoices ?? []).find((invoice) => invoice.status === 'overdue')
     if (overdueInvoice) {
-      items.push({ title: 'Follow up overdue invoice', detail: `${overdueInvoice.invoice_number} needs collection action.`, path: '/sales/payments' })
+      items.push({ title: 'Collect invoice', detail: overdueInvoice.invoice_number, path: '/sales/payments' })
     }
 
-    if (alerts.some((alert) => alert.tone === 'warning')) {
-      items.push({ title: 'Review stock alert', detail: 'At least one feed item has reached reorder level.', path: '/feed/stock' })
+    if (alerts.length) {
+      items.push({ title: 'Check alerts', detail: `${alerts.length} open`, path: '/feed/stock' })
     }
 
     return items.slice(0, 4)
-  }, [alerts, data?.batches?.length, data?.consumptions, data?.invoices, eggsToday])
+  }, [alerts.length, data?.batches?.length, data?.consumptions, data?.invoices, eggsToday])
 
   const recentActivity = useMemo(() => {
     const activity = [
       ...(data?.eggLogs ?? []).slice(-3).map((entry) => ({
-        type: 'Egg Collection',
-        detail: `${entry.total_eggs.toLocaleString()} eggs recorded`,
+        type: 'Eggs',
+        detail: `${entry.total_eggs.toLocaleString()} recorded`,
         date: entry.record_date,
       })),
       ...(data?.slaughterRecords ?? []).slice(-2).map((entry) => ({
         type: 'Slaughter',
-        detail: `${entry.live_birds_count.toLocaleString()} birds processed`,
+        detail: `${entry.live_birds_count.toLocaleString()} birds`,
         date: entry.slaughter_date,
       })),
       ...(data?.invoices ?? []).slice(-3).map((entry) => ({
         type: 'Invoice',
-        detail: `${entry.invoice_number} created at ${formatCurrency(entry.total_amount)}`,
+        detail: entry.invoice_number,
         date: entry.due_date,
       })),
     ]
@@ -286,27 +283,27 @@ export function DashboardPage() {
   }, [data?.eggLogs, data?.invoices, data?.slaughterRecords])
 
   const quickActions = [
-    { label: 'Add Batch', icon: Bird, path: '/farm/batches' },
-    { label: 'Record Eggs', icon: Egg, path: '/farm/eggs' },
-    { label: 'Record Feed Usage', icon: Wheat, path: '/feed/consumption' },
-    { label: 'Record Mortality', icon: Skull, path: '/farm/mortality' },
+    { label: 'Batch', icon: Bird, path: '/farm/batches' },
+    { label: 'Eggs', icon: Egg, path: '/farm/eggs' },
+    { label: 'Feed', icon: Wheat, path: '/feed/consumption' },
+    { label: 'Mortality', icon: Skull, path: '/farm/mortality' },
     hasPermission('dev_admin:read')
-      ? { label: 'Register Vendor', icon: FilePlus2, path: '/dev-admin/tenants' }
-      : { label: 'Create Sale', icon: Receipt, path: '/sales/orders' },
-    { label: 'Open Reports', icon: ClipboardCheck, path: '/reports/production' },
+      ? { label: 'Vendor', icon: FilePlus2, path: '/dev-admin/tenants' }
+      : { label: 'Sale', icon: Receipt, path: '/sales/orders' },
+    { label: 'Reports', icon: ClipboardCheck, path: '/reports/production' },
   ]
 
   const primaryCards = [
-    { title: 'Active Birds', value: activeBirds.toLocaleString(), icon: Bird, accent: 'bg-blue-50 text-blue-600' },
-    { title: 'Eggs Today', value: eggsToday.toLocaleString(), icon: Egg, accent: 'bg-amber-50 text-amber-600' },
-    { title: 'Feed Remaining', value: `${feedRemaining.toLocaleString()} kg`, icon: Package, accent: 'bg-slate-100 text-slate-600' },
-    { title: 'Sales This Month', value: formatCurrency(salesThisMonth), icon: Receipt, accent: 'bg-emerald-50 text-emerald-600' },
+    { title: 'Birds', value: activeBirds.toLocaleString(), icon: Bird },
+    { title: 'Eggs', value: eggsToday.toLocaleString(), icon: Egg },
+    { title: 'Feed', value: `${feedRemaining.toLocaleString()} kg`, icon: Package },
+    { title: 'Sales', value: formatCurrency(salesThisMonth), icon: Receipt },
   ]
 
   if (overview.isError) {
     return (
-      <div className="card flex items-center gap-4 p-6 text-red-600">
-        <AlertTriangle className="h-6 w-6" />
+      <div className="card flex items-center gap-4 p-6 text-[var(--text-default)]">
+        <AlertTriangle className="h-6 w-6 text-[var(--brand-primary)]" />
         <div className="font-semibold">Dashboard data could not be loaded.</div>
       </div>
     )
@@ -316,32 +313,8 @@ export function DashboardPage() {
     <div className="animate-fade-in space-y-6 pb-8">
       <section className="section-header">
         <div>
-          <h1 className="section-title">Operations Dashboard</h1>
-          <p className="section-subtitle">Today's priorities, key farm signals, and recent operational activity.</p>
-        </div>
-      </section>
-
-      <section className="hero-surface overflow-hidden rounded-[2rem] px-6 py-6 text-white">
-        <div className="grid gap-6 xl:grid-cols-[1.35fr_0.9fr] xl:items-end">
-          <div>
-            <div className="hero-pill">Admin workspace</div>
-            <h2 className="mt-4 font-display text-4xl uppercase leading-none tracking-[0.04em] text-white sm:text-5xl">
-              Welcome back
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm text-white/80 sm:text-base">
-              Review live performance, act on alerts quickly, and keep vendor, stock, and farm operations moving from one clean control center.
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-[1.6rem] border border-white/16 bg-white/10 px-4 py-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/72">Revenue</div>
-              <div className="mt-2 text-2xl font-bold text-white">{formatCurrency(salesThisMonth)}</div>
-            </div>
-            <div className="rounded-[1.6rem] border border-white/16 bg-white/10 px-4 py-4">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/72">Active Alerts</div>
-              <div className="mt-2 text-2xl font-bold text-white">{alerts.length.toLocaleString()}</div>
-            </div>
-          </div>
+          <h1 className="section-title">Dashboard</h1>
+          <p className="section-subtitle">Overview</p>
         </div>
       </section>
 
@@ -352,10 +325,10 @@ export function DashboardPage() {
             <div key={card.title} className="kpi-card">
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{card.title}</div>
-                  <div className="mt-3 text-[1.85rem] font-bold tracking-[-0.04em] text-slate-900">{card.value}</div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">{card.title}</div>
+                  <div className="mt-3 text-[1.85rem] font-bold text-[var(--text-strong)]">{card.value}</div>
                 </div>
-                <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${card.accent}`}>
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[rgba(52,168,83,0.12)] text-[var(--brand-primary)]">
                   <Icon className="h-5 w-5" />
                 </div>
               </div>
@@ -364,14 +337,11 @@ export function DashboardPage() {
         })}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.15fr_0.95fr]">
+      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.15fr_0.9fr]">
         <div className="card p-5">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">Today's Tasks</h2>
-              <p className="mt-1 text-sm text-slate-500">Immediate actions for the team.</p>
-            </div>
-            <ClipboardCheck className="h-5 w-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-[var(--text-strong)]">Tasks</h2>
+            <ClipboardCheck className="h-5 w-5 text-[var(--brand-primary)]" />
           </div>
           <div className="mt-5 space-y-3">
             {todayTasks.length ? todayTasks.map((task) => (
@@ -379,17 +349,17 @@ export function DashboardPage() {
                 key={task.title}
                 type="button"
                 onClick={() => navigate(task.path)}
-                className="flex w-full items-start justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left hover:bg-white"
+                className="flex w-full items-start justify-between rounded-2xl border bg-[var(--surface-soft)] px-4 py-3 text-left hover:bg-[var(--surface-muted)]"
               >
                 <div>
-                  <div className="font-semibold text-slate-900">{task.title}</div>
-                  <div className="mt-1 text-sm text-slate-500">{task.detail}</div>
+                  <div className="font-semibold text-[var(--text-strong)]">{task.title}</div>
+                  <div className="mt-1 text-sm text-[var(--text-muted)]">{task.detail}</div>
                 </div>
-                <ArrowRight className="mt-1 h-4 w-4 text-slate-400" />
+                <ArrowRight className="mt-1 h-4 w-4 text-[var(--brand-primary)]" />
               </button>
             )) : (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-                No urgent tasks right now.
+              <div className="rounded-2xl border bg-[var(--surface-soft)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">
+                No tasks
               </div>
             )}
           </div>
@@ -397,20 +367,17 @@ export function DashboardPage() {
 
         <div className="card p-5">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">Production Trend</h2>
-              <p className="mt-1 text-sm text-slate-500">Last 14 recorded egg collection days.</p>
-            </div>
-            <Egg className="h-5 w-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-[var(--text-strong)]">Production</h2>
+            <Egg className="h-5 w-5 text-[var(--brand-primary)]" />
           </div>
           <div className="mt-4 h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={productionTrend}>
-                <CartesianGrid stroke="#d9e7f5" vertical={false} />
-                <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: '#5d7691', fontSize: 12 }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5d7691', fontSize: 12 }} />
+                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+                <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: 'var(--chart-axis)', fontSize: 12 }} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fill: 'var(--chart-axis)', fontSize: 12 }} />
                 <Tooltip contentStyle={chartTooltipStyle} />
-                <Line type="monotone" dataKey="eggs" stroke="#1b74d8" strokeWidth={3} dot={false} />
+                <Line type="monotone" dataKey="eggs" stroke="#34a853" strokeWidth={3} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -418,24 +385,21 @@ export function DashboardPage() {
 
         <div className="card p-5">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">Important Alerts</h2>
-              <p className="mt-1 text-sm text-slate-500">Items needing attention.</p>
-            </div>
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            <h2 className="text-lg font-semibold text-[var(--text-strong)]">Alerts</h2>
+            <AlertTriangle className="h-5 w-5 text-[var(--brand-primary)]" />
           </div>
           <div className="mt-5 space-y-3">
             {alerts.length ? alerts.map((alert) => (
-              <div key={`${alert.title}-${alert.detail}`} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div key={`${alert.title}-${alert.detail}`} className="rounded-2xl border bg-[var(--surface-soft)] px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <span className={`status-dot ${alert.tone === 'danger' ? 'bg-red-500' : alert.tone === 'warning' ? 'bg-amber-500' : 'bg-blue-500'}`} />
-                  <div className="font-semibold text-slate-900">{alert.title}</div>
+                  <span className="status-dot bg-[var(--brand-primary)]" />
+                  <div className="font-semibold text-[var(--text-strong)]">{alert.title}</div>
                 </div>
-                <div className="mt-1 text-sm text-slate-500">{alert.detail}</div>
+                <div className="mt-1 text-sm text-[var(--text-muted)]">{alert.detail}</div>
               </div>
             )) : (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-                No active alerts.
+              <div className="rounded-2xl border bg-[var(--surface-soft)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">
+                No alerts
               </div>
             )}
           </div>
@@ -444,38 +408,28 @@ export function DashboardPage() {
 
       <section className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
         <div className="card p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">Recent Activity</h2>
-              <p className="mt-1 text-sm text-slate-500">Latest production, slaughter, and sales events.</p>
-            </div>
-          </div>
+          <h2 className="text-lg font-semibold text-[var(--text-strong)]">Recent</h2>
           <div className="mt-5 space-y-3">
             {recentActivity.length ? recentActivity.map((entry) => (
-              <div key={`${entry.type}-${entry.detail}-${entry.date}`} className="flex items-start justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3">
+              <div key={`${entry.type}-${entry.detail}-${entry.date}`} className="flex items-start justify-between rounded-2xl border bg-[var(--surface-card)] px-4 py-3">
                 <div>
-                  <div className="font-semibold text-slate-900">{entry.type}</div>
-                  <div className="mt-1 text-sm text-slate-500">{entry.detail}</div>
+                  <div className="font-semibold text-[var(--text-strong)]">{entry.type}</div>
+                  <div className="mt-1 text-sm text-[var(--text-muted)]">{entry.detail}</div>
                 </div>
-                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
+                <div className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--text-muted)]">
                   {new Date(entry.date).toLocaleDateString('en-UG', { month: 'short', day: 'numeric' })}
                 </div>
               </div>
             )) : (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-                No recent activity available.
+              <div className="rounded-2xl border bg-[var(--surface-soft)] px-4 py-8 text-center text-sm text-[var(--text-muted)]">
+                No activity
               </div>
             )}
           </div>
         </div>
 
         <div className="card p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">Quick Actions</h2>
-              <p className="mt-1 text-sm text-slate-500">Fast entry points for daily work.</p>
-            </div>
-          </div>
+          <h2 className="text-lg font-semibold text-[var(--text-strong)]">Quick</h2>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {quickActions.map((action) => {
               const Icon = action.icon
@@ -484,12 +438,12 @@ export function DashboardPage() {
                   key={action.label}
                   type="button"
                   onClick={() => navigate(action.path)}
-                  className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left hover:bg-white"
+                  className="flex items-center gap-3 rounded-2xl border bg-[var(--surface-soft)] px-4 py-3 text-left hover:bg-[var(--surface-muted)]"
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[rgba(52,168,83,0.12)] text-[var(--brand-primary)]">
                     <Icon className="h-4.5 w-4.5" />
                   </span>
-                  <span className="font-semibold text-slate-900">{action.label}</span>
+                  <span className="font-semibold text-[var(--text-strong)]">{action.label}</span>
                 </button>
               )
             })}
