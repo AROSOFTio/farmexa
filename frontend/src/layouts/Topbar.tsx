@@ -108,7 +108,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                     }}
                     className="flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2.5 text-left text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
                   >
-                    <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[rgba(36,179,90,0.1)] text-[var(--brand-primary)]">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-50 text-[var(--brand-primary)]">
                       <Icon className="h-[15px] w-[15px]" />
                     </span>
                     {action.label}
@@ -171,7 +171,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                     }}
                     className="flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
                   >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(36,179,90,0.1)] text-[var(--brand-primary)]">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-[var(--brand-primary)]">
                       <Settings className="h-4 w-4" />
                     </span>
                     Settings
@@ -182,7 +182,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
                   onClick={handleLogout}
                   className="flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
                 >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(36,179,90,0.1)] text-[var(--brand-primary)]">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-[var(--brand-primary)]">
                     <LogOut className="h-4 w-4" />
                   </span>
                   Sign out

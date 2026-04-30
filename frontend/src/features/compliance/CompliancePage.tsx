@@ -202,7 +202,7 @@ export function CompliancePage({ section = 'documents' }: { section?: Compliance
       <section className="grid gap-6 xl:grid-cols-[430px_minmax(0,1fr)]">
         <div className="card p-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(52,168,83,0.1)] text-[var(--brand-primary)]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 text-[var(--brand-primary)]">
               <Upload className="h-4 w-4" />
             </div>
             <div>

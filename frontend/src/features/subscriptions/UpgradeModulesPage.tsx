@@ -206,7 +206,7 @@ export function UpgradeModulesPage() {
                       }
                       className={`rounded-[16px] border px-3.5 py-3 text-left transition-colors ${
                         active
-                          ? 'border-[var(--brand-primary)] bg-[rgba(52,168,83,0.08)]'
+                          ? 'border-brand-200 bg-brand-50'
                           : 'border-[var(--border-subtle)] bg-[var(--surface-card)] hover:bg-[var(--surface-soft)]'
                       }`}
                     >

@@ -410,7 +410,7 @@ export function DashboardPage() {
                   <div className="text-[11px] font-semibold tracking-[0.08em] text-[var(--text-muted)]">{card.title}</div>
                   <div className="mt-2 text-[1.05rem] font-semibold text-[var(--text-strong)] sm:text-[1.75rem]">{card.value}</div>
                 </div>
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(36,179,90,0.08)] text-[var(--brand-primary)]">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-50 text-[var(--brand-primary)]">
                   <Icon className="h-4 w-4" />
                 </div>
               </div>
@@ -459,7 +459,7 @@ export function DashboardPage() {
                 <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: 'var(--chart-axis)', fontSize: 12 }} />
                 <YAxis tickLine={false} axisLine={false} tick={{ fill: 'var(--chart-axis)', fontSize: 12 }} />
                 <Tooltip contentStyle={chartTooltipStyle} />
-                <Line type="monotone" dataKey="eggs" stroke="#34a853" strokeWidth={3} dot={false} />
+                <Line type="monotone" dataKey="eggs" stroke="var(--brand-primary)" strokeWidth={3} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -552,7 +552,7 @@ export function DashboardPage() {
                   onClick={() => navigate(action.path)}
                   className="flex items-center gap-3 rounded-[12px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-2.5 text-left hover:bg-[var(--surface-muted)]"
                 >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(36,179,90,0.08)] text-[var(--brand-primary)]">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-50 text-[var(--brand-primary)]">
                     <Icon className="h-4 w-4" />
                   </span>
                   <span className="text-[14px] font-semibold text-[var(--text-strong)]">{action.label}</span>

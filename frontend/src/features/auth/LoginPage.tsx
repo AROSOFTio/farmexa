@@ -138,7 +138,7 @@ export function LoginPage() {
           </div>
 
           {registrationResult ? (
-            <div className="mt-5 rounded-[14px] border border-[rgba(36,179,90,0.18)] bg-[rgba(36,179,90,0.06)] px-4 py-4 text-[13px] text-[var(--text-default)]">
+            <div className="mt-5 rounded-[14px] border border-brand-200 bg-brand-50/70 px-4 py-4 text-[13px] text-[var(--text-default)]">
               <div className="font-semibold text-[var(--text-strong)]">{registrationResult.tenant_name} is ready.</div>
               <div className="mt-1">Sign in with <span className="font-semibold">{registrationResult.admin_email}</span>.</div>
               <div className="mt-2">

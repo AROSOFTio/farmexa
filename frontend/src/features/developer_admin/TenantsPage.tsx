@@ -448,7 +448,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                             type="button"
                             onClick={() => reactivateMutation.mutate(tenant.id)}
                             disabled={!canManageTenants}
-                            className="rounded-xl border border-[#34a853]/20 px-3 py-2 text-sm font-semibold text-[#34a853] hover:bg-[#34a853]/10"
+                            className="rounded-xl border border-brand-200 px-3 py-2 text-sm font-semibold text-brand-600 hover:bg-brand-50"
                           >
                             <Power className="h-4 w-4" />
                           </button>
@@ -689,7 +689,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Plans</div>
                 <div className="mt-3 text-3xl font-bold text-slate-900">{catalog?.plans.length ?? 0}</div>
               </div>
-              <Layers3 className="h-5 w-5 text-[#34a853]" />
+              <Layers3 className="h-5 w-5 text-brand-600" />
             </div>
           </div>
           <div className="kpi-card">
@@ -698,7 +698,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Expiring Soon</div>
                 <div className="mt-3 text-3xl font-bold text-slate-900">{billing.expiring_soon}</div>
               </div>
-              <BadgeDollarSign className="h-5 w-5 text-[#34a853]" />
+              <BadgeDollarSign className="h-5 w-5 text-brand-600" />
             </div>
           </div>
         </div>

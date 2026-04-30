@@ -33,7 +33,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           position="top-right"
           toastOptions={{
             style: {
-              fontFamily: '"Segoe UI", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif',
+              fontFamily: 'Montserrat, "Segoe UI", Inter, system-ui, sans-serif',
               fontSize: '0.9rem',
             },
             classNames: {
