@@ -6,7 +6,7 @@ from app.db.base import Base  # noqa: F401
 from app.models.auth import Role, Permission, RolePermission, RefreshToken, AuditLog  # noqa: F401
 from app.models.compliance import ComplianceDocument, DocumentReminder  # noqa: F401
 from app.models.user import User  # noqa: F401
-from app.models.farm import PoultryHouse, Batch, MortalityLog, VaccinationLog, GrowthLog  # noqa: F401
+from app.models.farm import PoultryHouse, PoultryHouseSection, Batch, MortalityLog, VaccinationLog, GrowthLog  # noqa: F401
 from app.models.feed import Supplier, FeedCategory, FeedItem, FeedPurchase, FeedPurchaseItem, FeedConsumption  # noqa: F401
 from app.models.inventory import StockItem, StockMovement  # noqa: F401
 from app.models.slaughter import SlaughterRecord, SlaughterOutput  # noqa: F401
@@ -42,6 +42,7 @@ __all__ = [
     "DocumentReminder",
     "User",
     "PoultryHouse",
+    "PoultryHouseSection",
     "Batch",
     "MortalityLog",
     "VaccinationLog",

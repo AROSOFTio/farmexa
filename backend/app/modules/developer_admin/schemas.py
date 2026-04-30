@@ -1,5 +1,5 @@
 """
-Developer Admin schemas for tenant onboarding, SaaS catalog, and billing control.
+Developer Admin schemas for tenancy, plans, domains, activity, and platform settings.
 """
 
 from datetime import date, datetime
@@ -19,11 +19,10 @@ class TenantCreate(BaseModel):
     address: Optional[str] = None
     country: Optional[str] = None
     domain: Optional[str] = None
-    plan: str = "basic"
+    plan: str = Field(min_length=1)
     billing_cycle: str = "monthly"
     subscription_start: Optional[date] = None
     subscription_expiry: Optional[date] = None
-    enabled_modules: List[str] = Field(default_factory=list)
     notes: Optional[str] = None
 
 
@@ -42,13 +41,7 @@ class TenantUpdate(BaseModel):
     subscription_start: Optional[date] = None
     subscription_expiry: Optional[date] = None
     is_suspended: Optional[bool] = None
-    status: Optional[str] = None
     notes: Optional[str] = None
-
-
-class ModuleToggle(BaseModel):
-    module_key: str
-    is_enabled: bool
 
 
 class PlanChange(BaseModel):
@@ -67,6 +60,11 @@ class DomainAssignRequest(BaseModel):
     is_primary: bool = False
 
 
+class ModuleToggle(BaseModel):
+    module_key: str
+    is_enabled: bool
+
+
 class ModulePriceUpdate(BaseModel):
     billing_cycle: str
     price: Decimal
@@ -74,10 +72,47 @@ class ModulePriceUpdate(BaseModel):
     notes: Optional[str] = None
 
 
+class PlanBase(BaseModel):
+    name: str = Field(min_length=2)
+    code: str = Field(min_length=2, max_length=50)
+    description: Optional[str] = None
+    billing_cycle: str = "monthly"
+    monthly_price: Decimal = Field(default=Decimal("0"))
+    quarterly_price: Decimal = Field(default=Decimal("0"))
+    annual_price: Decimal = Field(default=Decimal("0"))
+    currency: str = Field(default="UGX", min_length=1, max_length=10)
+    trial_days: int = Field(default=0, ge=0)
+    is_active: bool = True
+    modules: list[str] = Field(default_factory=list)
+
+
+class PlanCreate(PlanBase):
+    pass
+
+
+class PlanUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=2)
+    code: Optional[str] = Field(default=None, min_length=2, max_length=50)
+    description: Optional[str] = None
+    billing_cycle: Optional[str] = None
+    monthly_price: Optional[Decimal] = Field(default=None)
+    quarterly_price: Optional[Decimal] = Field(default=None)
+    annual_price: Optional[Decimal] = Field(default=None)
+    currency: Optional[str] = Field(default=None, min_length=1, max_length=10)
+    trial_days: Optional[int] = Field(default=None, ge=0)
+    is_active: Optional[bool] = None
+    modules: Optional[list[str]] = None
+
+
+class PlanStatusUpdate(BaseModel):
+    is_active: bool
+
+
 class TenantModuleOut(BaseModel):
     id: int
     module_key: str
     is_enabled: bool
+    is_manual_override: bool
     updated_at: datetime
 
     model_config = {"from_attributes": True}
@@ -95,6 +130,7 @@ class TenantDomainOut(BaseModel):
     ssl_requested_at: Optional[datetime] = None
     ssl_issued_at: Optional[datetime] = None
     activated_at: Optional[datetime] = None
+    disabled_at: Optional[datetime] = None
     last_error: Optional[str] = None
     created_at: datetime
 
@@ -165,9 +201,11 @@ class PlatformModuleOut(BaseModel):
 
 class PlanModuleOut(BaseModel):
     module_key: str
+    module_name: str
+    category: str
+    description: Optional[str]
+    is_core: bool
     is_included: bool
-
-    model_config = {"from_attributes": True}
 
 
 class PlanOut(BaseModel):
@@ -175,11 +213,16 @@ class PlanOut(BaseModel):
     name: str
     description: Optional[str]
     billing_cycle: str
+    monthly_price: Decimal
+    quarterly_price: Decimal
+    annual_price: Decimal
+    currency: str
+    trial_days: int
     is_custom: bool
     is_active: bool
+    module_count: int = 0
+    tenant_count: int = 0
     modules: List[PlanModuleOut] = Field(default_factory=list)
-
-    model_config = {"from_attributes": True}
 
 
 class ModulePriceOut(BaseModel):
@@ -229,3 +272,33 @@ class SubscriptionHistoryOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class DeveloperAdminOverviewOut(BaseModel):
+    total_tenants: int
+    active_domains: int
+    active_plans: int
+    monthly_revenue: Decimal
+    pending_setup: int
+    suspended_tenants: int
+
+
+class ActivityLogOut(BaseModel):
+    id: int
+    action: str
+    entity: str
+    entity_id: Optional[int]
+    meta: Optional[str]
+    created_at: datetime
+    actor_name: Optional[str] = None
+    actor_email: Optional[str] = None
+
+
+class DeveloperAdminSettingsOut(BaseModel):
+    primary_platform_domain: str
+    default_tenant_domain_suffix: str
+    automatic_ssl_provisioning: bool
+    certbot_enabled: bool
+    mandatory_module_keys: list[str]
+    total_modules: int
+    total_plans: int

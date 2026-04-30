@@ -2,7 +2,7 @@ from datetime import date
 from typing import Optional
 import enum
 
-from sqlalchemy import Date, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -36,7 +36,29 @@ class PoultryHouse(Base):
     capacity: Mapped[int] = mapped_column(Integer)
     status: Mapped[HouseStatus] = mapped_column(db_enum(HouseStatus, name="housestatus"), default=HouseStatus.ACTIVE)
 
+    sections: Mapped[list["PoultryHouseSection"]] = relationship(
+        "PoultryHouseSection",
+        back_populates="house",
+        cascade="all, delete-orphan",
+        order_by="PoultryHouseSection.id",
+    )
     batches: Mapped[list["Batch"]] = relationship("Batch", back_populates="house")
+
+
+class PoultryHouseSection(Base):
+    __tablename__ = "poultry_house_sections"
+    __table_args__ = (UniqueConstraint("house_id", "name", name="uq_house_section_name"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    house_id: Mapped[int] = mapped_column(ForeignKey("poultry_houses.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    section_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    capacity: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[HouseStatus] = mapped_column(db_enum(HouseStatus, name="housestatus"), default=HouseStatus.ACTIVE)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    house: Mapped["PoultryHouse"] = relationship("PoultryHouse", back_populates="sections")
+    batches: Mapped[list["Batch"]] = relationship("Batch", back_populates="section")
 
 
 class Batch(Base):
@@ -45,6 +67,11 @@ class Batch(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     batch_number: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     house_id: Mapped[int] = mapped_column(ForeignKey("poultry_houses.id"))
+    section_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("poultry_house_sections.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     breed: Mapped[str] = mapped_column(String(100))
     source: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     arrival_date: Mapped[date] = mapped_column(Date)
@@ -53,6 +80,7 @@ class Batch(Base):
     status: Mapped[BatchStatus] = mapped_column(db_enum(BatchStatus, name="batchstatus"), default=BatchStatus.ACTIVE)
 
     house: Mapped["PoultryHouse"] = relationship("PoultryHouse", back_populates="batches")
+    section: Mapped[Optional["PoultryHouseSection"]] = relationship("PoultryHouseSection", back_populates="batches")
     mortality_logs: Mapped[list["MortalityLog"]] = relationship("MortalityLog", back_populates="batch", cascade="all, delete-orphan")
     vaccinations: Mapped[list["VaccinationLog"]] = relationship("VaccinationLog", back_populates="batch", cascade="all, delete-orphan")
     growth_logs: Mapped[list["GrowthLog"]] = relationship("GrowthLog", back_populates="batch", cascade="all, delete-orphan")

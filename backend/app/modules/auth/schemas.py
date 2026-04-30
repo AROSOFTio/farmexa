@@ -21,7 +21,7 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
-class VendorRegistrationRequest(BaseModel):
+class TenantRegistrationRequest(BaseModel):
     name: str = Field(min_length=2)
     business_name: str | None = None
     contact_person: str | None = None
@@ -82,7 +82,7 @@ class TenantSessionOut(BaseModel):
     subscription_expiry: date | None = None
 
 
-class VendorRegistrationOut(BaseModel):
+class TenantRegistrationOut(BaseModel):
     tenant_id: int
     tenant_name: str
     admin_email: EmailStr
@@ -100,3 +100,7 @@ class MeResponse(BaseModel):
     permissions: list[str]  # flat list of permission codes for easy frontend use
     enabled_modules: list[str]
     tenant: TenantSessionOut | None = None
+
+
+VendorRegistrationRequest = TenantRegistrationRequest
+VendorRegistrationOut = TenantRegistrationOut

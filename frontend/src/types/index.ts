@@ -58,7 +58,7 @@ export interface LoginRequest {
   password: string
 }
 
-export interface VendorRegistrationRequest {
+export interface TenantRegistrationRequest {
   name: string
   business_name?: string
   contact_person?: string
@@ -70,7 +70,7 @@ export interface VendorRegistrationRequest {
   password: string
 }
 
-export interface VendorRegistrationResponse {
+export interface TenantRegistrationResponse {
   tenant_id: number
   tenant_name: string
   admin_email: string
@@ -82,6 +82,9 @@ export interface VendorRegistrationResponse {
   custom_domain?: string | null
   custom_domain_status?: string | null
 }
+
+export type VendorRegistrationRequest = TenantRegistrationRequest
+export type VendorRegistrationResponse = TenantRegistrationResponse
 
 export interface UserCreateRequest {
   email: string

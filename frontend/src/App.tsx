@@ -32,6 +32,7 @@ export default function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register-tenant" element={<VendorRegistrationPage />} />
         <Route path="/register-vendor" element={<VendorRegistrationPage />} />
 
         <Route
@@ -399,7 +400,14 @@ export default function App() {
           </Route>
           
           <Route path="dev-admin">
-            <Route index element={<Navigate to="/dev-admin/tenants" replace />} />
+            <Route
+              index
+              element={
+                <ProtectedRoute permission="dev_admin:read">
+                  <TenantsPage section="dashboard" />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="tenants"
               element={
@@ -425,26 +433,18 @@ export default function App() {
               }
             />
             <Route
-              path="modules"
+              path="activity"
               element={
                 <ProtectedRoute permission="dev_admin:read">
-                  <TenantsPage section="modules" />
+                  <TenantsPage section="activity" />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="billing"
+              path="settings"
               element={
                 <ProtectedRoute permission="dev_admin:read">
-                  <TenantsPage section="billing" />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="control"
-              element={
-                <ProtectedRoute permission="dev_admin:read">
-                  <TenantsPage section="control" />
+                  <TenantsPage section="settings" />
                 </ProtectedRoute>
               }
             />
@@ -452,7 +452,7 @@ export default function App() {
               path="*"
               element={
                 <ProtectedRoute permission="dev_admin:read">
-                  <TenantsPage section="tenants" />
+                  <TenantsPage section="dashboard" />
                 </ProtectedRoute>
               }
             />

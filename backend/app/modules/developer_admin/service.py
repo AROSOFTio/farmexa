@@ -1,5 +1,5 @@
 """
-Developer Admin service for SaaS catalog, tenant onboarding, domain control, and billing control.
+Developer Admin service for tenancy, plans, domains, activity, and plan-driven module access.
 """
 
 from __future__ import annotations
@@ -9,10 +9,11 @@ import re
 import secrets
 import subprocess
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 from typing import Iterable
 
 from fastapi import HTTPException, Request
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -20,7 +21,7 @@ from sqlalchemy.orm import selectinload
 from app.core.config import settings
 from app.core.security import hash_password
 from app.db.tenant_db import provision_tenant_operational_database
-from app.models.auth import Role
+from app.models.auth import AuditLog, Role
 from app.models.tenant import (
     BillingCycle,
     DomainStatus,
@@ -38,18 +39,25 @@ from app.models.tenant import (
     TenantStatus,
 )
 from app.models.user import User
+from app.modules.auth.schemas import TenantRegistrationOut, TenantRegistrationRequest
 from app.modules.developer_admin.catalog import MANDATORY_TENANT_MODULE_KEYS
 from app.modules.developer_admin.schemas import (
+    ActivityLogOut,
+    DeveloperAdminSettingsOut,
     DomainAssignRequest,
     ModulePriceUpdate,
     ModuleToggle,
     PlanChange,
+    PlanCreate,
+    PlanOut,
+    PlanStatusUpdate,
+    PlanUpdate,
     SuspendRequest,
     TenantAdminCredentialOut,
     TenantCreate,
+    TenantModuleOut,
     TenantUpdate,
 )
-from app.modules.auth.schemas import VendorRegistrationOut, VendorRegistrationRequest
 from app.modules.users.catalog import TENANT_ADMIN_ROLE_NAME
 from app.utils.audit import write_audit_log
 from app.utils.domains import infer_domain_type, normalize_host, strip_port, verify_domain_points_to_target
@@ -64,7 +72,7 @@ class DeveloperAdminService:
 
     def _tenant_query(self):
         return select(Tenant).options(
-            selectinload(Tenant.modules),
+            selectinload(Tenant.modules).selectinload(TenantModule.module),
             selectinload(Tenant.domains),
             selectinload(Tenant.subscriptions),
         )
@@ -72,6 +80,10 @@ class DeveloperAdminService:
     @staticmethod
     def _slugify(value: str) -> str:
         return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+
+    @staticmethod
+    def _normalize_plan_code(value: str) -> str:
+        return re.sub(r"[^a-z0-9]+", "_", value.strip().lower()).strip("_")
 
     @staticmethod
     def _parse_billing_cycle(value: str) -> BillingCycle:
@@ -98,24 +110,44 @@ class DeveloperAdminService:
         return value.value if hasattr(value, "value") else value
 
     @staticmethod
-    def _resolve_subscription_status(*, is_suspended: bool, expiry_date: date | None) -> SubscriptionStatus:
+    def _billing_cycle_days(cycle: BillingCycle) -> int:
+        if cycle == BillingCycle.QUARTERLY:
+            return 90
+        if cycle == BillingCycle.ANNUAL:
+            return 365
+        return 30
+
+    @staticmethod
+    def _monthly_revenue_equivalent(plan: PlanDefinition, cycle: BillingCycle) -> Decimal:
+        monthly = Decimal(str(plan.monthly_price or 0))
+        quarterly = Decimal(str(plan.quarterly_price or 0))
+        annual = Decimal(str(plan.annual_price or 0))
+        if cycle == BillingCycle.QUARTERLY:
+            return quarterly / Decimal("3")
+        if cycle == BillingCycle.ANNUAL:
+            return annual / Decimal("12")
+        return monthly
+
+    @staticmethod
+    def _price_for_cycle(plan: PlanDefinition, cycle: BillingCycle) -> Decimal:
+        if cycle == BillingCycle.QUARTERLY:
+            return Decimal(str(plan.quarterly_price or 0))
+        if cycle == BillingCycle.ANNUAL:
+            return Decimal(str(plan.annual_price or 0))
+        return Decimal(str(plan.monthly_price or 0))
+
+    @staticmethod
+    def _subscription_status_for(*, is_suspended: bool, expiry_date: date | None, is_trial: bool) -> SubscriptionStatus:
         if is_suspended:
             return SubscriptionStatus.SUSPENDED
         if expiry_date and expiry_date < date.today():
             return SubscriptionStatus.EXPIRED
+        if is_trial:
+            return SubscriptionStatus.TRIAL
         return SubscriptionStatus.ACTIVE
 
     def _default_platform_domain(self, slug: str) -> str:
         return f"{slug}.{settings.DEFAULT_TENANT_DOMAIN_SUFFIX}"
-
-    async def _get_plan(self, plan_code: str) -> PlanDefinition:
-        result = await self.db.execute(
-            select(PlanDefinition).options(selectinload(PlanDefinition.modules)).where(PlanDefinition.code == plan_code)
-        )
-        plan = result.scalar_one_or_none()
-        if not plan:
-            raise HTTPException(status_code=404, detail="Plan not found")
-        return plan
 
     async def _get_role(self, role_name: str) -> Role:
         result = await self.db.execute(select(Role).where(Role.name == role_name))
@@ -131,7 +163,22 @@ class DeveloperAdminService:
             raise HTTPException(status_code=404, detail=f"Module '{module_key}' not found")
         return module
 
-    async def _get_tenant(self, tenant_id: int) -> Tenant:
+    async def _get_core_module_keys(self) -> set[str]:
+        result = await self.db.execute(select(PlatformModule.key).where(PlatformModule.is_core.is_(True)))
+        return set(result.scalars().all())
+
+    async def _get_plan_model(self, plan_code: str) -> PlanDefinition:
+        result = await self.db.execute(
+            select(PlanDefinition)
+            .where(PlanDefinition.code == plan_code)
+            .options(selectinload(PlanDefinition.modules).selectinload(PlanModule.module))
+        )
+        plan = result.scalar_one_or_none()
+        if not plan:
+            raise HTTPException(status_code=404, detail="Plan not found")
+        return plan
+
+    async def _get_tenant_model(self, tenant_id: int) -> Tenant:
         result = await self.db.execute(self._tenant_query().where(Tenant.id == tenant_id))
         tenant = result.scalar_one_or_none()
         if not tenant:
@@ -147,20 +194,20 @@ class DeveloperAdminService:
         )
         return list(result.scalars().all())
 
-    @staticmethod
-    def _with_required_modules(module_keys: Iterable[str]) -> list[str]:
-        ordered = list(dict.fromkeys([*module_keys, *sorted(MANDATORY_TENANT_MODULE_KEYS)]))
-        return ordered
-
     async def _get_tenant_modules(self, tenant_id: int) -> list[TenantModule]:
         result = await self.db.execute(
-            select(TenantModule).where(TenantModule.tenant_id == tenant_id).order_by(TenantModule.module_key)
+            select(TenantModule)
+            .where(TenantModule.tenant_id == tenant_id)
+            .options(selectinload(TenantModule.module))
+            .order_by(TenantModule.module_key)
         )
         return list(result.scalars().all())
 
     async def _get_tenant_domains(self, tenant_id: int) -> list[TenantDomain]:
         result = await self.db.execute(
-            select(TenantDomain).where(TenantDomain.tenant_id == tenant_id).order_by(TenantDomain.is_primary.desc(), TenantDomain.host)
+            select(TenantDomain)
+            .where(TenantDomain.tenant_id == tenant_id)
+            .order_by(TenantDomain.is_primary.desc(), TenantDomain.host)
         )
         return list(result.scalars().all())
 
@@ -182,24 +229,102 @@ class DeveloperAdminService:
             raise HTTPException(status_code=404, detail="Tenant domain not found.")
         return domain
 
-    async def _sync_tenant_modules(self, tenant_id: int, module_keys: Iterable[str], disable_missing: bool) -> None:
-        unique_module_keys = list(dict.fromkeys(module_keys))
-        for module_key in unique_module_keys:
+    async def _tenant_count_map(self) -> dict[str, int]:
+        result = await self.db.execute(select(Tenant.plan, func.count(Tenant.id)).group_by(Tenant.plan))
+        return {plan_code: count for plan_code, count in result.all()}
+
+    def _serialize_plan(self, plan: PlanDefinition, tenant_count_map: dict[str, int]) -> PlanOut:
+        included = [item for item in plan.modules if item.is_included and item.module is not None]
+        included.sort(key=lambda item: (item.module.category, item.module.name))
+        return PlanOut(
+            code=plan.code,
+            name=plan.name,
+            description=plan.description,
+            billing_cycle=self._enum_value(plan.billing_cycle),
+            monthly_price=Decimal(str(plan.monthly_price or 0)),
+            quarterly_price=Decimal(str(plan.quarterly_price or 0)),
+            annual_price=Decimal(str(plan.annual_price or 0)),
+            currency=plan.currency,
+            trial_days=plan.trial_days,
+            is_custom=plan.is_custom,
+            is_active=plan.is_active,
+            module_count=len(included),
+            tenant_count=tenant_count_map.get(plan.code, 0),
+            modules=[
+                {
+                    "module_key": item.module_key,
+                    "module_name": item.module.name,
+                    "category": item.module.category,
+                    "description": item.module.description,
+                    "is_core": item.module.is_core,
+                    "is_included": item.is_included,
+                }
+                for item in included
+            ],
+        )
+
+    async def _sync_plan_modules(self, plan_code: str, module_keys: Iterable[str]) -> None:
+        requested = list(dict.fromkeys(module_keys))
+        for module_key in requested:
             await self._get_module(module_key)
 
-        existing_modules = {module.module_key: module for module in await self._get_tenant_modules(tenant_id)}
-        keep = set(unique_module_keys)
+        result = await self.db.execute(select(PlanModule).where(PlanModule.plan_code == plan_code))
+        existing = {item.module_key: item for item in result.scalars().all()}
+        keep = set(requested)
 
-        for module_key in unique_module_keys:
-            if module_key in existing_modules:
-                existing_modules[module_key].is_enabled = True
+        for module_key in requested:
+            if module_key in existing:
+                existing[module_key].is_included = True
             else:
-                self.db.add(TenantModule(tenant_id=tenant_id, module_key=module_key, is_enabled=True))
+                self.db.add(PlanModule(plan_code=plan_code, module_key=module_key, is_included=True))
 
-        if disable_missing:
-            for module_key, module in existing_modules.items():
-                if module_key not in keep:
-                    module.is_enabled = False
+        for module_key, record in existing.items():
+            if module_key not in keep:
+                record.is_included = False
+
+        await self.db.flush()
+
+    async def sync_tenant_modules_from_plan(self, tenant_id: int, plan_code: str) -> None:
+        plan_keys = set(await self._get_plan_module_keys(plan_code))
+        core_keys = await self._get_core_module_keys()
+        expected_enabled = plan_keys | core_keys
+
+        existing = {record.module_key: record for record in await self._get_tenant_modules(tenant_id)}
+
+        for module_key in expected_enabled:
+            module = existing.get(module_key)
+            if module is None:
+                self.db.add(
+                    TenantModule(
+                        tenant_id=tenant_id,
+                        module_key=module_key,
+                        is_enabled=True,
+                        is_manual_override=False,
+                    )
+                )
+                continue
+
+            desired_enabled = True
+            if module_key in core_keys:
+                module.is_enabled = True
+                module.is_manual_override = False
+                continue
+
+            if module.is_manual_override:
+                if module.is_enabled == desired_enabled:
+                    module.is_manual_override = False
+            else:
+                module.is_enabled = desired_enabled
+
+        for module_key, module in existing.items():
+            if module_key in expected_enabled:
+                continue
+            desired_enabled = False
+            if module.is_manual_override:
+                if module.is_enabled == desired_enabled:
+                    module.is_manual_override = False
+            else:
+                module.is_enabled = False
 
         await self.db.flush()
 
@@ -220,7 +345,11 @@ class DeveloperAdminService:
 
         domain_type = self._domain_type_for(requested_host)
         initial_status = DomainStatus.ACTIVE if domain_type == DomainType.PLATFORM_SUBDOMAIN else DomainStatus.PENDING_DNS
-        verification_target = settings.TENANT_DOMAIN_TARGET_IP if domain_type == DomainType.CUSTOM else settings.PRIMARY_PLATFORM_DOMAIN
+        verification_target = (
+            settings.TENANT_DOMAIN_TARGET_IP
+            if domain_type == DomainType.CUSTOM
+            else settings.PRIMARY_PLATFORM_DOMAIN
+        )
 
         existing_result = await self.db.execute(
             select(TenantDomain).where(
@@ -279,29 +408,59 @@ class DeveloperAdminService:
     async def _ensure_primary_domain(self, tenant: Tenant, host: str | None) -> None:
         await self._upsert_domain(tenant, host, is_primary=True)
 
+    async def _ensure_onboarding_domains(self, tenant: Tenant, requested_host: str | None) -> None:
+        await self._ensure_primary_domain(tenant, requested_host)
+        normalized = self._clean_host(requested_host)
+        if normalized and self._domain_type_for(normalized) == DomainType.CUSTOM:
+            await self._upsert_domain(tenant, None, is_primary=False)
+
     async def _create_subscription(
         self,
         tenant_id: int,
-        plan_code: str,
-        billing_cycle: str,
+        plan: PlanDefinition,
+        billing_cycle: BillingCycle,
         start_date: date | None,
         expiry_date: date | None,
+        *,
         notes: str | None = None,
-        status: str | None = None,
+        status: SubscriptionStatus | None = None,
     ) -> Subscription:
         latest = await self._get_latest_subscription(tenant_id)
-        if latest and latest.status in {SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIAL, SubscriptionStatus.PAST_DUE}:
+        if latest and latest.status in {
+            SubscriptionStatus.ACTIVE,
+            SubscriptionStatus.TRIAL,
+            SubscriptionStatus.PAST_DUE,
+        }:
             latest.status = SubscriptionStatus.CANCELLED
 
-        parsed_billing_cycle = self._parse_billing_cycle(billing_cycle)
+        resolved_start = start_date or date.today()
+        resolved_expiry = expiry_date
+        is_trial = False
+        if resolved_expiry is None and plan.trial_days > 0 and status is None:
+            resolved_expiry = resolved_start + timedelta(days=plan.trial_days)
+            is_trial = True
+
+        resolved_status = status or self._subscription_status_for(
+            is_suspended=False,
+            expiry_date=resolved_expiry,
+            is_trial=is_trial,
+        )
+
+        next_invoice = (
+            resolved_expiry
+            if resolved_status == SubscriptionStatus.TRIAL and resolved_expiry is not None
+            else resolved_start + timedelta(days=self._billing_cycle_days(billing_cycle))
+        )
         subscription = Subscription(
             tenant_id=tenant_id,
-            plan_code=plan_code,
-            billing_cycle=parsed_billing_cycle,
-            status=SubscriptionStatus(status or ("trial" if not expiry_date else "active")),
-            start_date=start_date or date.today(),
-            expiry_date=expiry_date,
-            next_invoice_date=(start_date or date.today()) + timedelta(days=30),
+            plan_code=plan.code,
+            billing_cycle=billing_cycle,
+            status=resolved_status,
+            start_date=resolved_start,
+            expiry_date=resolved_expiry,
+            next_invoice_date=next_invoice,
+            amount=self._price_for_cycle(plan, billing_cycle),
+            currency=plan.currency,
             notes=notes,
         )
         self.db.add(subscription)
@@ -333,12 +492,6 @@ class DeveloperAdminService:
         await self.db.flush()
         return user
 
-    async def _ensure_onboarding_domains(self, tenant: Tenant, requested_host: str | None) -> None:
-        await self._ensure_primary_domain(tenant, requested_host)
-        normalized = self._clean_host(requested_host)
-        if normalized and self._domain_type_for(normalized) == DomainType.CUSTOM:
-            await self._upsert_domain(tenant, None, is_primary=False)
-
     async def _create_tenant_internal(
         self,
         data: TenantCreate,
@@ -360,8 +513,14 @@ class DeveloperAdminService:
         onboarding_admin: TenantAdminCredentialOut | None = None
 
         try:
-            plan = await self._get_plan(data.plan)
+            plan = await self._get_plan_model(data.plan)
             billing_cycle = self._parse_billing_cycle(data.billing_cycle)
+            subscription_start = data.subscription_start or date.today()
+            subscription_expiry = data.subscription_expiry
+            is_trial = subscription_expiry is None and plan.trial_days > 0
+            if is_trial:
+                subscription_expiry = subscription_start + timedelta(days=plan.trial_days)
+
             tenant = Tenant(
                 name=data.name,
                 slug=slug,
@@ -371,29 +530,34 @@ class DeveloperAdminService:
                 phone=data.phone,
                 address=data.address,
                 country=data.country,
-                status=TenantStatus.TRIAL if not data.subscription_expiry else TenantStatus.ACTIVE,
+                status=TenantStatus.TRIAL if is_trial else TenantStatus.ACTIVE,
                 plan=plan.code,
                 billing_cycle=billing_cycle,
-                subscription_start=data.subscription_start,
-                subscription_expiry=data.subscription_expiry,
+                subscription_start=subscription_start,
+                subscription_expiry=subscription_expiry,
                 notes=data.notes,
             )
             self.db.add(tenant)
             await self.db.flush()
 
-            module_keys = data.enabled_modules if plan.is_custom and data.enabled_modules else await self._get_plan_module_keys(plan.code)
-            module_keys = self._with_required_modules(module_keys)
-            await self._sync_tenant_modules(tenant.id, module_keys, disable_missing=True)
+            await self.sync_tenant_modules_from_plan(tenant.id, plan.code)
             await self._ensure_onboarding_domains(tenant, data.domain)
-            await self._create_subscription(
+            subscription = await self._create_subscription(
                 tenant_id=tenant.id,
-                plan_code=plan.code,
-                billing_cycle=billing_cycle.value,
-                start_date=data.subscription_start,
-                expiry_date=data.subscription_expiry,
+                plan=plan,
+                billing_cycle=billing_cycle,
+                start_date=subscription_start,
+                expiry_date=subscription_expiry,
                 notes=data.notes,
-                status="trial" if not data.subscription_expiry else "active",
             )
+            tenant.status = (
+                TenantStatus.SUSPENDED
+                if subscription.status == SubscriptionStatus.SUSPENDED
+                else TenantStatus.TRIAL
+                if subscription.status == SubscriptionStatus.TRIAL
+                else TenantStatus.ACTIVE
+            )
+
             tenant_admin = await self._create_tenant_admin(tenant, password_override=admin_password)
             await provision_tenant_operational_database(tenant, tenant_admin)
             if admin_password is None:
@@ -411,7 +575,7 @@ class DeveloperAdminService:
                     changed_by_user_id=actor.id if actor else None,
                     event_type=event_type,
                     new_plan=plan.code,
-                    notes=f"{'Tenant created' if actor else 'Vendor self-registration'} on {plan.name}",
+                    notes=f"{'Tenant created' if actor else 'Tenant self-registration'} on {plan.name}",
                 )
             )
             await write_audit_log(
@@ -425,12 +589,11 @@ class DeveloperAdminService:
                     "plan": plan.code,
                     "billing_cycle": billing_cycle.value,
                     "domain": data.domain or self._default_platform_domain(tenant.slug),
-                    "enabled_modules": module_keys,
                     "source": source,
                 },
             )
             await self.db.commit()
-            tenant_out = await self._get_tenant(tenant.id)
+            tenant_out = await self._get_tenant_model(tenant.id)
             setattr(tenant_out, "onboarding_admin", onboarding_admin)
             return tenant_out
         except HTTPException:
@@ -438,12 +601,12 @@ class DeveloperAdminService:
             raise
         except IntegrityError as exc:
             await self.db.rollback()
-            raise HTTPException(status_code=400, detail="Vendor registration failed because some values are invalid or already in use.") from exc
-        except Exception as exc:
+            raise HTTPException(status_code=400, detail="Tenant registration failed because some values are invalid or already in use.") from exc
+        except Exception as exc:  # pragma: no cover - unexpected path
             await self.db.rollback()
-            logger.exception("Unexpected vendor registration failure for tenant '%s'.", data.name)
+            logger.exception("Unexpected tenant registration failure for tenant '%s'.", data.name)
             root_error = str(getattr(exc, "orig", exc)).strip() or "Unexpected server error."
-            raise HTTPException(status_code=500, detail=f"Vendor registration failed: {root_error}") from exc
+            raise HTTPException(status_code=500, detail=f"Tenant registration failed: {root_error}") from exc
 
     @staticmethod
     def _request_scheme(request: Request) -> str:
@@ -460,66 +623,7 @@ class DeveloperAdminService:
             return f"{scheme}://{host}:{port}/login"
         return f"{scheme}://{host}/login"
 
-    async def register_vendor(self, payload: VendorRegistrationRequest, request: Request) -> VendorRegistrationOut:
-        if getattr(request.state, "tenant_id", None) is not None:
-            raise HTTPException(
-                status_code=403,
-                detail="Vendor self-registration is only available from the platform sign-in domain.",
-            )
-
-        tenant_data = TenantCreate(
-            name=payload.name,
-            business_name=payload.business_name,
-            contact_person=payload.contact_person,
-            email=payload.email,
-            phone=payload.phone,
-            address=payload.address,
-            country=payload.country,
-            domain=payload.domain,
-            plan="basic",
-            billing_cycle="monthly",
-            enabled_modules=[],
-        )
-        tenant = await self._create_tenant_internal(
-            tenant_data,
-            actor=None,
-            admin_password=payload.password,
-            source="public_login_registration",
-        )
-        domains = sorted(tenant.domains, key=lambda item: (not item.is_primary, item.host))
-        primary_domain = next((domain for domain in domains if domain.is_primary), None)
-        active_domain = next(
-            (domain for domain in domains if self._enum_value(domain.status) == DomainStatus.ACTIVE.value),
-            None,
-        )
-        fallback_domain = next(
-            (
-                domain
-                for domain in domains
-                if self._enum_value(domain.domain_type) == DomainType.PLATFORM_SUBDOMAIN.value
-                and self._enum_value(domain.status) == DomainStatus.ACTIVE.value
-            ),
-            None,
-        )
-        custom_domain = next(
-            (domain for domain in domains if self._enum_value(domain.domain_type) == DomainType.CUSTOM.value),
-            None,
-        )
-        login_host = active_domain.host if active_domain else self._default_platform_domain(tenant.slug)
-        return VendorRegistrationOut(
-            tenant_id=tenant.id,
-            tenant_name=tenant.name,
-            admin_email=tenant.email,
-            login_host=login_host,
-            login_url=self._build_login_url(request, login_host),
-            primary_domain=primary_domain.host if primary_domain else login_host,
-            primary_domain_status=self._enum_value(primary_domain.status) if primary_domain else DomainStatus.ACTIVE.value,
-            fallback_domain=fallback_domain.host if fallback_domain and fallback_domain.host != login_host else None,
-            custom_domain=custom_domain.host if custom_domain else None,
-            custom_domain_status=self._enum_value(custom_domain.status) if custom_domain else None,
-        )
-
-    def _certbot_command(self, host: str) -> list[str]:
+    async def _certbot_command(self, host: str) -> list[str]:
         command = [
             settings.CERTBOT_BIN,
             "certonly",
@@ -541,7 +645,7 @@ class DeveloperAdminService:
         return command
 
     async def _provision_ssl(self, domain: TenantDomain) -> None:
-        command = self._certbot_command(domain.host)
+        command = await self._certbot_command(domain.host)
         domain.ssl_requested_at = datetime.now(UTC)
         domain.status = DomainStatus.SSL_PENDING
         domain.last_error = None
@@ -558,21 +662,89 @@ class DeveloperAdminService:
             domain.activated_at = datetime.now(UTC)
             domain.status = DomainStatus.ACTIVE
             domain.last_error = completed.stdout.strip() or None
-        except subprocess.CalledProcessError as exc:  # pragma: no cover - depends on deployment environment
+        except subprocess.CalledProcessError as exc:  # pragma: no cover - deployment dependent
             logger.exception("SSL provisioning failed for domain %s.", domain.host)
             domain.status = DomainStatus.FAILED
             domain.last_error = (exc.stderr or exc.stdout or str(exc)).strip()
         await self.db.flush()
 
+    async def register_tenant(self, payload: TenantRegistrationRequest, request: Request) -> TenantRegistrationOut:
+        if getattr(request.state, "tenant_id", None) is not None:
+            raise HTTPException(
+                status_code=403,
+                detail="Tenant self-registration is only available from the platform sign-in domain.",
+            )
+
+        tenant = await self._create_tenant_internal(
+            TenantCreate(
+                name=payload.name,
+                business_name=payload.business_name,
+                contact_person=payload.contact_person,
+                email=payload.email,
+                phone=payload.phone,
+                address=payload.address,
+                country=payload.country,
+                domain=payload.domain,
+                plan="basic",
+                billing_cycle="monthly",
+            ),
+            actor=None,
+            admin_password=payload.password,
+            source="public_login_registration",
+        )
+
+        domains = sorted(tenant.domains, key=lambda item: (not item.is_primary, item.host))
+        primary_domain = next((domain for domain in domains if domain.is_primary), None)
+        active_domain = next(
+            (domain for domain in domains if self._enum_value(domain.status) == DomainStatus.ACTIVE.value),
+            None,
+        )
+        fallback_domain = next(
+            (
+                domain
+                for domain in domains
+                if self._enum_value(domain.domain_type) == DomainType.PLATFORM_SUBDOMAIN.value
+                and self._enum_value(domain.status) == DomainStatus.ACTIVE.value
+            ),
+            None,
+        )
+        custom_domain = next(
+            (domain for domain in domains if self._enum_value(domain.domain_type) == DomainType.CUSTOM.value),
+            None,
+        )
+        login_host = active_domain.host if active_domain else self._default_platform_domain(tenant.slug)
+        return TenantRegistrationOut(
+            tenant_id=tenant.id,
+            tenant_name=tenant.name,
+            admin_email=tenant.email,
+            login_host=login_host,
+            login_url=self._build_login_url(request, login_host),
+            primary_domain=primary_domain.host if primary_domain else login_host,
+            primary_domain_status=self._enum_value(primary_domain.status) if primary_domain else DomainStatus.ACTIVE.value,
+            fallback_domain=fallback_domain.host if fallback_domain and fallback_domain.host != login_host else None,
+            custom_domain=custom_domain.host if custom_domain else None,
+            custom_domain_status=self._enum_value(custom_domain.status) if custom_domain else None,
+        )
+
     async def list_tenants(self) -> list[Tenant]:
         result = await self.db.execute(self._tenant_query().order_by(Tenant.name))
         return list(result.scalars().all())
 
-    async def list_plans(self) -> list[PlanDefinition]:
+    async def get_tenant(self, tenant_id: int) -> Tenant:
+        return await self._get_tenant_model(tenant_id)
+
+    async def list_plans(self) -> list[PlanOut]:
         result = await self.db.execute(
-            select(PlanDefinition).options(selectinload(PlanDefinition.modules)).order_by(PlanDefinition.code)
+            select(PlanDefinition)
+            .options(selectinload(PlanDefinition.modules).selectinload(PlanModule.module))
+            .order_by(PlanDefinition.name)
         )
-        return list(result.scalars().all())
+        tenant_count_map = await self._tenant_count_map()
+        return [self._serialize_plan(plan, tenant_count_map) for plan in result.scalars().all()]
+
+    async def get_plan(self, plan_code: str) -> PlanOut:
+        plan = await self._get_plan_model(plan_code)
+        return self._serialize_plan(plan, await self._tenant_count_map())
 
     async def list_modules(self) -> list[PlatformModule]:
         result = await self.db.execute(select(PlatformModule).order_by(PlatformModule.category, PlatformModule.name))
@@ -582,128 +754,265 @@ class DeveloperAdminService:
         result = await self.db.execute(select(ModulePrice).order_by(ModulePrice.module_key, ModulePrice.billing_cycle))
         return list(result.scalars().all())
 
+    async def create_plan(self, data: PlanCreate, actor: User) -> PlanOut:
+        code = self._normalize_plan_code(data.code)
+        if not code:
+            raise HTTPException(status_code=422, detail="Plan code is invalid.")
+        existing = await self.db.execute(select(PlanDefinition).where(PlanDefinition.code == code))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail="A plan with this code already exists.")
+
+        billing_cycle = self._parse_billing_cycle(data.billing_cycle)
+        plan = PlanDefinition(
+            code=code,
+            name=data.name.strip(),
+            description=data.description,
+            billing_cycle=billing_cycle,
+            monthly_price=data.monthly_price,
+            quarterly_price=data.quarterly_price,
+            annual_price=data.annual_price,
+            currency=data.currency.strip().upper(),
+            trial_days=data.trial_days,
+            is_custom=False,
+            is_active=data.is_active,
+        )
+        self.db.add(plan)
+        await self.db.flush()
+        await self._sync_plan_modules(plan.code, data.modules)
+        await write_audit_log(
+            self.db,
+            user_id=actor.id,
+            action="CREATE",
+            entity="plan",
+            entity_id=None,
+            meta={"plan_code": plan.code, "modules": data.modules},
+        )
+        await self.db.commit()
+        return await self.get_plan(plan.code)
+
+    async def update_plan(self, plan_code: str, data: PlanUpdate, actor: User) -> PlanOut:
+        plan = await self._get_plan_model(plan_code)
+        updates = data.model_dump(exclude_unset=True)
+        requested_modules = updates.pop("modules", None)
+        requested_code = updates.pop("code", None)
+
+        if requested_code is not None:
+            normalized_code = self._normalize_plan_code(requested_code)
+            if not normalized_code:
+                raise HTTPException(status_code=422, detail="Plan code is invalid.")
+            if normalized_code != plan.code:
+                existing = await self.db.execute(select(PlanDefinition).where(PlanDefinition.code == normalized_code))
+                if existing.scalar_one_or_none():
+                    raise HTTPException(status_code=409, detail="A plan with this code already exists.")
+                old_code = plan.code
+                new_plan = PlanDefinition(
+                    code=normalized_code,
+                    name=plan.name,
+                    description=plan.description,
+                    billing_cycle=plan.billing_cycle,
+                    monthly_price=plan.monthly_price,
+                    quarterly_price=plan.quarterly_price,
+                    annual_price=plan.annual_price,
+                    currency=plan.currency,
+                    trial_days=plan.trial_days,
+                    is_custom=plan.is_custom,
+                    is_active=plan.is_active,
+                )
+                self.db.add(new_plan)
+                await self.db.flush()
+                await self._sync_plan_modules(
+                    new_plan.code,
+                    [item.module_key for item in plan.modules if item.is_included],
+                )
+                await self.db.execute(update(Subscription).where(Subscription.plan_code == old_code).values(plan_code=normalized_code))
+                await self.db.execute(update(Tenant).where(Tenant.plan == old_code).values(plan=normalized_code))
+                await self.db.execute(
+                    update(SubscriptionHistory)
+                    .where(SubscriptionHistory.old_plan == old_code)
+                    .values(old_plan=normalized_code)
+                )
+                await self.db.execute(
+                    update(SubscriptionHistory)
+                    .where(SubscriptionHistory.new_plan == old_code)
+                    .values(new_plan=normalized_code)
+                )
+                await self.db.delete(plan)
+                await self.db.flush()
+                plan = new_plan
+
+        if "billing_cycle" in updates:
+            updates["billing_cycle"] = self._parse_billing_cycle(updates["billing_cycle"])
+        if "currency" in updates and updates["currency"] is not None:
+            updates["currency"] = updates["currency"].strip().upper()
+        if "name" in updates and updates["name"] is not None:
+            updates["name"] = updates["name"].strip()
+
+        for field, value in updates.items():
+            setattr(plan, field, value)
+
+        if requested_modules is not None:
+            await self._sync_plan_modules(plan.code, requested_modules)
+            tenant_ids = (
+                await self.db.execute(select(Tenant.id).where(Tenant.plan == plan.code))
+            ).scalars().all()
+            for tenant_id in tenant_ids:
+                await self.sync_tenant_modules_from_plan(int(tenant_id), plan.code)
+
+        await write_audit_log(
+            self.db,
+            user_id=actor.id,
+            action="UPDATE",
+            entity="plan",
+            entity_id=None,
+            meta={"plan_code": plan.code, "updated_fields": sorted(updates.keys())},
+        )
+        await self.db.commit()
+        return await self.get_plan(plan.code)
+
+    async def update_plan_status(self, plan_code: str, data: PlanStatusUpdate, actor: User) -> PlanOut:
+        plan = await self._get_plan_model(plan_code)
+        plan.is_active = data.is_active
+        await write_audit_log(
+            self.db,
+            user_id=actor.id,
+            action="UPDATE",
+            entity="plan_status",
+            entity_id=None,
+            meta={"plan_code": plan.code, "is_active": data.is_active},
+        )
+        await self.db.commit()
+        return await self.get_plan(plan.code)
+
     async def create_tenant(self, data: TenantCreate, actor: User) -> Tenant:
         return await self._create_tenant_internal(data, actor=actor, admin_password=None, source="developer_admin")
 
     async def update_tenant(self, tenant_id: int, data: TenantUpdate, actor: User) -> Tenant:
-        tenant = await self._get_tenant(tenant_id)
+        tenant = await self._get_tenant_model(tenant_id)
         latest_subscription = await self._get_latest_subscription(tenant_id)
-        old_plan = self._enum_value(tenant.plan)
+        old_plan = tenant.plan
         old_billing_cycle = self._enum_value(tenant.billing_cycle)
         old_is_suspended = tenant.is_suspended
+
         updates = data.model_dump(exclude_none=True)
         requested_domain = updates.pop("domain", None)
         requested_plan = updates.pop("plan", None)
         requested_is_suspended = updates.pop("is_suspended", None)
+
         if "slug" in updates:
             updates["slug"] = self._slugify(updates["slug"])
         if "billing_cycle" in updates:
             updates["billing_cycle"] = self._parse_billing_cycle(updates["billing_cycle"])
+
         if requested_plan:
-            plan = await self._get_plan(requested_plan)
+            plan = await self._get_plan_model(requested_plan)
             tenant.plan = plan.code
-            if not plan.is_custom:
-                module_keys = self._with_required_modules(await self._get_plan_module_keys(plan.code))
-                await self._sync_tenant_modules(tenant.id, module_keys, disable_missing=True)
+            await self.sync_tenant_modules_from_plan(tenant.id, plan.code)
+        else:
+            plan = await self._get_plan_model(tenant.plan)
+
         for field, value in updates.items():
             setattr(tenant, field, value)
+
         if requested_is_suspended is not None:
             tenant.is_suspended = requested_is_suspended
-            if requested_is_suspended:
-                tenant.status = TenantStatus.SUSPENDED
-            elif tenant.status == TenantStatus.SUSPENDED:
-                tenant.status = TenantStatus.TRIAL if tenant.subscription_expiry is None else TenantStatus.ACTIVE
+
+        billing_cycle = tenant.billing_cycle if isinstance(tenant.billing_cycle, BillingCycle) else self._parse_billing_cycle(str(tenant.billing_cycle))
+        is_trial = tenant.subscription_expiry is not None and tenant.subscription_expiry >= date.today() and plan.trial_days > 0 and tenant.subscription_start and (tenant.subscription_expiry - tenant.subscription_start).days <= plan.trial_days
+        tenant.status = (
+            TenantStatus.SUSPENDED
+            if tenant.is_suspended
+            else TenantStatus.TRIAL
+            if is_trial
+            else TenantStatus.ACTIVE
+        )
+
         if latest_subscription is not None:
-            latest_subscription.plan_code = self._enum_value(tenant.plan)
-            latest_subscription.billing_cycle = self._enum_value(tenant.billing_cycle)
+            latest_subscription.plan_code = tenant.plan
+            latest_subscription.billing_cycle = billing_cycle
             latest_subscription.start_date = tenant.subscription_start or latest_subscription.start_date
             latest_subscription.expiry_date = tenant.subscription_expiry
-            latest_subscription.status = self._resolve_subscription_status(
+            latest_subscription.amount = self._price_for_cycle(plan, billing_cycle)
+            latest_subscription.currency = plan.currency
+            latest_subscription.status = self._subscription_status_for(
                 is_suspended=tenant.is_suspended,
                 expiry_date=tenant.subscription_expiry,
+                is_trial=tenant.status == TenantStatus.TRIAL,
             )
-        elif requested_plan or "billing_cycle" in updates or "subscription_start" in updates or "subscription_expiry" in updates or requested_is_suspended is not None:
+        else:
             await self._create_subscription(
                 tenant_id=tenant.id,
-                plan_code=self._enum_value(tenant.plan),
-                billing_cycle=self._enum_value(tenant.billing_cycle),
+                plan=plan,
+                billing_cycle=billing_cycle,
                 start_date=tenant.subscription_start or date.today(),
                 expiry_date=tenant.subscription_expiry,
                 notes="Created from developer admin tenant edit.",
-                status=self._resolve_subscription_status(
+                status=self._subscription_status_for(
                     is_suspended=tenant.is_suspended,
                     expiry_date=tenant.subscription_expiry,
-                ).value,
+                    is_trial=tenant.status == TenantStatus.TRIAL,
+                ),
             )
-        if (
-            requested_plan
-            or "billing_cycle" in updates
-            or "subscription_start" in updates
-            or "subscription_expiry" in updates
-            or requested_is_suspended is not None
-        ):
-            self.db.add(
-                SubscriptionHistory(
-                    tenant_id=tenant.id,
-                    changed_by_user_id=actor.id,
-                    event_type="subscription_update",
-                    old_plan=old_plan,
-                    new_plan=self._enum_value(tenant.plan),
-                    notes=(
-                        f"billing_cycle: {old_billing_cycle} -> {self._enum_value(tenant.billing_cycle)}; "
-                        f"suspended: {old_is_suspended} -> {tenant.is_suspended}"
-                    ),
-                )
-            )
-            await write_audit_log(
-                self.db,
-                user_id=actor.id,
-                action="UPDATE",
-                entity="tenant_subscription",
-                entity_id=tenant.id,
-                meta={
-                    "tenant_id": tenant.id,
-                    "plan": self._enum_value(tenant.plan),
-                    "billing_cycle": self._enum_value(tenant.billing_cycle),
-                    "subscription_start": tenant.subscription_start.isoformat() if tenant.subscription_start else None,
-                    "subscription_expiry": tenant.subscription_expiry.isoformat() if tenant.subscription_expiry else None,
-                    "is_suspended": tenant.is_suspended,
-                },
-            )
+
         if requested_domain is not None:
             await self._ensure_primary_domain(tenant, requested_domain)
+
+        self.db.add(
+            SubscriptionHistory(
+                tenant_id=tenant.id,
+                changed_by_user_id=actor.id,
+                event_type="subscription_update",
+                old_plan=old_plan,
+                new_plan=tenant.plan,
+                notes=(
+                    f"billing_cycle: {old_billing_cycle} -> {self._enum_value(tenant.billing_cycle)}; "
+                    f"suspended: {old_is_suspended} -> {tenant.is_suspended}"
+                ),
+            )
+        )
+        await write_audit_log(
+            self.db,
+            user_id=actor.id,
+            action="UPDATE",
+            entity="tenant_subscription",
+            entity_id=tenant.id,
+            meta={
+                "tenant_id": tenant.id,
+                "plan": tenant.plan,
+                "billing_cycle": self._enum_value(tenant.billing_cycle),
+                "subscription_start": tenant.subscription_start.isoformat() if tenant.subscription_start else None,
+                "subscription_expiry": tenant.subscription_expiry.isoformat() if tenant.subscription_expiry else None,
+                "is_suspended": tenant.is_suspended,
+            },
+        )
         await self.db.commit()
-        return await self._get_tenant(tenant_id)
+        return await self._get_tenant_model(tenant_id)
 
     async def change_plan(self, tenant_id: int, data: PlanChange, actor: User) -> Tenant:
-        tenant = await self._get_tenant(tenant_id)
-        plan = await self._get_plan(data.plan)
+        tenant = await self._get_tenant_model(tenant_id)
+        plan = await self._get_plan_model(data.plan)
         latest = await self._get_latest_subscription(tenant_id)
-        old_plan = latest.plan_code if latest else (tenant.plan.value if hasattr(tenant.plan, "value") else str(tenant.plan))
-        billing_cycle = self._parse_billing_cycle(
-            data.billing_cycle or (tenant.billing_cycle.value if hasattr(tenant.billing_cycle, "value") else str(tenant.billing_cycle))
-        )
+        old_plan = latest.plan_code if latest else tenant.plan
+        billing_cycle = self._parse_billing_cycle(data.billing_cycle or self._enum_value(tenant.billing_cycle))
 
         tenant.plan = plan.code
-        if data.billing_cycle:
-            tenant.billing_cycle = billing_cycle
-        if data.subscription_expiry is not None:
-            tenant.subscription_expiry = data.subscription_expiry
+        tenant.billing_cycle = billing_cycle
         tenant.subscription_start = date.today()
-        tenant.status = TenantStatus.ACTIVE
+        tenant.subscription_expiry = data.subscription_expiry
+        tenant.is_suspended = False
+        await self.sync_tenant_modules_from_plan(tenant.id, plan.code)
 
-        module_keys = self._with_required_modules(await self._get_plan_module_keys(plan.code))
-        if not plan.is_custom:
-            await self._sync_tenant_modules(tenant.id, module_keys, disable_missing=True)
-
-        await self._create_subscription(
+        subscription = await self._create_subscription(
             tenant_id=tenant.id,
-            plan_code=plan.code,
-            billing_cycle=billing_cycle.value,
+            plan=plan,
+            billing_cycle=billing_cycle,
             start_date=date.today(),
-            expiry_date=data.subscription_expiry or tenant.subscription_expiry,
+            expiry_date=data.subscription_expiry,
             notes=data.notes,
-            status="active",
+        )
+        tenant.status = (
+            TenantStatus.TRIAL
+            if subscription.status == SubscriptionStatus.TRIAL
+            else TenantStatus.ACTIVE
         )
 
         self.db.add(
@@ -725,14 +1034,16 @@ class DeveloperAdminService:
             meta={"old_plan": old_plan, "new_plan": plan.code, "billing_cycle": billing_cycle.value},
         )
         await self.db.commit()
-        return await self._get_tenant(tenant_id)
+        return await self._get_tenant_model(tenant_id)
 
-    async def toggle_module(self, tenant_id: int, data: ModuleToggle, actor: User) -> TenantModule:
-        await self._get_tenant(tenant_id)
+    async def toggle_module(self, tenant_id: int, data: ModuleToggle, actor: User) -> TenantModuleOut:
+        tenant = await self._get_tenant_model(tenant_id)
         await self._get_module(data.module_key)
-        if data.module_key in MANDATORY_TENANT_MODULE_KEYS and not data.is_enabled:
-            raise HTTPException(status_code=409, detail=f"Module '{data.module_key}' is mandatory for tenant administration and cannot be disabled.")
+        core_keys = await self._get_core_module_keys()
+        if data.module_key in core_keys and not data.is_enabled:
+            raise HTTPException(status_code=409, detail=f"Module '{data.module_key}' is a core module and cannot be disabled.")
 
+        default_enabled = data.module_key in set(await self._get_plan_module_keys(tenant.plan)) or data.module_key in core_keys
         result = await self.db.execute(
             select(TenantModule).where(
                 TenantModule.tenant_id == tenant_id,
@@ -740,12 +1051,18 @@ class DeveloperAdminService:
             )
         )
         module = result.scalar_one_or_none()
-        if module:
-            module.is_enabled = data.is_enabled
-        else:
-            module = TenantModule(tenant_id=tenant_id, module_key=data.module_key, is_enabled=data.is_enabled)
+        if module is None:
+            module = TenantModule(
+                tenant_id=tenant_id,
+                module_key=data.module_key,
+                is_enabled=data.is_enabled,
+                is_manual_override=data.is_enabled != default_enabled,
+            )
             self.db.add(module)
             await self.db.flush()
+        else:
+            module.is_enabled = data.is_enabled
+            module.is_manual_override = data.is_enabled != default_enabled
 
         self.db.add(
             SubscriptionHistory(
@@ -760,20 +1077,20 @@ class DeveloperAdminService:
             user_id=actor.id,
             action="UPDATE",
             entity="tenant_module",
-            entity_id=module.id if module.id else None,
+            entity_id=module.id,
             meta={
                 "tenant_id": tenant_id,
                 "module_key": data.module_key,
                 "is_enabled": data.is_enabled,
-                "source": "developer_admin_manual",
+                "is_manual_override": module.is_manual_override,
             },
         )
         await self.db.commit()
         await self.db.refresh(module)
-        return module
+        return TenantModuleOut.model_validate(module)
 
     async def assign_domain(self, tenant_id: int, data: DomainAssignRequest, actor: User) -> Tenant:
-        tenant = await self._get_tenant(tenant_id)
+        tenant = await self._get_tenant_model(tenant_id)
         await self._upsert_domain(tenant, data.host, is_primary=data.is_primary)
         self.db.add(
             SubscriptionHistory(
@@ -792,7 +1109,36 @@ class DeveloperAdminService:
             meta={"tenant_id": tenant.id, "host": data.host, "is_primary": data.is_primary},
         )
         await self.db.commit()
-        return await self._get_tenant(tenant_id)
+        return await self._get_tenant_model(tenant_id)
+
+    async def delete_domain(self, tenant_id: int, domain_id: int, actor: User) -> Tenant:
+        domain = await self._load_domain(tenant_id, domain_id)
+        domains = await self._get_tenant_domains(tenant_id)
+        active_domains = [item for item in domains if self._enum_value(item.status) == DomainStatus.ACTIVE.value and item.id != domain.id]
+
+        if domain.is_primary and self._enum_value(domain.status) == DomainStatus.ACTIVE.value and not active_domains:
+            raise HTTPException(
+                status_code=409,
+                detail="Cannot delete the only active primary domain. Add or activate another domain first.",
+            )
+
+        await self.db.delete(domain)
+        await self.db.flush()
+
+        if domain.is_primary and active_domains:
+            promoted = sorted(active_domains, key=lambda item: item.created_at)[0]
+            promoted.is_primary = True
+
+        await write_audit_log(
+            self.db,
+            user_id=actor.id,
+            action="DELETE",
+            entity="tenant_domain",
+            entity_id=domain_id,
+            meta={"tenant_id": tenant_id, "host": domain.host},
+        )
+        await self.db.commit()
+        return await self._get_tenant_model(tenant_id)
 
     async def verify_domain(self, tenant_id: int, domain_id: int, actor: User) -> Tenant:
         domain = await self._load_domain(tenant_id, domain_id)
@@ -821,10 +1167,10 @@ class DeveloperAdminService:
             action="UPDATE",
             entity="tenant_domain_verify",
             entity_id=domain.id,
-            meta={"tenant_id": tenant_id, "status": getattr(domain.status, 'value', domain.status), "host": domain.host},
+            meta={"tenant_id": tenant_id, "status": self._enum_value(domain.status), "host": domain.host},
         )
         await self.db.commit()
-        return await self._get_tenant(tenant_id)
+        return await self._get_tenant_model(tenant_id)
 
     async def provision_domain_ssl(self, tenant_id: int, domain_id: int, actor: User) -> Tenant:
         domain = await self._load_domain(tenant_id, domain_id)
@@ -842,10 +1188,10 @@ class DeveloperAdminService:
             action="UPDATE",
             entity="tenant_domain_ssl",
             entity_id=domain.id,
-            meta={"tenant_id": tenant_id, "status": getattr(domain.status, 'value', domain.status), "host": domain.host},
+            meta={"tenant_id": tenant_id, "status": self._enum_value(domain.status), "host": domain.host},
         )
         await self.db.commit()
-        return await self._get_tenant(tenant_id)
+        return await self._get_tenant_model(tenant_id)
 
     async def activate_domain(self, tenant_id: int, domain_id: int, actor: User) -> Tenant:
         domain = await self._load_domain(tenant_id, domain_id)
@@ -869,15 +1215,15 @@ class DeveloperAdminService:
             meta={
                 "tenant_id": tenant_id,
                 "host": domain.host,
-                "previous_status": getattr(previous_status, "value", previous_status),
+                "previous_status": self._enum_value(previous_status),
                 "manual_override": domain.domain_type == DomainType.CUSTOM,
             },
         )
         await self.db.commit()
-        return await self._get_tenant(tenant_id)
+        return await self._get_tenant_model(tenant_id)
 
     async def disable_domain(self, tenant_id: int, domain_id: int, actor: User) -> Tenant:
-        tenant = await self._get_tenant(tenant_id)
+        tenant = await self._get_tenant_model(tenant_id)
         domain = await self._load_domain(tenant_id, domain_id)
         domain.status = DomainStatus.DISABLED
         domain.disabled_at = datetime.now(UTC)
@@ -885,7 +1231,11 @@ class DeveloperAdminService:
 
         primary_domains = await self._get_tenant_domains(tenant_id)
         if not any(item.is_primary and item.id != domain.id and item.status == DomainStatus.ACTIVE for item in primary_domains):
-            await self._ensure_primary_domain(tenant, None)
+            active_domains = [item for item in primary_domains if item.id != domain.id and item.status == DomainStatus.ACTIVE]
+            if active_domains:
+                active_domains[0].is_primary = True
+            else:
+                await self._ensure_primary_domain(tenant, None)
 
         await write_audit_log(
             self.db,
@@ -896,7 +1246,7 @@ class DeveloperAdminService:
             meta={"tenant_id": tenant_id, "host": domain.host},
         )
         await self.db.commit()
-        return await self._get_tenant(tenant_id)
+        return await self._get_tenant_model(tenant_id)
 
     async def retry_domain_setup(self, tenant_id: int, domain_id: int, actor: User) -> Tenant:
         await self.verify_domain(tenant_id, domain_id, actor)
@@ -904,7 +1254,7 @@ class DeveloperAdminService:
         if domain.domain_type == DomainType.CUSTOM and domain.status == DomainStatus.DNS_VERIFIED:
             await self._provision_ssl(domain)
             await self.db.commit()
-        return await self._get_tenant(tenant_id)
+        return await self._get_tenant_model(tenant_id)
 
     async def update_module_price(self, module_key: str, data: ModulePriceUpdate) -> ModulePrice:
         await self._get_module(module_key)
@@ -934,7 +1284,7 @@ class DeveloperAdminService:
         return price
 
     async def suspend_tenant(self, tenant_id: int, data: SuspendRequest, actor: User) -> Tenant:
-        tenant = await self._get_tenant(tenant_id)
+        tenant = await self._get_tenant_model(tenant_id)
         tenant.is_suspended = True
         tenant.status = TenantStatus.SUSPENDED
         latest = await self._get_latest_subscription(tenant_id)
@@ -957,15 +1307,26 @@ class DeveloperAdminService:
             meta={"reason": data.reason},
         )
         await self.db.commit()
-        return await self._get_tenant(tenant_id)
+        return await self._get_tenant_model(tenant_id)
 
     async def reactivate_tenant(self, tenant_id: int, actor: User) -> Tenant:
-        tenant = await self._get_tenant(tenant_id)
+        tenant = await self._get_tenant_model(tenant_id)
         tenant.is_suspended = False
-        tenant.status = TenantStatus.ACTIVE
         latest = await self._get_latest_subscription(tenant_id)
-        if latest and latest.status == SubscriptionStatus.SUSPENDED:
-            latest.status = SubscriptionStatus.ACTIVE
+        if latest:
+            latest.status = self._subscription_status_for(
+                is_suspended=False,
+                expiry_date=latest.expiry_date,
+                is_trial=latest.status == SubscriptionStatus.TRIAL,
+            )
+            tenant.status = (
+                TenantStatus.TRIAL
+                if latest.status == SubscriptionStatus.TRIAL
+                else TenantStatus.ACTIVE
+            )
+        else:
+            tenant.status = TenantStatus.ACTIVE
+
         self.db.add(
             SubscriptionHistory(
                 tenant_id=tenant_id,
@@ -983,7 +1344,7 @@ class DeveloperAdminService:
             meta={},
         )
         await self.db.commit()
-        return await self._get_tenant(tenant_id)
+        return await self._get_tenant_model(tenant_id)
 
     async def get_subscription_history(self, tenant_id: int) -> list[SubscriptionHistory]:
         result = await self.db.execute(
@@ -1009,7 +1370,11 @@ class DeveloperAdminService:
             )
             latest = subscriptions[0] if subscriptions else None
             domains = [domain.host for domain in sorted(tenant.domains, key=lambda domain: not domain.is_primary)]
-            status = latest.status.value if latest else ("suspended" if tenant.is_suspended else "trial")
+            status = (
+                self._enum_value(latest.status)
+                if latest
+                else ("suspended" if tenant.is_suspended else self._enum_value(tenant.status))
+            )
             if tenant.is_suspended:
                 suspended_count += 1
             elif status in {"active", "trial"}:
@@ -1021,9 +1386,9 @@ class DeveloperAdminService:
                 {
                     "tenant_id": tenant.id,
                     "tenant_name": tenant.name,
-                    "plan": latest.plan_code if latest else (tenant.plan.value if hasattr(tenant.plan, "value") else str(tenant.plan)),
+                    "plan": latest.plan_code if latest else tenant.plan,
                     "status": status,
-                    "billing_cycle": latest.billing_cycle.value if latest and hasattr(latest.billing_cycle, "value") else (tenant.billing_cycle.value if hasattr(tenant.billing_cycle, "value") else str(tenant.billing_cycle)),
+                    "billing_cycle": self._enum_value(latest.billing_cycle) if latest else self._enum_value(tenant.billing_cycle),
                     "expiry_date": latest.expiry_date if latest else tenant.subscription_expiry,
                     "amount": latest.amount if latest else None,
                     "currency": latest.currency if latest else "UGX",
@@ -1038,3 +1403,77 @@ class DeveloperAdminService:
             "expiring_soon": expiring_soon,
             "tenants": overview_rows,
         }
+
+    async def get_overview(self) -> dict:
+        tenants = await self.list_tenants()
+        plan_codes = {tenant.plan for tenant in tenants}
+        plan_map: dict[str, PlanDefinition] = {}
+        if plan_codes:
+            plans_result = await self.db.execute(select(PlanDefinition).where(PlanDefinition.code.in_(plan_codes)))
+            plan_map = {plan.code: plan for plan in plans_result.scalars().all()}
+
+        active_domains = 0
+        monthly_revenue = Decimal("0")
+        pending_setup = 0
+        suspended_tenants = 0
+
+        for tenant in tenants:
+            if tenant.is_suspended:
+                suspended_tenants += 1
+            active_domains += sum(1 for domain in tenant.domains if self._enum_value(domain.status) == DomainStatus.ACTIVE.value)
+            plan = plan_map.get(tenant.plan)
+            if plan and not tenant.is_suspended:
+                monthly_revenue += self._monthly_revenue_equivalent(plan, tenant.billing_cycle)
+            has_primary_active_domain = any(
+                domain.is_primary and self._enum_value(domain.status) == DomainStatus.ACTIVE.value
+                for domain in tenant.domains
+            )
+            if tenant.operational_db_status != "ready" or not has_primary_active_domain:
+                pending_setup += 1
+
+        active_plans = (
+            await self.db.execute(select(func.count()).select_from(PlanDefinition).where(PlanDefinition.is_active.is_(True)))
+        ).scalar_one()
+
+        return {
+            "total_tenants": len(tenants),
+            "active_domains": active_domains,
+            "active_plans": active_plans,
+            "monthly_revenue": monthly_revenue,
+            "pending_setup": pending_setup,
+            "suspended_tenants": suspended_tenants,
+        }
+
+    async def get_activity_logs(self) -> list[ActivityLogOut]:
+        result = await self.db.execute(
+            select(AuditLog, User.full_name, User.email)
+            .outerjoin(User, User.id == AuditLog.user_id)
+            .order_by(AuditLog.created_at.desc())
+            .limit(100)
+        )
+        return [
+            ActivityLogOut(
+                id=log.id,
+                action=log.action,
+                entity=log.entity,
+                entity_id=log.entity_id,
+                meta=log.meta,
+                created_at=log.created_at,
+                actor_name=full_name,
+                actor_email=email,
+            )
+            for log, full_name, email in result.all()
+        ]
+
+    async def get_settings_summary(self) -> DeveloperAdminSettingsOut:
+        total_modules = (await self.db.execute(select(func.count()).select_from(PlatformModule))).scalar_one()
+        total_plans = (await self.db.execute(select(func.count()).select_from(PlanDefinition))).scalar_one()
+        return DeveloperAdminSettingsOut(
+            primary_platform_domain=settings.PRIMARY_PLATFORM_DOMAIN,
+            default_tenant_domain_suffix=settings.DEFAULT_TENANT_DOMAIN_SUFFIX,
+            automatic_ssl_provisioning=settings.ENABLE_AUTOMATIC_SSL_PROVISIONING,
+            certbot_enabled=bool(settings.CERTBOT_BIN),
+            mandatory_module_keys=sorted(MANDATORY_TENANT_MODULE_KEYS),
+            total_modules=total_modules,
+            total_plans=total_plans,
+        )

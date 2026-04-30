@@ -1,5 +1,5 @@
 import api from '@/services/api'
-import { LoginRequest, MeResponse, TokenPair, VendorRegistrationRequest, VendorRegistrationResponse } from '@/types'
+import { LoginRequest, MeResponse, TenantRegistrationRequest, TenantRegistrationResponse, TokenPair } from '@/types'
 
 export const authService = {
   async login(payload: LoginRequest): Promise<TokenPair> {
@@ -23,8 +23,12 @@ export const authService = {
     return data
   },
 
-  async registerVendor(payload: VendorRegistrationRequest): Promise<VendorRegistrationResponse> {
-    const { data } = await api.post<VendorRegistrationResponse>('/auth/register-vendor', payload)
+  async registerTenant(payload: TenantRegistrationRequest): Promise<TenantRegistrationResponse> {
+    const { data } = await api.post<TenantRegistrationResponse>('/auth/register-tenant', payload)
     return data
+  },
+
+  async registerVendor(payload: TenantRegistrationRequest): Promise<TenantRegistrationResponse> {
+    return this.registerTenant(payload)
   },
 }

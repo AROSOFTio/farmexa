@@ -137,12 +137,12 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: 'Developer Admin',
     items: [
-      { label: 'Vendors', path: '/dev-admin/tenants', permission: 'dev_admin:read', icon: Building2 },
+      { label: 'Dashboard', path: '/dev-admin', permission: 'dev_admin:read', icon: LayoutDashboard },
+      { label: 'Tenants', path: '/dev-admin/tenants', permission: 'dev_admin:read', icon: Building2 },
       { label: 'Domains', path: '/dev-admin/domains', permission: 'dev_admin:read', icon: Activity },
       { label: 'Plans', path: '/dev-admin/plans', permission: 'dev_admin:read', icon: CreditCard },
-      { label: 'Modules', path: '/dev-admin/modules', permission: 'dev_admin:read', icon: Package },
-      { label: 'Billing', path: '/dev-admin/billing', permission: 'dev_admin:read', icon: Receipt },
-      { label: 'Tenant Control', path: '/dev-admin/control', permission: 'dev_admin:read', icon: Shield },
+      { label: 'Activity Logs', path: '/dev-admin/activity', permission: 'dev_admin:read', icon: Activity },
+      { label: 'Settings', path: '/dev-admin/settings', permission: 'dev_admin:read', icon: Settings },
     ],
   },
 ]
@@ -215,7 +215,10 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               <div className="space-y-1.5">
                 {section.items.map((item) => {
                   const Icon = item.icon
-                  const active = location.pathname.startsWith(item.path)
+                  const active =
+                    item.path === '/dev-admin'
+                      ? location.pathname === '/dev-admin'
+                      : location.pathname.startsWith(item.path)
                   return (
                     <NavLink
                       key={item.path}

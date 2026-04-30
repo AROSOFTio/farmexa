@@ -1,36 +1,72 @@
 from datetime import date
 from typing import Optional
+
 from pydantic import BaseModel, Field
 
-from app.models.farm import HouseStatus, BatchStatus, VaccinationStatus
+from app.models.farm import BatchStatus, HouseStatus, VaccinationStatus
 from app.models.settings import ReferenceDataType
 
 
-# ── Poultry House ──────────────────────────────────────────────
+class PoultryHouseSectionBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    section_type: str = Field(..., min_length=1, max_length=80)
+    capacity: int = Field(..., gt=0)
+    status: HouseStatus = HouseStatus.ACTIVE
+    notes: Optional[str] = None
+
+
+class PoultryHouseSectionCreate(PoultryHouseSectionBase):
+    pass
+
+
+class PoultryHouseSectionUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    section_type: Optional[str] = Field(default=None, min_length=1, max_length=80)
+    capacity: Optional[int] = Field(default=None, gt=0)
+    status: Optional[HouseStatus] = None
+    notes: Optional[str] = None
+
+
+class PoultryHouseSectionOut(PoultryHouseSectionBase):
+    id: int
+    house_id: int
+    occupied_capacity: int = 0
+    available_capacity: int = 0
+
+    model_config = {"from_attributes": True}
+
 
 class PoultryHouseBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     capacity: int = Field(..., gt=0)
     status: HouseStatus = HouseStatus.ACTIVE
 
+
 class PoultryHouseCreate(PoultryHouseBase):
-    pass
+    sections: list[PoultryHouseSectionCreate] = Field(default_factory=list)
+
 
 class PoultryHouseUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    capacity: Optional[int] = Field(None, gt=0)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    capacity: Optional[int] = Field(default=None, gt=0)
     status: Optional[HouseStatus] = None
+    sections: Optional[list[PoultryHouseSectionCreate]] = None
+
 
 class PoultryHouseOut(PoultryHouseBase):
     id: int
+    occupied_capacity: int = 0
+    available_capacity: int = 0
+    active_batch_count: int = 0
+    sections: list[PoultryHouseSectionOut] = Field(default_factory=list)
+
     model_config = {"from_attributes": True}
 
-
-# ── Batch ──────────────────────────────────────────────────────
 
 class BatchBase(BaseModel):
     batch_number: str = Field(..., min_length=1, max_length=50)
     house_id: int
+    section_id: Optional[int] = None
     breed: str = Field(..., min_length=1, max_length=100)
     source: Optional[str] = None
     arrival_date: date
@@ -38,24 +74,28 @@ class BatchBase(BaseModel):
     active_quantity: int = Field(..., ge=0)
     status: BatchStatus = BatchStatus.ACTIVE
 
+
 class BatchCreate(BatchBase):
     pass
 
+
 class BatchUpdate(BaseModel):
     house_id: Optional[int] = None
+    section_id: Optional[int] = None
     breed: Optional[str] = None
     source: Optional[str] = None
     arrival_date: Optional[date] = None
-    active_quantity: Optional[int] = Field(None, ge=0)
+    active_quantity: Optional[int] = Field(default=None, ge=0)
     status: Optional[BatchStatus] = None
+
 
 class BatchOut(BatchBase):
     id: int
     house: Optional[PoultryHouseOut] = None
+    section: Optional[PoultryHouseSectionOut] = None
+
     model_config = {"from_attributes": True}
 
-
-# ── Mortality Log ──────────────────────────────────────────────
 
 class MortalityLogBase(BaseModel):
     batch_id: int
@@ -64,15 +104,16 @@ class MortalityLogBase(BaseModel):
     cause: Optional[str] = None
     notes: Optional[str] = None
 
+
 class MortalityLogCreate(MortalityLogBase):
     pass
 
+
 class MortalityLogOut(MortalityLogBase):
     id: int
+
     model_config = {"from_attributes": True}
 
-
-# ── Vaccination Log ────────────────────────────────────────────
 
 class VaccinationLogBase(BaseModel):
     batch_id: int
@@ -82,20 +123,22 @@ class VaccinationLogBase(BaseModel):
     status: VaccinationStatus = VaccinationStatus.PENDING
     notes: Optional[str] = None
 
+
 class VaccinationLogCreate(VaccinationLogBase):
     pass
+
 
 class VaccinationLogUpdate(BaseModel):
     administered_date: Optional[date] = None
     status: Optional[VaccinationStatus] = None
     notes: Optional[str] = None
 
+
 class VaccinationLogOut(VaccinationLogBase):
     id: int
+
     model_config = {"from_attributes": True}
 
-
-# ── Growth Log ─────────────────────────────────────────────────
 
 class GrowthLogBase(BaseModel):
     batch_id: int
@@ -103,11 +146,14 @@ class GrowthLogBase(BaseModel):
     avg_weight_grams: float = Field(..., gt=0)
     notes: Optional[str] = None
 
+
 class GrowthLogCreate(GrowthLogBase):
     pass
 
+
 class GrowthLogOut(GrowthLogBase):
     id: int
+
     model_config = {"from_attributes": True}
 
 
@@ -124,9 +170,9 @@ class ReferenceItemCreate(ReferenceItemBase):
 
 
 class ReferenceItemUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=150)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=150)
     description: Optional[str] = None
-    sort_order: Optional[int] = Field(None, ge=0)
+    sort_order: Optional[int] = Field(default=None, ge=0)
     is_active: Optional[bool] = None
 
 

@@ -88,7 +88,7 @@ class SubscriptionUpgradeService:
         return {
             "tenant_id": tenant.id,
             "tenant_name": tenant.name,
-            "current_plan": tenant.plan.value if hasattr(tenant.plan, "value") else str(tenant.plan),
+            "current_plan": tenant.plan,
             "billing_cycle": tenant.billing_cycle.value if hasattr(tenant.billing_cycle, "value") else str(tenant.billing_cycle),
             "enabled_modules": enabled_modules,
             "catalog": catalog,

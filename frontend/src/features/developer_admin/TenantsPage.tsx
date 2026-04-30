@@ -4,14 +4,20 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import {
+  Activity,
   BadgeDollarSign,
   Building2,
+  CheckCircle2,
   CreditCard,
+  Database,
   Globe,
   Layers3,
   Plus,
   Power,
   PowerOff,
+  Settings,
+  ShieldCheck,
+  Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -19,12 +25,23 @@ import api from '@/services/api'
 import { Modal } from '@/components/Modal'
 import { useAuth } from '@/features/auth/AuthContext'
 
-type AdminSection = 'tenants' | 'domains' | 'plans' | 'modules' | 'billing' | 'control'
+type AdminSection = 'dashboard' | 'tenants' | 'domains' | 'plans' | 'activity' | 'settings'
+
+interface DeveloperAdminOverview {
+  total_tenants: number
+  active_domains: number
+  active_plans: number
+  monthly_revenue: string
+  pending_setup: number
+  suspended_tenants: number
+}
 
 interface TenantModule {
   id: number
   module_key: string
   is_enabled: boolean
+  is_manual_override: boolean
+  updated_at: string
 }
 
 interface TenantDomain {
@@ -39,7 +56,9 @@ interface TenantDomain {
   ssl_requested_at?: string | null
   ssl_issued_at?: string | null
   activated_at?: string | null
+  disabled_at?: string | null
   last_error?: string | null
+  created_at: string
 }
 
 interface Subscription {
@@ -70,6 +89,10 @@ interface Tenant {
   subscription_expiry: string | null
   is_suspended: boolean
   notes: string | null
+  operational_db_name: string | null
+  operational_db_status: string
+  operational_db_ready_at: string | null
+  operational_db_last_error: string | null
   modules: TenantModule[]
   domains: TenantDomain[]
   subscriptions: Subscription[]
@@ -81,16 +104,21 @@ interface Tenant {
   } | null
 }
 
-interface CatalogModule {
+interface PlatformModule {
   key: string
   name: string
   category: string
   description: string | null
   is_core: boolean
+  is_active: boolean
 }
 
 interface PlanModule {
   module_key: string
+  module_name: string
+  category: string
+  description: string | null
+  is_core: boolean
   is_included: boolean
 }
 
@@ -99,43 +127,37 @@ interface Plan {
   name: string
   description: string | null
   billing_cycle: string
+  monthly_price: string
+  quarterly_price: string
+  annual_price: string
+  currency: string
+  trial_days: number
   is_custom: boolean
+  is_active: boolean
+  module_count: number
+  tenant_count: number
   modules: PlanModule[]
 }
 
-interface ModulePrice {
+interface ActivityLog {
   id: number
-  module_key: string
-  billing_cycle: string
-  price: string
-  currency: string
-  notes: string | null
+  action: string
+  entity: string
+  entity_id: number | null
+  meta: string | null
+  created_at: string
+  actor_name?: string | null
+  actor_email?: string | null
 }
 
-interface CatalogResponse {
-  modules: CatalogModule[]
-  plans: Plan[]
-  module_prices: ModulePrice[]
-}
-
-interface BillingTenant {
-  tenant_id: number
-  tenant_name: string
-  plan: string
-  status: string
-  billing_cycle: string
-  expiry_date: string | null
-  amount: string | null
-  currency: string
-  domains: string[]
-}
-
-interface BillingOverview {
-  total_tenants: number
-  active_tenants: number
-  suspended_tenants: number
-  expiring_soon: number
-  tenants: BillingTenant[]
+interface DeveloperAdminSettings {
+  primary_platform_domain: string
+  default_tenant_domain_suffix: string
+  automatic_ssl_provisioning: boolean
+  certbot_enabled: boolean
+  mandatory_module_keys: string[]
+  total_modules: number
+  total_plans: number
 }
 
 const tenantSchema = z.object({
@@ -152,7 +174,6 @@ const tenantSchema = z.object({
   billing_cycle: z.string().min(1, 'Billing cycle is required'),
   subscription_start: z.string().optional(),
   subscription_expiry: z.string().optional(),
-  status: z.string().optional(),
   is_suspended: z.boolean().default(false),
   notes: z.string().optional(),
 })
@@ -162,8 +183,23 @@ const domainSchema = z.object({
   is_primary: z.boolean().default(true),
 })
 
+const planSchema = z.object({
+  name: z.string().min(2, 'Plan name is required'),
+  code: z.string().min(2, 'Plan code is required'),
+  description: z.string().optional(),
+  billing_cycle: z.enum(['monthly', 'quarterly', 'annual']),
+  monthly_price: z.coerce.number().min(0),
+  quarterly_price: z.coerce.number().min(0),
+  annual_price: z.coerce.number().min(0),
+  currency: z.string().min(1).max(10),
+  trial_days: z.coerce.number().int().min(0),
+  is_active: z.boolean().default(true),
+  modules: z.array(z.string()).default([]),
+})
+
 type TenantFormValues = z.infer<typeof tenantSchema>
 type DomainFormValues = z.infer<typeof domainSchema>
+type PlanFormValues = z.infer<typeof planSchema>
 
 function getApiErrorMessage(error: any, fallback: string) {
   const detail = error?.response?.data?.detail
@@ -172,116 +208,217 @@ function getApiErrorMessage(error: any, fallback: string) {
   if (Array.isArray(errors) && errors.length > 0) {
     return errors.map((item: { field?: string; message?: string }) => item.message || item.field || 'Validation error').join(', ')
   }
-
   if (typeof detail === 'string' && detail.trim()) {
     return detail
   }
-
   return fallback
 }
 
-function formatMoney(value: string | null, currency = 'UGX') {
+function formatMoney(value: string | number | null | undefined, currency = 'UGX') {
+  const amount = Number(value ?? 0)
+  return `${currency} ${amount.toLocaleString()}`
+}
+
+function formatDate(value: string | null | undefined) {
   if (!value) return 'Not set'
-  return `${currency} ${Number(value).toLocaleString()}`
+  return new Date(value).toLocaleDateString('en-UG', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function statusBadge(status: string) {
+  switch (status) {
+    case 'active':
+    case 'dns_verified':
+      return 'badge badge-success'
+    case 'suspended':
+    case 'failed':
+    case 'disabled':
+      return 'badge badge-danger'
+    default:
+      return 'badge badge-brand'
+  }
 }
 
 function sectionMeta(section: AdminSection) {
   switch (section) {
+    case 'dashboard':
+      return { title: 'Developer Admin Dashboard', subtitle: 'Monitor tenancy health, rollout readiness, plan adoption, and platform-side activity.' }
     case 'domains':
-      return { title: 'Domains', subtitle: 'Map customer custom domains, verify DNS, and control SSL activation.' }
+      return { title: 'Domains', subtitle: 'Review tenant domains globally, verify setup, activate SSL, and retire broken mappings safely.' }
     case 'plans':
-      return { title: 'Plans', subtitle: 'Review plan structure and included modules.' }
-    case 'modules':
-      return { title: 'Modules', subtitle: 'Inspect module catalog and configurable pricing.' }
-    case 'billing':
-      return { title: 'Billing', subtitle: 'Track tenant subscription status and renewals.' }
-    case 'control':
-      return { title: 'Tenant Control', subtitle: 'Suspend, reactivate, and manage tenant access.' }
+      return { title: 'Plans', subtitle: 'Define pricing, billing cycles, included modules, and commercial packaging from one place.' }
+    case 'activity':
+      return { title: 'Activity Logs', subtitle: 'Track developer-admin actions across tenants, domains, plans, and access overrides.' }
+    case 'settings':
+      return { title: 'Settings', subtitle: 'Review platform defaults for domains, SSL provisioning, and mandatory tenancy controls.' }
     default:
-      return { title: 'Tenants', subtitle: 'Onboard farms, assign plans, manage domains, and stage module access.' }
+      return { title: 'Tenants', subtitle: 'Manage tenant onboarding, plan assignment, module overrides, operational database status, and domain control.' }
   }
 }
 
 export function TenantsPage({ section = 'tenants' }: { section?: AdminSection }) {
   const queryClient = useQueryClient()
   const { hasPermission } = useAuth()
+  const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null)
+  const [selectedPlanCode, setSelectedPlanCode] = useState<string | null>(null)
   const [isTenantModalOpen, setIsTenantModalOpen] = useState(false)
   const [isEditTenantModalOpen, setIsEditTenantModalOpen] = useState(false)
-  const [isModulesModalOpen, setIsModulesModalOpen] = useState(false)
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false)
   const [isDomainModalOpen, setIsDomainModalOpen] = useState(false)
-  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null)
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null)
   const [createdTenant, setCreatedTenant] = useState<Tenant | null>(null)
-  const [selectedModuleKeys, setSelectedModuleKeys] = useState<string[]>([])
+  const [pendingDeleteDomain, setPendingDeleteDomain] = useState<{ tenantId: number; domain: TenantDomain } | null>(null)
 
+  const canManage = hasPermission('dev_admin:write')
   const meta = sectionMeta(section)
-  const canManageTenants = hasPermission('dev_admin:write')
 
-  const { data: tenants, isLoading } = useQuery<Tenant[]>({
+  const { data: overview } = useQuery<DeveloperAdminOverview>({
+    queryKey: ['dev-admin-overview'],
+    queryFn: () => api.get('/dev-admin/overview').then((response) => response.data),
+  })
+
+  const { data: tenants = [], isLoading: tenantsLoading } = useQuery<Tenant[]>({
     queryKey: ['dev-admin-tenants'],
-    queryFn: async () => (await api.get('/dev-admin/tenants')).data,
+    queryFn: () => api.get('/dev-admin/tenants').then((response) => response.data),
   })
 
-  const { data: catalog } = useQuery<CatalogResponse>({
-    queryKey: ['dev-admin-catalog'],
-    queryFn: async () => (await api.get('/dev-admin/catalog')).data,
+  const { data: plans = [] } = useQuery<Plan[]>({
+    queryKey: ['dev-admin-plans'],
+    queryFn: () => api.get('/dev-admin/plans').then((response) => response.data),
   })
 
-  const { data: billing } = useQuery<BillingOverview>({
-    queryKey: ['dev-admin-billing'],
-    queryFn: async () => (await api.get('/dev-admin/billing')).data,
+  const { data: modules = [] } = useQuery<PlatformModule[]>({
+    queryKey: ['dev-admin-modules'],
+    queryFn: () => api.get('/dev-admin/modules').then((response) => response.data),
   })
 
-  const { register, handleSubmit, reset, setValue, getValues, watch, formState: { errors } } = useForm<TenantFormValues>({
+  const { data: activityLogs = [] } = useQuery<ActivityLog[]>({
+    queryKey: ['dev-admin-activity'],
+    queryFn: () => api.get('/dev-admin/activity').then((response) => response.data),
+  })
+
+  const { data: settingsSummary } = useQuery<DeveloperAdminSettings>({
+    queryKey: ['dev-admin-settings'],
+    queryFn: () => api.get('/dev-admin/settings').then((response) => response.data),
+  })
+
+  const tenantForm = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),
     defaultValues: { plan: '', billing_cycle: 'monthly', is_suspended: false },
   })
+
   const editTenantForm = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),
     defaultValues: { plan: '', billing_cycle: 'monthly', is_suspended: false },
   })
-  const selectedPlan = watch('plan')
 
-  useEffect(() => {
-    const firstPlan = catalog?.plans?.[0]
-    if (!firstPlan) return
-    if (!getValues('plan')) {
-      setValue('plan', firstPlan.code)
-    }
-    if (!getValues('billing_cycle')) {
-      setValue('billing_cycle', firstPlan.billing_cycle || 'monthly')
-    }
-  }, [catalog?.plans, getValues, setValue])
-
-  const {
-    register: registerDomain,
-    handleSubmit: handleSubmitDomain,
-    reset: resetDomain,
-    formState: { errors: domainErrors },
-  } = useForm<DomainFormValues>({
+  const domainForm = useForm<DomainFormValues>({
     resolver: zodResolver(domainSchema),
     defaultValues: { is_primary: true },
   })
 
-  const refreshTenantQueries = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['dev-admin-tenants'] })
-    await queryClient.invalidateQueries({ queryKey: ['dev-admin-billing'] })
+  const planForm = useForm<PlanFormValues>({
+    resolver: zodResolver(planSchema),
+    defaultValues: {
+      name: '',
+      code: '',
+      description: '',
+      billing_cycle: 'monthly',
+      monthly_price: 0,
+      quarterly_price: 0,
+      annual_price: 0,
+      currency: 'UGX',
+      trial_days: 0,
+      is_active: true,
+      modules: [],
+    },
+  })
+
+  const selectedTenant = useMemo(
+    () => tenants.find((tenant) => tenant.id === selectedTenantId) ?? null,
+    [selectedTenantId, tenants]
+  )
+
+  const selectedPlan = useMemo(
+    () => plans.find((plan) => plan.code === selectedPlanCode) ?? null,
+    [plans, selectedPlanCode]
+  )
+
+  const groupedModules = useMemo(() => {
+    const groups = new Map<string, PlatformModule[]>()
+    modules.forEach((module) => {
+      const list = groups.get(module.category) ?? []
+      list.push(module)
+      groups.set(module.category, list)
+    })
+    return Array.from(groups.entries())
+  }, [modules])
+
+  const domainRows = useMemo(
+    () =>
+      tenants.flatMap((tenant) =>
+        tenant.domains.map((domain) => ({
+          ...domain,
+          tenant_id: tenant.id,
+          tenant_name: tenant.name,
+          tenant_plan: tenant.plan,
+          tenant_db_status: tenant.operational_db_status,
+        }))
+      ),
+    [tenants]
+  )
+
+  const plansSummary = useMemo(() => {
+    const subscribedTenants = plans.reduce((sum, plan) => sum + plan.tenant_count, 0)
+    const activePlans = plans.filter((plan) => plan.is_active).length
+    return {
+      totalPlans: plans.length,
+      activePlans,
+      subscribedTenants,
+    }
+  }, [plans])
+
+  useEffect(() => {
+    if (!selectedTenantId && tenants.length > 0) {
+      setSelectedTenantId(tenants[0].id)
+    }
+  }, [selectedTenantId, tenants])
+
+  useEffect(() => {
+    if (!selectedPlanCode && plans.length > 0) {
+      setSelectedPlanCode(plans[0].code)
+    }
+  }, [plans, selectedPlanCode])
+
+  useEffect(() => {
+    if (!tenantForm.getValues('plan') && plans[0]) {
+      tenantForm.setValue('plan', plans[0].code)
+      tenantForm.setValue('billing_cycle', plans[0].billing_cycle)
+    }
+  }, [plans, tenantForm])
+
+  const refreshAdminData = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['dev-admin-overview'] }),
+      queryClient.invalidateQueries({ queryKey: ['dev-admin-tenants'] }),
+      queryClient.invalidateQueries({ queryKey: ['dev-admin-plans'] }),
+      queryClient.invalidateQueries({ queryKey: ['dev-admin-activity'] }),
+      queryClient.invalidateQueries({ queryKey: ['dev-admin-settings'] }),
+    ])
   }
 
   const createTenantMutation = useMutation({
-    mutationFn: (payload: TenantFormValues) =>
+    mutationFn: (values: TenantFormValues) =>
       api.post('/dev-admin/tenants', {
-        ...payload,
-        subscription_start: payload.subscription_start || null,
-        subscription_expiry: payload.subscription_expiry || null,
-        enabled_modules: selectedModuleKeys,
+        ...values,
+        subscription_start: values.subscription_start || null,
+        subscription_expiry: values.subscription_expiry || null,
       }),
     onSuccess: async (response) => {
-      await refreshTenantQueries()
-      toast.success('Tenant onboarded')
+      await refreshAdminData()
+      toast.success('Tenant registered.')
       setCreatedTenant(response.data)
       setIsTenantModalOpen(false)
-      reset()
-      setSelectedModuleKeys([])
+      tenantForm.reset({ plan: plans[0]?.code ?? '', billing_cycle: plans[0]?.billing_cycle ?? 'monthly', is_suspended: false })
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to create tenant.')),
   })
@@ -295,19 +432,28 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
         domain: payload.values.domain || null,
       }),
     onSuccess: async () => {
-      await refreshTenantQueries()
-      toast.success('Tenant updated')
+      await refreshAdminData()
+      toast.success('Tenant updated.')
       setIsEditTenantModalOpen(false)
-      setSelectedTenant(null)
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to update tenant.')),
+  })
+
+  const changePlanMutation = useMutation({
+    mutationFn: (payload: { tenantId: number; plan: string; billing_cycle: string; subscription_expiry?: string | null }) =>
+      api.post(`/dev-admin/tenants/${payload.tenantId}/plan`, payload),
+    onSuccess: async () => {
+      await refreshAdminData()
+      toast.success('Tenant plan updated.')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to update tenant plan.')),
   })
 
   const suspendMutation = useMutation({
     mutationFn: (tenantId: number) => api.post(`/dev-admin/tenants/${tenantId}/suspend`, { reason: 'Suspended by developer admin' }),
     onSuccess: async () => {
-      await refreshTenantQueries()
-      toast.success('Tenant suspended')
+      await refreshAdminData()
+      toast.success('Tenant suspended.')
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to suspend tenant.')),
   })
@@ -315,8 +461,8 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
   const reactivateMutation = useMutation({
     mutationFn: (tenantId: number) => api.post(`/dev-admin/tenants/${tenantId}/reactivate`),
     onSuccess: async () => {
-      await refreshTenantQueries()
-      toast.success('Tenant reactivated')
+      await refreshAdminData()
+      toast.success('Tenant reactivated.')
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to reactivate tenant.')),
   })
@@ -328,8 +474,8 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
         is_enabled: payload.isEnabled,
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['dev-admin-tenants'] })
-      toast.success('Module access updated')
+      await refreshAdminData()
+      toast.success('Tenant module override updated.')
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to update module access.')),
   })
@@ -338,10 +484,10 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
     mutationFn: (payload: { tenantId: number; values: DomainFormValues }) =>
       api.post(`/dev-admin/tenants/${payload.tenantId}/domains`, payload.values),
     onSuccess: async () => {
-      await refreshTenantQueries()
-      toast.success('Domain saved')
+      await refreshAdminData()
+      toast.success('Domain saved.')
       setIsDomainModalOpen(false)
-      resetDomain()
+      domainForm.reset({ is_primary: true, host: '' })
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to save domain.')),
   })
@@ -350,249 +496,565 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
     mutationFn: (payload: { tenantId: number; domainId: number; action: 'verify' | 'ssl' | 'activate' | 'disable' | 'retry' }) =>
       api.post(`/dev-admin/tenants/${payload.tenantId}/domains/${payload.domainId}/${payload.action}`),
     onSuccess: async () => {
-      await refreshTenantQueries()
+      await refreshAdminData()
       toast.success('Domain action completed.')
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to complete the domain action.')),
   })
 
-  const monthlyPriceMap = useMemo(() => {
-    const map = new Map<string, ModulePrice>()
-    ;(catalog?.module_prices ?? [])
-      .filter((price) => price.billing_cycle === 'monthly')
-      .forEach((price) => map.set(price.module_key, price))
-    return map
-  }, [catalog?.module_prices])
+  const deleteDomainMutation = useMutation({
+    mutationFn: (payload: { tenantId: number; domainId: number }) =>
+      api.delete(`/dev-admin/tenants/${payload.tenantId}/domains/${payload.domainId}`),
+    onSuccess: async () => {
+      await refreshAdminData()
+      toast.success('Domain deleted.')
+      setPendingDeleteDomain(null)
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to delete domain.')),
+  })
 
-  const groupedModules = useMemo(() => {
-    const groups = new Map<string, CatalogModule[]>()
-    ;(catalog?.modules ?? []).forEach((module) => {
-      const list = groups.get(module.category) ?? []
-      list.push(module)
-      groups.set(module.category, list)
+  const createPlanMutation = useMutation({
+    mutationFn: (values: PlanFormValues) => api.post('/dev-admin/plans', values),
+    onSuccess: async () => {
+      await refreshAdminData()
+      toast.success('Plan created.')
+      setIsPlanModalOpen(false)
+      setEditingPlan(null)
+      planForm.reset({
+        name: '',
+        code: '',
+        description: '',
+        billing_cycle: 'monthly',
+        monthly_price: 0,
+        quarterly_price: 0,
+        annual_price: 0,
+        currency: 'UGX',
+        trial_days: 0,
+        is_active: true,
+        modules: [],
+      })
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to create plan.')),
+  })
+
+  const updatePlanMutation = useMutation({
+    mutationFn: (payload: { code: string; values: PlanFormValues }) => api.put(`/dev-admin/plans/${payload.code}`, payload.values),
+    onSuccess: async () => {
+      await refreshAdminData()
+      toast.success('Plan updated.')
+      setIsPlanModalOpen(false)
+      setEditingPlan(null)
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to update plan.')),
+  })
+
+  const updatePlanStatusMutation = useMutation({
+    mutationFn: (payload: { code: string; is_active: boolean }) => api.post(`/dev-admin/plans/${payload.code}/status`, { is_active: payload.is_active }),
+    onSuccess: async () => {
+      await refreshAdminData()
+      toast.success('Plan status updated.')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to update plan status.')),
+  })
+
+  const openEditTenant = (tenant: Tenant) => {
+    setSelectedTenantId(tenant.id)
+    editTenantForm.reset({
+      name: tenant.name,
+      slug: tenant.slug,
+      business_name: tenant.business_name ?? '',
+      contact_person: tenant.contact_person ?? '',
+      email: tenant.email,
+      phone: tenant.phone ?? '',
+      address: tenant.address ?? '',
+      country: tenant.country ?? '',
+      domain: tenant.domains.find((domain) => domain.is_primary)?.host ?? '',
+      plan: tenant.plan,
+      billing_cycle: tenant.billing_cycle,
+      subscription_start: tenant.subscription_start ?? '',
+      subscription_expiry: tenant.subscription_expiry ?? '',
+      is_suspended: tenant.is_suspended,
+      notes: tenant.notes ?? '',
     })
-    return Array.from(groups.entries())
-  }, [catalog?.modules])
-
-  const domainRows = useMemo(
-    () =>
-      (tenants ?? []).flatMap((tenant) =>
-        tenant.domains.map((domain) => ({
-          id: domain.id,
-          tenantId: tenant.id,
-          tenantName: tenant.name,
-          plan: tenant.plan,
-          host: domain.host,
-          domain_type: domain.domain_type,
-          status: domain.status,
-          isPrimary: domain.is_primary,
-          last_error: domain.last_error,
-        }))
-      ),
-    [tenants]
-  )
-
-  const onSubmitTenant = (values: TenantFormValues) => createTenantMutation.mutate(values)
-  const onSubmitDomain = (values: DomainFormValues) => {
-    if (!selectedTenant) return
-    addDomainMutation.mutate({ tenantId: selectedTenant.id, values })
+    setIsEditTenantModalOpen(true)
   }
 
-  const renderTenantsTable = () => (
-    <div className="card overflow-hidden">
-      <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">Vendor Directory</h2>
-          <p className="mt-1 text-sm text-slate-500">Each vendor workspace includes plan, module, domain, and suspension state.</p>
+  const openPlanEditor = (plan?: Plan | null) => {
+    setEditingPlan(plan ?? null)
+    if (plan) {
+      planForm.reset({
+        name: plan.name,
+        code: plan.code,
+        description: plan.description ?? '',
+        billing_cycle: plan.billing_cycle as 'monthly' | 'quarterly' | 'annual',
+        monthly_price: Number(plan.monthly_price),
+        quarterly_price: Number(plan.quarterly_price),
+        annual_price: Number(plan.annual_price),
+        currency: plan.currency,
+        trial_days: plan.trial_days,
+        is_active: plan.is_active,
+        modules: plan.modules.map((module) => module.module_key),
+      })
+    } else {
+      planForm.reset({
+        name: '',
+        code: '',
+        description: '',
+        billing_cycle: 'monthly',
+        monthly_price: 0,
+        quarterly_price: 0,
+        annual_price: 0,
+        currency: 'UGX',
+        trial_days: 0,
+        is_active: true,
+        modules: [],
+      })
+    }
+    setIsPlanModalOpen(true)
+  }
+
+  const renderDashboard = () => (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Total Tenants</div>
+              <div className="metric-value">{overview?.total_tenants ?? 0}</div>
+              <div className="metric-note">Tenant workspaces currently managed from the platform control plane.</div>
+            </div>
+            <div className="metric-icon"><Building2 className="h-5 w-5" /></div>
+          </div>
         </div>
-        <button onClick={() => setIsTenantModalOpen(true)} className="btn-primary" disabled={!canManageTenants}>
-          <Plus className="h-4 w-4" />
-          Register Vendor
-        </button>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Active Domains</div>
+              <div className="metric-value">{overview?.active_domains ?? 0}</div>
+              <div className="metric-note">Domains with usable access and active routing across all tenants.</div>
+            </div>
+            <div className="metric-icon"><Globe className="h-5 w-5" /></div>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Active Plans</div>
+              <div className="metric-value">{overview?.active_plans ?? 0}</div>
+              <div className="metric-note">Commercial plans available for assignment and onboarding.</div>
+            </div>
+            <div className="metric-icon"><Layers3 className="h-5 w-5" /></div>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Monthly Revenue</div>
+              <div className="metric-value text-[1.5rem]">{formatMoney(overview?.monthly_revenue, 'UGX')}</div>
+              <div className="metric-note">Monthly revenue equivalent derived from each tenant’s assigned plan.</div>
+            </div>
+            <div className="metric-icon"><BadgeDollarSign className="h-5 w-5" /></div>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Pending Setup</div>
+              <div className="metric-value">{overview?.pending_setup ?? 0}</div>
+              <div className="metric-note">Tenants still missing a ready operational database or active primary domain.</div>
+            </div>
+            <div className="metric-icon"><Database className="h-5 w-5" /></div>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Suspended Tenants</div>
+              <div className="metric-value">{overview?.suspended_tenants ?? 0}</div>
+              <div className="metric-note">Workspaces currently blocked from operating until reactivated.</div>
+            </div>
+            <div className="metric-icon"><PowerOff className="h-5 w-5" /></div>
+          </div>
+        </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Tenant</th>
-              <th>Plan</th>
-              <th>Primary Domain</th>
-              <th>Modules</th>
-              <th>Status</th>
-              <th className="text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={6} className="py-10 text-center text-slate-500">Loading tenants...</td>
-              </tr>
-            ) : tenants?.length ? (
-              tenants.map((tenant) => {
-                const primaryDomain = tenant.domains.find((domain) => domain.is_primary)
-                return (
-                  <tr key={tenant.id}>
-                    <td>
-                      <div className="font-semibold text-slate-900">{tenant.name}</div>
-                      <div className="mt-1 text-xs text-slate-500">{tenant.email}</div>
-                    </td>
-                    <td><span className="badge badge-brand uppercase">{tenant.plan}</span></td>
-                    <td>
-                      <div className="text-slate-700">{primaryDomain?.host ?? 'Not assigned'}</div>
-                      <div className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-400">
-                        {(primaryDomain?.status ?? 'pending_dns').replace(/_/g, ' ')}
-                      </div>
-                    </td>
-                    <td className="text-slate-600">{tenant.modules.filter((module) => module.is_enabled).length} enabled</td>
-                    <td>
-                      <span className={`badge ${tenant.is_suspended ? 'badge-danger' : 'badge-success'}`}>
-                        {tenant.is_suspended ? 'Suspended' : 'Active'}
-                      </span>
-                    </td>
-                    <td className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedTenant(tenant)
-                            editTenantForm.reset({
-                              name: tenant.name,
-                              slug: tenant.slug,
-                              business_name: tenant.business_name ?? '',
-                              contact_person: tenant.contact_person ?? '',
-                              email: tenant.email,
-                              phone: tenant.phone ?? '',
-                              address: tenant.address ?? '',
-                              country: tenant.country ?? '',
-                              domain: tenant.domains.find((domain) => domain.is_primary)?.host ?? '',
-                              plan: tenant.plan,
-                              billing_cycle: tenant.billing_cycle,
-                              subscription_start: tenant.subscription_start ?? '',
-                              subscription_expiry: tenant.subscription_expiry ?? '',
-                              status: tenant.status,
-                              is_suspended: tenant.is_suspended,
-                              notes: tenant.notes ?? '',
-                            })
-                            setIsEditTenantModalOpen(true)
-                          }}
-                          disabled={!canManageTenants}
-                          className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedTenant(tenant)
-                            setIsModulesModalOpen(true)
-                          }}
-                          disabled={!canManageTenants}
-                          className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                        >
-                          Modules
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedTenant(tenant)
-                            setIsDomainModalOpen(true)
-                            resetDomain({ host: tenant.domains.find((domain) => domain.is_primary)?.host ?? '', is_primary: true })
-                          }}
-                          disabled={!canManageTenants}
-                          className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                        >
-                          Domain
-                        </button>
-                        {tenant.is_suspended ? (
-                          <button
-                            type="button"
-                            onClick={() => reactivateMutation.mutate(tenant.id)}
-                            disabled={!canManageTenants}
-                            className="rounded-xl border border-brand-200 px-3 py-2 text-sm font-semibold text-brand-600 hover:bg-brand-50"
-                          >
-                            <Power className="h-4 w-4" />
+
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="card overflow-hidden">
+          <div className="surface-header">
+            <div>
+              <h2 className="surface-title">Pending setup tenants</h2>
+              <p className="surface-subtitle">These workspaces still need an active primary domain or a ready operational database.</p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Tenant</th>
+                  <th>Plan</th>
+                  <th>Primary domain</th>
+                  <th>Database</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tenants.filter((tenant) => tenant.operational_db_status !== 'ready' || !tenant.domains.some((domain) => domain.is_primary && domain.status === 'active')).length ? (
+                  tenants
+                    .filter((tenant) => tenant.operational_db_status !== 'ready' || !tenant.domains.some((domain) => domain.is_primary && domain.status === 'active'))
+                    .map((tenant) => (
+                      <tr key={tenant.id}>
+                        <td>
+                          <button type="button" className="text-left font-semibold text-slate-900" onClick={() => setSelectedTenantId(tenant.id)}>
+                            {tenant.name}
                           </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => suspendMutation.mutate(tenant.id)}
-                            disabled={!canManageTenants}
-                            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                          >
-                            <PowerOff className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                          <div className="mt-1 text-xs text-slate-500">{tenant.email}</div>
+                        </td>
+                        <td><span className="badge badge-brand uppercase">{tenant.plan}</span></td>
+                        <td>{tenant.domains.find((domain) => domain.is_primary)?.host ?? 'Not assigned'}</td>
+                        <td><span className={statusBadge(tenant.operational_db_status)}>{tenant.operational_db_status.replace(/_/g, ' ')}</span></td>
+                      </tr>
+                    ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="py-10 text-center text-slate-500">No tenants are waiting on setup right now.</td>
                   </tr>
-                )
-              })
-            ) : (
-              <tr>
-                <td colSpan={6} className="py-10 text-center text-slate-500">No tenants found.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="card overflow-hidden">
+          <div className="surface-header">
+            <div>
+              <h2 className="surface-title">Recent activity</h2>
+              <p className="surface-subtitle">Latest plan, domain, and tenant administration events.</p>
+            </div>
+          </div>
+          <div className="divide-y divide-[var(--border-subtle)]">
+            {activityLogs.slice(0, 8).map((entry) => (
+              <div key={entry.id} className="px-5 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900">{entry.action} {entry.entity.replace(/_/g, ' ')}</div>
+                    <div className="mt-1 text-xs text-slate-500">{entry.actor_name ?? entry.actor_email ?? 'System'} • {formatDate(entry.created_at)}</div>
+                  </div>
+                  <span className="badge badge-brand uppercase">{entry.entity}</span>
+                </div>
+              </div>
+            ))}
+            {!activityLogs.length ? (
+              <div className="px-5 py-10 text-sm text-slate-500">No activity logs yet.</div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderTenants = () => (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="metric-card">
+          <div className="metric-label">Tenants</div>
+          <div className="metric-value">{overview?.total_tenants ?? 0}</div>
+          <div className="metric-note">Registered tenant workspaces on the platform.</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-label">Suspended</div>
+          <div className="metric-value">{overview?.suspended_tenants ?? 0}</div>
+          <div className="metric-note">Tenants blocked from operating until reactivated.</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-label">Pending Setup</div>
+          <div className="metric-value">{overview?.pending_setup ?? 0}</div>
+          <div className="metric-note">Operational DB or domain setup still needs intervention.</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-label">Monthly Revenue</div>
+          <div className="metric-value text-[1.5rem]">{formatMoney(overview?.monthly_revenue, 'UGX')}</div>
+          <div className="metric-note">Monthly revenue equivalent from assigned plans.</div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="card overflow-hidden">
+          <div className="surface-header">
+            <div>
+              <h2 className="surface-title">Tenant Directory</h2>
+              <p className="surface-subtitle">Plan assignment, primary domain, database readiness, and management actions in one table.</p>
+            </div>
+            {canManage ? (
+              <button type="button" className="btn-primary" onClick={() => setIsTenantModalOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Register Tenant
+              </button>
+            ) : null}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Tenant</th>
+                  <th>Plan</th>
+                  <th>Primary Domain</th>
+                  <th>Database</th>
+                  <th>Status</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tenantsLoading ? (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-slate-500">Loading tenants...</td>
+                  </tr>
+                ) : tenants.length ? (
+                  tenants.map((tenant) => {
+                    const primaryDomain = tenant.domains.find((domain) => domain.is_primary)
+                    return (
+                      <tr key={tenant.id} className={selectedTenantId === tenant.id ? 'bg-[rgba(var(--brand-primary-rgb),0.04)]' : ''}>
+                        <td>
+                          <button type="button" className="text-left font-semibold text-slate-900" onClick={() => setSelectedTenantId(tenant.id)}>
+                            {tenant.name}
+                          </button>
+                          <div className="mt-1 text-xs text-slate-500">{tenant.email}</div>
+                        </td>
+                        <td><span className="badge badge-brand uppercase">{tenant.plan}</span></td>
+                        <td>
+                          <div>{primaryDomain?.host ?? 'Not assigned'}</div>
+                          <div className="mt-1 text-xs text-slate-500">{primaryDomain?.status?.replace(/_/g, ' ') ?? 'No primary domain'}</div>
+                        </td>
+                        <td><span className={statusBadge(tenant.operational_db_status)}>{tenant.operational_db_status.replace(/_/g, ' ')}</span></td>
+                        <td><span className={statusBadge(tenant.is_suspended ? 'suspended' : tenant.status)}>{tenant.is_suspended ? 'Suspended' : tenant.status.replace(/_/g, ' ')}</span></td>
+                        <td className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <button type="button" className="btn-secondary btn-sm" onClick={() => setSelectedTenantId(tenant.id)}>
+                              Manage
+                            </button>
+                            {canManage ? (
+                              <button type="button" className="btn-secondary btn-sm" onClick={() => openEditTenant(tenant)}>
+                                Edit
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-slate-500">No tenants found.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="space-y-5">
+          {selectedTenant ? (
+            <>
+              <div className="card overflow-hidden">
+                <div className="surface-header">
+                  <div>
+                    <h2 className="surface-title">{selectedTenant.name}</h2>
+                    <p className="surface-subtitle">Tenant management, module overrides, and operational setup status.</p>
+                  </div>
+                  <span className={statusBadge(selectedTenant.is_suspended ? 'suspended' : selectedTenant.status)}>
+                    {selectedTenant.is_suspended ? 'Suspended' : selectedTenant.status.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <div className="space-y-4 px-5 py-5">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Primary Domain</div>
+                      <div className="mt-2 text-sm font-semibold text-slate-900">{selectedTenant.domains.find((domain) => domain.is_primary)?.host ?? 'Not assigned'}</div>
+                    </div>
+                    <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Database Status</div>
+                      <div className="mt-2 text-sm font-semibold text-slate-900">{selectedTenant.operational_db_status.replace(/_/g, ' ')}</div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="form-label">Assigned Plan</label>
+                      <select
+                        className="form-input"
+                        value={selectedTenant.plan}
+                        disabled={!canManage || changePlanMutation.isPending}
+                        onChange={(event) =>
+                          changePlanMutation.mutate({
+                            tenantId: selectedTenant.id,
+                            plan: event.target.value,
+                            billing_cycle: selectedTenant.billing_cycle,
+                            subscription_expiry: selectedTenant.subscription_expiry,
+                          })
+                        }
+                      >
+                        {plans.map((plan) => (
+                          <option key={plan.code} value={plan.code}>{plan.name} ({plan.code})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label">Billing Cycle</label>
+                      <div className="form-input flex items-center">{selectedTenant.billing_cycle}</div>
+                    </div>
+                  </div>
+
+                  {canManage ? (
+                    <div className="flex gap-2">
+                      <button type="button" className="btn-secondary btn-sm" onClick={() => {
+                        setSelectedTenantId(selectedTenant.id)
+                        domainForm.reset({ host: '', is_primary: true })
+                        setIsDomainModalOpen(true)
+                      }}>
+                        <Globe className="h-4 w-4" />
+                        Add Domain
+                      </button>
+                      {selectedTenant.is_suspended ? (
+                        <button type="button" className="btn-primary btn-sm" onClick={() => reactivateMutation.mutate(selectedTenant.id)}>
+                          <Power className="h-4 w-4" />
+                          Reactivate
+                        </button>
+                      ) : (
+                        <button type="button" className="btn-danger btn-sm" onClick={() => suspendMutation.mutate(selectedTenant.id)}>
+                          <PowerOff className="h-4 w-4" />
+                          Suspend
+                        </button>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="card overflow-hidden">
+                <div className="surface-header">
+                  <div>
+                    <h2 className="surface-title">Tenant Domains</h2>
+                    <p className="surface-subtitle">Primary domain, verification status, SSL actions, and safe deletion rules.</p>
+                  </div>
+                </div>
+                <div className="divide-y divide-[var(--border-subtle)]">
+                  {selectedTenant.domains.length ? selectedTenant.domains.map((domain) => (
+                    <div key={domain.id} className="px-5 py-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm font-semibold text-slate-900">{domain.host}</div>
+                            {domain.is_primary ? <span className="badge badge-brand">Primary</span> : null}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-500">{domain.domain_type.replace(/_/g, ' ')} • {domain.status.replace(/_/g, ' ')}</div>
+                          {domain.last_error ? <div className="mt-2 text-xs text-red-600">{domain.last_error}</div> : null}
+                        </div>
+                        {canManage ? (
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <button type="button" className="btn-secondary btn-sm" onClick={() => domainActionMutation.mutate({ tenantId: selectedTenant.id, domainId: domain.id, action: 'verify' })}>Verify</button>
+                            <button type="button" className="btn-secondary btn-sm" onClick={() => domainActionMutation.mutate({ tenantId: selectedTenant.id, domainId: domain.id, action: 'ssl' })}>SSL</button>
+                            <button type="button" className="btn-secondary btn-sm" onClick={() => domainActionMutation.mutate({ tenantId: selectedTenant.id, domainId: domain.id, action: 'activate' })}>Activate</button>
+                            <button type="button" className="btn-secondary btn-sm" onClick={() => domainActionMutation.mutate({ tenantId: selectedTenant.id, domainId: domain.id, action: 'disable' })}>Disable</button>
+                            <button type="button" className="btn-secondary btn-sm" onClick={() => setPendingDeleteDomain({ tenantId: selectedTenant.id, domain })}>
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="px-5 py-8 text-sm text-slate-500">No domains assigned yet.</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="card overflow-hidden">
+                <div className="surface-header">
+                  <div>
+                    <h2 className="surface-title">Module Override View</h2>
+                    <p className="surface-subtitle">Plan-driven modules stay synchronized. Manual overrides are clearly flagged here.</p>
+                  </div>
+                </div>
+                <div className="divide-y divide-[var(--border-subtle)]">
+                  {modules.map((module) => {
+                    const tenantModule = selectedTenant.modules.find((item) => item.module_key === module.key)
+                    const enabled = tenantModule?.is_enabled ?? false
+                    const overridden = tenantModule?.is_manual_override ?? false
+                    return (
+                      <div key={module.key} className="flex items-center justify-between gap-3 px-5 py-4">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm font-semibold text-slate-900">{module.name}</div>
+                            {module.is_core ? <span className="badge badge-brand">Core</span> : null}
+                            {overridden ? <span className="badge badge-warning">Manual Override</span> : null}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-500">{module.category.replace(/_/g, ' ')} • {module.description}</div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!canManage || toggleModuleMutation.isPending}
+                          onClick={() => toggleModuleMutation.mutate({ tenantId: selectedTenant.id, moduleKey: module.key, isEnabled: !enabled })}
+                          className={`relative inline-flex h-[24px] w-[44px] shrink-0 rounded-full transition-colors ${enabled ? 'bg-[var(--brand-primary)]' : 'bg-slate-300'}`}
+                        >
+                          <span className={`inline-block h-[20px] w-[20px] transform rounded-full bg-white transition-transform ${enabled ? 'translate-x-[20px]' : 'translate-x-0.5'}`} />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="card px-6 py-12 text-center text-slate-500">Select a tenant to manage plan assignment, domains, and module overrides.</div>
+          )}
+        </div>
       </div>
     </div>
   )
 
   const renderDomains = () => (
     <div className="card overflow-hidden">
-      <div className="border-b border-slate-200 px-5 py-4">
-        <h2 className="text-lg font-semibold text-slate-900">Tenant Domains</h2>
-        <p className="mt-1 text-sm text-slate-500">Primary domains and subdomains assigned to customer environments.</p>
+      <div className="surface-header">
+        <div>
+          <h2 className="surface-title">All Tenant Domains</h2>
+          <p className="surface-subtitle">Use this global view to verify, activate, disable, or delete domains across every tenant.</p>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="data-table">
           <thead>
             <tr>
               <th>Tenant</th>
-              <th>Domain</th>
+              <th>Host</th>
               <th>Type</th>
-              <th>Primary</th>
               <th>Status</th>
-              <th>Plan</th>
+              <th>Database</th>
               <th className="text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {domainRows.length ? domainRows.map((row) => (
-              <tr key={`${row.tenantName}-${row.host}`}>
-                <td className="font-semibold text-slate-900">{row.tenantName}</td>
+              <tr key={row.id}>
+                <td>{row.tenant_name}</td>
                 <td>
-                  <div>{row.host}</div>
-                  {row.last_error ? <div className="mt-1 text-xs text-rose-600">{row.last_error}</div> : null}
+                  <div className="font-semibold text-slate-900">{row.host}</div>
+                  {row.is_primary ? <div className="mt-1 text-xs text-slate-500">Primary domain</div> : null}
                 </td>
-                <td className="capitalize">{row.domain_type.replace(/_/g, ' ')}</td>
-                <td>{row.isPrimary ? 'Yes' : 'No'}</td>
-                <td><span className="badge badge-neutral uppercase">{row.status}</span></td>
-                <td><span className="badge badge-brand uppercase">{row.plan}</span></td>
+                <td>{row.domain_type.replace(/_/g, ' ')}</td>
+                <td><span className={statusBadge(row.status)}>{row.status.replace(/_/g, ' ')}</span></td>
+                <td>{row.tenant_db_status.replace(/_/g, ' ')}</td>
                 <td className="text-right">
-                  {canManageTenants ? (
+                  {canManage ? (
                     <div className="flex justify-end gap-2">
-                      {(['verify', 'ssl', 'activate', 'retry', 'disable'] as const).map((action) => (
-                        <button
-                          key={action}
-                          type="button"
-                          className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
-                            action === 'disable'
-                              ? 'border-rose-100 text-rose-600 hover:bg-rose-50'
-                              : 'border-slate-200 text-slate-700 hover:bg-slate-50'
-                          }`}
-                          onClick={() => domainActionMutation.mutate({ tenantId: row.tenantId, domainId: row.id, action })}
-                        >
-                          {action === 'ssl' ? 'SSL' : action.charAt(0).toUpperCase() + action.slice(1)}
-                        </button>
-                      ))}
+                      <button type="button" className="btn-secondary btn-sm" onClick={() => domainActionMutation.mutate({ tenantId: row.tenant_id, domainId: row.id, action: 'verify' })}>Verify</button>
+                      <button type="button" className="btn-secondary btn-sm" onClick={() => domainActionMutation.mutate({ tenantId: row.tenant_id, domainId: row.id, action: 'ssl' })}>SSL</button>
+                      <button type="button" className="btn-secondary btn-sm" onClick={() => setPendingDeleteDomain({ tenantId: row.tenant_id, domain: row })}>Delete</button>
                     </div>
                   ) : null}
                 </td>
               </tr>
             )) : (
               <tr>
-                <td colSpan={7} className="py-10 text-center text-slate-500">No domains assigned yet.</td>
+                <td colSpan={6} className="py-10 text-center text-slate-500">No domains found.</td>
               </tr>
             )}
           </tbody>
@@ -602,132 +1064,267 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
   )
 
   const renderPlans = () => (
-    <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-      {(catalog?.plans ?? []).map((plan) => (
-        <div key={plan.code} className="card p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{plan.code}</div>
-              <h2 className="mt-2 text-xl font-semibold text-slate-900">{plan.name}</h2>
-            </div>
-            <CreditCard className="h-5 w-5 text-slate-700" />
-          </div>
-          <p className="mt-3 text-sm text-slate-500">{plan.description}</p>
-          <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-            {plan.modules.length} included modules
-          </div>
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="metric-card">
+          <div className="metric-label">Total Plans</div>
+          <div className="metric-value">{plansSummary.totalPlans}</div>
+          <div className="metric-note">Commercial plans currently configured on the platform.</div>
         </div>
-      ))}
-    </div>
-  )
+        <div className="metric-card">
+          <div className="metric-label">Active Plans</div>
+          <div className="metric-value">{plansSummary.activePlans}</div>
+          <div className="metric-note">Plans available for new assignments and onboarding flows.</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-label">Subscribed Tenants</div>
+          <div className="metric-value">{plansSummary.subscribedTenants}</div>
+          <div className="metric-note">Total tenant assignments across the commercial plan catalog.</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-label">Monthly Revenue</div>
+          <div className="metric-value text-[1.5rem]">{formatMoney(overview?.monthly_revenue, 'UGX')}</div>
+          <div className="metric-note">Monthly revenue equivalent tied to current plan assignments.</div>
+        </div>
+      </div>
 
-  const renderModules = () => (
-    <div className="space-y-5">
-      {groupedModules.map(([category, modules]) => (
-        <div key={category} className="card overflow-hidden">
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-semibold capitalize text-slate-900">{category.replace(/_/g, ' ')}</h2>
+      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="card overflow-hidden">
+          <div className="surface-header">
+            <div>
+              <h2 className="surface-title">Plan Catalog</h2>
+              <p className="surface-subtitle">Pricing, billing cycles, module count, tenant adoption, and commercial status.</p>
+            </div>
+            {canManage ? (
+              <button type="button" className="btn-primary" onClick={() => openPlanEditor()}>
+                <Plus className="h-4 w-4" />
+                Create Plan
+              </button>
+            ) : null}
           </div>
           <div className="overflow-x-auto">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Module</th>
-                  <th>Description</th>
-                  <th>Core</th>
-                  <th>Monthly Price</th>
+                  <th>Plan</th>
+                  <th>Pricing</th>
+                  <th>Modules</th>
+                  <th>Tenants</th>
+                  <th>Status</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {modules.map((module) => (
-                  <tr key={module.key}>
-                    <td className="font-semibold text-slate-900">{module.name}</td>
-                    <td className="text-slate-500">{module.description}</td>
-                    <td>{module.is_core ? <span className="badge badge-brand">Core</span> : <span className="badge badge-neutral">Optional</span>}</td>
-                    <td>{formatMoney(monthlyPriceMap.get(module.key)?.price ?? null, monthlyPriceMap.get(module.key)?.currency ?? 'UGX')}</td>
+                {plans.length ? plans.map((plan) => (
+                  <tr key={plan.code} className={selectedPlanCode === plan.code ? 'bg-[rgba(var(--brand-primary-rgb),0.04)]' : ''}>
+                    <td>
+                      <button type="button" className="text-left font-semibold text-slate-900" onClick={() => setSelectedPlanCode(plan.code)}>
+                        {plan.name}
+                      </button>
+                      <div className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-500">{plan.code}</div>
+                    </td>
+                    <td>
+                      <div>{formatMoney(plan.monthly_price, plan.currency)} / month</div>
+                      <div className="mt-1 text-xs text-slate-500">{formatMoney(plan.quarterly_price, plan.currency)} quarter • {formatMoney(plan.annual_price, plan.currency)} year</div>
+                    </td>
+                    <td>{plan.module_count}</td>
+                    <td>{plan.tenant_count}</td>
+                    <td><span className={statusBadge(plan.is_active ? 'active' : 'disabled')}>{plan.is_active ? 'Active' : 'Inactive'}</span></td>
+                    <td className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <button type="button" className="btn-secondary btn-sm" onClick={() => setSelectedPlanCode(plan.code)}>Manage</button>
+                        {canManage ? (
+                          <>
+                            <button type="button" className="btn-secondary btn-sm" onClick={() => openPlanEditor(plan)}>Edit</button>
+                            <button
+                              type="button"
+                              className="btn-secondary btn-sm"
+                              onClick={() => updatePlanStatusMutation.mutate({ code: plan.code, is_active: !plan.is_active })}
+                            >
+                              {plan.is_active ? 'Deactivate' : 'Activate'}
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-slate-500">No plans configured.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
-      ))}
+
+        <div className="card overflow-hidden">
+          <div className="surface-header">
+            <div>
+              <h2 className="surface-title">{selectedPlan ? `${selectedPlan.name} Details` : 'Plan Details'}</h2>
+              <p className="surface-subtitle">Billing terms, status, and included modules for the selected plan.</p>
+            </div>
+          </div>
+          {selectedPlan ? (
+            <div className="space-y-5 px-5 py-5">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Plan Code</div>
+                  <div className="mt-2 text-sm font-semibold text-slate-900">{selectedPlan.code}</div>
+                </div>
+                <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Billing Cycle</div>
+                  <div className="mt-2 text-sm font-semibold text-slate-900">{selectedPlan.billing_cycle}</div>
+                </div>
+                <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Monthly</div>
+                  <div className="mt-2 text-sm font-semibold text-slate-900">{formatMoney(selectedPlan.monthly_price, selectedPlan.currency)}</div>
+                </div>
+                <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Quarterly</div>
+                  <div className="mt-2 text-sm font-semibold text-slate-900">{formatMoney(selectedPlan.quarterly_price, selectedPlan.currency)}</div>
+                </div>
+                <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Annual</div>
+                  <div className="mt-2 text-sm font-semibold text-slate-900">{formatMoney(selectedPlan.annual_price, selectedPlan.currency)}</div>
+                </div>
+                <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Trial Days</div>
+                  <div className="mt-2 text-sm font-semibold text-slate-900">{selectedPlan.trial_days}</div>
+                </div>
+              </div>
+              {selectedPlan.description ? <div className="inline-note">{selectedPlan.description}</div> : null}
+
+              <div>
+                <div className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Included Modules</div>
+                <div className="space-y-2">
+                  {modules.map((module) => {
+                    const included = selectedPlan.modules.some((item) => item.module_key === module.key)
+                    return (
+                      <div key={module.key} className="flex items-start justify-between gap-3 rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+                        <div>
+                          <div className="text-sm font-semibold text-slate-900">{module.name}</div>
+                          <div className="mt-1 text-xs text-slate-500">{module.category.replace(/_/g, ' ')} • {module.description}</div>
+                        </div>
+                        <span className={included ? 'badge badge-success' : 'badge badge-neutral'}>{included ? 'Included' : 'Not Included'}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="px-5 py-10 text-sm text-slate-500">Select a plan to inspect its billing model and included modules.</div>
+          )}
+        </div>
+      </div>
     </div>
   )
 
-  const renderBilling = () => (
-    <div className="space-y-5">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="metric-card">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="metric-label">Total Tenants</div>
-              <div className="metric-value">{billing?.total_tenants ?? 0}</div>
-              <div className="metric-note">Customer workspaces currently tracked in billing.</div>
-            </div>
-            <div className="metric-icon"><Building2 className="h-5 w-5" /></div>
-          </div>
-        </div>
-        <div className="metric-card">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="metric-label">Active</div>
-              <div className="metric-value">{billing?.active_tenants ?? 0}</div>
-              <div className="metric-note">Tenants currently active and able to operate.</div>
-            </div>
-            <div className="metric-icon"><Power className="h-5 w-5" /></div>
-          </div>
-        </div>
-        <div className="metric-card">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="metric-label">Suspended</div>
-              <div className="metric-value">{billing?.suspended_tenants ?? 0}</div>
-              <div className="metric-note">Workspaces paused pending admin action or billing.</div>
-            </div>
-            <div className="metric-icon"><PowerOff className="h-5 w-5" /></div>
-          </div>
-        </div>
-        <div className="metric-card">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="metric-label">Expiring Soon</div>
-              <div className="metric-value">{billing?.expiring_soon ?? 0}</div>
-              <div className="metric-note">Subscriptions approaching renewal or payment review.</div>
-            </div>
-            <div className="metric-icon"><BadgeDollarSign className="h-5 w-5" /></div>
-          </div>
+  const renderActivity = () => (
+    <div className="card overflow-hidden">
+      <div className="surface-header">
+        <div>
+          <h2 className="surface-title">Developer Admin Activity</h2>
+          <p className="surface-subtitle">Every tenant, domain, plan, and override action recorded through the platform layer.</p>
         </div>
       </div>
-      <div className="card overflow-hidden">
-        <div className="border-b border-slate-200 px-5 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">Subscription Status</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Tenant</th>
-                <th>Plan</th>
-                <th>Status</th>
-                <th>Billing Cycle</th>
-                <th>Expiry</th>
-                <th>Amount</th>
+      <div className="overflow-x-auto">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Actor</th>
+              <th>Action</th>
+              <th>Entity</th>
+              <th>Meta</th>
+            </tr>
+          </thead>
+          <tbody>
+            {activityLogs.length ? activityLogs.map((entry) => (
+              <tr key={entry.id}>
+                <td>{formatDate(entry.created_at)}</td>
+                <td>
+                  <div className="font-semibold text-slate-900">{entry.actor_name ?? 'System'}</div>
+                  <div className="mt-1 text-xs text-slate-500">{entry.actor_email ?? 'Automated action'}</div>
+                </td>
+                <td>{entry.action}</td>
+                <td>{entry.entity.replace(/_/g, ' ')}</td>
+                <td className="max-w-[460px] text-xs text-slate-500">{entry.meta ?? 'No metadata'}</td>
               </tr>
-            </thead>
-            <tbody>
-              {(billing?.tenants ?? []).map((row) => (
-                <tr key={row.tenant_id}>
-                  <td className="font-semibold text-slate-900">{row.tenant_name}</td>
-                  <td><span className="badge badge-brand uppercase">{row.plan}</span></td>
-                  <td><span className="badge badge-neutral uppercase">{row.status}</span></td>
-                  <td className="capitalize">{row.billing_cycle}</td>
-                  <td>{row.expiry_date ?? 'Open'}</td>
-                  <td>{formatMoney(row.amount, row.currency)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            )) : (
+              <tr>
+                <td colSpan={5} className="py-10 text-center text-slate-500">No activity logs found.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+
+  const renderSettings = () => (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="metric-card">
+          <div className="metric-label">Primary Platform Domain</div>
+          <div className="metric-value text-[1.2rem] leading-tight">{settingsSummary?.primary_platform_domain ?? '...'}</div>
+          <div className="metric-note">Central domain used for platform-admin sign-in and routing.</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-label">Tenant Domain Suffix</div>
+          <div className="metric-value text-[1.2rem] leading-tight">{settingsSummary?.default_tenant_domain_suffix ?? '...'}</div>
+          <div className="metric-note">Default suffix used when generating platform subdomains for tenants.</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-label">Module Catalog</div>
+          <div className="metric-value">{settingsSummary?.total_modules ?? 0}</div>
+          <div className="metric-note">Backend module catalog entries available for plan composition and overrides.</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-label">Plan Catalog</div>
+          <div className="metric-value">{settingsSummary?.total_plans ?? 0}</div>
+          <div className="metric-note">Plans currently available for tenant assignment and commercial packaging.</div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="card overflow-hidden">
+          <div className="surface-header">
+            <div>
+              <h2 className="surface-title">Provisioning Controls</h2>
+              <p className="surface-subtitle">Platform-level defaults used during tenant onboarding and custom domain activation.</p>
+            </div>
+          </div>
+          <div className="space-y-4 px-5 py-5">
+            <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Automatic SSL Provisioning</div>
+              <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                {settingsSummary?.automatic_ssl_provisioning ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <ShieldCheck className="h-4 w-4 text-amber-600" />}
+                {settingsSummary?.automatic_ssl_provisioning ? 'Enabled' : 'Manual'}
+              </div>
+            </div>
+            <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Certbot Runtime</div>
+              <div className="mt-2 text-sm font-semibold text-slate-900">{settingsSummary?.certbot_enabled ? 'Configured' : 'Not configured'}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card overflow-hidden">
+          <div className="surface-header">
+            <div>
+              <h2 className="surface-title">Mandatory Tenant Controls</h2>
+              <p className="surface-subtitle">These modules stay enforced at the tenancy layer regardless of commercial plan changes.</p>
+            </div>
+          </div>
+          <div className="grid gap-3 px-5 py-5 sm:grid-cols-2">
+            {(settingsSummary?.mandatory_module_keys ?? []).map((moduleKey) => (
+              <div key={moduleKey} className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+                <div className="text-sm font-semibold text-slate-900">{moduleKey.replace(/_/g, ' ')}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -735,18 +1332,18 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
 
   const renderSection = () => {
     switch (section) {
+      case 'dashboard':
+        return renderDashboard()
       case 'domains':
         return renderDomains()
       case 'plans':
         return renderPlans()
-      case 'modules':
-        return renderModules()
-      case 'billing':
-        return renderBilling()
-      case 'control':
-      case 'tenants':
+      case 'activity':
+        return renderActivity()
+      case 'settings':
+        return renderSettings()
       default:
-        return renderTenantsTable()
+        return renderTenants()
     }
   }
 
@@ -754,123 +1351,71 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
     <div className="animate-fade-in space-y-6">
       <div className="section-header">
         <div>
+          <div className="page-eyebrow">Platform Control</div>
           <h1 className="section-title">{meta.title}</h1>
           <p className="section-subtitle">{meta.subtitle}</p>
         </div>
       </div>
 
-      {(section === 'tenants' || section === 'control') && billing ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="metric-card">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="metric-label">Tenants</div>
-                <div className="metric-value">{billing.total_tenants}</div>
-                <div className="metric-note">Live vendor workspaces managed from developer admin.</div>
-              </div>
-              <div className="metric-icon"><Building2 className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="metric-card">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="metric-label">Domains</div>
-                <div className="metric-value">{domainRows.length}</div>
-                <div className="metric-note">Primary domains and mapped tenant access points.</div>
-              </div>
-              <div className="metric-icon"><Globe className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="metric-card">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="metric-label">Plans</div>
-                <div className="metric-value">{catalog?.plans.length ?? 0}</div>
-                <div className="metric-note">Commercial plans currently defined for allocation.</div>
-              </div>
-              <div className="metric-icon"><Layers3 className="h-5 w-5" /></div>
-            </div>
-          </div>
-          <div className="metric-card">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="metric-label">Expiring Soon</div>
-                <div className="metric-value">{billing.expiring_soon}</div>
-                <div className="metric-note">Subscriptions that need finance or renewal follow-up.</div>
-              </div>
-              <div className="metric-icon"><BadgeDollarSign className="h-5 w-5" /></div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       {renderSection()}
 
-      {!canManageTenants ? (
+      {!canManage ? (
         <div className="card px-5 py-4 text-sm text-slate-500">
-          You currently have read-only access in developer admin. Vendor registration and status changes require the `dev_admin:write` permission.
+          You currently have read-only access in developer admin. Tenant registration, plan changes, overrides, and domain deletion require the `dev_admin:write` permission.
         </div>
       ) : null}
 
       <Modal
         isOpen={isTenantModalOpen}
-        onClose={() => {
-          setIsTenantModalOpen(false)
-          reset()
-          setSelectedModuleKeys([])
-        }}
-        title="Register Vendor"
-        description="Create the vendor workspace, assign the plan, and provision the initial domain and subscription."
+        onClose={() => setIsTenantModalOpen(false)}
+        title="Register Tenant"
+        description="Create the tenant workspace, assign a plan, and provision the initial domain and tenancy access."
       >
-        <form onSubmit={handleSubmit(onSubmitTenant)} className="grid gap-4 md:grid-cols-2">
+        <form onSubmit={tenantForm.handleSubmit((values) => createTenantMutation.mutate(values))} className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
-            <label className="form-label">Tenant / Farm Name</label>
-            <input className="form-input" {...register('name')} />
-            {errors.name ? <p className="form-error">{errors.name.message}</p> : null}
+            <label className="form-label">Tenant Name</label>
+            <input className="form-input" {...tenantForm.register('name')} />
+            {tenantForm.formState.errors.name ? <p className="form-error">{tenantForm.formState.errors.name.message}</p> : null}
           </div>
           <div>
             <label className="form-label">Business Name</label>
-            <input className="form-input" {...register('business_name')} />
+            <input className="form-input" {...tenantForm.register('business_name')} />
           </div>
           <div>
             <label className="form-label">Slug</label>
-            <input className="form-input" {...register('slug')} />
+            <input className="form-input" {...tenantForm.register('slug')} />
           </div>
           <div>
             <label className="form-label">Contact Person</label>
-            <input className="form-input" {...register('contact_person')} />
+            <input className="form-input" {...tenantForm.register('contact_person')} />
           </div>
           <div>
             <label className="form-label">Email</label>
-            <input type="email" className="form-input" {...register('email')} />
-            {errors.email ? <p className="form-error">{errors.email.message}</p> : null}
+            <input type="email" className="form-input" {...tenantForm.register('email')} />
           </div>
           <div>
             <label className="form-label">Phone</label>
-            <input className="form-input" {...register('phone')} />
-          </div>
-          <div>
-            <label className="form-label">Address</label>
-            <input className="form-input" {...register('address')} />
+            <input className="form-input" {...tenantForm.register('phone')} />
           </div>
           <div>
             <label className="form-label">Country</label>
-            <input className="form-input" {...register('country')} />
+            <input className="form-input" {...tenantForm.register('country')} />
           </div>
           <div>
-            <label className="form-label">Domain / Subdomain</label>
-            <input className="form-input" placeholder="farm.example.com" {...register('domain')} />
-            <p className="form-hint">Custom domains start in `pending_dns` until DNS and SSL are confirmed.</p>
+            <label className="form-label">Primary Domain</label>
+            <input className="form-input" placeholder="farm.example.com" {...tenantForm.register('domain')} />
           </div>
           <div>
             <label className="form-label">Plan</label>
-            <select className="form-input" {...register('plan')}>
-              {(catalog?.plans ?? []).map((plan) => <option key={plan.code} value={plan.code}>{plan.name}</option>)}
+            <select className="form-input" {...tenantForm.register('plan')}>
+              {plans.map((plan) => (
+                <option key={plan.code} value={plan.code}>{plan.name} ({plan.code})</option>
+              ))}
             </select>
           </div>
           <div>
             <label className="form-label">Billing Cycle</label>
-            <select className="form-input" {...register('billing_cycle')}>
+            <select className="form-input" {...tenantForm.register('billing_cycle')}>
               <option value="monthly">Monthly</option>
               <option value="quarterly">Quarterly</option>
               <option value="annual">Annual</option>
@@ -878,50 +1423,24 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
           </div>
           <div>
             <label className="form-label">Subscription Start</label>
-            <input type="date" className="form-input" {...register('subscription_start')} />
+            <input type="date" className="form-input" {...tenantForm.register('subscription_start')} />
           </div>
           <div>
             <label className="form-label">Subscription Expiry</label>
-            <input type="date" className="form-input" {...register('subscription_expiry')} />
+            <input type="date" className="form-input" {...tenantForm.register('subscription_expiry')} />
+          </div>
+          <div className="md:col-span-2">
+            <label className="form-label">Address</label>
+            <input className="form-input" {...tenantForm.register('address')} />
           </div>
           <div className="md:col-span-2">
             <label className="form-label">Notes</label>
-            <textarea className="form-input min-h-[108px]" {...register('notes')} />
-          </div>
-          <div className="md:col-span-2">
-            <label className="form-label">Initial module selection</label>
-            <div className="grid gap-2 rounded-[18px] border border-slate-200 bg-slate-50 p-3 md:grid-cols-2">
-              {(catalog?.modules ?? []).map((module) => {
-                const checked = selectedModuleKeys.includes(module.key)
-                const impliedByPlan = selectedPlan && !catalog?.plans.find((plan) => plan.code === selectedPlan)?.is_custom
-                return (
-                  <label key={module.key} className="flex items-start gap-3 rounded-[14px] px-3 py-2 hover:bg-white">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={!!impliedByPlan}
-                      onChange={(event) => {
-                        setSelectedModuleKeys((current) =>
-                          event.target.checked ? [...current, module.key] : current.filter((item) => item !== module.key)
-                        )
-                      }}
-                    />
-                    <span>
-                      <span className="block text-sm font-semibold text-slate-900">{module.name}</span>
-                      <span className="mt-1 block text-xs text-slate-500">{module.description}</span>
-                    </span>
-                  </label>
-                )
-              })}
-            </div>
-            {selectedPlan && !catalog?.plans.find((plan) => plan.code === selectedPlan)?.is_custom ? (
-              <p className="form-hint">Standard plans still use the plan catalog. Custom module selection is mainly for the Custom plan.</p>
-            ) : null}
+            <textarea className="form-input min-h-[110px]" {...tenantForm.register('notes')} />
           </div>
           <div className="md:col-span-2 flex justify-end gap-3 pt-2">
             <button type="button" className="btn-secondary" onClick={() => setIsTenantModalOpen(false)}>Cancel</button>
             <button type="submit" className="btn-primary" disabled={createTenantMutation.isPending}>
-              {createTenantMutation.isPending ? 'Saving...' : 'Create Vendor'}
+              {createTenantMutation.isPending ? 'Saving...' : 'Create Tenant'}
             </button>
           </div>
         </form>
@@ -929,19 +1448,16 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
 
       <Modal
         isOpen={isEditTenantModalOpen}
-        onClose={() => {
-          setIsEditTenantModalOpen(false)
-          setSelectedTenant(null)
-        }}
+        onClose={() => setIsEditTenantModalOpen(false)}
         title={selectedTenant ? `Edit Tenant - ${selectedTenant.name}` : 'Edit Tenant'}
-        description="Developer Admin can update the full tenant profile, plan, billing timing, primary domain, and suspension status from one form."
+        description="Update tenant profile details, assigned plan metadata, and primary access domain."
       >
         <form onSubmit={editTenantForm.handleSubmit((values) => {
           if (!selectedTenant) return
           updateTenantMutation.mutate({ tenantId: selectedTenant.id, values })
         })} className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
-            <label className="form-label">Tenant / Farm Name</label>
+            <label className="form-label">Tenant Name</label>
             <input className="form-input" {...editTenantForm.register('name')} />
           </div>
           <div>
@@ -965,21 +1481,15 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
             <input className="form-input" {...editTenantForm.register('phone')} />
           </div>
           <div>
-            <label className="form-label">Address</label>
-            <input className="form-input" {...editTenantForm.register('address')} />
-          </div>
-          <div>
-            <label className="form-label">Country</label>
-            <input className="form-input" {...editTenantForm.register('country')} />
-          </div>
-          <div>
             <label className="form-label">Primary Domain</label>
             <input className="form-input" {...editTenantForm.register('domain')} />
           </div>
           <div>
             <label className="form-label">Plan</label>
             <select className="form-input" {...editTenantForm.register('plan')}>
-              {(catalog?.plans ?? []).map((plan) => <option key={plan.code} value={plan.code}>{plan.name}</option>)}
+              {plans.map((plan) => (
+                <option key={plan.code} value={plan.code}>{plan.name} ({plan.code})</option>
+              ))}
             </select>
           </div>
           <div>
@@ -991,25 +1501,21 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
             </select>
           </div>
           <div>
-            <label className="form-label">Status</label>
-            <input className="form-input" {...editTenantForm.register('status')} />
-          </div>
-          <div>
-            <label className="form-label">Subscription Start</label>
-            <input type="date" className="form-input" {...editTenantForm.register('subscription_start')} />
-          </div>
-          <div>
             <label className="form-label">Subscription Expiry</label>
             <input type="date" className="form-input" {...editTenantForm.register('subscription_expiry')} />
           </div>
-          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
+          <div className="md:col-span-2">
+            <label className="form-label">Address</label>
+            <input className="form-input" {...editTenantForm.register('address')} />
+          </div>
+          <div className="md:col-span-2">
+            <label className="form-label">Notes</label>
+            <textarea className="form-input min-h-[110px]" {...editTenantForm.register('notes')} />
+          </div>
+          <label className="md:col-span-2 flex items-center gap-3 rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3 text-sm font-medium text-slate-700">
             <input type="checkbox" {...editTenantForm.register('is_suspended')} />
             Suspend tenant access
           </label>
-          <div className="md:col-span-2">
-            <label className="form-label">Notes</label>
-            <textarea className="form-input min-h-[108px]" {...editTenantForm.register('notes')} />
-          </div>
           <div className="md:col-span-2 flex justify-end gap-3 pt-2">
             <button type="button" className="btn-secondary" onClick={() => setIsEditTenantModalOpen(false)}>Cancel</button>
             <button type="submit" className="btn-primary" disabled={updateTenantMutation.isPending}>
@@ -1020,75 +1526,22 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
       </Modal>
 
       <Modal
-        isOpen={isModulesModalOpen}
-        onClose={() => {
-          setIsModulesModalOpen(false)
-          setSelectedTenant(null)
-        }}
-        title={selectedTenant ? `Module Access - ${selectedTenant.name}` : 'Module Access'}
-        description="Enable or disable modules per tenant. Backend access is enforced immediately."
-      >
-        <div className="space-y-5">
-          {groupedModules.map(([category, modules]) => (
-            <div key={category}>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{category.replace(/_/g, ' ')}</div>
-              <div className="grid gap-2.5 sm:grid-cols-2">
-                {modules.map((module) => {
-                  const enabled = !!selectedTenant?.modules.find((tenantModule) => tenantModule.module_key === module.key && tenantModule.is_enabled)
-                  return (
-                    <div key={module.key} className="flex items-center justify-between gap-3 rounded-[16px] border border-slate-200 bg-slate-50 px-3.5 py-2.5">
-                      <div className="min-w-0">
-                        <div className="truncate text-[13px] font-semibold text-slate-900">{module.name}</div>
-                        <div className="mt-0.5 text-[11px] leading-5 text-slate-500">{module.description}</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!selectedTenant) return
-                          toggleModuleMutation.mutate({ tenantId: selectedTenant.id, moduleKey: module.key, isEnabled: !enabled })
-                          setSelectedTenant((current) => {
-                            if (!current) return current
-                            const modulesCopy = [...current.modules]
-                            const index = modulesCopy.findIndex((item) => item.module_key === module.key)
-                            if (index >= 0) {
-                              modulesCopy[index] = { ...modulesCopy[index], is_enabled: !enabled }
-                            } else {
-                              modulesCopy.push({ id: 0, module_key: module.key, is_enabled: true })
-                            }
-                            return { ...current, modules: modulesCopy }
-                          })
-                        }}
-                        className={`relative inline-flex h-[22px] w-[40px] shrink-0 rounded-full transition-colors ${enabled ? 'bg-slate-700' : 'bg-slate-300'}`}
-                      >
-                        <span className={`inline-block h-[18px] w-[18px] transform rounded-full bg-white transition-transform ${enabled ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </Modal>
-
-      <Modal
         isOpen={isDomainModalOpen}
-        onClose={() => {
-          setIsDomainModalOpen(false)
-          setSelectedTenant(null)
-          resetDomain()
-        }}
-        title={selectedTenant ? `Assign Domain - ${selectedTenant.name}` : 'Assign Domain'}
-        description="Custom domains are saved as pending DNS until they are verified and activated."
+        onClose={() => setIsDomainModalOpen(false)}
+        title={selectedTenant ? `Add Domain - ${selectedTenant.name}` : 'Add Domain'}
+        description="Custom domains remain pending until DNS and SSL are fully activated."
       >
-        <form onSubmit={handleSubmitDomain(onSubmitDomain)} className="space-y-4">
+        <form onSubmit={domainForm.handleSubmit((values) => {
+          if (!selectedTenant) return
+          addDomainMutation.mutate({ tenantId: selectedTenant.id, values })
+        })} className="space-y-4">
           <div>
             <label className="form-label">Domain / Subdomain</label>
-            <input className="form-input" {...registerDomain('host')} />
-            {domainErrors.host ? <p className="form-error">{domainErrors.host.message}</p> : null}
+            <input className="form-input" {...domainForm.register('host')} />
+            {domainForm.formState.errors.host ? <p className="form-error">{domainForm.formState.errors.host.message}</p> : null}
           </div>
-          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
-            <input type="checkbox" {...registerDomain('is_primary')} />
+          <label className="flex items-center gap-3 rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3 text-sm font-medium text-slate-700">
+            <input type="checkbox" {...domainForm.register('is_primary')} />
             Set as primary domain
           </label>
           <div className="flex justify-end gap-3 pt-2">
@@ -1101,23 +1554,153 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
       </Modal>
 
       <Modal
+        isOpen={isPlanModalOpen}
+        onClose={() => {
+          setIsPlanModalOpen(false)
+          setEditingPlan(null)
+        }}
+        title={editingPlan ? `Edit Plan - ${editingPlan.name}` : 'Create Plan'}
+        description="Set commercial pricing and manage included modules directly inside the plan definition."
+      >
+        <form onSubmit={planForm.handleSubmit((values) => {
+          if (editingPlan) {
+            updatePlanMutation.mutate({ code: editingPlan.code, values })
+            return
+          }
+          createPlanMutation.mutate(values)
+        })} className="space-y-5">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="form-label">Plan Name</label>
+              <input className="form-input" {...planForm.register('name')} />
+            </div>
+            <div>
+              <label className="form-label">Plan Code</label>
+              <input className="form-input" {...planForm.register('code')} />
+            </div>
+            <div className="md:col-span-2">
+              <label className="form-label">Description</label>
+              <textarea className="form-input min-h-[100px]" {...planForm.register('description')} />
+            </div>
+            <div>
+              <label className="form-label">Billing Cycle</label>
+              <select className="form-input" {...planForm.register('billing_cycle')}>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="annual">Annual</option>
+              </select>
+            </div>
+            <div>
+              <label className="form-label">Currency</label>
+              <input className="form-input" {...planForm.register('currency')} />
+            </div>
+            <div>
+              <label className="form-label">Monthly Price</label>
+              <input type="number" className="form-input" {...planForm.register('monthly_price')} />
+            </div>
+            <div>
+              <label className="form-label">Quarterly Price</label>
+              <input type="number" className="form-input" {...planForm.register('quarterly_price')} />
+            </div>
+            <div>
+              <label className="form-label">Annual Price</label>
+              <input type="number" className="form-input" {...planForm.register('annual_price')} />
+            </div>
+            <div>
+              <label className="form-label">Trial Days</label>
+              <input type="number" className="form-input" {...planForm.register('trial_days')} />
+            </div>
+          </div>
+
+          <label className="flex items-center gap-3 rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3 text-sm font-medium text-slate-700">
+            <input type="checkbox" {...planForm.register('is_active')} />
+            Keep this plan active for assignments
+          </label>
+
+          <div>
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Included Modules</div>
+            <div className="space-y-4">
+              {groupedModules.map(([category, items]) => (
+                <div key={category} className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] p-4">
+                  <div className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{category.replace(/_/g, ' ')}</div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {items.map((module) => {
+                      const selected = planForm.watch('modules').includes(module.key)
+                      return (
+                        <label key={module.key} className="flex items-start gap-3 rounded-[0.9rem] bg-white px-3 py-3">
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={(event) => {
+                              const current = planForm.getValues('modules')
+                              planForm.setValue(
+                                'modules',
+                                event.target.checked ? [...current, module.key] : current.filter((item) => item !== module.key)
+                              )
+                            }}
+                          />
+                          <span>
+                            <span className="block text-sm font-semibold text-slate-900">{module.name}</span>
+                            <span className="mt-1 block text-xs text-slate-500">{module.description}</span>
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" className="btn-secondary" onClick={() => setIsPlanModalOpen(false)}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={createPlanMutation.isPending || updatePlanMutation.isPending}>
+              {createPlanMutation.isPending || updatePlanMutation.isPending ? 'Saving...' : editingPlan ? 'Save Plan' : 'Create Plan'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={!!pendingDeleteDomain}
+        onClose={() => setPendingDeleteDomain(null)}
+        title="Delete Domain"
+        description="This action removes the domain mapping from the tenant. Primary-domain safeguards are enforced on the backend."
+      >
+        {pendingDeleteDomain ? (
+          <div className="space-y-4">
+            <div className="inline-note">
+              Delete <span className="font-semibold text-slate-900">{pendingDeleteDomain.domain.host}</span> from this tenant?
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" className="btn-secondary" onClick={() => setPendingDeleteDomain(null)}>Cancel</button>
+              <button
+                type="button"
+                className="btn-danger"
+                onClick={() => deleteDomainMutation.mutate({ tenantId: pendingDeleteDomain.tenantId, domainId: pendingDeleteDomain.domain.id })}
+              >
+                Delete Domain
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
         isOpen={!!createdTenant}
         onClose={() => setCreatedTenant(null)}
-        title={createdTenant ? `${createdTenant.name} onboarded` : 'Tenant onboarded'}
-        description="Keep the generated tenant administrator credentials secure. The tenant can only use the custom domain after DNS and SSL reach active state."
+        title={createdTenant ? `${createdTenant.name} created` : 'Tenant created'}
+        description="Keep the generated tenant administrator credentials secure. The temporary password is only shown once."
       >
         {createdTenant?.onboarding_admin ? (
           <div className="space-y-4">
-            <div className="rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-4">
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tenant admin</div>
-              <div className="mt-3 text-sm text-slate-700">
+            <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Tenant Administrator</div>
+              <div className="mt-3 space-y-2 text-sm text-slate-700">
                 <div><span className="font-semibold text-slate-900">Name:</span> {createdTenant.onboarding_admin.full_name}</div>
-                <div className="mt-2"><span className="font-semibold text-slate-900">Email:</span> {createdTenant.onboarding_admin.email}</div>
-                <div className="mt-2"><span className="font-semibold text-slate-900">Temporary password:</span> {createdTenant.onboarding_admin.temporary_password}</div>
+                <div><span className="font-semibold text-slate-900">Email:</span> {createdTenant.onboarding_admin.email}</div>
+                <div><span className="font-semibold text-slate-900">Temporary password:</span> {createdTenant.onboarding_admin.temporary_password}</div>
               </div>
-            </div>
-            <div className="rounded-[18px] border border-amber-100 bg-amber-50 px-4 py-4 text-[13px] text-amber-800">
-              The generated password is only shown once here. Ask the tenant administrator to sign in and change it immediately.
             </div>
             <div className="flex justify-end">
               <button type="button" className="btn-primary" onClick={() => setCreatedTenant(null)}>Close</button>

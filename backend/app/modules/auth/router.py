@@ -11,9 +11,9 @@ from app.modules.auth.schemas import (
     LoginRequest,
     MeResponse,
     RefreshRequest,
+    TenantRegistrationOut,
+    TenantRegistrationRequest,
     TokenPair,
-    VendorRegistrationOut,
-    VendorRegistrationRequest,
 )
 from app.modules.auth.service import AuthService
 from app.modules.developer_admin.service import DeveloperAdminService
@@ -41,18 +41,33 @@ async def refresh_token(
 
 
 @router.post(
-    "/register-vendor",
-    response_model=VendorRegistrationOut,
+    "/register-tenant",
+    response_model=TenantRegistrationOut,
     status_code=status.HTTP_201_CREATED,
-    summary="Self-register a new vendor workspace",
+    summary="Self-register a new tenant workspace",
 )
-async def register_vendor(
-    payload: VendorRegistrationRequest,
+async def register_tenant(
+    payload: TenantRegistrationRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     service = DeveloperAdminService(db)
-    return await service.register_vendor(payload, request)
+    return await service.register_tenant(payload, request)
+
+
+@router.post(
+    "/register-vendor",
+    response_model=TenantRegistrationOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Backward-compatible tenant self-registration endpoint",
+)
+async def register_vendor(
+    payload: TenantRegistrationRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    service = DeveloperAdminService(db)
+    return await service.register_tenant(payload, request)
 
 
 @router.post("/logout", status_code=204, summary="Revoke refresh token")

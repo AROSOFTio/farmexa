@@ -1,59 +1,92 @@
 from typing import Sequence
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.farm import PoultryHouse, Batch, MortalityLog, VaccinationLog, GrowthLog
+from app.models.farm import Batch, BatchStatus, GrowthLog, MortalityLog, PoultryHouse, PoultryHouseSection, VaccinationLog
 from app.models.settings import ReferenceDataType, ReferenceItem
 from app.modules.farm.schemas import (
-    PoultryHouseCreate, PoultryHouseUpdate,
-    BatchCreate, BatchUpdate,
-    MortalityLogCreate, VaccinationLogCreate, VaccinationLogUpdate, GrowthLogCreate
+    BatchCreate,
+    BatchUpdate,
+    GrowthLogCreate,
+    MortalityLogCreate,
+    PoultryHouseCreate,
+    PoultryHouseUpdate,
+    VaccinationLogCreate,
+    VaccinationLogUpdate,
 )
+
 
 class FarmRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    # ── Poultry Houses ───────────────────────────────────────────
+    def _house_query(self):
+        return select(PoultryHouse).options(
+            selectinload(PoultryHouse.sections).selectinload(PoultryHouseSection.batches),
+            selectinload(PoultryHouse.batches).selectinload(Batch.section),
+        )
+
+    def _batch_query(self):
+        return select(Batch).options(
+            selectinload(Batch.house).selectinload(PoultryHouse.sections),
+            selectinload(Batch.section),
+        )
+
     async def get_houses(self) -> Sequence[PoultryHouse]:
-        res = await self.db.execute(select(PoultryHouse).order_by(PoultryHouse.id))
+        res = await self.db.execute(self._house_query().order_by(PoultryHouse.id))
         return res.scalars().all()
 
     async def get_house(self, house_id: int) -> PoultryHouse | None:
-        res = await self.db.execute(select(PoultryHouse).where(PoultryHouse.id == house_id))
+        res = await self.db.execute(self._house_query().where(PoultryHouse.id == house_id))
         return res.scalar_one_or_none()
 
     async def get_house_by_name(self, name: str) -> PoultryHouse | None:
         res = await self.db.execute(
-            select(PoultryHouse).where(func.lower(PoultryHouse.name) == name.strip().lower())
+            self._house_query().where(func.lower(PoultryHouse.name) == name.strip().lower())
+        )
+        return res.scalar_one_or_none()
+
+    async def get_section(self, section_id: int) -> PoultryHouseSection | None:
+        res = await self.db.execute(
+            select(PoultryHouseSection)
+            .where(PoultryHouseSection.id == section_id)
+            .options(selectinload(PoultryHouseSection.house), selectinload(PoultryHouseSection.batches))
         )
         return res.scalar_one_or_none()
 
     async def create_house(self, data: PoultryHouseCreate) -> PoultryHouse:
-        house = PoultryHouse(**data.model_dump())
+        house = PoultryHouse(name=data.name, capacity=data.capacity, status=data.status)
         self.db.add(house)
         await self.db.flush()
-        return house
-
-    async def update_house(self, house: PoultryHouse, data: PoultryHouseUpdate) -> PoultryHouse:
-        update_data = data.model_dump(exclude_unset=True)
-        for key, value in update_data.items():
-            setattr(house, key, value)
+        await self.replace_house_sections(house, data.sections)
         await self.db.flush()
         return house
 
-    # ── Batches ──────────────────────────────────────────────────
+    async def replace_house_sections(self, house: PoultryHouse, sections: list) -> None:
+        house.sections.clear()
+        await self.db.flush()
+        for section in sections:
+            payload = section.model_dump() if hasattr(section, "model_dump") else dict(section)
+            house.sections.append(PoultryHouseSection(**payload))
+        await self.db.flush()
+
+    async def update_house(self, house: PoultryHouse, data: PoultryHouseUpdate) -> PoultryHouse:
+        update_data = data.model_dump(exclude_unset=True, exclude={"sections"})
+        for key, value in update_data.items():
+            setattr(house, key, value)
+        if data.sections is not None:
+            await self.replace_house_sections(house, data.sections)
+        await self.db.flush()
+        return house
+
     async def get_batches(self) -> Sequence[Batch]:
-        res = await self.db.execute(
-            select(Batch).options(selectinload(Batch.house)).order_by(Batch.id.desc())
-        )
+        res = await self.db.execute(self._batch_query().order_by(Batch.id.desc()))
         return res.scalars().all()
 
     async def get_batch(self, batch_id: int) -> Batch | None:
-        res = await self.db.execute(
-            select(Batch).where(Batch.id == batch_id).options(selectinload(Batch.house))
-        )
+        res = await self.db.execute(self._batch_query().where(Batch.id == batch_id))
         return res.scalar_one_or_none()
 
     async def create_batch(self, data: BatchCreate) -> Batch:
@@ -69,7 +102,26 @@ class FarmRepository:
         await self.db.flush()
         return batch
 
-    # ── Mortality ────────────────────────────────────────────────
+    async def get_active_quantity_for_house(self, house_id: int, exclude_batch_id: int | None = None) -> int:
+        query = select(func.coalesce(func.sum(Batch.active_quantity), 0)).where(
+            Batch.house_id == house_id,
+            Batch.status == BatchStatus.ACTIVE,
+        )
+        if exclude_batch_id is not None:
+            query = query.where(Batch.id != exclude_batch_id)
+        result = await self.db.execute(query)
+        return int(result.scalar_one() or 0)
+
+    async def get_active_quantity_for_section(self, section_id: int, exclude_batch_id: int | None = None) -> int:
+        query = select(func.coalesce(func.sum(Batch.active_quantity), 0)).where(
+            Batch.section_id == section_id,
+            Batch.status == BatchStatus.ACTIVE,
+        )
+        if exclude_batch_id is not None:
+            query = query.where(Batch.id != exclude_batch_id)
+        result = await self.db.execute(query)
+        return int(result.scalar_one() or 0)
+
     async def get_mortality_logs(self, batch_id: int) -> Sequence[MortalityLog]:
         res = await self.db.execute(
             select(MortalityLog).where(MortalityLog.batch_id == batch_id).order_by(MortalityLog.record_date.desc())
@@ -82,7 +134,6 @@ class FarmRepository:
         await self.db.flush()
         return log
 
-    # ── Vaccination ──────────────────────────────────────────────
     async def get_vaccination_logs(self, batch_id: int) -> Sequence[VaccinationLog]:
         res = await self.db.execute(
             select(VaccinationLog).where(VaccinationLog.batch_id == batch_id).order_by(VaccinationLog.scheduled_date)
@@ -106,7 +157,6 @@ class FarmRepository:
         await self.db.flush()
         return log
 
-    # ── Growth ───────────────────────────────────────────────────
     async def get_growth_logs(self, batch_id: int) -> Sequence[GrowthLog]:
         res = await self.db.execute(
             select(GrowthLog).where(GrowthLog.batch_id == batch_id).order_by(GrowthLog.record_date.desc())

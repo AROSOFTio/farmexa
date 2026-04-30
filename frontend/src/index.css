@@ -5,23 +5,23 @@
 @layer base {
   :root {
     color-scheme: light;
-    --app-bg: #f4f7fb;
+    --app-bg: #f8fafc;
     --surface-card: #ffffff;
     --surface-soft: #f8fafc;
     --surface-muted: #f1f5f9;
-    --sidebar-bg: #d9b24c;
+    --sidebar-bg: #ffffff;
     --sidebar-active: #bc8b17;
-    --topbar-bg: rgba(255, 255, 255, 0.9);
-    --border-subtle: #e2e8f0;
-    --border-strong: #d5dde8;
+    --topbar-bg: rgba(255, 255, 255, 0.94);
+    --border-subtle: #e5e7eb;
+    --border-strong: #d7dde5;
     --text-strong: #0f172a;
     --text-default: #334155;
     --text-muted: #64748b;
-    --brand-primary: #bc8b17;
-    --brand-primary-rgb: 188, 139, 23;
+    --brand-primary: #b88a1d;
+    --brand-primary-rgb: 184, 138, 29;
     --brand-secondary: #0f172a;
     --brand-secondary-rgb: 15, 23, 42;
-    --brand-accent: #7b5b08;
+    --brand-accent: #8b6a11;
     --success: #2f855a;
     --warning: #bc8b17;
     --danger: #dc5f5f;
@@ -32,15 +32,15 @@
     --shadow-shell: 0 14px 34px -28px rgba(15, 23, 42, 0.12);
     --chart-grid: #e6ebf3;
     --chart-axis: #7b8798;
-    --sidebar-text: #2d3646;
-    --sidebar-text-muted: rgba(45, 54, 70, 0.72);
-    --sidebar-heading: #152033;
-    --sidebar-hover: rgba(255, 255, 255, 0.2);
-    --sidebar-active-bg: #fff6df;
-    --sidebar-active-text: #152033;
-    --sidebar-icon: rgba(45, 54, 70, 0.82);
-    --sidebar-panel: rgba(255, 255, 255, 0.5);
-    --sidebar-panel-border: rgba(255, 255, 255, 0.54);
+    --sidebar-text: #334155;
+    --sidebar-text-muted: #64748b;
+    --sidebar-heading: #0f172a;
+    --sidebar-hover: #f8fafc;
+    --sidebar-active-bg: rgba(var(--brand-primary-rgb), 0.1);
+    --sidebar-active-text: #0f172a;
+    --sidebar-icon: #64748b;
+    --sidebar-panel: #ffffff;
+    --sidebar-panel-border: #e5e7eb;
   }
 
   [data-theme='dark'] {
@@ -102,7 +102,7 @@
     font-family: Montserrat, "Segoe UI", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
     font-size: 15px;
     line-height: 1.6;
-    background: #f4f7fb;
+    background: var(--app-bg);
     color: var(--text-default);
   }
 
@@ -404,8 +404,8 @@
     position: relative;
     background: var(--sidebar-bg);
     color: var(--sidebar-text);
-    border-right: 1px solid rgba(109, 83, 12, 0.14);
-    box-shadow: 16px 0 44px -34px rgba(74, 53, 4, 0.34);
+    border-right: 1px solid var(--border-subtle);
+    box-shadow: 14px 0 40px -34px rgba(15, 23, 42, 0.16);
   }
 
   .sidebar::before {
@@ -420,18 +420,18 @@
     content: '';
     position: absolute;
     inset: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.22);
+    border: 1px solid rgba(var(--brand-primary-rgb), 0.08);
     border-radius: 1.4rem;
     pointer-events: none;
   }
 
   .sidebar-scroll {
     scrollbar-width: thin;
-    scrollbar-color: rgba(74, 53, 4, 0.22) transparent;
+    scrollbar-color: rgba(15, 23, 42, 0.12) transparent;
   }
 
   .sidebar-scroll::-webkit-scrollbar-thumb {
-    background: rgba(74, 53, 4, 0.22);
+    background: rgba(15, 23, 42, 0.12);
   }
 
   .topbar {

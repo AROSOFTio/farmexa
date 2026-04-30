@@ -43,7 +43,7 @@ async def create_reference_item(
     db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:write")),
 ):
-    return await FarmService(db).create_reference_item(data)
+    return await FarmService(db).create_reference_item(data, current_user)
 
 
 @router.put("/reference-items/{item_id}", response_model=ReferenceItemOut)
@@ -53,7 +53,7 @@ async def update_reference_item(
     db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:write")),
 ):
-    return await FarmService(db).update_reference_item(item_id, data)
+    return await FarmService(db).update_reference_item(item_id, data, current_user)
 
 
 @router.get("/houses", response_model=list[PoultryHouseOut])
@@ -79,7 +79,7 @@ async def create_house(
     db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:write")),
 ):
-    return await FarmService(db).create_house(data)
+    return await FarmService(db).create_house(data, current_user)
 
 
 @router.put("/houses/{house_id}", response_model=PoultryHouseOut)
@@ -89,7 +89,7 @@ async def update_house(
     db: AsyncSession = Depends(get_tenant_db),
     current_user=Depends(require_permission("farm:write")),
 ):
-    return await FarmService(db).update_house(house_id, data)
+    return await FarmService(db).update_house(house_id, data, current_user)
 
 
 @router.get("/batches", response_model=list[BatchOut])

@@ -38,7 +38,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
     { label: 'Eggs', icon: Egg, path: '/farm/eggs' },
     { label: 'Mortality', icon: Skull, path: '/farm/mortality' },
     hasPermission('dev_admin:read')
-      ? { label: 'Vendor', icon: FilePlus2, path: '/dev-admin/tenants' }
+      ? { label: 'Tenant', icon: FilePlus2, path: '/dev-admin/tenants' }
       : { label: 'Settings', icon: Settings, path: '/settings/config' },
   ]
 
@@ -76,7 +76,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
       <div className="hidden w-full max-w-[420px] lg:block">
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[var(--text-muted)]" />
-          <input type="search" placeholder="Search records, modules, tenants" className="form-input h-11 rounded-full border-[var(--border-subtle)] bg-[var(--surface-soft)] pl-11" />
+          <input type="search" placeholder="Search records, plans, tenants" className="form-input h-11 rounded-full border-[var(--border-subtle)] bg-[var(--surface-soft)] pl-11" />
         </div>
       </div>
 

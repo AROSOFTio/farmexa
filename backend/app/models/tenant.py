@@ -13,13 +13,6 @@ from app.db.base import Base
 from app.db.enums import db_enum
 
 
-class SubscriptionPlan(str, enum.Enum):
-    BASIC = "basic"
-    STANDARD = "standard"
-    PREMIUM = "premium"
-    CUSTOM = "custom"
-
-
 class TenantStatus(str, enum.Enum):
     ACTIVE = "active"
     SUSPENDED = "suspended"
@@ -89,9 +82,7 @@ class Tenant(Base):
     status: Mapped[TenantStatus] = mapped_column(
         db_enum(TenantStatus, name="tenantstatus"), default=TenantStatus.TRIAL
     )
-    plan: Mapped[SubscriptionPlan] = mapped_column(
-        db_enum(SubscriptionPlan, name="subscriptionplan"), default=SubscriptionPlan.BASIC
-    )
+    plan: Mapped[str] = mapped_column(String(50), default="basic", server_default="basic")
     billing_cycle: Mapped[BillingCycle] = mapped_column(
         db_enum(BillingCycle, name="billingcycle"), default=BillingCycle.MONTHLY
     )
@@ -176,6 +167,11 @@ class PlanDefinition(Base):
     billing_cycle: Mapped[BillingCycle] = mapped_column(
         db_enum(BillingCycle, name="billingcycle"), default=BillingCycle.MONTHLY
     )
+    monthly_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0, server_default="0")
+    quarterly_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0, server_default="0")
+    annual_price: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0, server_default="0")
+    currency: Mapped[str] = mapped_column(String(10), nullable=False, default="UGX", server_default="UGX")
+    trial_days: Mapped[int] = mapped_column(nullable=False, default=0, server_default="0")
     is_custom: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -219,6 +215,7 @@ class TenantModule(Base):
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), index=True)
     module_key: Mapped[str] = mapped_column(ForeignKey("modules.key", ondelete="CASCADE"), index=True)
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_manual_override: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

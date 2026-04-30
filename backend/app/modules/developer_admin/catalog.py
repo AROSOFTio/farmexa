@@ -55,10 +55,54 @@ DEFAULT_MODULES = [
 MANDATORY_TENANT_MODULE_KEYS = {"dashboard", "users", "settings"}
 
 DEFAULT_PLANS = [
-    {"code": "basic", "name": "Core", "description": "Core farm operation modules", "billing_cycle": "monthly", "is_custom": False},
-    {"code": "standard", "name": "Standard", "description": "Operational, feed, inventory, and sales modules", "billing_cycle": "monthly", "is_custom": False},
-    {"code": "premium", "name": "Premium", "description": "Full operational, compliance, finance, and admin suite", "billing_cycle": "monthly", "is_custom": False},
-    {"code": "custom", "name": "Custom", "description": "Developer-admin configured package", "billing_cycle": "monthly", "is_custom": True},
+    {
+        "code": "basic",
+        "name": "Core",
+        "description": "Core farm operation modules",
+        "billing_cycle": "monthly",
+        "monthly_price": 250000,
+        "quarterly_price": 720000,
+        "annual_price": 2700000,
+        "currency": "UGX",
+        "trial_days": 14,
+        "is_custom": False,
+    },
+    {
+        "code": "standard",
+        "name": "Standard",
+        "description": "Operational, feed, inventory, and sales modules",
+        "billing_cycle": "monthly",
+        "monthly_price": 450000,
+        "quarterly_price": 1290000,
+        "annual_price": 4860000,
+        "currency": "UGX",
+        "trial_days": 14,
+        "is_custom": False,
+    },
+    {
+        "code": "premium",
+        "name": "Premium",
+        "description": "Full operational, compliance, finance, and admin suite",
+        "billing_cycle": "monthly",
+        "monthly_price": 750000,
+        "quarterly_price": 2160000,
+        "annual_price": 8100000,
+        "currency": "UGX",
+        "trial_days": 14,
+        "is_custom": False,
+    },
+    {
+        "code": "custom",
+        "name": "Custom",
+        "description": "Developer-admin configured package",
+        "billing_cycle": "monthly",
+        "monthly_price": 0,
+        "quarterly_price": 0,
+        "annual_price": 0,
+        "currency": "UGX",
+        "trial_days": 0,
+        "is_custom": True,
+    },
 ]
 
 DEFAULT_PLAN_MODULES = {

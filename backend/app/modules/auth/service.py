@@ -127,9 +127,7 @@ class AuthService:
                 id=user.tenant.id,
                 name=user.tenant.name,
                 slug=user.tenant.slug,
-                plan=latest_subscription.plan_code if latest_subscription else (
-                    user.tenant.plan.value if hasattr(user.tenant.plan, "value") else str(user.tenant.plan)
-                ),
+                plan=latest_subscription.plan_code if latest_subscription else user.tenant.plan,
                 subscription_status=latest_subscription.status.value if latest_subscription else (
                     user.tenant.status.value if hasattr(user.tenant.status, "value") else str(user.tenant.status)
                 ),

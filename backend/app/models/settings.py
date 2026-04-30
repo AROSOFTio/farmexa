@@ -30,9 +30,20 @@ class SystemConfig(Base):
 
 class ReferenceDataType(str, enum.Enum):
     BATCH_BREED = "batch_breed"
+    BIRD_TYPE = "bird_type"
     BATCH_SOURCE = "batch_source"
     MORTALITY_CAUSE = "mortality_cause"
     VACCINE = "vaccine"
+    HOUSE_SECTION_TYPE = "house_section_type"
+    FEED_TYPE = "feed_type"
+    MEDICINE_TYPE = "medicine_type"
+    EGG_GRADE = "egg_grade"
+    SLAUGHTER_PART = "slaughter_part"
+    BYPRODUCT_TYPE = "byproduct_type"
+    EXPENSE_CATEGORY = "expense_category"
+    PAYMENT_METHOD = "payment_method"
+    UNIT_OF_MEASURE = "unit_of_measure"
+    CUSTOMER_TYPE = "customer_type"
 
 
 class ReferenceItem(Base):

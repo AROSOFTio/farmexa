@@ -259,12 +259,75 @@ def _ensure_schema_ready_sync(database_name: str) -> sessionmaker[Session]:
 
 def _apply_runtime_schema_patches(engine: Engine) -> None:
     Base.metadata.tables["reference_items"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["poultry_house_sections"].create(bind=engine, checkfirst=True)
     inspector = inspect(engine)
-    if inspector.has_table("users"):
-        user_columns = {column["name"] for column in inspector.get_columns("users")}
-        if "job_title" not in user_columns:
-            with engine.begin() as connection:
-                connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS job_title VARCHAR(120)"))
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1
+                        FROM pg_type
+                        WHERE typname = 'referencedatatype'
+                    ) THEN
+                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'bird_type';
+                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'house_section_type';
+                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'feed_type';
+                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'medicine_type';
+                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'egg_grade';
+                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'slaughter_part';
+                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'byproduct_type';
+                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'expense_category';
+                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'payment_method';
+                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'unit_of_measure';
+                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'customer_type';
+                    END IF;
+                END $$;
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'tenants'
+                          AND column_name = 'plan'
+                          AND udt_name = 'subscriptionplan'
+                    ) THEN
+                        ALTER TABLE tenants ALTER COLUMN plan TYPE VARCHAR(50) USING plan::text;
+                    END IF;
+                END $$;
+                """
+            )
+        )
+        connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS job_title VARCHAR(120)"))
+        connection.execute(text("ALTER TABLE batches ADD COLUMN IF NOT EXISTS section_id INTEGER"))
+        connection.execute(text("ALTER TABLE tenant_modules ADD COLUMN IF NOT EXISTS is_manual_override BOOLEAN NOT NULL DEFAULT false"))
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_batches_section_id ON batches (section_id)"))
+        connection.execute(
+            text(
+                """
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conname = 'fk_batches_section_id'
+                    ) THEN
+                        ALTER TABLE batches
+                        ADD CONSTRAINT fk_batches_section_id
+                        FOREIGN KEY (section_id) REFERENCES poultry_house_sections(id) ON DELETE SET NULL;
+                    END IF;
+                END $$;
+                """
+            )
+        )
 
 
 def _upsert_tenant_identity(session: Session, tenant_snapshot: dict[str, Any]) -> None:
