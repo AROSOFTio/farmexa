@@ -12,12 +12,14 @@ import {
   Database,
   Globe,
   Layers3,
+  MoreHorizontal,
   Plus,
   Power,
   PowerOff,
   Settings,
   ShieldCheck,
   Trash2,
+  Users,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
