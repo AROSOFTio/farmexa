@@ -824,8 +824,9 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
             </table>
           </div>
         </div>
+      </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-black text-slate-950">Revenue Overview</h2>
