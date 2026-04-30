@@ -658,10 +658,46 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
   const renderBilling = () => (
     <div className="space-y-5">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="kpi-card"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Total Tenants</div><div className="mt-3 text-3xl font-bold text-slate-900">{billing?.total_tenants ?? 0}</div></div>
-        <div className="kpi-card"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Active</div><div className="mt-3 text-3xl font-bold text-slate-900">{billing?.active_tenants ?? 0}</div></div>
-        <div className="kpi-card"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Suspended</div><div className="mt-3 text-3xl font-bold text-slate-900">{billing?.suspended_tenants ?? 0}</div></div>
-        <div className="kpi-card"><div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Expiring Soon</div><div className="mt-3 text-3xl font-bold text-slate-900">{billing?.expiring_soon ?? 0}</div></div>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Total Tenants</div>
+              <div className="metric-value">{billing?.total_tenants ?? 0}</div>
+              <div className="metric-note">Customer workspaces currently tracked in billing.</div>
+            </div>
+            <div className="metric-icon"><Building2 className="h-5 w-5" /></div>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Active</div>
+              <div className="metric-value">{billing?.active_tenants ?? 0}</div>
+              <div className="metric-note">Tenants currently active and able to operate.</div>
+            </div>
+            <div className="metric-icon"><Power className="h-5 w-5" /></div>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Suspended</div>
+              <div className="metric-value">{billing?.suspended_tenants ?? 0}</div>
+              <div className="metric-note">Workspaces paused pending admin action or billing.</div>
+            </div>
+            <div className="metric-icon"><PowerOff className="h-5 w-5" /></div>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Expiring Soon</div>
+              <div className="metric-value">{billing?.expiring_soon ?? 0}</div>
+              <div className="metric-note">Subscriptions approaching renewal or payment review.</div>
+            </div>
+            <div className="metric-icon"><BadgeDollarSign className="h-5 w-5" /></div>
+          </div>
+        </div>
       </div>
       <div className="card overflow-hidden">
         <div className="border-b border-slate-200 px-5 py-4">
@@ -725,40 +761,44 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
 
       {(section === 'tenants' || section === 'control') && billing ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="kpi-card">
-            <div className="flex items-center justify-between">
+          <div className="metric-card">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tenants</div>
-                <div className="mt-3 text-3xl font-bold text-slate-900">{billing.total_tenants}</div>
+                <div className="metric-label">Tenants</div>
+                <div className="metric-value">{billing.total_tenants}</div>
+                <div className="metric-note">Live vendor workspaces managed from developer admin.</div>
               </div>
-              <Building2 className="h-5 w-5 text-slate-700" />
+              <div className="metric-icon"><Building2 className="h-5 w-5" /></div>
             </div>
           </div>
-          <div className="kpi-card">
-            <div className="flex items-center justify-between">
+          <div className="metric-card">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Domains</div>
-                <div className="mt-3 text-3xl font-bold text-slate-900">{domainRows.length}</div>
+                <div className="metric-label">Domains</div>
+                <div className="metric-value">{domainRows.length}</div>
+                <div className="metric-note">Primary domains and mapped tenant access points.</div>
               </div>
-              <Globe className="h-5 w-5 text-slate-600" />
+              <div className="metric-icon"><Globe className="h-5 w-5" /></div>
             </div>
           </div>
-          <div className="kpi-card">
-            <div className="flex items-center justify-between">
+          <div className="metric-card">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Plans</div>
-                <div className="mt-3 text-3xl font-bold text-slate-900">{catalog?.plans.length ?? 0}</div>
+                <div className="metric-label">Plans</div>
+                <div className="metric-value">{catalog?.plans.length ?? 0}</div>
+                <div className="metric-note">Commercial plans currently defined for allocation.</div>
               </div>
-              <Layers3 className="h-5 w-5 text-brand-600" />
+              <div className="metric-icon"><Layers3 className="h-5 w-5" /></div>
             </div>
           </div>
-          <div className="kpi-card">
-            <div className="flex items-center justify-between">
+          <div className="metric-card">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Expiring Soon</div>
-                <div className="mt-3 text-3xl font-bold text-slate-900">{billing.expiring_soon}</div>
+                <div className="metric-label">Expiring Soon</div>
+                <div className="metric-value">{billing.expiring_soon}</div>
+                <div className="metric-note">Subscriptions that need finance or renewal follow-up.</div>
               </div>
-              <BadgeDollarSign className="h-5 w-5 text-brand-600" />
+              <div className="metric-icon"><BadgeDollarSign className="h-5 w-5" /></div>
             </div>
           </div>
         </div>

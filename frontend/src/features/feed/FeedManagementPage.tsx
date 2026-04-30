@@ -382,39 +382,50 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
 
   return (
     <div className="animate-fade-in space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="section-header">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-ink-900">{copy.title}</h1>
-          <p className="mt-1 max-w-3xl text-base font-medium text-ink-500">{copy.description}</p>
+          <h1 className="section-title">{copy.title}</h1>
+          <p className="section-subtitle">{copy.description}</p>
         </div>
         {actionButtons}
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <div className="card p-5">
-          <div className="mb-3 flex items-center gap-2 text-ink-500">
-            <Boxes className="h-5 w-5 text-brand-600" />
-            <span className="text-sm font-bold uppercase tracking-[0.12em]">Feed items</span>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Feed Items</div>
+              <div className="metric-value">{items.length.toLocaleString()}</div>
+              <div className="metric-note">Tracked feed products currently available in the register.</div>
+            </div>
+            <div className="metric-icon"><Boxes className="h-5 w-5" /></div>
           </div>
-          <p className="text-2xl font-bold text-ink-900">{items.length.toLocaleString()}</p>
         </div>
-        <div className="card p-5">
-          <div className="mb-3 flex items-center gap-2 text-ink-500">
-            <AlertTriangle className="h-5 w-5 text-brand-600" />
-            <span className="text-sm font-bold uppercase tracking-[0.12em]">Low stock</span>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Low Stock</div>
+              <div className="metric-value">{lowStockCount.toLocaleString()}</div>
+              <div className="metric-note">Items at or below their current reorder threshold.</div>
+            </div>
+            <div className="metric-icon"><AlertTriangle className="h-5 w-5" /></div>
           </div>
-          <p className="text-2xl font-bold text-ink-900">{lowStockCount.toLocaleString()}</p>
         </div>
-        <div className="card p-5">
-          <div className="mb-3 flex items-center gap-2 text-ink-500">
-            <BadgeDollarSign className="h-5 w-5 text-brand-600" />
-            <span className="text-sm font-bold uppercase tracking-[0.12em]">
-              {section === 'purchases' ? 'Purchase spend' : 'Suppliers'}
-            </span>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">{section === 'purchases' ? 'Purchase Spend' : 'Suppliers'}</div>
+              <div className="metric-value">
+                {section === 'purchases' ? `UGX ${purchaseTotal.toLocaleString()}` : suppliers.length.toLocaleString()}
+              </div>
+              <div className="metric-note">
+                {section === 'purchases'
+                  ? 'Cumulative recorded purchase value for the current view.'
+                  : 'Supplier contacts available for feed procurement and restocking.'}
+              </div>
+            </div>
+            <div className="metric-icon"><BadgeDollarSign className="h-5 w-5" /></div>
           </div>
-          <p className="text-2xl font-bold text-ink-900">
-            {section === 'purchases' ? `UGX ${purchaseTotal.toLocaleString()}` : suppliers.length.toLocaleString()}
-          </p>
         </div>
       </div>
 

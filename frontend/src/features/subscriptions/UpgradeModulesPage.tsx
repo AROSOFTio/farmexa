@@ -142,17 +142,20 @@ export function UpgradeModulesPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
-        <div className="kpi-card px-5 py-4">
-          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">Current Plan</div>
-          <div className="mt-2 text-[1.7rem] font-semibold text-[var(--text-strong)] capitalize">{data?.current_plan ?? '...'}</div>
+        <div className="metric-card">
+          <div className="metric-label">Current Plan</div>
+          <div className="metric-value capitalize">{data?.current_plan ?? '...'}</div>
+          <div className="metric-note">Tenant subscription plan currently controlling base access.</div>
         </div>
-        <div className="kpi-card px-5 py-4">
-          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">Enabled Modules</div>
-          <div className="mt-2 text-[1.7rem] font-semibold text-[var(--text-strong)]">{data?.enabled_modules.length ?? 0}</div>
+        <div className="metric-card">
+          <div className="metric-label">Enabled Modules</div>
+          <div className="metric-value">{data?.enabled_modules.length ?? 0}</div>
+          <div className="metric-note">Modules already active inside the tenant workspace.</div>
         </div>
-        <div className="kpi-card px-5 py-4">
-          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">Selected Total</div>
-          <div className="mt-2 text-[1.7rem] font-semibold text-[var(--text-strong)]">{formatMoney(String(selectionTotal), data?.catalog[0]?.currency ?? 'UGX')}</div>
+        <div className="metric-card">
+          <div className="metric-label">Selected Total</div>
+          <div className="metric-value">{formatMoney(String(selectionTotal), data?.catalog[0]?.currency ?? 'UGX')}</div>
+          <div className="metric-note">Amount due for the modules currently selected below.</div>
         </div>
       </section>
 

@@ -95,10 +95,10 @@ export function IncomesPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="section-header">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Income</h1>
-          <p className="mt-1 max-w-2xl text-sm font-medium text-neutral-500">Income ledger.</p>
+          <h1 className="section-title">Income</h1>
+          <p className="section-subtitle">Record receipts, keep categories tidy, and review income history in one place.</p>
         </div>
       </div>
 

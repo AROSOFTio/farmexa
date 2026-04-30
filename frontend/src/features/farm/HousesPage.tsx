@@ -52,11 +52,22 @@ export function HousesPage() {
     })
   }, [batches, houses])
 
+  const totalCapacity = useMemo(
+    () => portfolio.reduce((sum, house) => sum + house.capacity, 0),
+    [portfolio]
+  )
+
+  const totalBirds = useMemo(
+    () => portfolio.reduce((sum, house) => sum + house.activeBirds, 0),
+    [portfolio]
+  )
+
   return (
     <div className="animate-fade-in">
       <div className="section-header">
         <div>
           <h1 className="section-title">Poultry houses</h1>
+          <p className="section-subtitle">Monitor available space, active birds, and occupancy by house in one clean view.</p>
         </div>
 
         {canManageFarm ? (
@@ -65,6 +76,39 @@ export function HousesPage() {
             Add house
           </button>
         ) : null}
+      </div>
+
+      <div className="mb-6 grid gap-4 md:grid-cols-3">
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Configured Houses</div>
+              <div className="metric-value">{portfolio.length.toLocaleString()}</div>
+              <div className="metric-note">All active, maintenance, and inactive farm houses.</div>
+            </div>
+            <div className="metric-icon"><Home className="h-5 w-5" /></div>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Active Birds</div>
+              <div className="metric-value">{totalBirds.toLocaleString()}</div>
+              <div className="metric-note">Birds currently assigned to active house batches.</div>
+            </div>
+            <div className="metric-icon"><Bird className="h-5 w-5" /></div>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Total Capacity</div>
+              <div className="metric-value">{totalCapacity.toLocaleString()}</div>
+              <div className="metric-note">Combined configured house capacity across the farm.</div>
+            </div>
+            <div className="metric-icon"><Users className="h-5 w-5" /></div>
+          </div>
+        </div>
       </div>
 
       {isLoading ? (

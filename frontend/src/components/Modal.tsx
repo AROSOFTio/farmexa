@@ -13,14 +13,14 @@ export function Modal({ isOpen, onClose, title, description, children }: ModalPr
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-ink-950/45 backdrop-blur-sm animate-fade-in" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100vw-1.5rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[1.75rem] border border-neutral-200 bg-white shadow-modal outline-none animate-slide-up">
-          <div className="border-b border-neutral-150 bg-neutral-50 px-5 py-4 sm:px-7 sm:py-5">
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-[rgba(15,23,42,0.26)] backdrop-blur-sm animate-fade-in" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100vw-1.5rem)] max-w-[760px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[1.9rem] border border-neutral-200 bg-white shadow-modal outline-none animate-slide-up">
+          <div className="surface-header">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <Dialog.Title className="text-xl font-semibold text-ink-900">{title}</Dialog.Title>
+                <Dialog.Title className="text-[1.2rem] font-semibold text-ink-900">{title}</Dialog.Title>
                 {description ? (
-                  <Dialog.Description className="mt-1 max-w-xl text-sm text-ink-500">
+                  <Dialog.Description className="mt-1 max-w-2xl text-[13px] leading-6 text-ink-500">
                     {description}
                   </Dialog.Description>
                 ) : null}
@@ -38,7 +38,7 @@ export function Modal({ isOpen, onClose, title, description, children }: ModalPr
             </div>
           </div>
 
-          <div className="max-h-[calc(100vh-10rem)] overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
+          <div className="max-h-[calc(100vh-9rem)] overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
             {children}
           </div>
         </Dialog.Content>

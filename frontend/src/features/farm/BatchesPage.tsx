@@ -64,6 +64,7 @@ export function BatchesPage() {
       <div className="section-header">
         <div>
           <h1 className="section-title">Bird batches</h1>
+          <p className="section-subtitle">Review flock allocations, occupancy, and batch search from one operational register.</p>
         </div>
 
         {canManageFarm ? (
@@ -75,31 +76,35 @@ export function BatchesPage() {
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <div className="kpi-card">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-ink-500">
-            <Bird className="h-4 w-4 text-brand-600" />
-            Active batches
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Active Batches</div>
+              <div className="metric-value">{activeBatches.length.toLocaleString()}</div>
+              <div className="metric-note">Live flock batches still operating in the farm cycle.</div>
+            </div>
+            <div className="metric-icon"><Bird className="h-5 w-5" /></div>
           </div>
-          <div className="text-3xl font-semibold text-ink-900">{activeBatches.length.toLocaleString()}</div>
         </div>
 
-        <div className="kpi-card">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-ink-500">
-            <Scale className="h-4 w-4 text-brand-600" />
-            Active birds
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Active Birds</div>
+              <div className="metric-value">{totalBirds.toLocaleString()}</div>
+              <div className="metric-note">Birds currently available across all active house batches.</div>
+            </div>
+            <div className="metric-icon"><Scale className="h-5 w-5" /></div>
           </div>
-          <div className="text-3xl font-semibold text-ink-900">{totalBirds.toLocaleString()}</div>
         </div>
 
-        <div className="kpi-card">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-ink-500">
-            <Search className="h-4 w-4 text-brand-600" />
-            Search
-          </div>
+        <div className="metric-card">
+          <div className="metric-label">Search Batches</div>
+          <div className="metric-note">Filter by batch number, breed, house, or source.</div>
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            className="form-input"
+            className="form-input mt-4"
             placeholder="Search batch"
           />
         </div>

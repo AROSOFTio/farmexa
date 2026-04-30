@@ -181,21 +181,25 @@ export function CompliancePage({ section = 'documents' }: { section?: Compliance
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="kpi-card px-5 py-4">
-          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">Documents</div>
-          <div className="mt-2 text-[1.7rem] font-semibold text-[var(--text-strong)]">{totalDocuments}</div>
+        <div className="metric-card">
+          <div className="metric-label">Documents</div>
+          <div className="metric-value">{totalDocuments}</div>
+          <div className="metric-note">Compliance files currently registered in the system.</div>
         </div>
-        <div className="kpi-card px-5 py-4">
-          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">Active</div>
-          <div className="mt-2 text-[1.7rem] font-semibold text-[var(--text-strong)]">{activeDocuments}</div>
+        <div className="metric-card">
+          <div className="metric-label">Active</div>
+          <div className="metric-value">{activeDocuments}</div>
+          <div className="metric-note">Documents currently valid and not yet near expiry.</div>
         </div>
-        <div className="kpi-card px-5 py-4">
-          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">Expiring</div>
-          <div className="mt-2 text-[1.7rem] font-semibold text-[var(--text-strong)]">{expiringDocuments}</div>
+        <div className="metric-card">
+          <div className="metric-label">Expiring</div>
+          <div className="metric-value">{expiringDocuments}</div>
+          <div className="metric-note">Files approaching expiry and needing follow-up soon.</div>
         </div>
-        <div className="kpi-card px-5 py-4">
-          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">Expired</div>
-          <div className="mt-2 text-[1.7rem] font-semibold text-[var(--text-strong)]">{expiredDocuments}</div>
+        <div className="metric-card">
+          <div className="metric-label">Expired</div>
+          <div className="metric-value">{expiredDocuments}</div>
+          <div className="metric-note">Documents that already require renewal or replacement.</div>
         </div>
       </section>
 

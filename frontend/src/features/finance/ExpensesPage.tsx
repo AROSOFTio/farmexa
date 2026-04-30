@@ -123,7 +123,7 @@ export function ExpensesPage() {
       <div className="section-header">
         <div>
           <h1 className="section-title">Farm expenses</h1>
-          <p className="section-subtitle">Expense ledger.</p>
+          <p className="section-subtitle">Capture operating costs with clearer entry forms and a cleaner expense ledger.</p>
         </div>
       </div>
 

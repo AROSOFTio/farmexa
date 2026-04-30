@@ -133,6 +133,7 @@ export function OrdersPage() {
       <div className="section-header">
         <div>
           <h1 className="section-title">Sales orders</h1>
+          <p className="section-subtitle">Create customer orders from available stock with clearer lines, totals, and order history.</p>
         </div>
       </div>
 

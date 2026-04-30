@@ -65,37 +65,43 @@ export function HouseForm({ houseId, initialValues, onSuccess }: HouseFormProps)
 
   return (
     <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="space-y-5">
-      <div>
-        <label className="form-label">House name</label>
-        <input
-          {...register('name')}
-          className={clsx('form-input', errors.name && 'border-red-400 focus:ring-red-100')}
-        />
-        {errors.name ? <p className="form-error">{errors.name.message}</p> : null}
+      <div className="form-section">
+        <div className="form-section-title">House Details</div>
+        <div>
+          <label className="form-label">House name</label>
+          <input
+            {...register('name')}
+            className={clsx('form-input', errors.name && 'border-red-400 focus:ring-red-100')}
+          />
+          {errors.name ? <p className="form-error">{errors.name.message}</p> : null}
+        </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="form-label">Capacity</label>
-          <input
-            type="number"
-            {...register('capacity')}
-            className={clsx('form-input', errors.capacity && 'border-red-400 focus:ring-red-100')}
-          />
-          {errors.capacity ? <p className="form-error">{errors.capacity.message}</p> : null}
-        </div>
+      <div className="form-section">
+        <div className="form-section-title">Capacity and Status</div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="form-label">Capacity</label>
+            <input
+              type="number"
+              {...register('capacity')}
+              className={clsx('form-input', errors.capacity && 'border-red-400 focus:ring-red-100')}
+            />
+            {errors.capacity ? <p className="form-error">{errors.capacity.message}</p> : null}
+          </div>
 
-        <div>
-          <label className="form-label">Status</label>
-          <select
-            {...register('status')}
-            className={clsx('form-input', errors.status && 'border-red-400 focus:ring-red-100')}
-          >
-            <option value="active">Active</option>
-            <option value="maintenance">Maintenance</option>
-            <option value="inactive">Inactive</option>
-          </select>
-          {errors.status ? <p className="form-error">{errors.status.message}</p> : null}
+          <div>
+            <label className="form-label">Status</label>
+            <select
+              {...register('status')}
+              className={clsx('form-input', errors.status && 'border-red-400 focus:ring-red-100')}
+            >
+              <option value="active">Active</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            {errors.status ? <p className="form-error">{errors.status.message}</p> : null}
+          </div>
         </div>
       </div>
 

@@ -285,10 +285,10 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
 
   return (
     <div className="animate-fade-in space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="section-header">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-ink-900">{copy.title}</h1>
-          <p className="mt-1 max-w-3xl text-sm font-medium text-ink-500">{copy.description}</p>
+          <h1 className="section-title">{copy.title}</h1>
+          <p className="section-subtitle">{copy.description}</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="min-w-[260px]">
@@ -332,41 +332,45 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="card p-5">
-              <div className="mb-3 flex items-center gap-2 text-ink-500">
-                <ClipboardList className="h-5 w-5 text-brand-600" />
-                <span className="text-sm font-bold uppercase tracking-[0.12em]">Batch</span>
+            <div className="metric-card">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="metric-label">Selected Batch</div>
+                  <div className="metric-value">{selectedBatch?.batch_number ?? '-'}</div>
+                  <div className="metric-note">
+                    {selectedBatch?.breed ?? '-'} in {selectedBatch?.house?.name ?? 'Unassigned house'}
+                  </div>
+                </div>
+                <div className="metric-icon"><ClipboardList className="h-5 w-5" /></div>
               </div>
-              <p className="text-2xl font-bold text-ink-900">{selectedBatch?.batch_number ?? '-'}</p>
-              <p className="mt-1 text-base text-ink-500">
-                {selectedBatch?.breed ?? '-'} in {selectedBatch?.house?.name ?? 'Unassigned house'}
-              </p>
             </div>
-            <div className="card p-5">
-              <div className="mb-3 flex items-center gap-2 text-ink-500">
-                <HeartPulse className="h-5 w-5 text-brand-600" />
-                <span className="text-sm font-bold uppercase tracking-[0.12em]">
-                  {mode === 'mortality' ? 'Recorded losses' : mode === 'vaccination' ? 'Completed doses' : 'Latest weight'}
-                </span>
+            <div className="metric-card">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="metric-label">
+                    {mode === 'mortality' ? 'Recorded Losses' : mode === 'vaccination' ? 'Completed Doses' : 'Latest Weight'}
+                  </div>
+                  <div className="metric-value">{summary.primary}</div>
+                  <div className="metric-note">
+                    {mode === 'mortality'
+                      ? `Mortality rate: ${summary.secondary}`
+                      : mode === 'vaccination'
+                        ? `${summary.secondary} still pending`
+                        : `${summary.secondary} growth entries recorded`}
+                  </div>
+                </div>
+                <div className="metric-icon"><HeartPulse className="h-5 w-5" /></div>
               </div>
-              <p className="text-2xl font-bold text-ink-900">{summary.primary}</p>
-              <p className="mt-1 text-base text-ink-500">
-                {mode === 'mortality'
-                  ? `Mortality rate: ${summary.secondary}`
-                  : mode === 'vaccination'
-                    ? `${summary.secondary} still pending`
-                    : `${summary.secondary} growth entries recorded`}
-              </p>
             </div>
-            <div className="card p-5">
-              <div className="mb-3 flex items-center gap-2 text-ink-500">
-                <Activity className="h-5 w-5 text-brand-600" />
-                <span className="text-sm font-bold uppercase tracking-[0.12em]">
-                  {mode === 'vaccination' ? 'Total vaccine logs' : 'Active birds'}
-                </span>
+            <div className="metric-card">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="metric-label">{mode === 'vaccination' ? 'Total Vaccine Logs' : 'Active Birds'}</div>
+                  <div className="metric-value">{summary.tertiary}</div>
+                  <div className="metric-note">Arrived on {formatDate(selectedBatch?.arrival_date)}</div>
+                </div>
+                <div className="metric-icon"><Activity className="h-5 w-5" /></div>
               </div>
-              <p className="text-2xl font-bold text-ink-900">{summary.tertiary}</p>
-              <p className="mt-1 text-base text-ink-500">Arrived on {formatDate(selectedBatch?.arrival_date)}</p>
             </div>
           </div>
 

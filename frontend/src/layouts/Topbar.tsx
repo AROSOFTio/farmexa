@@ -1,24 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, ChevronDown, ClipboardPlus, Egg, FilePlus2, LogOut, Menu, Moon, Search, Settings, Skull, Sun } from 'lucide-react'
+import { Bell, ChevronDown, ClipboardPlus, Egg, FilePlus2, LogOut, Menu, Search, Settings, Skull } from 'lucide-react'
 import { clsx } from 'clsx'
 import { toast } from 'sonner'
 import { BrandMark } from '@/components/BrandMark'
 import { useAuth } from '@/features/auth/AuthContext'
 import { ROLE_LABELS } from '@/lib/branding'
-import { THEME_STORAGE_KEY, applyTheme, type ThemeMode } from '@/lib/theme'
 
 export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   const { user, logout, hasPermission } = useAuth()
   const navigate = useNavigate()
   const [profileOpen, setProfileOpen] = useState(false)
   const [quickOpen, setQuickOpen] = useState(false)
-  const [theme, setTheme] = useState<ThemeMode>('light')
-
-  useEffect(() => {
-    const currentTheme = document.documentElement.dataset.theme
-    setTheme(currentTheme === 'dark' ? 'dark' : 'light')
-  }, [])
 
   const initials = useMemo(
     () =>
@@ -51,15 +44,8 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
     }
   }
 
-  const toggleTheme = () => {
-    const nextTheme: ThemeMode = theme === 'light' ? 'dark' : 'light'
-    applyTheme(nextTheme)
-    localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
-    setTheme(nextTheme)
-  }
-
   return (
-    <header className="topbar fixed right-0 top-0 z-30 flex h-[64px] items-center gap-2.5 px-4 sm:px-5 lg:px-5">
+    <header className="topbar fixed right-0 top-0 z-30 flex h-[68px] items-center gap-3 px-4 sm:px-5 lg:px-6">
       <button
         type="button"
         onClick={onOpenSidebar}
@@ -73,10 +59,10 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         <BrandMark compact />
       </div>
 
-      <div className="hidden w-full max-w-[390px] lg:block">
+      <div className="hidden w-full max-w-[420px] lg:block">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[var(--text-muted)]" />
-          <input type="search" placeholder="Search" className="form-input h-10 rounded-full border-[var(--border-subtle)] bg-[var(--surface-soft)] pl-10" />
+          <Search className="absolute left-3.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[var(--text-muted)]" />
+          <input type="search" placeholder="Search records, modules, tenants" className="form-input h-11 rounded-full border-[var(--border-subtle)] bg-[var(--surface-soft)] pl-11" />
         </div>
       </div>
 
@@ -122,16 +108,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
 
       <button
         type="button"
-        onClick={toggleTheme}
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--brand-primary)]"
-        aria-label="Toggle theme"
-      >
-        {theme === 'light' ? <Moon className="h-[15px] w-[15px]" /> : <Sun className="h-[15px] w-[15px]" />}
-      </button>
-
-      <button
-        type="button"
-        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-default)]"
+        className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-default)]"
         aria-label="Notifications"
       >
         <Bell className="h-[15px] w-[15px]" />
@@ -142,7 +119,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         <button
           type="button"
           onClick={() => setProfileOpen((open) => !open)}
-          className="flex items-center gap-2.5 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-1.5"
+          className="flex items-center gap-2.5 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2"
         >
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand-primary)] text-[11px] font-bold text-[var(--brand-secondary)]">{initials}</div>
           <div className="hidden text-left sm:block">

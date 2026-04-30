@@ -554,10 +554,10 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
 
   return (
     <div className="animate-fade-in space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="section-header">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">{copy.title}</h1>
-          <p className="mt-1 max-w-3xl text-sm font-medium text-neutral-500">{copy.description}</p>
+          <h1 className="section-title">{copy.title}</h1>
+          <p className="section-subtitle">{copy.description}</p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
           <Scissors className="h-3.5 w-3.5" />
@@ -566,29 +566,35 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <div className="card p-5">
-          <div className="mb-3 flex items-center gap-2 text-neutral-500">
-            <ClipboardList className="h-4 w-4 text-brand-500" />
-            <span className="text-xs font-semibold uppercase tracking-[0.12em]">Records</span>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Records</div>
+              <div className="metric-value">{records.length.toLocaleString()}</div>
+              <div className="metric-note">Slaughter runs captured across planning and completion stages.</div>
+            </div>
+            <div className="metric-icon"><ClipboardList className="h-5 w-5" /></div>
           </div>
-          <p className="text-xl font-bold text-neutral-900">{records.length.toLocaleString()}</p>
-          <p className="mt-1 text-sm text-neutral-500">Slaughter runs captured in the processing ledger.</p>
         </div>
-        <div className="card p-5">
-          <div className="mb-3 flex items-center gap-2 text-neutral-500">
-            <TrendingUp className="h-4 w-4 text-brand-500" />
-            <span className="text-xs font-semibold uppercase tracking-[0.12em]">Average yield</span>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Average Yield</div>
+              <div className="metric-value">{averageYield}</div>
+              <div className="metric-note">Based on completed runs with dressed-weight approvals.</div>
+            </div>
+            <div className="metric-icon"><TrendingUp className="h-5 w-5" /></div>
           </div>
-          <p className="text-xl font-bold text-neutral-900">{averageYield}</p>
-          <p className="mt-1 text-sm text-neutral-500">Computed from completed dressed weight approvals.</p>
         </div>
-        <div className="card p-5">
-          <div className="mb-3 flex items-center gap-2 text-neutral-500">
-            <Boxes className="h-4 w-4 text-brand-500" />
-            <span className="text-xs font-semibold uppercase tracking-[0.12em]">Outputs</span>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Outputs</div>
+              <div className="metric-value">{allOutputs.length.toLocaleString()}</div>
+              <div className="metric-note">Approved output lines already transferred into inventory.</div>
+            </div>
+            <div className="metric-icon"><Boxes className="h-5 w-5" /></div>
           </div>
-          <p className="text-xl font-bold text-neutral-900">{allOutputs.length.toLocaleString()}</p>
-          <p className="mt-1 text-sm text-neutral-500">Approved output lines already transferred into inventory.</p>
         </div>
       </div>
 

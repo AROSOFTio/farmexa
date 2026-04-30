@@ -102,12 +102,12 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
 
   return (
     <div className="animate-fade-in">
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="section-header">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
+          <h1 className="section-title">
             {section === 'invoices' ? 'Invoices' : 'Payments'}
           </h1>
-          <p className="mt-1 max-w-2xl text-sm font-medium text-neutral-500">
+          <p className="section-subtitle">
             {section === 'invoices'
               ? 'Invoice ledger.'
               : 'Payment history.'}
@@ -116,26 +116,35 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <div className="card p-5">
-          <div className="mb-3 flex items-center gap-2 text-neutral-500">
-            <FileText className="h-4 w-4 text-brand-500" />
-            <span className="text-xs font-semibold uppercase tracking-[0.12em]">Invoices</span>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Invoices</div>
+              <div className="metric-value">{invoices.length.toLocaleString()}</div>
+              <div className="metric-note">All issued and tracked customer invoice records.</div>
+            </div>
+            <div className="metric-icon"><FileText className="h-5 w-5" /></div>
           </div>
-          <p className="text-xl font-bold text-neutral-900">{invoices.length.toLocaleString()}</p>
         </div>
-        <div className="card p-5">
-          <div className="mb-3 flex items-center gap-2 text-neutral-500">
-            <Landmark className="h-4 w-4 text-brand-500" />
-            <span className="text-xs font-semibold uppercase tracking-[0.12em]">Outstanding</span>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Outstanding</div>
+              <div className="metric-value">UGX {outstandingTotal.toLocaleString()}</div>
+              <div className="metric-note">Current unpaid balance still waiting for collection.</div>
+            </div>
+            <div className="metric-icon"><Landmark className="h-5 w-5" /></div>
           </div>
-          <p className="text-xl font-bold text-neutral-900">UGX {outstandingTotal.toLocaleString()}</p>
         </div>
-        <div className="card p-5">
-          <div className="mb-3 flex items-center gap-2 text-neutral-500">
-            <Receipt className="h-4 w-4 text-brand-500" />
-            <span className="text-xs font-semibold uppercase tracking-[0.12em]">Payments</span>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Payments</div>
+              <div className="metric-value">{payments.length.toLocaleString()}</div>
+              <div className="metric-note">Posted payment entries already matched to invoices.</div>
+            </div>
+            <div className="metric-icon"><Receipt className="h-5 w-5" /></div>
           </div>
-          <p className="text-xl font-bold text-neutral-900">{payments.length.toLocaleString()}</p>
         </div>
       </div>
 

@@ -270,10 +270,10 @@ export function InventoryPage({ section }: { section: InventorySection }) {
 
   return (
     <div className="animate-fade-in space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="section-header">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">{copy.title}</h1>
-          <p className="mt-1 max-w-3xl text-sm font-medium text-neutral-500">{copy.description}</p>
+          <h1 className="section-title">{copy.title}</h1>
+          <p className="section-subtitle">{copy.description}</p>
         </div>
         <button
           type="button"
@@ -286,26 +286,35 @@ export function InventoryPage({ section }: { section: InventorySection }) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <div className="card p-5">
-          <div className="mb-3 flex items-center gap-2 text-neutral-500">
-            <Boxes className="h-4 w-4 text-brand-500" />
-            <span className="text-xs font-semibold uppercase tracking-[0.12em]">Tracked items</span>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Tracked Items</div>
+              <div className="metric-value">{visibleItems.length.toLocaleString()}</div>
+              <div className="metric-note">Stock-controlled inventory records available in this register.</div>
+            </div>
+            <div className="metric-icon"><Boxes className="h-5 w-5" /></div>
           </div>
-          <p className="text-xl font-bold text-neutral-900">{visibleItems.length.toLocaleString()}</p>
         </div>
-        <div className="card p-5">
-          <div className="mb-3 flex items-center gap-2 text-neutral-500">
-            <TrendingDown className="h-4 w-4 text-brand-500" />
-            <span className="text-xs font-semibold uppercase tracking-[0.12em]">Low stock items</span>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Low Stock Items</div>
+              <div className="metric-value">{lowStockCount.toLocaleString()}</div>
+              <div className="metric-note">Items that need replenishment attention based on reorder levels.</div>
+            </div>
+            <div className="metric-icon"><TrendingDown className="h-5 w-5" /></div>
           </div>
-          <p className="text-xl font-bold text-neutral-900">{lowStockCount.toLocaleString()}</p>
         </div>
-        <div className="card p-5">
-          <div className="mb-3 flex items-center gap-2 text-neutral-500">
-            <ArrowLeftRight className="h-4 w-4 text-brand-500" />
-            <span className="text-xs font-semibold uppercase tracking-[0.12em]">Recent movements</span>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Recent Movements</div>
+              <div className="metric-value">{visibleMovements.length.toLocaleString()}</div>
+              <div className="metric-note">Inbound, outbound, and adjustment records in the current scope.</div>
+            </div>
+            <div className="metric-icon"><ArrowLeftRight className="h-5 w-5" /></div>
           </div>
-          <p className="text-xl font-bold text-neutral-900">{visibleMovements.length.toLocaleString()}</p>
         </div>
       </div>
 

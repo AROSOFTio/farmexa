@@ -90,10 +90,10 @@ export function SettingsConfigPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="section-header">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900">Settings</h1>
-          <p className="mt-1 max-w-2xl text-sm font-medium text-neutral-500">System values and product pricing.</p>
+          <h1 className="section-title">Settings</h1>
+          <p className="section-subtitle">Maintain system values and catalog pricing with clearer forms and cleaner reference tables.</p>
         </div>
       </div>
 

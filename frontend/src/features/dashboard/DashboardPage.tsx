@@ -369,10 +369,10 @@ export function DashboardPage() {
   ].filter((item): item is { label: string; icon: typeof Bird; path: string } => item !== null)
 
   const primaryCards = [
-    { title: 'Birds', value: activeBirds.toLocaleString(), icon: Bird },
-    { title: 'Eggs', value: eggsToday.toLocaleString(), icon: Egg },
-    { title: 'Feed', value: `${feedRemaining.toLocaleString()} kg`, icon: Package },
-    { title: 'Sales', value: formatCurrency(salesThisMonth), icon: Receipt },
+    { title: 'Birds', value: activeBirds.toLocaleString(), description: 'Active birds currently in live farm batches.', icon: Bird },
+    { title: 'Eggs', value: eggsToday.toLocaleString(), description: 'Eggs recorded for today across available flocks.', icon: Egg },
+    { title: 'Feed', value: `${feedRemaining.toLocaleString()} kg`, description: 'Current feed stock balance across tracked items.', icon: Package },
+    { title: 'Sales', value: formatCurrency(salesThisMonth), description: 'Revenue posted this month from tenant activity.', icon: Receipt },
   ]
 
   return (
@@ -423,14 +423,15 @@ export function DashboardPage() {
         {primaryCards.map((card) => {
           const Icon = card.icon
           return (
-            <div key={card.title} className="kpi-card px-5 py-4">
-              <div className="flex items-start justify-between">
+            <div key={card.title} className="metric-card">
+              <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-[11px] font-semibold tracking-[0.08em] text-[var(--brand-primary)]">{card.title}</div>
-                  <div className="mt-2 text-[1.05rem] font-semibold text-[var(--text-strong)] sm:text-[1.75rem]">{card.value}</div>
+                  <div className="metric-label">{card.title}</div>
+                  <div className="metric-value">{card.value}</div>
+                  <div className="metric-note">{card.description}</div>
                 </div>
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-50 text-[var(--brand-primary)]">
-                  <Icon className="h-4 w-4" />
+                <div className="metric-icon">
+                  <Icon className="h-5 w-5" />
                 </div>
               </div>
             </div>
