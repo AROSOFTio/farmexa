@@ -13,6 +13,7 @@ import { FarmReferenceManager, type FarmReferenceManagerType } from '@/features/
 const batchSchema = z.object({
   batch_number: z.string().min(1, 'Batch number is required'),
   house_id: z.coerce.number().min(1, 'Please select a house'),
+  section_id: z.coerce.number().optional().nullable(),
   breed: z.string().min(1, 'Breed is required'),
   source: z.string().optional(),
   arrival_date: z.string().min(1, 'Arrival date is required'),
@@ -49,7 +50,7 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
 
   const { data: houses } = useQuery({
     queryKey: ['farm-houses'],
-    queryFn: () => api.get('/farm/houses').then(r => r.data),
+    queryFn: () => api.get<any[]>('/farm/houses').then(r => r.data),
   })
 
   const { data: referenceItems = [] } = useQuery({
@@ -67,17 +68,27 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
     [referenceItems]
   )
 
-  const { register, handleSubmit, formState: { errors } } = useForm<BatchFormValues>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<BatchFormValues>({
     resolver: zodResolver(batchSchema),
     defaultValues: {
       arrival_date: new Date().toISOString().split('T')[0],
       source: '',
+      section_id: null,
     }
   })
 
+  const selectedHouseId = watch('house_id')
+  const selectedSectionId = watch('section_id')
+  const initialQuantity = watch('initial_quantity')
+
+  const selectedHouse = useMemo(() => houses?.find((h: any) => h.id === selectedHouseId), [houses, selectedHouseId])
+  const selectedSection = useMemo(() => selectedHouse?.sections?.find((s: any) => s.id === selectedSectionId), [selectedHouse, selectedSectionId])
+
+  const availableCapacity = selectedSection ? selectedSection.available_capacity : (selectedHouse?.available_capacity ?? 0)
+  const isCapacityExceeded = (initialQuantity || 0) > availableCapacity
+
   const createBatch = useMutation({
     mutationFn: (data: BatchFormValues) => {
-      // Backend expects active_quantity to match initial_quantity on creation
       return api.post('/farm/batches', {
         ...data,
         active_quantity: data.initial_quantity,
@@ -87,6 +98,7 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
     onSuccess: () => {
       toast.success('Batch created successfully')
       queryClient.invalidateQueries({ queryKey: ['farm-batches'] })
+      queryClient.invalidateQueries({ queryKey: ['farm-houses'] })
       onSuccess?.()
     },
     onError: (error: any) => {
@@ -95,6 +107,10 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
   })
 
   const onSubmit = (data: BatchFormValues) => {
+    if (isCapacityExceeded) {
+      toast.error('Cannot create batch: initial quantity exceeds available capacity.')
+      return
+    }
     createBatch.mutate(data)
   }
 
@@ -118,15 +134,53 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
             <select
               {...register('house_id')}
               className={clsx('form-input', errors.house_id && 'border-red-500 focus:ring-red-500/20')}
+              onChange={(e) => {
+                setValue('house_id', parseInt(e.target.value))
+                setValue('section_id', null)
+              }}
             >
               <option value="">Select a house...</option>
               {houses?.map((h: any) => (
-                <option key={h.id} value={h.id}>{h.name} (Cap: {h.capacity.toLocaleString()})</option>
+                <option key={h.id} value={h.id}>{h.name}</option>
               ))}
             </select>
             {errors.house_id && <p className="form-error">{errors.house_id.message}</p>}
           </div>
+
+          {selectedHouse?.sections?.length > 0 && (
+            <div className="sm:col-span-2">
+              <label className="form-label">Section (Optional)</label>
+              <select
+                {...register('section_id')}
+                className={clsx('form-input', errors.section_id && 'border-red-500 focus:ring-red-500/20')}
+              >
+                <option value="">None (Use entire house)</option>
+                {selectedHouse.sections.map((s: any) => (
+                  <option key={s.id} value={s.id}>{s.name} ({s.section_type})</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
+
+        {selectedHouse && (
+          <div className="mt-4 p-4 rounded-[1rem] bg-amber-50/50 border border-amber-100/50">
+            <div className="grid gap-4 sm:grid-cols-3 text-sm">
+              <div>
+                <span className="text-amber-900/60 font-medium uppercase tracking-wider text-[10px]">Capacity</span>
+                <div className="font-semibold text-amber-900 mt-0.5">{(selectedSection ? selectedSection.capacity : selectedHouse.capacity).toLocaleString()} birds</div>
+              </div>
+              <div>
+                <span className="text-amber-900/60 font-medium uppercase tracking-wider text-[10px]">Occupied</span>
+                <div className="font-semibold text-amber-900 mt-0.5">{(selectedSection ? selectedSection.occupied_capacity : selectedHouse.occupied_capacity).toLocaleString()} birds</div>
+              </div>
+              <div>
+                <span className="text-amber-900/60 font-medium uppercase tracking-wider text-[10px]">Available</span>
+                <div className="font-semibold text-amber-900 mt-0.5">{availableCapacity.toLocaleString()} birds</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="form-section">
@@ -170,6 +224,11 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
               placeholder="0"
             />
             {errors.initial_quantity && <p className="form-error">{errors.initial_quantity.message}</p>}
+            {isCapacityExceeded && (
+              <p className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded border border-red-100">
+                Warning: Quantity ({initialQuantity}) exceeds available capacity ({availableCapacity}).
+              </p>
+            )}
           </div>
 
           <div>
@@ -184,21 +243,21 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
         </div>
       </div>
 
-      {canManageFarm ? (
+      {canManageFarm && (
         <div className="inline-note">
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-ink-900">Manage batch dropdowns</div>
               <div className="mt-1 text-sm text-ink-500">Add breeds and hatchery sources here so operators only select from the list.</div>
             </div>
-            <button type="button" className="btn-secondary" onClick={() => setIsReferenceModalOpen(true)}>
+            <button type="button" className="btn-secondary whitespace-nowrap" onClick={() => setIsReferenceModalOpen(true)}>
               Manage lists
             </button>
           </div>
         </div>
-      ) : null}
+      )}
 
-      <div className="flex justify-end gap-3 border-t border-neutral-150 pt-4">
+      <div className="flex justify-end gap-3 border-t border-[var(--border-subtle)] pt-5">
         <button
           type="button"
           onClick={onSuccess}
@@ -210,7 +269,7 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
         <button
           type="submit"
           className="btn-primary"
-          disabled={createBatch.isPending}
+          disabled={createBatch.isPending || isCapacityExceeded}
         >
           {createBatch.isPending ? 'Saving...' : 'Create Batch'}
         </button>

@@ -116,12 +116,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Alerts', path: '/compliance/alerts', permission: 'farm:read', moduleKey: 'compliance_alerts', icon: Shield },
     ],
   },
-  {
-    title: 'Subscription',
-    items: [
-      { label: 'Upgrade / Modules', path: '/upgrade/modules', permission: 'dashboard:read', tenantOnly: true, icon: CreditCard },
-    ],
-  },
+
   {
     title: 'Reports',
     items: [{ label: 'Reports Center', path: '/reports/production', permission: 'reports:read', moduleKey: 'reports', icon: FileText }],

@@ -20,10 +20,10 @@ import {
   Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
-
 import api from '@/services/api'
 import { Modal } from '@/components/Modal'
 import { useAuth } from '@/features/auth/AuthContext'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
 type AdminSection = 'dashboard' | 'tenants' | 'domains' | 'plans' | 'activity' | 'settings'
 
@@ -254,6 +254,15 @@ function sectionMeta(section: AdminSection) {
       return { title: 'Tenants', subtitle: 'Manage tenant onboarding, plan assignment, module overrides, operational database status, and domain control.' }
   }
 }
+
+const MOCK_REVENUE_DATA = [
+  { month: 'Jan', tenants: 12, revenue: 1500000 },
+  { month: 'Feb', tenants: 18, revenue: 2200000 },
+  { month: 'Mar', tenants: 24, revenue: 3100000 },
+  { month: 'Apr', tenants: 35, revenue: 4500000 },
+  { month: 'May', tenants: 42, revenue: 5800000 },
+  { month: 'Jun', tenants: 50, revenue: 7200000 },
+]
 
 export function TenantsPage({ section = 'tenants' }: { section?: AdminSection }) {
   const queryClient = useQueryClient()
@@ -682,8 +691,33 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
         <div className="card overflow-hidden">
           <div className="surface-header">
             <div>
-              <h2 className="surface-title">Pending setup tenants</h2>
-              <p className="surface-subtitle">These workspaces still need an active primary domain or a ready operational database.</p>
+              <h2 className="surface-title">Tenants vs Revenue Growth</h2>
+              <p className="surface-subtitle">Historical overview of platform adoption.</p>
+            </div>
+          </div>
+          <div className="px-5 py-5 h-[320px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={MOCK_REVENUE_DATA} margin={{ top: 10, right: 30, left: 20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                <XAxis dataKey="month" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis yAxisId="left" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis yAxisId="right" orientation="right" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-card)' }}
+                  formatter={(value: number, name: string) => [name === 'revenue' ? formatMoney(value, '') : value, name === 'revenue' ? 'Revenue' : 'Tenants']}
+                />
+                <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="var(--brand-primary)" strokeWidth={3} dot={{ r: 4, fill: 'var(--brand-primary)' }} activeDot={{ r: 6 }} />
+                <Line yAxisId="right" type="monotone" dataKey="tenants" stroke="var(--text-strong)" strokeWidth={3} dot={{ r: 4, fill: 'var(--text-strong)' }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="card overflow-hidden">
+          <div className="surface-header">
+            <div>
+              <h2 className="surface-title">Recent Tenants</h2>
+              <p className="surface-subtitle">Latest workspaces onboarded to the platform.</p>
             </div>
           </div>
           <div className="overflow-x-auto">
@@ -692,59 +726,112 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                 <tr>
                   <th>Tenant</th>
                   <th>Plan</th>
-                  <th>Primary domain</th>
-                  <th>Database</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {tenants.filter((tenant) => tenant.operational_db_status !== 'ready' || !tenant.domains.some((domain) => domain.is_primary && domain.status === 'active')).length ? (
-                  tenants
-                    .filter((tenant) => tenant.operational_db_status !== 'ready' || !tenant.domains.some((domain) => domain.is_primary && domain.status === 'active'))
-                    .map((tenant) => (
-                      <tr key={tenant.id}>
-                        <td>
-                          <button type="button" className="text-left font-semibold text-slate-900" onClick={() => setSelectedTenantId(tenant.id)}>
-                            {tenant.name}
-                          </button>
-                          <div className="mt-1 text-xs text-slate-500">{tenant.email}</div>
-                        </td>
-                        <td><span className="badge badge-brand uppercase">{tenant.plan}</span></td>
-                        <td>{tenant.domains.find((domain) => domain.is_primary)?.host ?? 'Not assigned'}</td>
-                        <td><span className={statusBadge(tenant.operational_db_status)}>{tenant.operational_db_status.replace(/_/g, ' ')}</span></td>
-                      </tr>
-                    ))
-                ) : (
+                {tenants.slice(0, 5).map((tenant) => (
+                  <tr key={tenant.id}>
+                    <td>
+                      <button type="button" className="text-left font-semibold text-slate-900 hover:text-brand-primary" onClick={() => setSelectedTenantId(tenant.id)}>
+                        {tenant.name}
+                      </button>
+                      <div className="mt-1 text-xs text-slate-500">{tenant.domains.find(d => d.is_primary)?.host ?? 'No domain'}</div>
+                    </td>
+                    <td><span className="badge badge-brand uppercase">{tenant.plan}</span></td>
+                    <td><span className={statusBadge(tenant.status)}>{tenant.status}</span></td>
+                  </tr>
+                ))}
+                {!tenants.length && (
                   <tr>
-                    <td colSpan={4} className="py-10 text-center text-slate-500">No tenants are waiting on setup right now.</td>
+                    <td colSpan={3} className="py-10 text-center text-slate-500">No tenants found.</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
         </div>
+      </div>
 
+      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <div className="card overflow-hidden">
           <div className="surface-header">
             <div>
-              <h2 className="surface-title">Recent activity</h2>
-              <p className="surface-subtitle">Latest plan, domain, and tenant administration events.</p>
+              <h2 className="surface-title">Plan Overview</h2>
+              <p className="surface-subtitle">Adoption distribution across commercial packages.</p>
             </div>
           </div>
-          <div className="divide-y divide-[var(--border-subtle)]">
-            {activityLogs.slice(0, 8).map((entry) => (
-              <div key={entry.id} className="px-5 py-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900">{entry.action} {entry.entity.replace(/_/g, ' ')}</div>
-                    <div className="mt-1 text-xs text-slate-500">{entry.actor_name ?? entry.actor_email ?? 'System'} • {formatDate(entry.created_at)}</div>
-                  </div>
-                  <span className="badge badge-brand uppercase">{entry.entity}</span>
-                </div>
+          <div className="overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Plan</th>
+                  <th>Price</th>
+                  <th>Tenants</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {plans.map((plan) => (
+                  <tr key={plan.code}>
+                    <td>
+                      <div className="font-semibold text-slate-900">{plan.name}</div>
+                    </td>
+                    <td>{formatMoney(plan.monthly_price, plan.currency)}/mo</td>
+                    <td>{plan.tenant_count}</td>
+                    <td><span className={plan.is_active ? 'badge badge-success' : 'badge badge-neutral'}>{plan.is_active ? 'Active' : 'Inactive'}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="card overflow-hidden">
+            <div className="surface-header">
+              <div>
+                <h2 className="surface-title">Revenue Distribution</h2>
               </div>
-            ))}
-            {!activityLogs.length ? (
-              <div className="px-5 py-10 text-sm text-slate-500">No activity logs yet.</div>
-            ) : null}
+            </div>
+            <div className="flex items-center justify-center py-6 h-[220px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={plans.map(p => ({ name: p.name, value: p.tenant_count, color: '#b88a1d' }))}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {plans.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={['#b88a1d', '#0f172a', '#64748b', '#e2e8f0'][index % 4]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ borderRadius: '12px', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-card)' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="card overflow-hidden flex flex-col">
+            <div className="surface-header">
+              <div>
+                <h2 className="surface-title">Quick Actions</h2>
+              </div>
+            </div>
+            <div className="p-5 grid gap-3 flex-1 place-content-center">
+              <button type="button" className="btn-primary w-full" onClick={() => setIsTenantModalOpen(true)}>
+                <Plus className="h-4 w-4" /> Add Tenant
+              </button>
+              <button type="button" className="btn-secondary w-full" onClick={() => setIsPlanModalOpen(true)}>
+                <CreditCard className="h-4 w-4" /> Create Plan
+              </button>
+            </div>
           </div>
         </div>
       </div>
