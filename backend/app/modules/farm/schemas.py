@@ -3,6 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from app.models.farm import HouseStatus, BatchStatus, VaccinationStatus
+from app.models.settings import ReferenceDataType
 
 
 # ── Poultry House ──────────────────────────────────────────────
@@ -107,4 +108,30 @@ class GrowthLogCreate(GrowthLogBase):
 
 class GrowthLogOut(GrowthLogBase):
     id: int
+    model_config = {"from_attributes": True}
+
+
+class ReferenceItemBase(BaseModel):
+    reference_type: ReferenceDataType
+    name: str = Field(..., min_length=1, max_length=150)
+    description: Optional[str] = None
+    sort_order: int = Field(default=0, ge=0)
+    is_active: bool = True
+
+
+class ReferenceItemCreate(ReferenceItemBase):
+    pass
+
+
+class ReferenceItemUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=150)
+    description: Optional[str] = None
+    sort_order: Optional[int] = Field(None, ge=0)
+    is_active: Optional[bool] = None
+
+
+class ReferenceItemOut(ReferenceItemBase):
+    id: int
+    code: str
+
     model_config = {"from_attributes": True}

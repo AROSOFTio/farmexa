@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import require_permission
 from app.db.tenant_db import get_tenant_db
+from app.models.settings import ReferenceDataType
 from app.modules.farm.schemas import (
     BatchCreate,
     BatchOut,
@@ -11,6 +12,9 @@ from app.modules.farm.schemas import (
     GrowthLogOut,
     MortalityLogCreate,
     MortalityLogOut,
+    ReferenceItemCreate,
+    ReferenceItemOut,
+    ReferenceItemUpdate,
     PoultryHouseCreate,
     PoultryHouseOut,
     PoultryHouseUpdate,
@@ -21,6 +25,35 @@ from app.modules.farm.schemas import (
 from app.modules.farm.service import FarmService
 
 router = APIRouter(prefix="/farm", tags=["Farm Management"])
+
+
+@router.get("/reference-items", response_model=list[ReferenceItemOut])
+async def list_reference_items(
+    reference_type: ReferenceDataType | None = None,
+    active_only: bool = False,
+    db: AsyncSession = Depends(get_tenant_db),
+    current_user=Depends(require_permission("farm:read")),
+):
+    return await FarmService(db).list_reference_items(reference_type=reference_type, active_only=active_only)
+
+
+@router.post("/reference-items", response_model=ReferenceItemOut, status_code=status.HTTP_201_CREATED)
+async def create_reference_item(
+    data: ReferenceItemCreate,
+    db: AsyncSession = Depends(get_tenant_db),
+    current_user=Depends(require_permission("farm:write")),
+):
+    return await FarmService(db).create_reference_item(data)
+
+
+@router.put("/reference-items/{item_id}", response_model=ReferenceItemOut)
+async def update_reference_item(
+    item_id: int,
+    data: ReferenceItemUpdate,
+    db: AsyncSession = Depends(get_tenant_db),
+    current_user=Depends(require_permission("farm:write")),
+):
+    return await FarmService(db).update_reference_item(item_id, data)
 
 
 @router.get("/houses", response_model=list[PoultryHouseOut])

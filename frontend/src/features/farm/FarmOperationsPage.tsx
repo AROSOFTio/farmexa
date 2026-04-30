@@ -8,6 +8,8 @@ import { toast } from 'sonner'
 
 import api from '@/services/api'
 import { Modal } from '@/components/Modal'
+import { useAuth } from '@/features/auth/AuthContext'
+import { FarmReferenceManager, type FarmReferenceManagerType } from '@/features/farm/FarmReferenceManager'
 
 type FarmOperationMode = 'mortality' | 'vaccination' | 'growth'
 
@@ -47,6 +49,13 @@ interface GrowthLog {
   record_date: string
   avg_weight_grams: number
   notes?: string | null
+}
+
+interface ReferenceItem {
+  id: number
+  reference_type: 'batch_breed' | 'batch_source' | 'mortality_cause' | 'vaccine'
+  name: string
+  is_active: boolean
 }
 
 const mortalitySchema = z.object({
@@ -124,10 +133,13 @@ function emptyGrowthValues(): GrowthFormValues {
 
 export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
   const qc = useQueryClient()
+  const { hasPermission } = useAuth()
   const [selectedBatchId, setSelectedBatchId] = useState<number | ''>('')
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false)
+  const [isReferenceModalOpen, setIsReferenceModalOpen] = useState(false)
   const copy = modeCopy[mode]
   const ModeIcon = copy.icon
+  const canManageFarm = hasPermission('farm:write')
 
   const { data: batches = [], isLoading: batchesLoading } = useQuery({
     queryKey: ['farm-batches'],
@@ -153,6 +165,21 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
     },
     enabled: Boolean(selectedBatchId),
   })
+
+  const { data: referenceItems = [] } = useQuery({
+    queryKey: ['farm-reference-items'],
+    queryFn: () => api.get<ReferenceItem[]>('/farm/reference-items?active_only=true').then((response) => response.data),
+  })
+
+  const mortalityCauseOptions = useMemo(
+    () => referenceItems.filter((item) => item.reference_type === 'mortality_cause' && item.is_active),
+    [referenceItems]
+  )
+
+  const vaccineOptions = useMemo(
+    () => referenceItems.filter((item) => item.reference_type === 'vaccine' && item.is_active),
+    [referenceItems]
+  )
 
   const mortalityForm = useForm<MortalityFormValues>({
     resolver: zodResolver(mortalitySchema),
@@ -237,6 +264,25 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
     setIsEntryModalOpen(true)
   }
 
+  const referenceTypes: FarmReferenceManagerType[] =
+    mode === 'mortality'
+      ? [
+          {
+            type: 'mortality_cause',
+            label: 'Mortality causes',
+            description: 'Managers define the standard mortality causes used by operators.',
+          },
+        ]
+      : mode === 'vaccination'
+        ? [
+            {
+              type: 'vaccine',
+              label: 'Vaccines',
+              description: 'Managers define vaccine names so users select them instead of typing.',
+            },
+          ]
+        : []
+
   return (
     <div className="animate-fade-in space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -260,10 +306,17 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
               ))}
             </select>
           </div>
-          <button type="button" className="btn-primary" onClick={openEntryModal} disabled={!selectedBatchId}>
-            <ModeIcon className="h-4 w-4" />
-            {copy.actionLabel}
-          </button>
+          {canManageFarm ? (
+            <button type="button" className="btn-primary" onClick={openEntryModal} disabled={!selectedBatchId}>
+              <ModeIcon className="h-4 w-4" />
+              {copy.actionLabel}
+            </button>
+          ) : null}
+          {canManageFarm && mode !== 'growth' ? (
+            <button type="button" className="btn-secondary" onClick={() => setIsReferenceModalOpen(true)}>
+              Manage list
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -325,10 +378,12 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
                   Capture the selected batch entry from a dedicated dialog instead of pinning the form beside the table.
                 </p>
               </div>
-              <button type="button" className="btn-secondary" onClick={openEntryModal} disabled={!selectedBatchId}>
-                <ModeIcon className="h-4 w-4" />
-                {copy.actionLabel}
-              </button>
+              {canManageFarm ? (
+                <button type="button" className="btn-secondary" onClick={openEntryModal} disabled={!selectedBatchId}>
+                  <ModeIcon className="h-4 w-4" />
+                  {copy.actionLabel}
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -407,7 +462,7 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
         isOpen={isEntryModalOpen}
         onClose={() => setIsEntryModalOpen(false)}
         title={copy.actionLabel}
-        description={selectedBatch ? `${selectedBatch.batch_number} • ${selectedBatch.house?.name ?? 'Unassigned house'}` : copy.description}
+        description={selectedBatch ? `${selectedBatch.batch_number} | ${selectedBatch.house?.name ?? 'Unassigned house'}` : copy.description}
       >
         {mode === 'mortality' && (
           <form className="space-y-4" onSubmit={mortalityForm.handleSubmit((values) => mutation.mutate(values))}>
@@ -421,7 +476,12 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
             </div>
             <div>
               <label className="form-label">Cause</label>
-              <input className="form-input" {...mortalityForm.register('cause')} />
+              <select className="form-input" {...mortalityForm.register('cause')}>
+                <option value="">Select cause...</option>
+                {mortalityCauseOptions.map((item) => (
+                  <option key={item.id} value={item.name}>{item.name}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="form-label">Notes</label>
@@ -441,7 +501,12 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
           <form className="space-y-4" onSubmit={vaccinationForm.handleSubmit((values) => mutation.mutate(values))}>
             <div>
               <label className="form-label">Vaccine name</label>
-              <input className="form-input" {...vaccinationForm.register('vaccine_name')} />
+              <select className="form-input" {...vaccinationForm.register('vaccine_name')}>
+                <option value="">Select vaccine...</option>
+                {vaccineOptions.map((item) => (
+                  <option key={item.id} value={item.name}>{item.name}</option>
+                ))}
+              </select>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
@@ -498,6 +563,14 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
             </div>
           </form>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={isReferenceModalOpen}
+        onClose={() => setIsReferenceModalOpen(false)}
+        title={mode === 'mortality' ? 'Mortality causes' : 'Vaccines'}
+      >
+        {referenceTypes.length > 0 ? <FarmReferenceManager types={referenceTypes} /> : null}
       </Modal>
     </div>
   )

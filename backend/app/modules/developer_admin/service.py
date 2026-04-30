@@ -97,6 +97,14 @@ class DeveloperAdminService:
     def _enum_value(value):
         return value.value if hasattr(value, "value") else value
 
+    @staticmethod
+    def _resolve_subscription_status(*, is_suspended: bool, expiry_date: date | None) -> SubscriptionStatus:
+        if is_suspended:
+            return SubscriptionStatus.SUSPENDED
+        if expiry_date and expiry_date < date.today():
+            return SubscriptionStatus.EXPIRED
+        return SubscriptionStatus.ACTIVE
+
     def _default_platform_domain(self, slug: str) -> str:
         return f"{slug}.{settings.DEFAULT_TENANT_DOMAIN_SUFFIX}"
 
@@ -577,8 +585,12 @@ class DeveloperAdminService:
     async def create_tenant(self, data: TenantCreate, actor: User) -> Tenant:
         return await self._create_tenant_internal(data, actor=actor, admin_password=None, source="developer_admin")
 
-    async def update_tenant(self, tenant_id: int, data: TenantUpdate) -> Tenant:
+    async def update_tenant(self, tenant_id: int, data: TenantUpdate, actor: User) -> Tenant:
         tenant = await self._get_tenant(tenant_id)
+        latest_subscription = await self._get_latest_subscription(tenant_id)
+        old_plan = self._enum_value(tenant.plan)
+        old_billing_cycle = self._enum_value(tenant.billing_cycle)
+        old_is_suspended = tenant.is_suspended
         updates = data.model_dump(exclude_none=True)
         requested_domain = updates.pop("domain", None)
         requested_plan = updates.pop("plan", None)
@@ -601,6 +613,63 @@ class DeveloperAdminService:
                 tenant.status = TenantStatus.SUSPENDED
             elif tenant.status == TenantStatus.SUSPENDED:
                 tenant.status = TenantStatus.TRIAL if tenant.subscription_expiry is None else TenantStatus.ACTIVE
+        if latest_subscription is not None:
+            latest_subscription.plan_code = self._enum_value(tenant.plan)
+            latest_subscription.billing_cycle = self._enum_value(tenant.billing_cycle)
+            latest_subscription.start_date = tenant.subscription_start or latest_subscription.start_date
+            latest_subscription.expiry_date = tenant.subscription_expiry
+            latest_subscription.status = self._resolve_subscription_status(
+                is_suspended=tenant.is_suspended,
+                expiry_date=tenant.subscription_expiry,
+            )
+        elif requested_plan or "billing_cycle" in updates or "subscription_start" in updates or "subscription_expiry" in updates or requested_is_suspended is not None:
+            await self._create_subscription(
+                tenant_id=tenant.id,
+                plan_code=self._enum_value(tenant.plan),
+                billing_cycle=self._enum_value(tenant.billing_cycle),
+                start_date=tenant.subscription_start or date.today(),
+                expiry_date=tenant.subscription_expiry,
+                notes="Created from developer admin tenant edit.",
+                status=self._resolve_subscription_status(
+                    is_suspended=tenant.is_suspended,
+                    expiry_date=tenant.subscription_expiry,
+                ).value,
+            )
+        if (
+            requested_plan
+            or "billing_cycle" in updates
+            or "subscription_start" in updates
+            or "subscription_expiry" in updates
+            or requested_is_suspended is not None
+        ):
+            self.db.add(
+                SubscriptionHistory(
+                    tenant_id=tenant.id,
+                    changed_by_user_id=actor.id,
+                    event_type="subscription_update",
+                    old_plan=old_plan,
+                    new_plan=self._enum_value(tenant.plan),
+                    notes=(
+                        f"billing_cycle: {old_billing_cycle} -> {self._enum_value(tenant.billing_cycle)}; "
+                        f"suspended: {old_is_suspended} -> {tenant.is_suspended}"
+                    ),
+                )
+            )
+            await write_audit_log(
+                self.db,
+                user_id=actor.id,
+                action="UPDATE",
+                entity="tenant_subscription",
+                entity_id=tenant.id,
+                meta={
+                    "tenant_id": tenant.id,
+                    "plan": self._enum_value(tenant.plan),
+                    "billing_cycle": self._enum_value(tenant.billing_cycle),
+                    "subscription_start": tenant.subscription_start.isoformat() if tenant.subscription_start else None,
+                    "subscription_expiry": tenant.subscription_expiry.isoformat() if tenant.subscription_expiry else None,
+                    "is_suspended": tenant.is_suspended,
+                },
+            )
         if requested_domain is not None:
             await self._ensure_primary_domain(tenant, requested_domain)
         await self.db.commit()

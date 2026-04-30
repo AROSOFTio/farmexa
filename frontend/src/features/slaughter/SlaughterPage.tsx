@@ -117,17 +117,17 @@ type CompletionFormValues = z.infer<typeof completionSchema>
 type OutputFormValues = z.infer<typeof outputSchema>
 
 const productionOutputCatalog = [
-  { value: 'dressed_chicken', label: 'Dressed chicken (whole chicken)', stockName: 'Dressed chicken' },
-  { value: 'chicken_breast', label: 'Chicken breast', stockName: 'Chicken breast' },
-  { value: 'chicken_thighs', label: 'Chicken thighs', stockName: 'Chicken thighs' },
-  { value: 'chicken_wings', label: 'Chicken wings', stockName: 'Chicken wings' },
-  { value: 'chicken_drumsticks', label: 'Chicken drumsticks', stockName: 'Chicken drumsticks' },
-  { value: 'gizzards', label: 'Gizzards', stockName: 'Gizzards' },
-  { value: 'liver', label: 'Liver', stockName: 'Liver' },
-  { value: 'neck_backs', label: 'Neck/backs', stockName: 'Neck/backs' },
-  { value: 'poultry_manure', label: 'Poultry manure', stockName: 'Poultry manure' },
-  { value: 'feet', label: 'Feet', stockName: 'Feet' },
-  { value: 'head', label: 'Head', stockName: 'Head' },
+  { value: 'dressed_chicken', label: 'Dressed chicken (whole chicken)', stockName: 'Dressed chicken', stockSku: 'PRD-DRESSED-CHICKEN' },
+  { value: 'chicken_breast', label: 'Chicken breast', stockName: 'Chicken breast', stockSku: 'PRD-CHICKEN-BREAST' },
+  { value: 'chicken_thighs', label: 'Chicken thighs', stockName: 'Chicken thighs', stockSku: 'PRD-CHICKEN-THIGHS' },
+  { value: 'chicken_wings', label: 'Chicken wings', stockName: 'Chicken wings', stockSku: 'PRD-CHICKEN-WINGS' },
+  { value: 'chicken_drumsticks', label: 'Chicken drumsticks', stockName: 'Chicken drumsticks', stockSku: 'PRD-CHICKEN-DRUMSTICKS' },
+  { value: 'gizzards', label: 'Gizzards', stockName: 'Gizzards', stockSku: 'PRD-GIZZARDS' },
+  { value: 'liver', label: 'Liver', stockName: 'Liver', stockSku: 'PRD-LIVER' },
+  { value: 'neck_backs', label: 'Neck/backs', stockName: 'Neck/backs', stockSku: 'PRD-NECK-BACKS' },
+  { value: 'poultry_manure', label: 'Poultry manure', stockName: 'Poultry manure', stockSku: 'PRD-POULTRY-MANURE' },
+  { value: 'feet', label: 'Feet', stockName: 'Feet', stockSku: 'PRD-FEET' },
+  { value: 'head', label: 'Head', stockName: 'Head', stockSku: 'PRD-HEAD' },
 ] as const
 
 const saleableOutputTypes = new Set<string>([
@@ -143,6 +143,7 @@ const saleableOutputTypes = new Set<string>([
 
 const byproductOutputTypes = new Set<string>(['poultry_manure', 'feet', 'head'])
 const productionOutputStockNames = new Set<string>(productionOutputCatalog.map((entry) => entry.stockName.toLowerCase()))
+const productionOutputStockSkus = new Set<string>(productionOutputCatalog.map((entry) => entry.stockSku.toLowerCase()))
 
 const sectionCopy: Record<
   SlaughterSection,
@@ -269,6 +270,11 @@ function emptyOutputValues(): OutputFormValues {
 }
 
 function inferOutputType(item?: StockItem | null) {
+  const sku = item?.sku?.trim().toLowerCase()
+  if (sku) {
+    const skuMatch = productionOutputCatalog.find((entry) => entry.stockSku.toLowerCase() === sku)
+    if (skuMatch) return skuMatch.value
+  }
   const key = item?.name.trim().toLowerCase()
   if (!key) return null
   const match = productionOutputCatalog.find((entry) => entry.stockName.toLowerCase() === key)
@@ -438,7 +444,13 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
       : 'No data'
 
   const outputInventoryItems = useMemo(() => {
-    const matched = stockItems.filter((item) => productionOutputStockNames.has(item.name.trim().toLowerCase()))
+    const matched = stockItems.filter((item) => {
+      const normalizedSku = item.sku?.trim().toLowerCase()
+      if (normalizedSku && productionOutputStockSkus.has(normalizedSku)) {
+        return true
+      }
+      return productionOutputStockNames.has(item.name.trim().toLowerCase())
+    })
     return matched.length > 0 ? matched : stockItems
   }, [stockItems])
 

@@ -251,13 +251,14 @@ def _ensure_schema_ready_sync(database_name: str) -> sessionmaker[Session]:
             needs_schema_init = True
     if needs_schema_init:
         Base.metadata.create_all(bind=engine)
-        _apply_runtime_schema_patches(engine)
         with _cache_lock:
             _schema_initialized.add(database_name)
+    _apply_runtime_schema_patches(engine)
     return factory
 
 
 def _apply_runtime_schema_patches(engine: Engine) -> None:
+    Base.metadata.tables["reference_items"].create(bind=engine, checkfirst=True)
     inspector = inspect(engine)
     if inspector.has_table("users"):
         user_columns = {column["name"] for column in inspector.get_columns("users")}

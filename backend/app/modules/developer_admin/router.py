@@ -99,7 +99,7 @@ async def update_tenant(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_permission("dev_admin:write")),
 ):
-    return await DeveloperAdminService(db).update_tenant(tenant_id, data)
+    return await DeveloperAdminService(db).update_tenant(tenant_id, data, current_user)
 
 
 @router.post("/tenants/{tenant_id}/plan", response_model=TenantOut)

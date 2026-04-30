@@ -5,6 +5,7 @@ import { Bird, CalendarDays, Home, Plus, Scale, Search } from 'lucide-react'
 import api from '@/services/api'
 import { Modal } from '@/components/Modal'
 import { BatchForm } from '@/features/farm/BatchForm'
+import { useAuth } from '@/features/auth/AuthContext'
 
 interface Batch {
   id: number
@@ -32,8 +33,10 @@ function formatDate(value: string) {
 }
 
 export function BatchesPage() {
+  const { hasPermission } = useAuth()
   const [search, setSearch] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const canManageFarm = hasPermission('farm:write')
 
   const { data: batches = [], isLoading } = useQuery({
     queryKey: ['farm-batches'],
@@ -63,10 +66,12 @@ export function BatchesPage() {
           <h1 className="section-title">Bird batches</h1>
         </div>
 
-        <button type="button" onClick={() => setIsModalOpen(true)} className="btn-primary">
-          <Plus className="h-4.5 w-4.5" />
-          New batch
-        </button>
+        {canManageFarm ? (
+          <button type="button" onClick={() => setIsModalOpen(true)} className="btn-primary">
+            <Plus className="h-4.5 w-4.5" />
+            New batch
+          </button>
+        ) : null}
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -130,7 +135,7 @@ export function BatchesPage() {
                       <h2 className="mt-5 text-2xl font-semibold text-ink-900">
                         {batches.length === 0 ? 'No batches' : 'No matches'}
                       </h2>
-                      {batches.length === 0 ? (
+                      {batches.length === 0 && canManageFarm ? (
                         <button type="button" onClick={() => setIsModalOpen(true)} className="btn-primary mt-6">
                           <Plus className="h-4.5 w-4.5" />
                           Add batch
@@ -203,13 +208,15 @@ export function BatchesPage() {
         </div>
       </div>
 
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="New batch"
-      >
-        <BatchForm onSuccess={() => setIsModalOpen(false)} />
-      </Modal>
+      {canManageFarm ? (
+        <Modal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          title="New batch"
+        >
+          <BatchForm onSuccess={() => setIsModalOpen(false)} />
+        </Modal>
+      ) : null}
     </div>
   )
 }

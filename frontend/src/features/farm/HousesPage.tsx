@@ -5,6 +5,7 @@ import { Bird, Home, Layers3, PencilLine, Plus, Users } from 'lucide-react'
 import { Modal } from '@/components/Modal'
 import api from '@/services/api'
 import { HouseForm } from '@/features/farm/HouseForm'
+import { useAuth } from '@/features/auth/AuthContext'
 
 interface PoultryHouse {
   id: number
@@ -21,8 +22,10 @@ interface BatchSummary {
 }
 
 export function HousesPage() {
+  const { hasPermission } = useAuth()
   const [selectedHouse, setSelectedHouse] = useState<PoultryHouse | null>(null)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const canManageFarm = hasPermission('farm:write')
 
   const { data: houses = [], isLoading } = useQuery({
     queryKey: ['farm-houses'],
@@ -56,10 +59,12 @@ export function HousesPage() {
           <h1 className="section-title">Poultry houses</h1>
         </div>
 
-        <button type="button" onClick={() => setIsCreateModalOpen(true)} className="btn-primary">
-          <Plus className="h-4.5 w-4.5" />
-          Add house
-        </button>
+        {canManageFarm ? (
+          <button type="button" onClick={() => setIsCreateModalOpen(true)} className="btn-primary">
+            <Plus className="h-4.5 w-4.5" />
+            Add house
+          </button>
+        ) : null}
       </div>
 
       {isLoading ? (
@@ -74,10 +79,12 @@ export function HousesPage() {
             <Home className="h-8 w-8" />
           </div>
           <h2 className="mt-6 text-2xl font-semibold text-ink-900">No houses configured yet</h2>
-          <button type="button" onClick={() => setIsCreateModalOpen(true)} className="btn-primary mt-8">
-            <Plus className="h-4.5 w-4.5" />
-            Add house
-          </button>
+          {canManageFarm ? (
+            <button type="button" onClick={() => setIsCreateModalOpen(true)} className="btn-primary mt-8">
+              <Plus className="h-4.5 w-4.5" />
+              Add house
+            </button>
+          ) : null}
         </div>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -136,41 +143,47 @@ export function HousesPage() {
                 <div className="text-sm text-ink-500">
                   Capacity <span className="font-semibold text-ink-800">{house.capacity.toLocaleString()}</span>
                 </div>
-                <button type="button" onClick={() => setSelectedHouse(house)} className="btn-secondary btn-sm">
-                  <PencilLine className="h-4 w-4" />
-                  Edit
-                </button>
+                {canManageFarm ? (
+                  <button type="button" onClick={() => setSelectedHouse(house)} className="btn-secondary btn-sm">
+                    <PencilLine className="h-4 w-4" />
+                    Edit
+                  </button>
+                ) : null}
               </div>
             </motion.div>
           ))}
         </div>
       )}
 
-      <Modal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        title="New house"
-      >
-        <HouseForm onSuccess={() => setIsCreateModalOpen(false)} />
-      </Modal>
+      {canManageFarm ? (
+        <Modal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          title="New house"
+        >
+          <HouseForm onSuccess={() => setIsCreateModalOpen(false)} />
+        </Modal>
+      ) : null}
 
-      <Modal
-        isOpen={Boolean(selectedHouse)}
-        onClose={() => setSelectedHouse(null)}
-        title={selectedHouse ? selectedHouse.name : 'House'}
-      >
-        {selectedHouse ? (
-          <HouseForm
-            houseId={selectedHouse.id}
-            initialValues={{
-              name: selectedHouse.name,
-              capacity: selectedHouse.capacity,
-              status: selectedHouse.status,
-            }}
-            onSuccess={() => setSelectedHouse(null)}
-          />
-        ) : null}
-      </Modal>
+      {canManageFarm ? (
+        <Modal
+          isOpen={Boolean(selectedHouse)}
+          onClose={() => setSelectedHouse(null)}
+          title={selectedHouse ? selectedHouse.name : 'House'}
+        >
+          {selectedHouse ? (
+            <HouseForm
+              houseId={selectedHouse.id}
+              initialValues={{
+                name: selectedHouse.name,
+                capacity: selectedHouse.capacity,
+                status: selectedHouse.status,
+              }}
+              onSuccess={() => setSelectedHouse(null)}
+            />
+          ) : null}
+        </Modal>
+      ) : null}
     </div>
   )
 }
