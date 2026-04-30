@@ -737,6 +737,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
             </button>
           </div>
           <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 font-bold">
                 <tr>
                   <th className="px-6 py-4">Tenant</th>
@@ -792,6 +793,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
             </button>
           </div>
           <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 font-bold">
                 <tr>
                   <th className="px-6 py-4">Plan</th>
@@ -871,7 +873,6 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
           </div>
         </div>
       </div>
-    </div>
     </div>
   )
 
