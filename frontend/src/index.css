@@ -9,7 +9,9 @@
     --surface-card: #ffffff;
     --surface-soft: #f8fafc;
     --surface-muted: #f1f5f9;
-    --sidebar-bg: #ffffff;
+    --sidebar-bg:
+      radial-gradient(circle at top right, rgba(255, 255, 255, 0.44), transparent 28%),
+      linear-gradient(180deg, #fbf4de 0%, #edd389 42%, #d7ab3d 100%);
     --sidebar-active: #bc8b17;
     --topbar-bg: rgba(255, 255, 255, 0.9);
     --border-subtle: #e2e8f0;
@@ -32,15 +34,15 @@
     --shadow-shell: 0 14px 34px -28px rgba(15, 23, 42, 0.12);
     --chart-grid: #e6ebf3;
     --chart-axis: #7b8798;
-    --sidebar-text: #3b4658;
-    --sidebar-text-muted: #7a8699;
-    --sidebar-heading: #0f172a;
-    --sidebar-hover: #f8fafc;
-    --sidebar-active-bg: rgba(var(--brand-primary-rgb), 0.14);
-    --sidebar-active-text: #0f172a;
-    --sidebar-icon: #97a3b6;
-    --sidebar-panel: #f8fafc;
-    --sidebar-panel-border: #e2e8f0;
+    --sidebar-text: #2d3646;
+    --sidebar-text-muted: rgba(45, 54, 70, 0.72);
+    --sidebar-heading: #152033;
+    --sidebar-hover: rgba(255, 255, 255, 0.26);
+    --sidebar-active-bg: rgba(255, 255, 255, 0.78);
+    --sidebar-active-text: #152033;
+    --sidebar-icon: rgba(45, 54, 70, 0.82);
+    --sidebar-panel: rgba(255, 255, 255, 0.42);
+    --sidebar-panel-border: rgba(255, 255, 255, 0.5);
   }
 
   [data-theme='dark'] {
@@ -49,7 +51,9 @@
     --surface-card: #ffffff;
     --surface-soft: #f8fafc;
     --surface-muted: #f1f5f9;
-    --sidebar-bg: #ffffff;
+    --sidebar-bg:
+      radial-gradient(circle at top right, rgba(255, 255, 255, 0.44), transparent 28%),
+      linear-gradient(180deg, #fbf4de 0%, #edd389 42%, #d7ab3d 100%);
     --sidebar-active: #bc8b17;
     --topbar-bg: rgba(255, 255, 255, 0.9);
     --border-subtle: #e2e8f0;
@@ -72,15 +76,15 @@
     --shadow-shell: 0 14px 34px -28px rgba(15, 23, 42, 0.12);
     --chart-grid: #e6ebf3;
     --chart-axis: #7b8798;
-    --sidebar-text: #3b4658;
-    --sidebar-text-muted: #7a8699;
-    --sidebar-heading: #0f172a;
-    --sidebar-hover: #f8fafc;
-    --sidebar-active-bg: rgba(var(--brand-primary-rgb), 0.14);
-    --sidebar-active-text: #0f172a;
-    --sidebar-icon: #97a3b6;
-    --sidebar-panel: #f8fafc;
-    --sidebar-panel-border: #e2e8f0;
+    --sidebar-text: #2d3646;
+    --sidebar-text-muted: rgba(45, 54, 70, 0.72);
+    --sidebar-heading: #152033;
+    --sidebar-hover: rgba(255, 255, 255, 0.26);
+    --sidebar-active-bg: rgba(255, 255, 255, 0.78);
+    --sidebar-active-text: #152033;
+    --sidebar-icon: rgba(45, 54, 70, 0.82);
+    --sidebar-panel: rgba(255, 255, 255, 0.42);
+    --sidebar-panel-border: rgba(255, 255, 255, 0.5);
   }
 
   *,
@@ -401,15 +405,39 @@
   }
 
   .sidebar {
+    position: relative;
     background: var(--sidebar-bg);
     color: var(--sidebar-text);
-    border-right: 1px solid var(--border-subtle);
-    box-shadow: var(--shadow-shell);
+    border-right: 1px solid rgba(109, 83, 12, 0.14);
+    box-shadow: 16px 0 44px -34px rgba(74, 53, 4, 0.34);
+  }
+
+  .sidebar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 26%),
+      radial-gradient(circle at bottom right, rgba(122, 91, 8, 0.12), transparent 26%);
+    pointer-events: none;
+  }
+
+  .sidebar::after {
+    content: '';
+    position: absolute;
+    inset: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 1.4rem;
+    pointer-events: none;
   }
 
   .sidebar-scroll {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    scrollbar-color: rgba(74, 53, 4, 0.22) transparent;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(74, 53, 4, 0.22);
   }
 
   .topbar {

@@ -174,40 +174,44 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
       <aside
         className={clsx(
-          'sidebar fixed inset-y-0 left-0 z-50 flex w-[236px] flex-col overflow-hidden transition-transform duration-300 lg:translate-x-0',
+          'sidebar fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col overflow-hidden transition-transform duration-300 lg:translate-x-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex items-center justify-between border-b px-4 py-4">
-          <BrandMark light showTagline />
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] lg:hidden"
-            aria-label="Close navigation"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="border-b px-4 py-3">
-          <div className="inline-flex rounded-full border border-[var(--sidebar-panel-border)] bg-[var(--sidebar-panel)] px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--sidebar-text-muted)]">
-            {roleLabel}
-          </div>
-          {tenant ? (
-            <div className="mt-3 rounded-[14px] border border-[var(--sidebar-panel-border)] bg-[var(--sidebar-panel)] px-3.5 py-3">
-              <div className="truncate text-[12px] font-semibold leading-tight text-[var(--sidebar-heading)]">{tenant.name}</div>
-              <div className="mt-1 truncate text-[10px] text-[var(--sidebar-text-muted)]">
-                {tenant.plan} {tenant.primary_domain ? `| ${tenant.primary_domain}` : ''}
-              </div>
+        <div className="relative z-10 px-4 pt-4">
+          <div className="rounded-[1.45rem] border border-[var(--sidebar-panel-border)] bg-[var(--sidebar-panel)] p-4 shadow-[0_28px_45px_-36px_rgba(74,53,4,0.48)] backdrop-blur-sm">
+            <div className="flex items-start justify-between gap-3">
+              <BrandMark light showTagline />
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[var(--sidebar-heading)] transition-colors hover:bg-white/30 lg:hidden"
+                aria-label="Close navigation"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-          ) : null}
+
+            <div className="mt-4 inline-flex rounded-full border border-white/40 bg-white/50 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-[var(--sidebar-heading)]">
+              {roleLabel}
+            </div>
+
+            {tenant ? (
+              <div className="mt-3 rounded-[1.1rem] border border-white/40 bg-white/50 px-4 py-3 backdrop-blur-sm">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--sidebar-text-muted)]">Workspace</div>
+                <div className="mt-2 truncate text-[12.5px] font-semibold leading-tight text-[var(--sidebar-heading)]">{tenant.name}</div>
+                <div className="mt-1 truncate text-[10.5px] text-[var(--sidebar-text-muted)]">
+                  {tenant.plan} {tenant.primary_domain ? `| ${tenant.primary_domain}` : ''}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
 
-        <nav className="sidebar-scroll flex-1 overflow-y-auto px-3 py-3">
+        <nav className="sidebar-scroll relative z-10 flex-1 overflow-y-auto px-3 pt-4 pb-3">
           {sections.map((section) => (
-            <div key={section.title} className="mb-4">
-              <div className="mb-2 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-[var(--sidebar-text-muted)]">{section.title}</div>
+            <div key={section.title} className="mb-5">
+              <div className="mb-2 px-3 text-[9.5px] font-semibold uppercase tracking-[0.18em] text-[var(--sidebar-text-muted)]">{section.title}</div>
               <div className="space-y-1.5">
                 {section.items.map((item) => {
                   const Icon = item.icon
@@ -220,27 +224,27 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                         if (window.innerWidth < 1024) onClose()
                       }}
                       className={clsx(
-                        'group flex items-center gap-2.5 rounded-[14px] px-3 py-2.5 transition-colors',
+                        'group flex items-center gap-3 rounded-[1rem] border px-3.5 py-3 transition-all duration-150',
                         active
-                          ? 'bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)]'
-                          : 'text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-heading)]'
+                          ? 'border-white/70 bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)] shadow-[0_20px_36px_-28px_rgba(74,53,4,0.56)]'
+                          : 'border-transparent text-[var(--sidebar-text)] hover:border-white/40 hover:bg-[var(--sidebar-hover)] hover:text-[var(--sidebar-heading)]'
                       )}
                     >
                       <span
                         className={clsx(
-                          'flex h-[22px] w-[22px] items-center justify-center rounded-md transition-colors',
+                          'flex h-8 w-8 items-center justify-center rounded-[0.9rem] transition-colors',
                           active
-                            ? 'bg-transparent text-[var(--sidebar-active-text)]'
-                            : 'bg-transparent text-[var(--sidebar-icon)] group-hover:text-[var(--brand-primary)]'
+                            ? 'bg-[rgba(var(--brand-primary-rgb),0.14)] text-[var(--brand-accent)]'
+                            : 'bg-transparent text-[var(--sidebar-icon)] group-hover:bg-white/20 group-hover:text-[var(--sidebar-heading)]'
                         )}
                       >
                         <Icon className="h-[14px] w-[14px] stroke-[2]" />
                       </span>
-                      <span className="flex-1 text-[13.5px] font-medium leading-[1.2rem]">{item.label}</span>
+                      <span className="flex-1 text-[13.75px] font-medium leading-[1.2rem]">{item.label}</span>
                       <ChevronRight
                         className={clsx(
                           'h-[13px] w-[13px] transition-opacity',
-                          active ? 'text-[var(--sidebar-active-text)] opacity-100' : 'text-[var(--sidebar-text-muted)] opacity-0 group-hover:opacity-70'
+                          active ? 'text-[var(--brand-accent)] opacity-100' : 'text-[var(--sidebar-text-muted)] opacity-0 group-hover:opacity-70'
                         )}
                       />
                     </NavLink>
@@ -251,14 +255,14 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           ))}
         </nav>
 
-        <div className="border-t px-4 py-3">
-          <div className="flex items-center gap-2.5 rounded-[14px] border border-[var(--sidebar-panel-border)] bg-[var(--sidebar-panel)] px-3.5 py-3">
-            <div className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--surface-muted)] text-[11px] font-semibold text-[var(--sidebar-heading)]">
+        <div className="relative z-10 px-4 pb-4 pt-3">
+          <div className="flex items-center gap-3 rounded-[1.15rem] border border-[var(--sidebar-panel-border)] bg-[var(--sidebar-panel)] px-3.5 py-3 shadow-[0_18px_40px_-34px_rgba(74,53,4,0.46)] backdrop-blur-sm">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] border border-white/40 bg-white/50 text-[11px] font-semibold text-[var(--sidebar-heading)]">
               {user?.full_name?.slice(0, 2).toUpperCase() ?? 'FX'}
             </div>
             <div className="min-w-0">
-              <div className="truncate text-[12px] font-semibold leading-tight text-[var(--sidebar-heading)]">{user?.full_name ?? 'Loading...'}</div>
-              <div className="truncate text-[10px] leading-tight text-[var(--sidebar-text-muted)]">{userTitle}</div>
+              <div className="truncate text-[12.5px] font-semibold leading-tight text-[var(--sidebar-heading)]">{user?.full_name ?? 'Loading...'}</div>
+              <div className="truncate text-[10.5px] leading-tight text-[var(--sidebar-text-muted)]">{userTitle}</div>
             </div>
           </div>
         </div>
