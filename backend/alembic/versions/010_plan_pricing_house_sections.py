@@ -88,7 +88,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(length=100), nullable=False),
         sa.Column("section_type", sa.String(length=80), nullable=False),
         sa.Column("capacity", sa.Integer(), nullable=False),
-        sa.Column("status", sa.Enum("active", "maintenance", "inactive", name="housestatus", create_type=False), nullable=False, server_default="active"),
+        sa.Column("status", sa.dialects.postgresql.ENUM("active", "maintenance", "inactive", name="housestatus", create_type=False), nullable=False, server_default="active"),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.UniqueConstraint("house_id", "name", name="uq_house_section_name"),
     )
