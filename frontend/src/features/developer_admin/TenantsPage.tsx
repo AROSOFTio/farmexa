@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { clsx } from 'clsx'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -268,7 +269,13 @@ const MOCK_REVENUE_DATA = [
   { month: 'Jun', tenants: 50, revenue: 7200000 },
 ]
 
-export function TenantsPage({ section = 'tenants' }: { section?: AdminSection }) {
+export function TenantsPage({ section: initialSection = 'tenants' }: { section?: AdminSection }) {
+  const [section, setSection] = useState<AdminSection>(initialSection)
+
+  useEffect(() => {
+    setSection(initialSection)
+  }, [initialSection])
+
   const queryClient = useQueryClient()
   const { hasPermission } = useAuth()
   const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null)
