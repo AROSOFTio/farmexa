@@ -17,6 +17,7 @@ def upgrade() -> None:
         """
         DO $$
         BEGIN
+            -- Cast the column away from the enum type first
             IF EXISTS (
                 SELECT 1
                 FROM information_schema.columns
@@ -26,10 +27,21 @@ def upgrade() -> None:
             ) THEN
                 ALTER TABLE tenants ALTER COLUMN plan TYPE VARCHAR(50) USING plan::text;
             END IF;
+
+            -- Drop the column default which may still reference the enum type
+            IF EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_name = 'tenants'
+                  AND column_name = 'plan'
+            ) THEN
+                ALTER TABLE tenants ALTER COLUMN plan DROP DEFAULT;
+            END IF;
         END $$;
         """
     )
-    op.execute("DROP TYPE IF EXISTS subscriptionplan")
+    # Use CASCADE to also remove any remaining dependent defaults or constraints
+    op.execute("DROP TYPE IF EXISTS subscriptionplan CASCADE")
 
     op.add_column("plans", sa.Column("monthly_price", sa.Numeric(12, 2), nullable=False, server_default="0"))
     op.add_column("plans", sa.Column("quarterly_price", sa.Numeric(12, 2), nullable=False, server_default="0"))
