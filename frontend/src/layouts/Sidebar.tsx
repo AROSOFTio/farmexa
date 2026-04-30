@@ -229,7 +229,9 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                       <span
                         className={clsx(
                           'flex h-[20px] w-[20px] items-center justify-center rounded-md transition-colors',
-                          active ? 'bg-transparent text-white' : 'bg-transparent text-[var(--sidebar-icon)] group-hover:text-[var(--brand-primary)]'
+                          active
+                            ? 'bg-transparent text-[var(--sidebar-active-text)]'
+                            : 'bg-transparent text-[var(--sidebar-icon)] group-hover:text-[var(--brand-primary)]'
                         )}
                       >
                         <Icon className="h-[13px] w-[13px] stroke-[2]" />
@@ -238,7 +240,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                       <ChevronRight
                         className={clsx(
                           'h-[13px] w-[13px] transition-opacity',
-                          active ? 'text-white opacity-100' : 'text-[var(--sidebar-text-muted)] opacity-0 group-hover:opacity-70'
+                          active ? 'text-[var(--sidebar-active-text)] opacity-100' : 'text-[var(--sidebar-text-muted)] opacity-0 group-hover:opacity-70'
                         )}
                       />
                     </NavLink>

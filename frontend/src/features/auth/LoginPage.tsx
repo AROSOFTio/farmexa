@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { AxiosError } from 'axios'
-import { Eye, EyeOff, Globe2, LogIn, ShieldCheck, UserPlus } from 'lucide-react'
+import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -52,26 +52,24 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] px-4 py-10">
+    <div className="auth-page flex min-h-screen items-center justify-center px-4 py-10">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28 }}
-        className="w-full max-w-[560px]"
+        className="w-full max-w-[520px]"
       >
-        <div className="mb-7 flex justify-center">
+        <div className="mb-8 flex justify-center">
           <BrandMark />
         </div>
 
-        <div className="card p-6 sm:p-8">
-          <div className="space-y-2">
-            <h1 className="text-[1.8rem] font-semibold text-ink-900">Sign in</h1>
-            <p className="text-[14px] text-ink-500">
-              Access your Farmexa workspace with your staff or tenant administrator account.
-            </p>
+        <div className="auth-panel p-6 sm:p-8">
+          <div className="space-y-3">
+            <div className="auth-eyebrow">Workspace access</div>
+            <h1 className="text-[1.9rem] font-semibold text-ink-900">Sign in</h1>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-7 space-y-5">
             <div>
               <label htmlFor="email" className="form-label">
                 Email
@@ -131,27 +129,6 @@ export function LoginPage() {
               </Link>
             ) : null}
           </form>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-[16px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-4">
-              <div className="flex items-center gap-2 text-[14px] font-semibold text-[var(--text-strong)]">
-                <Globe2 className="h-4.5 w-4.5 text-[var(--brand-primary)]" />
-                Tenant workspaces
-              </div>
-              <p className="mt-2 text-[13px] leading-6 text-[var(--text-muted)]">
-                Tenant staff and tenant administrators must sign in from their mapped workspace domain.
-              </p>
-            </div>
-            <div className="rounded-[16px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-4">
-              <div className="flex items-center gap-2 text-[14px] font-semibold text-[var(--text-strong)]">
-                <ShieldCheck className="h-4.5 w-4.5 text-[var(--brand-primary)]" />
-                Platform admins
-              </div>
-              <p className="mt-2 text-[13px] leading-6 text-[var(--text-muted)]">
-                Developer admins and super managers should continue using the main Farmexa sign-in domain. New tenant registration is only available on `farmexa.arosoft.io`.
-              </p>
-            </div>
-          </div>
         </div>
       </motion.div>
     </div>

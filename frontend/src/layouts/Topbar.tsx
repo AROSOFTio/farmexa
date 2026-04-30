@@ -144,7 +144,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
           onClick={() => setProfileOpen((open) => !open)}
           className="flex items-center gap-2.5 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-1.5"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand-primary)] text-[11px] font-bold text-white">{initials}</div>
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand-primary)] text-[11px] font-bold text-[var(--brand-secondary)]">{initials}</div>
           <div className="hidden text-left sm:block">
             <div className="text-[12px] font-semibold leading-tight text-[var(--text-strong)]">{user?.full_name ?? 'Loading...'}</div>
             <div className="text-[11px] leading-tight text-[var(--text-muted)]">{profileLabel}</div>

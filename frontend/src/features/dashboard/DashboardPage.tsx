@@ -377,10 +377,29 @@ export function DashboardPage() {
 
   return (
     <div className="animate-fade-in space-y-5 pb-5">
-      <section className="section-header">
-        <div>
-          <h1 className="section-title">Dashboard</h1>
-          <p className="section-subtitle">Operational snapshot</p>
+      <section className="dashboard-hero">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div
+              className="text-[11px] font-semibold uppercase tracking-[0.14em]"
+              style={{ color: 'rgba(var(--brand-secondary-rgb), 0.72)' }}
+            >
+              Overview
+            </div>
+            <h1 className="mt-2 text-[2rem] font-semibold text-[var(--brand-secondary)]">Dashboard</h1>
+            <p
+              className="mt-2 max-w-[38rem] text-[14px] leading-6"
+              style={{ color: 'rgba(var(--brand-secondary-rgb), 0.76)' }}
+            >
+              Clean overview of birds, feed, eggs, sales, and the items that need attention today.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <div className="dashboard-hero-chip">{activeBirds.toLocaleString()} birds</div>
+            <div className="dashboard-hero-chip">{todayTasks.length} tasks</div>
+            <div className="dashboard-hero-chip">{alerts.length} alerts</div>
+            <div className="dashboard-hero-chip">{formatCurrency(salesThisMonth)} sales</div>
+          </div>
         </div>
       </section>
 
@@ -407,7 +426,7 @@ export function DashboardPage() {
             <div key={card.title} className="kpi-card px-5 py-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-[11px] font-semibold tracking-[0.08em] text-[var(--text-muted)]">{card.title}</div>
+                  <div className="text-[11px] font-semibold tracking-[0.08em] text-[var(--brand-primary)]">{card.title}</div>
                   <div className="mt-2 text-[1.05rem] font-semibold text-[var(--text-strong)] sm:text-[1.75rem]">{card.value}</div>
                 </div>
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-50 text-[var(--brand-primary)]">
