@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '@/features/auth/AuthContext'
 import { LoginPage } from '@/features/auth/LoginPage'
+import { VendorRegistrationPage } from '@/features/auth/VendorRegistrationPage'
 import { ProfitDashboard } from '@/features/analytics/ProfitDashboard'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { FeedManagementPage } from '@/features/feed/FeedManagementPage'
@@ -31,6 +32,7 @@ export default function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register-vendor" element={<VendorRegistrationPage />} />
 
         <Route
           path="/"

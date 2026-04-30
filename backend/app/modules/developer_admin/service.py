@@ -580,12 +580,29 @@ class DeveloperAdminService:
     async def update_tenant(self, tenant_id: int, data: TenantUpdate) -> Tenant:
         tenant = await self._get_tenant(tenant_id)
         updates = data.model_dump(exclude_none=True)
+        requested_domain = updates.pop("domain", None)
+        requested_plan = updates.pop("plan", None)
+        requested_is_suspended = updates.pop("is_suspended", None)
         if "slug" in updates:
             updates["slug"] = self._slugify(updates["slug"])
         if "billing_cycle" in updates:
             updates["billing_cycle"] = self._parse_billing_cycle(updates["billing_cycle"])
+        if requested_plan:
+            plan = await self._get_plan(requested_plan)
+            tenant.plan = plan.code
+            if not plan.is_custom:
+                module_keys = self._with_required_modules(await self._get_plan_module_keys(plan.code))
+                await self._sync_tenant_modules(tenant.id, module_keys, disable_missing=True)
         for field, value in updates.items():
             setattr(tenant, field, value)
+        if requested_is_suspended is not None:
+            tenant.is_suspended = requested_is_suspended
+            if requested_is_suspended:
+                tenant.status = TenantStatus.SUSPENDED
+            elif tenant.status == TenantStatus.SUSPENDED:
+                tenant.status = TenantStatus.TRIAL if tenant.subscription_expiry is None else TenantStatus.ACTIVE
+        if requested_domain is not None:
+            await self._ensure_primary_domain(tenant, requested_domain)
         await self.db.commit()
         return await self._get_tenant(tenant_id)
 

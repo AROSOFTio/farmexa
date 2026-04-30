@@ -126,6 +126,7 @@ export function InventoryPage({ section }: { section: InventorySection }) {
   const copy = sectionCopy[section]
   const [isItemModalOpen, setIsItemModalOpen] = useState(false)
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<StockItem | null>(null)
   const isMedicineView = section === 'medicine'
   const itemsEndpoint = isMedicineView ? '/inventory/medicine/items' : '/inventory/items'
   const movementsEndpoint = isMedicineView ? '/inventory/medicine/movements' : '/inventory/movements'
@@ -166,6 +167,35 @@ export function InventoryPage({ section }: { section: InventorySection }) {
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.detail ?? (isMedicineView ? 'Failed to create medicine item.' : 'Failed to create inventory item.'))
+    },
+  })
+
+  const updateItem = useMutation({
+    mutationFn: (values: ItemFormValues) => {
+      if (!editingItem) {
+        throw new Error('No item selected')
+      }
+      return api.put(`${itemsEndpoint}/${editingItem.id}`, {
+        name: values.name,
+        sku: values.sku || null,
+        category: isMedicineView ? 'medicine' : values.category,
+        unit_of_measure: values.unit_of_measure,
+        reorder_level: values.reorder_level,
+        unit_price: values.unit_price,
+        description: values.description || null,
+        is_active: values.is_active,
+      })
+    },
+    onSuccess: () => {
+      toast.success('Inventory item updated.')
+      qc.invalidateQueries({ queryKey: ['inventory-items'] })
+      qc.invalidateQueries({ queryKey: ['inventory-items', section] })
+      setEditingItem(null)
+      itemForm.reset(emptyItemValues(isMedicineView))
+      setIsItemModalOpen(false)
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.detail ?? 'Failed to update inventory item.')
     },
   })
 
@@ -211,7 +241,25 @@ export function InventoryPage({ section }: { section: InventorySection }) {
   )
 
   const openItemModal = () => {
+    setEditingItem(null)
     itemForm.reset(emptyItemValues(isMedicineView))
+    setIsItemModalOpen(true)
+  }
+
+  const openEditItemModal = (item: StockItem) => {
+    setEditingItem(item)
+    itemForm.reset({
+      name: item.name,
+      sku: item.sku ?? '',
+      category: item.category as ItemFormValues['category'],
+      unit_of_measure: item.unit_of_measure,
+      reorder_level: item.reorder_level,
+      unit_price: item.unit_price,
+      description: item.description ?? '',
+      is_active: item.is_active,
+      initial_quantity: item.current_quantity,
+      initial_unit_cost: item.average_cost,
+    })
     setIsItemModalOpen(true)
   }
 
@@ -317,9 +365,14 @@ export function InventoryPage({ section }: { section: InventorySection }) {
                         <td>{item.current_quantity.toLocaleString()} {item.unit_of_measure}</td>
                         <td>UGX {item.average_cost.toLocaleString()}</td>
                         <td className="pr-6">
-                          <span className={lowStock ? 'badge badge-warning' : 'badge badge-brand'}>
-                            {lowStock ? 'Low stock' : item.is_active ? 'Active' : 'Inactive'}
-                          </span>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className={lowStock ? 'badge badge-warning' : 'badge badge-brand'}>
+                              {lowStock ? 'Low stock' : item.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                            <button type="button" className="btn-ghost btn-sm" onClick={() => openEditItemModal(item)}>
+                              Edit
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -389,7 +442,13 @@ export function InventoryPage({ section }: { section: InventorySection }) {
         title={copy.actionLabel}
         description={copy.actionDescription}
       >
-        <form className="space-y-4" onSubmit={itemForm.handleSubmit((values) => createItem.mutate(values))}>
+        <form className="space-y-4" onSubmit={itemForm.handleSubmit((values) => {
+          if (editingItem) {
+            updateItem.mutate(values)
+            return
+          }
+          createItem.mutate(values)
+        })}>
           <div>
             <label className="form-label">Item name</label>
             <input className="form-input" {...itemForm.register('name')} />
@@ -436,7 +495,7 @@ export function InventoryPage({ section }: { section: InventorySection }) {
           </div>
           <div>
             <label className="form-label">Initial quantity</label>
-            <input className="form-input" type="number" min={0} step="0.01" {...itemForm.register('initial_quantity')} />
+            <input className="form-input" type="number" min={0} step="0.01" {...itemForm.register('initial_quantity')} disabled={!!editingItem} />
           </div>
           <div>
             <label className="form-label">Description</label>
@@ -444,9 +503,9 @@ export function InventoryPage({ section }: { section: InventorySection }) {
           </div>
           <div className="flex justify-end gap-3">
             <button type="button" className="btn-secondary" onClick={() => setIsItemModalOpen(false)}>Close</button>
-            <button className="btn-primary" disabled={createItem.isPending} type="submit">
+            <button className="btn-primary" disabled={createItem.isPending || updateItem.isPending} type="submit">
               <PackagePlus className="h-4 w-4" />
-              {createItem.isPending ? 'Saving...' : copy.actionLabel}
+              {createItem.isPending || updateItem.isPending ? 'Saving...' : editingItem ? 'Save item' : copy.actionLabel}
             </button>
           </div>
         </form>

@@ -22,6 +22,7 @@ interface BatchOption {
 interface StockItem {
   id: number
   name: string
+  sku?: string | null
   unit_of_measure: string
 }
 
@@ -107,7 +108,6 @@ const completionSchema = z.object({
 const outputSchema = z.object({
   record_id: z.coerce.number().int().positive('Record is required'),
   stock_item_id: z.coerce.number().int().positive('Stock item is required'),
-  output_type: z.string().min(1),
   quantity: z.coerce.number().positive('Quantity must be greater than zero'),
   unit_cost: z.coerce.number().optional(),
 })
@@ -259,14 +259,20 @@ function emptyCompletionValues(): CompletionFormValues {
   }
 }
 
-function emptyOutputValues(defaultOutputType = 'dressed_chicken'): OutputFormValues {
+function emptyOutputValues(): OutputFormValues {
   return {
     record_id: 0,
     stock_item_id: 0,
-    output_type: defaultOutputType,
     quantity: 0,
     unit_cost: undefined,
   }
+}
+
+function inferOutputType(item?: StockItem | null) {
+  const key = item?.name.trim().toLowerCase()
+  if (!key) return null
+  const match = productionOutputCatalog.find((entry) => entry.stockName.toLowerCase() === key)
+  return match?.value ?? null
 }
 
 export function SlaughterPage({ section }: { section: SlaughterSection }) {
@@ -352,22 +358,29 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
 
   const createOutput = useMutation({
     mutationFn: (values: OutputFormValues) =>
-      api.post(`/slaughter/records/${values.record_id}/outputs`, {
-        stock_item_id: values.stock_item_id,
-        output_type: values.output_type,
-        quantity: values.quantity,
-        unit_cost: values.unit_cost ?? null,
-      }),
+      {
+        const selectedItem = outputInventoryItems.find((item) => item.id === values.stock_item_id)
+        const outputType = inferOutputType(selectedItem)
+        if (!outputType) {
+          throw new Error('Selected item is not configured as a slaughter output. Ask an inventory or slaughter manager to register the correct item code.')
+        }
+        return api.post(`/slaughter/records/${values.record_id}/outputs`, {
+          stock_item_id: values.stock_item_id,
+          output_type: outputType,
+          quantity: values.quantity,
+          unit_cost: values.unit_cost ?? null,
+        })
+      },
     onSuccess: () => {
       toast.success('Slaughter output posted to inventory.')
       qc.invalidateQueries({ queryKey: ['slaughter-records'] })
       qc.invalidateQueries({ queryKey: ['inventory-items'] })
       qc.invalidateQueries({ queryKey: ['inventory-movements'] })
-      outputForm.reset(emptyOutputValues(outputCatalogForSection[0]?.value ?? 'dressed_chicken'))
+      outputForm.reset(emptyOutputValues())
       setIsOutputModalOpen(false)
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.detail ?? 'Failed to post slaughter output.')
+      toast.error(error?.response?.data?.detail ?? error?.message ?? 'Failed to post slaughter output.')
     },
   })
 
@@ -429,28 +442,20 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
     return matched.length > 0 ? matched : stockItems
   }, [stockItems])
 
-  const selectedOutputType = outputForm.watch('output_type')
-
-  useEffect(() => {
-    const preferredStockName = productionOutputCatalog.find((entry) => entry.value === selectedOutputType)?.stockName
-    if (!preferredStockName) return
-
-    const matchingItem = outputInventoryItems.find(
-      (item) => item.name.trim().toLowerCase() === preferredStockName.toLowerCase()
-    )
-    if (matchingItem && outputForm.getValues('stock_item_id') !== matchingItem.id) {
-      outputForm.setValue('stock_item_id', matchingItem.id, { shouldValidate: true })
-    }
-  }, [outputForm, outputInventoryItems, selectedOutputType])
-
   useEffect(() => {
     if (!isOutputModalOpen) return
+    const currentItemId = outputForm.getValues('stock_item_id')
+    const currentItem = outputInventoryItems.find((item) => item.id === currentItemId)
+    const currentOutputType = inferOutputType(currentItem)
     const allowedTypes = new Set<string>(outputCatalogForSection.map((entry) => entry.value))
-    const currentType = outputForm.getValues('output_type')
-    if (!allowedTypes.has(currentType)) {
-      outputForm.setValue('output_type', outputCatalogForSection[0]?.value ?? 'dressed_chicken')
+    if (!currentOutputType || !allowedTypes.has(currentOutputType)) {
+      const firstAllowedItem = outputInventoryItems.find((item) => {
+        const outputType = inferOutputType(item)
+        return !!outputType && allowedTypes.has(outputType)
+      })
+      outputForm.setValue('stock_item_id', firstAllowedItem?.id ?? 0, { shouldValidate: true })
     }
-  }, [isOutputModalOpen, outputCatalogForSection, outputForm])
+  }, [isOutputModalOpen, outputCatalogForSection, outputForm, outputInventoryItems])
 
   const yieldSummary = useMemo(
     () =>
@@ -493,9 +498,7 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
   }
 
   const openOutputModal = () => {
-    outputForm.reset(
-      emptyOutputValues(outputCatalogForSection[0]?.value ?? 'dressed_chicken')
-    )
+    outputForm.reset(emptyOutputValues())
     if (approvedRecords[0]) {
       outputForm.setValue('record_id', approvedRecords[0].id, { shouldValidate: true })
     }
@@ -528,6 +531,14 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
   const recordModalTitle = section === 'planning' ? 'Plan slaughter run' : 'Enter slaughter record'
   const outputModalTitle =
     section === 'cuts' ? 'Post cut part output' : section === 'byproducts' ? 'Post byproduct output' : 'Post product output'
+  const availableOutputItems = useMemo(
+    () =>
+      outputInventoryItems.filter((item) => {
+        const outputType = inferOutputType(item)
+        return !!outputType && outputCatalogForSection.some((entry) => entry.value === outputType)
+      }),
+    [outputCatalogForSection, outputInventoryItems]
+  )
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -973,25 +984,18 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
             </select>
           </div>
           <div>
-            <label className="form-label">Produced item</label>
-            <select className="form-input" {...outputForm.register('output_type')}>
-              {outputCatalogForSection.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
             <label className="form-label">Inventory item</label>
             <select className="form-input" {...outputForm.register('stock_item_id')}>
               <option value={0}>Choose stock item</option>
-              {outputInventoryItems.map((item) => (
+              {availableOutputItems.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
                 </option>
               ))}
             </select>
+            <p className="form-hint">
+              Only coded slaughter items entered by inventory or slaughter managers appear here. Sales and processing users must select from this list instead of typing items manually.
+            </p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div>

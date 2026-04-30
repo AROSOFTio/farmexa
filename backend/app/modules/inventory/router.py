@@ -70,6 +70,27 @@ def create_medicine_item(
     return service.inventory_service.create_item(db, payload)
 
 
+@router.put("/items/{item_id}", response_model=schemas.StockItemOut)
+def update_item(
+    item_id: int,
+    item: schemas.StockItemUpdate,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("inventory:write")),
+):
+    return service.inventory_service.update_item(db, item_id, item)
+
+
+@router.put("/medicine/items/{item_id}", response_model=schemas.StockItemOut)
+def update_medicine_item(
+    item_id: int,
+    item: schemas.StockItemUpdate,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("inventory:write")),
+):
+    payload = item.model_copy(update={"category": StockCategory.MEDICINE})
+    return service.inventory_service.update_item(db, item_id, payload)
+
+
 @router.post("/movements", response_model=schemas.StockMovementOut)
 def create_movement(
     movement: schemas.StockMovementCreate,

@@ -7,11 +7,6 @@ export const authService = {
     return data
   },
 
-  async registerVendor(payload: VendorRegistrationRequest): Promise<VendorRegistrationResponse> {
-    const { data } = await api.post<VendorRegistrationResponse>('/auth/register-vendor', payload)
-    return data
-  },
-
   async refresh(refreshToken: string): Promise<TokenPair> {
     const { data } = await api.post<TokenPair>('/auth/refresh', {
       refresh_token: refreshToken,
@@ -25,6 +20,11 @@ export const authService = {
 
   async getMe(): Promise<MeResponse> {
     const { data } = await api.get<MeResponse>('/auth/me')
+    return data
+  },
+
+  async registerVendor(payload: VendorRegistrationRequest): Promise<VendorRegistrationResponse> {
+    const { data } = await api.post<VendorRegistrationResponse>('/auth/register-vendor', payload)
     return data
   },
 }

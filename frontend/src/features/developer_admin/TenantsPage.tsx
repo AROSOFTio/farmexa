@@ -61,11 +61,15 @@ interface Tenant {
   contact_person: string | null
   email: string
   phone: string | null
+  address: string | null
+  country: string | null
   status: string
   plan: string
   billing_cycle: string
+  subscription_start: string | null
   subscription_expiry: string | null
   is_suspended: boolean
+  notes: string | null
   modules: TenantModule[]
   domains: TenantDomain[]
   subscriptions: Subscription[]
@@ -136,15 +140,20 @@ interface BillingOverview {
 
 const tenantSchema = z.object({
   name: z.string().min(2, 'Tenant name is required'),
+  slug: z.string().optional(),
   business_name: z.string().optional(),
   contact_person: z.string().optional(),
   email: z.string().email('Valid email required'),
   phone: z.string().optional(),
+  address: z.string().optional(),
+  country: z.string().optional(),
   domain: z.string().optional(),
   plan: z.string().min(1, 'Plan is required'),
   billing_cycle: z.string().min(1, 'Billing cycle is required'),
   subscription_start: z.string().optional(),
   subscription_expiry: z.string().optional(),
+  status: z.string().optional(),
+  is_suspended: z.boolean().default(false),
   notes: z.string().optional(),
 })
 
@@ -197,6 +206,7 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
   const queryClient = useQueryClient()
   const { hasPermission } = useAuth()
   const [isTenantModalOpen, setIsTenantModalOpen] = useState(false)
+  const [isEditTenantModalOpen, setIsEditTenantModalOpen] = useState(false)
   const [isModulesModalOpen, setIsModulesModalOpen] = useState(false)
   const [isDomainModalOpen, setIsDomainModalOpen] = useState(false)
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null)
@@ -223,7 +233,11 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
 
   const { register, handleSubmit, reset, setValue, getValues, watch, formState: { errors } } = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),
-    defaultValues: { plan: '', billing_cycle: 'monthly' },
+    defaultValues: { plan: '', billing_cycle: 'monthly', is_suspended: false },
+  })
+  const editTenantForm = useForm<TenantFormValues>({
+    resolver: zodResolver(tenantSchema),
+    defaultValues: { plan: '', billing_cycle: 'monthly', is_suspended: false },
   })
   const selectedPlan = watch('plan')
 
@@ -270,6 +284,23 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
       setSelectedModuleKeys([])
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to create tenant.')),
+  })
+
+  const updateTenantMutation = useMutation({
+    mutationFn: (payload: { tenantId: number; values: TenantFormValues }) =>
+      api.put(`/dev-admin/tenants/${payload.tenantId}`, {
+        ...payload.values,
+        subscription_start: payload.values.subscription_start || null,
+        subscription_expiry: payload.values.subscription_expiry || null,
+        domain: payload.values.domain || null,
+      }),
+    onSuccess: async () => {
+      await refreshTenantQueries()
+      toast.success('Tenant updated')
+      setIsEditTenantModalOpen(false)
+      setSelectedTenant(null)
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to update tenant.')),
   })
 
   const suspendMutation = useMutation({
@@ -420,6 +451,35 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
                     </td>
                     <td className="text-right">
                       <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedTenant(tenant)
+                            editTenantForm.reset({
+                              name: tenant.name,
+                              slug: tenant.slug,
+                              business_name: tenant.business_name ?? '',
+                              contact_person: tenant.contact_person ?? '',
+                              email: tenant.email,
+                              phone: tenant.phone ?? '',
+                              address: tenant.address ?? '',
+                              country: tenant.country ?? '',
+                              domain: tenant.domains.find((domain) => domain.is_primary)?.host ?? '',
+                              plan: tenant.plan,
+                              billing_cycle: tenant.billing_cycle,
+                              subscription_start: tenant.subscription_start ?? '',
+                              subscription_expiry: tenant.subscription_expiry ?? '',
+                              status: tenant.status,
+                              is_suspended: tenant.is_suspended,
+                              notes: tenant.notes ?? '',
+                            })
+                            setIsEditTenantModalOpen(true)
+                          }}
+                          disabled={!canManageTenants}
+                          className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          Edit
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -733,6 +793,10 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
             <input className="form-input" {...register('business_name')} />
           </div>
           <div>
+            <label className="form-label">Slug</label>
+            <input className="form-input" {...register('slug')} />
+          </div>
+          <div>
             <label className="form-label">Contact Person</label>
             <input className="form-input" {...register('contact_person')} />
           </div>
@@ -744,6 +808,14 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
           <div>
             <label className="form-label">Phone</label>
             <input className="form-input" {...register('phone')} />
+          </div>
+          <div>
+            <label className="form-label">Address</label>
+            <input className="form-input" {...register('address')} />
+          </div>
+          <div>
+            <label className="form-label">Country</label>
+            <input className="form-input" {...register('country')} />
           </div>
           <div>
             <label className="form-label">Domain / Subdomain</label>
@@ -810,6 +882,98 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
             <button type="button" className="btn-secondary" onClick={() => setIsTenantModalOpen(false)}>Cancel</button>
             <button type="submit" className="btn-primary" disabled={createTenantMutation.isPending}>
               {createTenantMutation.isPending ? 'Saving...' : 'Create Vendor'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={isEditTenantModalOpen}
+        onClose={() => {
+          setIsEditTenantModalOpen(false)
+          setSelectedTenant(null)
+        }}
+        title={selectedTenant ? `Edit Tenant - ${selectedTenant.name}` : 'Edit Tenant'}
+        description="Developer Admin can update the full tenant profile, plan, billing timing, primary domain, and suspension status from one form."
+      >
+        <form onSubmit={editTenantForm.handleSubmit((values) => {
+          if (!selectedTenant) return
+          updateTenantMutation.mutate({ tenantId: selectedTenant.id, values })
+        })} className="grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <label className="form-label">Tenant / Farm Name</label>
+            <input className="form-input" {...editTenantForm.register('name')} />
+          </div>
+          <div>
+            <label className="form-label">Slug</label>
+            <input className="form-input" {...editTenantForm.register('slug')} />
+          </div>
+          <div>
+            <label className="form-label">Business Name</label>
+            <input className="form-input" {...editTenantForm.register('business_name')} />
+          </div>
+          <div>
+            <label className="form-label">Contact Person</label>
+            <input className="form-input" {...editTenantForm.register('contact_person')} />
+          </div>
+          <div>
+            <label className="form-label">Email</label>
+            <input type="email" className="form-input" {...editTenantForm.register('email')} />
+          </div>
+          <div>
+            <label className="form-label">Phone</label>
+            <input className="form-input" {...editTenantForm.register('phone')} />
+          </div>
+          <div>
+            <label className="form-label">Address</label>
+            <input className="form-input" {...editTenantForm.register('address')} />
+          </div>
+          <div>
+            <label className="form-label">Country</label>
+            <input className="form-input" {...editTenantForm.register('country')} />
+          </div>
+          <div>
+            <label className="form-label">Primary Domain</label>
+            <input className="form-input" {...editTenantForm.register('domain')} />
+          </div>
+          <div>
+            <label className="form-label">Plan</label>
+            <select className="form-input" {...editTenantForm.register('plan')}>
+              {(catalog?.plans ?? []).map((plan) => <option key={plan.code} value={plan.code}>{plan.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Billing Cycle</label>
+            <select className="form-input" {...editTenantForm.register('billing_cycle')}>
+              <option value="monthly">Monthly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="annual">Annual</option>
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Status</label>
+            <input className="form-input" {...editTenantForm.register('status')} />
+          </div>
+          <div>
+            <label className="form-label">Subscription Start</label>
+            <input type="date" className="form-input" {...editTenantForm.register('subscription_start')} />
+          </div>
+          <div>
+            <label className="form-label">Subscription Expiry</label>
+            <input type="date" className="form-input" {...editTenantForm.register('subscription_expiry')} />
+          </div>
+          <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
+            <input type="checkbox" {...editTenantForm.register('is_suspended')} />
+            Suspend tenant access
+          </label>
+          <div className="md:col-span-2">
+            <label className="form-label">Notes</label>
+            <textarea className="form-input min-h-[108px]" {...editTenantForm.register('notes')} />
+          </div>
+          <div className="md:col-span-2 flex justify-end gap-3 pt-2">
+            <button type="button" className="btn-secondary" onClick={() => setIsEditTenantModalOpen(false)}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={updateTenantMutation.isPending}>
+              {updateTenantMutation.isPending ? 'Saving...' : 'Save Tenant'}
             </button>
           </div>
         </form>

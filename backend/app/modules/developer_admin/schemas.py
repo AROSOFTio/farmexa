@@ -36,6 +36,12 @@ class TenantUpdate(BaseModel):
     phone: Optional[str] = None
     address: Optional[str] = None
     country: Optional[str] = None
+    domain: Optional[str] = None
+    plan: Optional[str] = None
+    billing_cycle: Optional[str] = None
+    subscription_start: Optional[date] = None
+    subscription_expiry: Optional[date] = None
+    is_suspended: Optional[bool] = None
     status: Optional[str] = None
     notes: Optional[str] = None
 

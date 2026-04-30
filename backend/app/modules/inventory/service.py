@@ -55,6 +55,19 @@ class InventoryService:
         db.refresh(db_item)
         return db_item
 
+    def update_item(self, db: Session, item_id: int, item: schemas.StockItemUpdate):
+        db_item = db.query(StockItem).filter(StockItem.id == item_id).first()
+        if not db_item:
+            raise HTTPException(status_code=404, detail="Stock item not found")
+
+        updates = item.model_dump(exclude_none=True)
+        for field, value in updates.items():
+            setattr(db_item, field, value)
+
+        db.commit()
+        db.refresh(db_item)
+        return db_item
+
     def create_movement(self, db: Session, movement: schemas.StockMovementCreate):
         item = db.query(StockItem).filter(StockItem.id == movement.item_id).first()
         if not item:
