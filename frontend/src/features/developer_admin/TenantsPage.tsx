@@ -241,17 +241,19 @@ function statusBadge(status: string) {
 function sectionMeta(section: AdminSection) {
   switch (section) {
     case 'dashboard':
-      return { title: 'Developer Admin Dashboard', subtitle: 'Monitor tenancy health, rollout readiness, plan adoption, and platform-side activity.' }
+      return { title: 'Welcome back, Developer Admin', subtitle: 'Platform overview and system control center.' }
+    case 'tenants':
+      return { title: 'Tenants Control', subtitle: 'Onboard, manage, and monitor tenant workspaces globally.' }
     case 'domains':
-      return { title: 'Domains', subtitle: 'Review tenant domains globally, verify setup, activate SSL, and retire broken mappings safely.' }
+      return { title: 'Domains & Routing', subtitle: 'Review tenant domains globally, verify setup, activate SSL, and retire broken mappings safely.' }
     case 'plans':
-      return { title: 'Plans', subtitle: 'Define pricing, billing cycles, included modules, and commercial packaging from one place.' }
+      return { title: 'Subscription Plans', subtitle: 'Define pricing, billing cycles, included modules, and commercial packaging.' }
     case 'activity':
-      return { title: 'Activity Logs', subtitle: 'Track developer-admin actions across tenants, domains, plans, and access overrides.' }
+      return { title: 'System Activity', subtitle: 'Track developer-admin actions across tenants, domains, plans, and access overrides.' }
     case 'settings':
-      return { title: 'Settings', subtitle: 'Review platform defaults for domains, SSL provisioning, and mandatory tenancy controls.' }
+      return { title: 'Platform Settings', subtitle: 'Manage central domain defaults, provisioning controls, and mandatory modules.' }
     default:
-      return { title: 'Tenants', subtitle: 'Manage tenant onboarding, plan assignment, module overrides, operational database status, and domain control.' }
+      return { title: 'Developer Admin', subtitle: 'Platform management.' }
   }
 }
 
@@ -624,67 +626,81 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
 
   const renderDashboard = () => (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <div className="metric-card">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="metric-label">Total Tenants</div>
-              <div className="metric-value">{overview?.total_tenants ?? 0}</div>
-              <div className="metric-note">Tenant workspaces currently managed from the platform control plane.</div>
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        {[
+          {
+            title: "Total Tenants",
+            value: overview?.total_tenants ?? 0,
+            note: "Active tenants on platform",
+            change: "+12%",
+            icon: Users,
+            tone: "bg-blue-50 text-blue-700",
+          },
+          {
+            title: "Active Domains",
+            value: overview?.active_domains ?? 0,
+            note: "Verified custom domains",
+            change: "+8%",
+            icon: Globe,
+            tone: "bg-indigo-50 text-indigo-700",
+          },
+          {
+            title: "Active Plans",
+            value: overview?.active_plans ?? 0,
+            note: "Subscription plans",
+            change: "No change",
+            icon: CreditCard,
+            tone: "bg-amber-50 text-amber-700",
+          },
+          {
+            title: "Monthly Revenue",
+            value: formatMoney(overview?.monthly_revenue, 'UGX'),
+            note: "Total this month",
+            change: "+15%",
+            icon: BadgeDollarSign,
+            tone: "bg-yellow-50 text-yellow-700",
+          },
+          {
+            title: "Pending Setup",
+            value: overview?.pending_setup ?? 0,
+            note: "Tenants awaiting setup",
+            change: "+25%",
+            icon: Database,
+            tone: "bg-red-50 text-red-600",
+          },
+          {
+            title: "Suspended Tenants",
+            value: overview?.suspended_tenants ?? 0,
+            note: "Tenants suspended",
+            change: "-50%",
+            icon: PowerOff,
+            tone: "bg-purple-50 text-purple-700",
+          },
+        ].map((card) => {
+          const Icon = card.icon;
+          return (
+            <div
+              key={card.title}
+              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
+            >
+              <div className="flex items-center gap-4">
+                <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${card.tone}`}>
+                  <Icon className="h-7 w-7" />
+                </div>
+
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold text-slate-600 uppercase tracking-wider">{card.title}</p>
+                  <h3 className="mt-1 truncate text-xl font-black text-slate-950">{card.value}</h3>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <p className="text-sm font-bold text-emerald-600">{card.change}</p>
+                <p className="mt-1 text-xs text-slate-500">{card.note}</p>
+              </div>
             </div>
-            <div className="metric-icon"><Building2 className="h-5 w-5" /></div>
-          </div>
-        </div>
-        <div className="metric-card">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="metric-label">Active Domains</div>
-              <div className="metric-value">{overview?.active_domains ?? 0}</div>
-              <div className="metric-note">Domains with usable access and active routing across all tenants.</div>
-            </div>
-            <div className="metric-icon"><Globe className="h-5 w-5" /></div>
-          </div>
-        </div>
-        <div className="metric-card">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="metric-label">Active Plans</div>
-              <div className="metric-value">{overview?.active_plans ?? 0}</div>
-              <div className="metric-note">Commercial plans available for assignment and onboarding.</div>
-            </div>
-            <div className="metric-icon"><Layers3 className="h-5 w-5" /></div>
-          </div>
-        </div>
-        <div className="metric-card">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="metric-label">Monthly Revenue</div>
-              <div className="metric-value text-[1.5rem]">{formatMoney(overview?.monthly_revenue, 'UGX')}</div>
-              <div className="metric-note">Monthly revenue equivalent derived from each tenant’s assigned plan.</div>
-            </div>
-            <div className="metric-icon"><BadgeDollarSign className="h-5 w-5" /></div>
-          </div>
-        </div>
-        <div className="metric-card">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="metric-label">Pending Setup</div>
-              <div className="metric-value">{overview?.pending_setup ?? 0}</div>
-              <div className="metric-note">Tenants still missing a ready operational database or active primary domain.</div>
-            </div>
-            <div className="metric-icon"><Database className="h-5 w-5" /></div>
-          </div>
-        </div>
-        <div className="metric-card">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="metric-label">Suspended Tenants</div>
-              <div className="metric-value">{overview?.suspended_tenants ?? 0}</div>
-              <div className="metric-note">Workspaces currently blocked from operating until reactivated.</div>
-            </div>
-            <div className="metric-icon"><PowerOff className="h-5 w-5" /></div>
-          </div>
-        </div>
+          );
+        })}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -713,33 +729,47 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
           </div>
         </div>
 
-        <div className="card overflow-hidden">
-          <div className="surface-header">
-            <div>
-              <h2 className="surface-title">Recent Tenants</h2>
-              <p className="surface-subtitle">Latest workspaces onboarded to the platform.</p>
-            </div>
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between border-b border-slate-200 p-6">
+            <h2 className="text-lg font-black text-slate-950">Recent Tenants</h2>
+            <button type="button" className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50" onClick={() => setSection('tenants')}>
+              View all
+            </button>
           </div>
           <div className="overflow-x-auto">
-            <table className="data-table">
-              <thead>
+              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 font-bold">
                 <tr>
-                  <th>Tenant</th>
-                  <th>Plan</th>
-                  <th>Status</th>
+                  <th className="px-6 py-4">Tenant</th>
+                  <th className="px-6 py-4">Plan</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4"></th>
                 </tr>
               </thead>
               <tbody>
                 {tenants.slice(0, 5).map((tenant) => (
-                  <tr key={tenant.id}>
-                    <td>
-                      <button type="button" className="text-left font-semibold text-slate-900 hover:text-brand-primary" onClick={() => setSelectedTenantId(tenant.id)}>
+                  <tr key={tenant.id} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="px-6 py-4">
+                      <button type="button" className="text-left font-bold text-slate-900 hover:text-brand-primary" onClick={() => setSelectedTenantId(tenant.id)}>
                         {tenant.name}
                       </button>
-                      <div className="mt-1 text-xs text-slate-500">{tenant.domains.find(d => d.is_primary)?.host ?? 'No domain'}</div>
+                      <div className="mt-0.5 text-xs text-slate-500 font-medium">{tenant.domains.find(d => d.is_primary)?.host ?? 'No domain'}</div>
                     </td>
-                    <td><span className="badge badge-brand uppercase">{tenant.plan}</span></td>
-                    <td><span className={statusBadge(tenant.status)}>{tenant.status}</span></td>
+                    <td className="px-6 py-4">
+                      <span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#b88a1d] border border-amber-100">
+                        {tenant.plan}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={clsx(
+                        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider',
+                        tenant.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                      )}>
+                        {tenant.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <MoreHorizontal className="h-5 w-5 text-slate-400 cursor-pointer" />
+                    </td>
                   </tr>
                 ))}
                 {!tenants.length && (
@@ -754,32 +784,36 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <div className="card overflow-hidden">
-          <div className="surface-header">
-            <div>
-              <h2 className="surface-title">Plan Overview</h2>
-              <p className="surface-subtitle">Adoption distribution across commercial packages.</p>
-            </div>
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden xl:col-span-2">
+          <div className="flex items-center justify-between border-b border-slate-200 p-6">
+            <h2 className="text-lg font-black text-slate-950">Plan Overview</h2>
+            <button type="button" className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50" onClick={() => setSection('plans')}>
+              View all
+            </button>
           </div>
           <div className="overflow-x-auto">
-            <table className="data-table">
-              <thead>
+              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 font-bold">
                 <tr>
-                  <th>Plan</th>
-                  <th>Price</th>
-                  <th>Tenants</th>
-                  <th>Status</th>
+                  <th className="px-6 py-4">Plan</th>
+                  <th className="px-6 py-4">Price</th>
+                  <th className="px-6 py-4">Tenants</th>
+                  <th className="px-6 py-4">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {plans.map((plan) => (
-                  <tr key={plan.code}>
-                    <td>
-                      <div className="font-semibold text-slate-900">{plan.name}</div>
+                  <tr key={plan.code} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="px-6 py-4 font-bold text-slate-950">{plan.name}</td>
+                    <td className="px-6 py-4 text-slate-700 font-semibold">{formatMoney(plan.monthly_price, plan.currency)}/mo</td>
+                    <td className="px-6 py-4 text-slate-700 font-semibold">{plan.tenant_count}</td>
+                    <td className="px-6 py-4">
+                      <span className={clsx(
+                        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider',
+                        plan.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'
+                      )}>
+                        {plan.is_active ? 'Active' : 'Inactive'}
+                      </span>
                     </td>
-                    <td>{formatMoney(plan.monthly_price, plan.currency)}/mo</td>
-                    <td>{plan.tenant_count}</td>
-                    <td><span className={plan.is_active ? 'badge badge-success' : 'badge badge-neutral'}>{plan.is_active ? 'Active' : 'Inactive'}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -788,53 +822,56 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <div className="card overflow-hidden">
-            <div className="surface-header">
-              <div>
-                <h2 className="surface-title">Revenue Distribution</h2>
-              </div>
-            </div>
-            <div className="flex items-center justify-center py-6 h-[220px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={plans.map(p => ({ name: p.name, value: p.tenant_count, color: '#b88a1d' }))}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {plans.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={['#b88a1d', '#0f172a', '#64748b', '#e2e8f0'][index % 4]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ borderRadius: '12px', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-card)' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-black text-slate-950">Revenue Overview</h2>
           </div>
+          <div className="flex items-center justify-center h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={plans.map(p => ({ name: p.name, value: p.tenant_count }))}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {plans.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={['#b88a1d', '#0f172a', '#64748b', '#e2e8f0'][index % 4]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 4px 12px -2px rgba(15, 23, 42, 0.05)' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
 
-          <div className="card overflow-hidden flex flex-col">
-            <div className="surface-header">
-              <div>
-                <h2 className="surface-title">Quick Actions</h2>
-              </div>
-            </div>
-            <div className="p-5 grid gap-3 flex-1 place-content-center">
-              <button type="button" className="btn-primary w-full" onClick={() => setIsTenantModalOpen(true)}>
-                <Plus className="h-4 w-4" /> Add Tenant
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden">
+          <h2 className="text-lg font-black text-slate-950 mb-5">Quick Actions</h2>
+          <div className="grid gap-4">
+            {[
+              { label: "Add Tenant", note: "Onboard new farm", onClick: () => setIsTenantModalOpen(true) },
+              { label: "Add Domain", note: "Configure routing", onClick: () => setSection('domains') },
+              { label: "Create Plan", note: "Define new offering", onClick: () => setIsPlanModalOpen(true) },
+              { label: "View Billing", note: "Platform financials", onClick: () => {} },
+            ].map((action) => (
+              <button
+                key={action.label}
+                onClick={action.onClick}
+                className="rounded-2xl border border-slate-200 bg-white p-5 text-left transition hover:border-[#c79a31] hover:bg-amber-50 group"
+              >
+                <p className="font-bold text-slate-900 group-hover:text-[#b88a1d]">{action.label}</p>
+                <p className="mt-1 text-xs text-slate-500">{action.note}</p>
               </button>
-              <button type="button" className="btn-secondary w-full" onClick={() => setIsPlanModalOpen(true)}>
-                <CreditCard className="h-4 w-4" /> Create Plan
-              </button>
-            </div>
+            ))}
           </div>
         </div>
       </div>
+    </div>
     </div>
   )
 
@@ -1175,69 +1212,90 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="card overflow-hidden">
-          <div className="surface-header">
+      <div className="grid gap-5 md:grid-cols-4">
+        {[
+          ["Total Plans", plans.length],
+          ["Active Plans", plans.filter(p => p.is_active).length],
+          ["Subscribed Tenants", overview?.total_tenants ?? 0],
+          ["Monthly Revenue", formatMoney(overview?.monthly_revenue, 'UGX')],
+        ].map(([label, value]) => (
+          <div key={label.toString()} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-sm font-semibold text-slate-500">{label}</p>
+            <h3 className="mt-3 text-3xl font-black text-slate-950">{value}</h3>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="border-b border-slate-200 p-6 flex items-center justify-between">
             <div>
-              <h2 className="surface-title">Plan Catalog</h2>
-              <p className="surface-subtitle">Pricing, billing cycles, module count, tenant adoption, and commercial status.</p>
+              <h2 className="text-lg font-black text-slate-950">Subscription Plans</h2>
+              <p className="mt-1 text-sm text-slate-500">Modules and billing are configured inside each plan.</p>
             </div>
-            {canManage ? (
-              <button type="button" className="btn-primary" onClick={() => openPlanEditor()}>
-                <Plus className="h-4 w-4" />
-                Create Plan
+            {canManage && (
+              <button type="button" className="flex items-center gap-2 rounded-2xl bg-[#c79a31] px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#b98624]" onClick={() => openPlanEditor()}>
+                <Plus className="h-5 w-5" />
+                New Plan
               </button>
-            ) : null}
+            )}
           </div>
           <div className="overflow-x-auto">
-            <table className="data-table">
-              <thead>
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 font-bold">
                 <tr>
-                  <th>Plan</th>
-                  <th>Pricing</th>
-                  <th>Modules</th>
-                  <th>Tenants</th>
-                  <th>Status</th>
-                  <th className="text-right">Actions</th>
+                  <th className="px-6 py-4">Plan</th>
+                  <th className="px-6 py-4">Price</th>
+                  <th className="px-6 py-4">Modules</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {plans.length ? plans.map((plan) => (
-                  <tr key={plan.code} className={selectedPlanCode === plan.code ? 'bg-[rgba(var(--brand-primary-rgb),0.04)]' : ''}>
-                    <td>
-                      <button type="button" className="text-left font-semibold text-slate-900" onClick={() => setSelectedPlanCode(plan.code)}>
-                        {plan.name}
-                      </button>
-                      <div className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-500">{plan.code}</div>
+                  <tr key={plan.code} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="px-6 py-5">
+                      <p className="font-bold text-slate-950">{plan.name}</p>
+                      <p className="mt-1 text-xs text-slate-500 truncate max-w-[200px]">{plan.description}</p>
                     </td>
-                    <td>
-                      <div>{formatMoney(plan.monthly_price, plan.currency)} / month</div>
-                      <div className="mt-1 text-xs text-slate-500">{formatMoney(plan.quarterly_price, plan.currency)} quarter • {formatMoney(plan.annual_price, plan.currency)} year</div>
+                    <td className="px-6 py-5">
+                      <p className="font-bold text-slate-900">{formatMoney(plan.monthly_price, plan.currency)}</p>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-tight font-medium">per month</p>
                     </td>
-                    <td>{plan.module_count}</td>
-                    <td>{plan.tenant_count}</td>
-                    <td><span className={statusBadge(plan.is_active ? 'active' : 'disabled')}>{plan.is_active ? 'Active' : 'Inactive'}</span></td>
-                    <td className="text-right">
+                    <td className="px-6 py-5">
+                      <div className="flex flex-wrap gap-1.5 max-w-[180px]">
+                        {plan.modules.slice(0, 3).map(m => (
+                          <span key={m.module_key} className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-[#b98624] border border-amber-100">
+                            {m.module_name.split(' ')[0]}
+                          </span>
+                        ))}
+                        {plan.modules.length > 3 && <span className="text-[9px] font-bold text-slate-400">+{plan.modules.length - 3}</span>}
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <span className={clsx(
+                        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider',
+                        plan.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'
+                      )}>
+                        {plan.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5 text-right">
                       <div className="flex justify-end gap-2">
-                        <button type="button" className="btn-secondary btn-sm" onClick={() => setSelectedPlanCode(plan.code)}>Manage</button>
-                        {canManage ? (
-                          <>
-                            <button type="button" className="btn-secondary btn-sm" onClick={() => openPlanEditor(plan)}>Edit</button>
-                            <button
-                              type="button"
-                              className="btn-secondary btn-sm"
-                              onClick={() => updatePlanStatusMutation.mutate({ code: plan.code, is_active: !plan.is_active })}
-                            >
-                              {plan.is_active ? 'Deactivate' : 'Activate'}
-                            </button>
-                          </>
-                        ) : null}
+                        <button type="button" className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50" onClick={() => setSelectedPlanCode(plan.code)}>
+                          Manage
+                        </button>
+                        {canManage && (
+                          <button type="button" className="rounded-xl border border-slate-200 p-1.5 text-slate-500 hover:bg-slate-50" onClick={() => openPlanEditor(plan)}>
+                            <Settings className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan={6} className="py-10 text-center text-slate-500">No plans configured.</td>
+                    <td colSpan={5} className="px-6 py-10 text-center text-slate-500 font-medium">No plans configured.</td>
                   </tr>
                 )}
               </tbody>
@@ -1245,12 +1303,10 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
           </div>
         </div>
 
-        <div className="card overflow-hidden">
-          <div className="surface-header">
-            <div>
-              <h2 className="surface-title">{selectedPlan ? `${selectedPlan.name} Details` : 'Plan Details'}</h2>
-              <p className="surface-subtitle">Billing terms, status, and included modules for the selected plan.</p>
-            </div>
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="border-b border-slate-200 p-6">
+            <h2 className="text-lg font-black text-slate-950">{selectedPlan ? `${selectedPlan.name} Details` : 'Plan Details'}</h2>
+            <p className="mt-1 text-sm text-slate-500">Billing terms and included modules.</p>
           </div>
           {selectedPlan ? (
             <div className="space-y-5 px-5 py-5">
@@ -1283,17 +1339,20 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
               {selectedPlan.description ? <div className="inline-note">{selectedPlan.description}</div> : null}
 
               <div>
-                <div className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Included Modules</div>
+                <div className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">Included Modules</div>
                 <div className="space-y-2">
                   {modules.map((module) => {
                     const included = selectedPlan.modules.some((item) => item.module_key === module.key)
                     return (
-                      <div key={module.key} className="flex items-start justify-between gap-3 rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
-                        <div>
-                          <div className="text-sm font-semibold text-slate-900">{module.name}</div>
-                          <div className="mt-1 text-xs text-slate-500">{module.category.replace(/_/g, ' ')} • {module.description}</div>
+                      <div key={module.key} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3">
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-slate-900 truncate">{module.name}</div>
                         </div>
-                        <span className={included ? 'badge badge-success' : 'badge badge-neutral'}>{included ? 'Included' : 'Not Included'}</span>
+                        {included ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                        ) : (
+                          <span className="h-2 w-2 rounded-full bg-slate-200 shrink-0" />
+                        )}
                       </div>
                     )
                   })}
@@ -1301,9 +1360,22 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
               </div>
             </div>
           ) : (
-            <div className="px-5 py-10 text-sm text-slate-500">Select a plan to inspect its billing model and included modules.</div>
+            <div className="px-6 py-20 text-center">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-slate-400 mb-4">
+                <Layers3 className="h-6 w-6" />
+              </div>
+              <p className="text-sm font-medium text-slate-500">Select a plan to inspect its configuration.</p>
+            </div>
           )}
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <h3 className="font-black text-slate-950">Important Structure</h3>
+        <p className="mt-2 text-sm text-slate-700">
+          Modules should not appear as a separate Developer Admin menu. They must be managed only inside
+          each plan. Billing should also be configured here through plan prices.
+        </p>
       </div>
     </div>
   )
@@ -1436,12 +1508,9 @@ export function TenantsPage({ section = 'tenants' }: { section?: AdminSection })
 
   return (
     <div className="animate-fade-in space-y-6">
-      <div className="section-header">
-        <div>
-          <div className="page-eyebrow">Platform Control</div>
-          <h1 className="section-title">{meta.title}</h1>
-          <p className="section-subtitle">{meta.subtitle}</p>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-black text-slate-950">{meta.title}</h1>
+        <p className="mt-1 text-slate-500">{meta.subtitle}</p>
       </div>
 
       {renderSection()}

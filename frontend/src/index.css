@@ -9,7 +9,7 @@
     --surface-card: #ffffff;
     --surface-soft: #f8fafc;
     --surface-muted: #f1f5f9;
-    --sidebar-bg: linear-gradient(180deg, #CFA23A 0%, #B88A2E 100%);
+    --sidebar-bg: linear-gradient(to bottom, #d5aa3d, #c79a31, #b98624);
     --sidebar-active: #ffffff;
     --topbar-bg: rgba(255, 255, 255, 0.94);
     --border-subtle: #e5e7eb;

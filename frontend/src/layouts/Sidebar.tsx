@@ -173,35 +173,41 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="relative z-10 px-4 pt-4">
-          <div className="rounded-[1.45rem] border border-[var(--sidebar-panel-border)] bg-[var(--sidebar-panel)] p-4 shadow-[0_28px_45px_-36px_rgba(74,53,4,0.48)] backdrop-blur-sm">
-            <div className="flex items-start justify-between gap-3">
-              <BrandMark light showTagline />
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[var(--sidebar-heading)] transition-colors hover:bg-white/30 lg:hidden"
-                aria-label="Close navigation"
-              >
-                <X className="h-4 w-4" />
-              </button>
+        <div className="relative z-10 px-6 py-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-2xl font-black text-[#d5aa3d]">
+              F
             </div>
-
-            <div className="mt-4 inline-flex rounded-full border border-white/40 bg-white/50 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-[var(--sidebar-heading)]">
-              {roleLabel}
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold leading-tight text-white">Farmexa</h1>
+              <p className="text-xs text-white/75">Manage Smart. Grow Better.</p>
             </div>
-
-            {tenant ? (
-              <div className="mt-3 rounded-[1.1rem] border border-white/40 bg-white/50 px-4 py-3 backdrop-blur-sm">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--sidebar-text-muted)]">Workspace</div>
-                <div className="mt-2 truncate text-[12.5px] font-semibold leading-tight text-[var(--sidebar-heading)]">{tenant.name}</div>
-                <div className="mt-1 truncate text-[10.5px] text-[var(--sidebar-text-muted)]">
-                  {tenant.plan} {tenant.primary_domain ? `| ${tenant.primary_domain}` : ''}
-                </div>
-              </div>
-            ) : null}
+            <button
+              type="button"
+              onClick={onClose}
+              className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white transition-colors hover:bg-white/30 lg:hidden"
+              aria-label="Close navigation"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </div>
+
+            <div className="mt-4 px-6">
+              <div className="inline-flex rounded-full border border-white/40 bg-white/50 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-[#0f172a]">
+                {roleLabel}
+              </div>
+
+              {tenant ? (
+                <div className="mt-3 rounded-[1.1rem] border border-white/40 bg-white/50 px-4 py-3 backdrop-blur-sm">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#0f172a]/60">Workspace</div>
+                  <div className="mt-2 truncate text-[12.5px] font-semibold leading-tight text-[#0f172a]">{tenant.name}</div>
+                  <div className="mt-1 truncate text-[10.5px] text-[#0f172a]/60">
+                    {tenant.plan} {tenant.primary_domain ? `| ${tenant.primary_domain}` : ''}
+                  </div>
+                </div>
+              ) : null}
+            </div>
 
         <nav className="sidebar-scroll relative z-10 flex-1 overflow-y-auto px-3 pt-4 pb-3">
           {sections.map((section) => (
@@ -253,14 +259,19 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           ))}
         </nav>
 
-        <div className="relative z-10 px-4 pb-4 pt-3">
-          <div className="flex items-center gap-3 rounded-[1.15rem] border border-[var(--sidebar-panel-border)] bg-[var(--sidebar-panel)] px-3.5 py-3 shadow-[0_18px_40px_-34px_rgba(74,53,4,0.46)] backdrop-blur-sm">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] border border-white/40 bg-white/50 text-[11px] font-semibold text-[var(--sidebar-heading)]">
-              {user?.full_name?.slice(0, 2).toUpperCase() ?? 'FX'}
-            </div>
-            <div className="min-w-0">
-              <div className="truncate text-[12.5px] font-semibold leading-tight text-[var(--sidebar-heading)]">{user?.full_name ?? 'Loading...'}</div>
-              <div className="truncate text-[10.5px] leading-tight text-[var(--sidebar-text-muted)]">{userTitle}</div>
+        <div className="relative z-10 px-4 pb-4">
+          <div className="m-1 rounded-2xl border border-white/25 bg-white/15 p-4 backdrop-blur shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-[#b98624]">
+                {user?.full_name?.slice(0, 2).toUpperCase() ?? 'DA'}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-white">{user?.full_name ?? 'Developer Admin'}</p>
+                <p className="truncate text-xs text-white/75">{userTitle}</p>
+              </div>
+
+              <ChevronRight className="h-4 w-4 text-white/80" />
             </div>
           </div>
         </div>
