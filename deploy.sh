@@ -29,6 +29,50 @@ success() { echo -e "${GREEN}[OK] $*${NC}" | tee -a "$LOG_FILE"; }
 warn()    { echo -e "${YELLOW}[!] $*${NC}" | tee -a "$LOG_FILE"; }
 error()   { echo -e "${RED}[X] $*${NC}" | tee -a "$LOG_FILE"; exit 1; }
 
+show_compose_diagnostics() {
+  local services=("$@")
+
+  warn "Compose status snapshot:"
+  $DC -f "$COMPOSE_FILE" ps || true
+
+  if [ "${#services[@]}" -gt 0 ]; then
+    warn "Recent logs for: ${services[*]}"
+    $DC -f "$COMPOSE_FILE" logs --tail=80 "${services[@]}" || true
+  fi
+}
+
+require_env_value() {
+  local key="$1"
+  local value
+
+  value="$(sed -n -E "s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*(.*)[[:space:]]*$/\\1/p" .env | tail -n 1)"
+  value="${value%\"}"
+  value="${value#\"}"
+  value="${value%\'}"
+  value="${value#\'}"
+  value="$(printf '%s' "$value" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+
+  if [ -z "$value" ]; then
+    error "Missing required .env value: ${key}"
+  fi
+}
+
+validate_required_env() {
+  log "Validating required .env values..."
+  require_env_value "POSTGRES_PASSWORD"
+  require_env_value "REDIS_PASSWORD"
+  require_env_value "JWT_SECRET_KEY"
+  success "Required .env values are present."
+}
+
+validate_compose_configuration() {
+  log "Validating Docker Compose configuration..."
+  if ! $DC -f "$COMPOSE_FILE" config >/dev/null; then
+    error "Docker Compose configuration is invalid. Fix .env or ${COMPOSE_FILE} and rerun."
+  fi
+  success "Docker Compose configuration validated."
+}
+
 ensure_root() {
   if [ "${EUID:-$(id -u)}" -ne 0 ]; then
     error "Run this script with sudo or as root so it can manage ${DEPLOY_DIR}, ${LOG_FILE}, and Docker."
@@ -80,7 +124,9 @@ wait_for_container_health() {
     fi
 
     if [ "$status" = "unhealthy" ]; then
-      error "${container_name} is unhealthy. Check: $DC -f ${COMPOSE_FILE} logs ${container_name#farmexa_}"
+      echo ""
+      show_compose_diagnostics "${container_name#farmexa_}"
+      error "${container_name} is unhealthy."
     fi
 
     attempt=$((attempt + 1))
@@ -88,6 +134,7 @@ wait_for_container_health() {
     sleep "$delay"
   done
   echo ""
+  show_compose_diagnostics "${container_name#farmexa_}"
   error "${container_name} did not become healthy in time. Last status: ${status:-unknown}"
 }
 
@@ -171,6 +218,8 @@ if [ ! -f ".env" ]; then
   fi
 fi
 success ".env file present."
+validate_required_env
+validate_compose_configuration
 
 # -- Build images ---------------------------------------------------------------
 log "Building Docker images..."
@@ -184,7 +233,10 @@ success "Containers stopped."
 
 # -- Start required infrastructure ----------------------------------------------
 log "Starting database and redis..."
-$DC -f "$COMPOSE_FILE" up -d db redis
+if ! $DC -f "$COMPOSE_FILE" up -d db redis; then
+  show_compose_diagnostics db redis
+  error "Failed to start database and redis."
+fi
 success "Database services started."
 
 wait_for_container_health "farmexa_db" 18 5
