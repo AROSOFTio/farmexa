@@ -105,20 +105,28 @@ def upgrade() -> None:
         ondelete="SET NULL",
     )
 
-    for value in (
-        "bird_type",
-        "house_section_type",
-        "feed_type",
-        "medicine_type",
-        "egg_grade",
-        "slaughter_part",
-        "byproduct_type",
-        "expense_category",
-        "payment_method",
-        "unit_of_measure",
-        "customer_type",
-    ):
-        op.execute(f"ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS '{value}'")
+    referencedatatype_enum = sa.dialects.postgresql.ENUM(
+        "batch_breed", "bird_type", "batch_source", "mortality_cause", "vaccine",
+        "house_section_type", "feed_type", "medicine_type", "egg_grade",
+        "slaughter_part", "byproduct_type", "expense_category", "payment_method",
+        "unit_of_measure", "customer_type",
+        name="referencedatatype", create_type=False
+    )
+    referencedatatype_enum.create(op.get_bind(), checkfirst=True)
+
+    op.create_table(
+        "reference_items",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("reference_type", referencedatatype_enum, nullable=False),
+        sa.Column("code", sa.String(length=100), nullable=False),
+        sa.Column("name", sa.String(length=150), nullable=False),
+        sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("sort_order", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("is_active", sa.Boolean(), nullable=False, server_default="true"),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.UniqueConstraint("reference_type", "code", name="uq_reference_items_type_code"),
+    )
+    op.create_index("ix_reference_items_reference_type", "reference_items", ["reference_type"])
 
 
 def downgrade() -> None:
@@ -130,6 +138,10 @@ def downgrade() -> None:
     op.drop_table("poultry_house_sections")
 
     op.drop_column("tenant_modules", "is_manual_override")
+
+    op.drop_index("ix_reference_items_reference_type", table_name="reference_items")
+    op.drop_table("reference_items")
+    sa.dialects.postgresql.ENUM(name="referencedatatype").drop(op.get_bind(), checkfirst=True)
 
     op.drop_column("plans", "trial_days")
     op.drop_column("plans", "currency")
