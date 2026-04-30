@@ -9,8 +9,8 @@
     --surface-card: #ffffff;
     --surface-soft: #f8fafc;
     --surface-muted: #f1f5f9;
-    --sidebar-bg: #ffffff;
-    --sidebar-active: #bc8b17;
+    --sidebar-bg: #b88a1d;
+    --sidebar-active: #ffffff;
     --topbar-bg: rgba(255, 255, 255, 0.94);
     --border-subtle: #e5e7eb;
     --border-strong: #d7dde5;
@@ -32,15 +32,15 @@
     --shadow-shell: 0 14px 34px -28px rgba(15, 23, 42, 0.12);
     --chart-grid: #e6ebf3;
     --chart-axis: #7b8798;
-    --sidebar-text: #334155;
-    --sidebar-text-muted: #64748b;
-    --sidebar-heading: #0f172a;
-    --sidebar-hover: #f8fafc;
-    --sidebar-active-bg: rgba(var(--brand-primary-rgb), 0.1);
-    --sidebar-active-text: #0f172a;
-    --sidebar-icon: #64748b;
-    --sidebar-panel: #ffffff;
-    --sidebar-panel-border: #e5e7eb;
+    --sidebar-text: rgba(255, 255, 255, 0.85);
+    --sidebar-text-muted: rgba(255, 255, 255, 0.65);
+    --sidebar-heading: #ffffff;
+    --sidebar-hover: rgba(255, 255, 255, 0.12);
+    --sidebar-active-bg: rgba(255, 255, 255, 0.2);
+    --sidebar-active-text: #ffffff;
+    --sidebar-icon: rgba(255, 255, 255, 0.8);
+    --sidebar-panel: rgba(255, 255, 255, 0.1);
+    --sidebar-panel-border: rgba(255, 255, 255, 0.15);
   }
 
   [data-theme='dark'] {
@@ -49,7 +49,7 @@
     --surface-card: #1a2230;
     --surface-soft: #212c3d;
     --surface-muted: #2b3749;
-    --sidebar-bg: #7f6014;
+    --sidebar-bg: #000000;
     --sidebar-active: #d6a62e;
     --topbar-bg: rgba(18, 24, 36, 0.86);
     --border-subtle: rgba(148, 163, 184, 0.18);
@@ -72,15 +72,15 @@
     --shadow-shell: 0 14px 34px -20px rgba(0, 0, 0, 0.34);
     --chart-grid: rgba(148, 163, 184, 0.18);
     --chart-axis: #9cafc3;
-    --sidebar-text: rgba(255, 244, 214, 0.9);
-    --sidebar-text-muted: rgba(255, 235, 190, 0.7);
-    --sidebar-heading: #fff8ea;
-    --sidebar-hover: rgba(255, 255, 255, 0.1);
-    --sidebar-active-bg: #f3dfac;
-    --sidebar-active-text: #1c1407;
-    --sidebar-icon: rgba(255, 237, 198, 0.84);
-    --sidebar-panel: rgba(255, 255, 255, 0.12);
-    --sidebar-panel-border: rgba(255, 255, 255, 0.16);
+    --sidebar-text: rgba(255, 255, 255, 0.7);
+    --sidebar-text-muted: rgba(255, 255, 255, 0.5);
+    --sidebar-heading: #ffffff;
+    --sidebar-hover: rgba(255, 255, 255, 0.08);
+    --sidebar-active-bg: rgba(214, 166, 46, 0.15);
+    --sidebar-active-text: #d6a62e;
+    --sidebar-icon: rgba(255, 255, 255, 0.6);
+    --sidebar-panel: rgba(255, 255, 255, 0.05);
+    --sidebar-panel-border: rgba(255, 255, 255, 0.1);
   }
 
   *,

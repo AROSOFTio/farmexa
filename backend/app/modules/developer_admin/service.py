@@ -485,6 +485,7 @@ class DeveloperAdminService:
             hashed_password=hash_password(temporary_password),
             is_active=True,
             role_id=role.id,
+            role=role,
             tenant_id=tenant.id,
         )
         setattr(user, "_temporary_password", temporary_password)
