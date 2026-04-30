@@ -1,17 +1,24 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, ChevronDown, ClipboardPlus, Egg, FilePlus2, LogOut, Menu, Search, Settings, Skull } from 'lucide-react'
+import { Bell, ChevronDown, ClipboardPlus, Egg, FilePlus2, LogOut, Menu, Moon, Search, Settings, Skull, Sun } from 'lucide-react'
 import { clsx } from 'clsx'
 import { toast } from 'sonner'
 import { BrandMark } from '@/components/BrandMark'
 import { useAuth } from '@/features/auth/AuthContext'
 import { ROLE_LABELS } from '@/lib/branding'
+import { THEME_STORAGE_KEY, applyTheme, type ThemeMode } from '@/lib/theme'
 
 export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   const { user, logout, hasPermission } = useAuth()
   const navigate = useNavigate()
   const [profileOpen, setProfileOpen] = useState(false)
   const [quickOpen, setQuickOpen] = useState(false)
+  const [theme, setTheme] = useState<ThemeMode>('light')
+
+  useEffect(() => {
+    const currentTheme = document.documentElement.dataset.theme
+    setTheme(currentTheme === 'dark' ? 'dark' : 'light')
+  }, [])
 
   const initials = useMemo(
     () =>
@@ -42,6 +49,13 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
     } catch {
       toast.error('Sign-out failed. Please try again.')
     }
+  }
+
+  const toggleTheme = () => {
+    const nextTheme: ThemeMode = theme === 'light' ? 'dark' : 'light'
+    applyTheme(nextTheme)
+    window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
+    setTheme(nextTheme)
   }
 
   return (
@@ -105,6 +119,18 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
           </>
         ) : null}
       </div>
+
+      <button
+        type="button"
+        onClick={toggleTheme}
+        className="flex h-10 items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 text-[var(--text-default)] shadow-[0_10px_26px_-22px_rgba(var(--brand-secondary-rgb),0.35)] transition-colors hover:bg-[var(--surface-soft)]"
+        aria-label="Toggle theme"
+      >
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[rgba(var(--brand-primary-rgb),0.12)] text-[var(--brand-primary)]">
+          {theme === 'light' ? <Moon className="h-[15px] w-[15px]" /> : <Sun className="h-[15px] w-[15px]" />}
+        </span>
+        <span className="hidden text-[12.5px] font-semibold sm:inline">{theme === 'light' ? 'Dark mode' : 'Light mode'}</span>
+      </button>
 
       <button
         type="button"
