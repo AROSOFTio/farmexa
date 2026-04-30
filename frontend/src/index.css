@@ -9,9 +9,7 @@
     --surface-card: #ffffff;
     --surface-soft: #f8fafc;
     --surface-muted: #f1f5f9;
-    --sidebar-bg:
-      radial-gradient(circle at top right, rgba(255, 255, 255, 0.44), transparent 28%),
-      linear-gradient(180deg, #fbf4de 0%, #edd389 42%, #d7ab3d 100%);
+    --sidebar-bg: #d9b24c;
     --sidebar-active: #bc8b17;
     --topbar-bg: rgba(255, 255, 255, 0.9);
     --border-subtle: #e2e8f0;
@@ -37,12 +35,12 @@
     --sidebar-text: #2d3646;
     --sidebar-text-muted: rgba(45, 54, 70, 0.72);
     --sidebar-heading: #152033;
-    --sidebar-hover: rgba(255, 255, 255, 0.26);
-    --sidebar-active-bg: rgba(255, 255, 255, 0.78);
+    --sidebar-hover: rgba(255, 255, 255, 0.2);
+    --sidebar-active-bg: #fff6df;
     --sidebar-active-text: #152033;
     --sidebar-icon: rgba(45, 54, 70, 0.82);
-    --sidebar-panel: rgba(255, 255, 255, 0.42);
-    --sidebar-panel-border: rgba(255, 255, 255, 0.5);
+    --sidebar-panel: rgba(255, 255, 255, 0.5);
+    --sidebar-panel-border: rgba(255, 255, 255, 0.54);
   }
 
   [data-theme='dark'] {
@@ -51,9 +49,7 @@
     --surface-card: #1a2230;
     --surface-soft: #212c3d;
     --surface-muted: #2b3749;
-    --sidebar-bg:
-      radial-gradient(circle at top right, rgba(255, 255, 255, 0.12), transparent 28%),
-      linear-gradient(180deg, #9f7714 0%, #7d5c0d 42%, #563f08 100%);
+    --sidebar-bg: #7f6014;
     --sidebar-active: #d6a62e;
     --topbar-bg: rgba(18, 24, 36, 0.86);
     --border-subtle: rgba(148, 163, 184, 0.18);
@@ -79,12 +75,12 @@
     --sidebar-text: rgba(255, 244, 214, 0.9);
     --sidebar-text-muted: rgba(255, 235, 190, 0.7);
     --sidebar-heading: #fff8ea;
-    --sidebar-hover: rgba(255, 255, 255, 0.12);
-    --sidebar-active-bg: rgba(255, 255, 255, 0.84);
+    --sidebar-hover: rgba(255, 255, 255, 0.1);
+    --sidebar-active-bg: #f3dfac;
     --sidebar-active-text: #1c1407;
     --sidebar-icon: rgba(255, 237, 198, 0.84);
-    --sidebar-panel: rgba(255, 255, 255, 0.1);
-    --sidebar-panel-border: rgba(255, 255, 255, 0.14);
+    --sidebar-panel: rgba(255, 255, 255, 0.12);
+    --sidebar-panel-border: rgba(255, 255, 255, 0.16);
   }
 
   *,
@@ -106,16 +102,12 @@
     font-family: Montserrat, "Segoe UI", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
     font-size: 15px;
     line-height: 1.6;
-    background:
-      radial-gradient(circle at top right, rgba(var(--brand-primary-rgb), 0.08), transparent 22%),
-      linear-gradient(180deg, #fbfdff 0%, #f3f6fb 100%);
+    background: #f4f7fb;
     color: var(--text-default);
   }
 
   [data-theme='dark'] body {
-    background:
-      radial-gradient(circle at top right, rgba(var(--brand-primary-rgb), 0.12), transparent 22%),
-      linear-gradient(180deg, #182130 0%, #0f1520 100%);
+    background: #121824;
     color: var(--text-default);
   }
 
@@ -175,16 +167,10 @@
   .app-shell {
     min-height: 100vh;
     background-color: var(--app-bg);
-    background-image:
-      radial-gradient(circle at top right, rgba(var(--brand-primary-rgb), 0.08), transparent 24%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.84) 0%, rgba(255, 255, 255, 0) 38%);
   }
 
   [data-theme='dark'] .app-shell {
     background-color: var(--app-bg);
-    background-image:
-      radial-gradient(circle at top right, rgba(var(--brand-primary-rgb), 0.14), transparent 24%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0) 38%);
   }
 
   .page-container {
@@ -208,9 +194,7 @@
 
   .kpi-card {
     @apply rounded-[1.25rem] p-5;
-    background:
-      radial-gradient(circle at top right, rgba(var(--brand-primary-rgb), 0.08), transparent 42%),
-      linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+    background: #ffffff;
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-card);
   }
@@ -236,7 +220,7 @@
 
   .surface-header {
     @apply flex flex-col gap-3 px-6 py-5 sm:flex-row sm:items-start sm:justify-between;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
+    background: var(--surface-card);
     border-bottom: 1px solid var(--border-subtle);
   }
 
@@ -252,9 +236,7 @@
 
   .metric-card {
     @apply rounded-[1.25rem] p-5;
-    background:
-      radial-gradient(circle at top right, rgba(var(--brand-primary-rgb), 0.08), transparent 42%),
-      linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+    background: #ffffff;
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-card);
   }
@@ -304,7 +286,7 @@
 
   .data-table th {
     @apply whitespace-nowrap px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.14em];
-    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    background: var(--surface-soft);
     color: var(--text-muted);
     border-bottom: 1px solid var(--border-subtle);
   }
@@ -430,9 +412,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 26%),
-      radial-gradient(circle at bottom right, rgba(122, 91, 8, 0.12), transparent 26%);
+    background: none;
     pointer-events: none;
   }
 
@@ -466,14 +446,12 @@
   }
 
   .auth-page {
-    background:
-      radial-gradient(circle at top, rgba(var(--brand-primary-rgb), 0.12), transparent 30%),
-      linear-gradient(180deg, #fbfdff 0%, #f2f5fb 100%);
+    background: #f4f7fb;
   }
 
   .auth-panel {
     @apply rounded-[1.25rem];
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
+    background: var(--surface-card);
     border: 1px solid rgba(var(--brand-primary-rgb), 0.18);
     box-shadow: 0 28px 64px -40px rgba(var(--brand-secondary-rgb), 0.18);
   }
@@ -487,9 +465,7 @@
 
   .dashboard-hero {
     @apply rounded-[1.35rem] px-6 py-6 sm:px-7;
-    background:
-      radial-gradient(circle at top right, rgba(var(--brand-primary-rgb), 0.14), transparent 34%),
-      linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+    background: #fff7e2;
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-card);
   }
@@ -504,11 +480,11 @@
   [data-theme='dark'] .card,
   [data-theme='dark'] .metric-card,
   [data-theme='dark'] .kpi-card {
-    background: linear-gradient(180deg, rgba(26, 34, 48, 0.98) 0%, rgba(21, 28, 40, 0.98) 100%);
+    background: var(--surface-card);
   }
 
   [data-theme='dark'] .surface-header {
-    background: linear-gradient(180deg, rgba(26, 34, 48, 0.98) 0%, rgba(22, 29, 41, 0.98) 100%);
+    background: var(--surface-card);
   }
 
   [data-theme='dark'] .form-section,
@@ -517,7 +493,7 @@
   }
 
   [data-theme='dark'] .data-table th {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.04) 100%);
+    background: var(--surface-soft);
   }
 
   [data-theme='dark'] .data-table tbody tr:hover {
@@ -530,20 +506,16 @@
   }
 
   [data-theme='dark'] .auth-page {
-    background:
-      radial-gradient(circle at top, rgba(var(--brand-primary-rgb), 0.16), transparent 30%),
-      linear-gradient(180deg, #182130 0%, #0f1520 100%);
+    background: #121824;
   }
 
   [data-theme='dark'] .auth-panel {
-    background: linear-gradient(180deg, rgba(24, 31, 44, 0.98) 0%, rgba(19, 25, 36, 0.98) 100%);
+    background: var(--surface-card);
     border-color: rgba(var(--brand-primary-rgb), 0.22);
   }
 
   [data-theme='dark'] .dashboard-hero {
-    background:
-      radial-gradient(circle at top right, rgba(var(--brand-primary-rgb), 0.18), transparent 34%),
-      linear-gradient(180deg, rgba(30, 39, 55, 0.98) 0%, rgba(22, 29, 41, 0.98) 100%);
+    background: #202b3c;
   }
 
   [data-theme='dark'] .dashboard-hero-chip {
