@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text, UniqueConstraint, ForeignKey
 
 from app.db.base import Base
 from app.db.enums import db_enum
@@ -26,6 +26,62 @@ class SystemConfig(Base):
     key = Column(String, unique=True, index=True, nullable=False)
     value = Column(String, nullable=False)
     description = Column(Text, nullable=True)
+
+
+class SystemSettings(Base):
+    """Singleton platform settings used for public branding and integrations."""
+
+    __tablename__ = "system_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    system_name = Column(String(120), nullable=False, default="Farmexa")
+    system_logo_url = Column(String(500), nullable=True)
+    system_favicon_url = Column(String(500), nullable=True)
+    primary_color = Column(String(40), nullable=False, default="#d6a62e")
+    secondary_color = Column(String(40), nullable=False, default="#0b1018")
+    platform_domain = Column(String(255), nullable=False, default="farmexa.arosoft.io")
+    tenant_domain_suffix = Column(String(255), nullable=False, default="arosoft.io")
+    sender_email = Column(String(255), nullable=False, default="farmexa@arosoft.io")
+    sender_name = Column(String(120), nullable=False, default="Farmexa")
+    support_email = Column(String(255), nullable=False, default="farmexa@arosoft.io")
+    company_name = Column(String(120), nullable=False, default="AROSOFT")
+    footer_text = Column(String(255), nullable=False, default="Powered by AROSOFT")
+    smtp_host = Column(String(255), nullable=True)
+    smtp_port = Column(Integer, nullable=False, default=587)
+    smtp_username = Column(String(255), nullable=True)
+    smtp_password = Column(Text, nullable=True)
+    smtp_use_tls = Column(Boolean, nullable=False, default=True)
+    cloudflare_api_token = Column(Text, nullable=True)
+    cloudflare_zone_id = Column(String(255), nullable=True)
+    tenant_domain_target_ip = Column(String(100), nullable=True)
+    enable_cloudflare_dns_automation = Column(Boolean, nullable=False, default=True)
+    enable_automatic_ssl_provisioning = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
+class EmailLog(Base):
+    """Delivery ledger for system emails and retries."""
+
+    __tablename__ = "email_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True, index=True)
+    recipient = Column(String(255), nullable=False)
+    sender = Column(String(255), nullable=False)
+    email_type = Column(String(80), nullable=False, index=True)
+    subject = Column(String(255), nullable=False)
+    body_preview = Column(Text, nullable=True)
+    status = Column(String(40), nullable=False, default="pending", index=True)
+    error_message = Column(Text, nullable=True)
+    retry_count = Column(Integer, nullable=False, default=0)
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class ReferenceDataType(str, enum.Enum):

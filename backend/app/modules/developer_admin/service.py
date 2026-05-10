@@ -22,6 +22,7 @@ from app.core.config import settings
 from app.core.security import hash_password
 from app.db.tenant_db import provision_tenant_operational_database
 from app.models.auth import AuditLog, Role
+from app.models.settings import SystemSettings
 from app.models.tenant import (
     BillingCycle,
     DomainStatus,
@@ -61,6 +62,8 @@ from app.modules.developer_admin.schemas import (
 from app.modules.users.catalog import TENANT_ADMIN_ROLE_NAME
 from app.utils.audit import write_audit_log
 from app.utils.domains import infer_domain_type, normalize_host, strip_port, verify_domain_points_to_target
+from app.services.cloudflare_service import create_tenant_dns_record
+from app.services.email_service import send_welcome_email
 
 
 logger = logging.getLogger("farmexa.developer_admin")
@@ -79,7 +82,8 @@ class DeveloperAdminService:
 
     @staticmethod
     def _slugify(value: str) -> str:
-        return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+        normalized = re.sub(r"\b(poultry|farm|farms|limited|ltd|company|co|erp)\b", " ", value.lower())
+        return re.sub(r"[^a-z0-9]+", "-", normalized).strip("-")
 
     @staticmethod
     def _normalize_plan_code(value: str) -> str:
@@ -148,6 +152,32 @@ class DeveloperAdminService:
 
     def _default_platform_domain(self, slug: str) -> str:
         return f"{slug}.{settings.DEFAULT_TENANT_DOMAIN_SUFFIX}"
+
+    async def _get_system_settings(self) -> SystemSettings:
+        result = await self.db.execute(select(SystemSettings).order_by(SystemSettings.id).limit(1))
+        settings_row = result.scalar_one_or_none()
+        if settings_row:
+            return settings_row
+        settings_row = SystemSettings(
+            platform_domain=settings.PRIMARY_PLATFORM_DOMAIN,
+            tenant_domain_suffix=settings.DEFAULT_TENANT_DOMAIN_SUFFIX,
+            sender_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoft.io",
+            sender_name=settings.SMTP_FROM_NAME,
+            support_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoft.io",
+            smtp_host=settings.SMTP_HOST,
+            smtp_port=settings.SMTP_PORT,
+            smtp_username=settings.SMTP_USERNAME,
+            smtp_password=settings.SMTP_PASSWORD,
+            smtp_use_tls=settings.SMTP_USE_TLS,
+            cloudflare_api_token=settings.CLOUDFLARE_API_TOKEN,
+            cloudflare_zone_id=settings.CLOUDFLARE_ZONE_ID,
+            tenant_domain_target_ip=settings.TENANT_DOMAIN_TARGET_IP,
+            enable_cloudflare_dns_automation=settings.ENABLE_CLOUDFLARE_DNS_AUTOMATION,
+            enable_automatic_ssl_provisioning=settings.ENABLE_AUTOMATIC_SSL_PROVISIONING,
+        )
+        self.db.add(settings_row)
+        await self.db.flush()
+        return settings_row
 
     async def _get_role(self, role_name: str) -> Role:
         result = await self.db.execute(select(Role).where(Role.name == role_name))
@@ -414,6 +444,25 @@ class DeveloperAdminService:
         if normalized and self._domain_type_for(normalized) == DomainType.CUSTOM:
             await self._upsert_domain(tenant, None, is_primary=False)
 
+    async def _provision_platform_subdomain_records(self, tenant: Tenant) -> None:
+        """Create Cloudflare DNS records for the tenant platform subdomain when enabled."""
+        domains = await self._get_tenant_domains(tenant.id)
+        for domain in domains:
+            if self._enum_value(domain.domain_type) != DomainType.PLATFORM_SUBDOMAIN.value:
+                continue
+            result = await create_tenant_dns_record(domain.host)
+            domain.last_checked_at = datetime.now(UTC)
+            if result.ok:
+                domain.status = DomainStatus.ACTIVE
+                domain.dns_verified_at = datetime.now(UTC)
+                domain.activated_at = datetime.now(UTC)
+                domain.verification_target = result.target or settings.PRIMARY_PLATFORM_DOMAIN
+                domain.last_error = result.message
+            else:
+                domain.status = DomainStatus.FAILED
+                domain.last_error = result.message
+        await self.db.flush()
+
     async def _create_subscription(
         self,
         tenant_id: int,
@@ -461,6 +510,7 @@ class DeveloperAdminService:
             next_invoice_date=next_invoice,
             amount=self._price_for_cycle(plan, billing_cycle),
             currency=plan.currency,
+            trial_days=plan.trial_days if resolved_status == SubscriptionStatus.TRIAL else 0,
             notes=notes,
         )
         self.db.add(subscription)
@@ -521,6 +571,8 @@ class DeveloperAdminService:
             is_trial = subscription_expiry is None and plan.trial_days > 0
             if is_trial:
                 subscription_expiry = subscription_start + timedelta(days=plan.trial_days)
+            trial_started_at = datetime.combine(subscription_start, datetime.min.time(), tzinfo=UTC) if is_trial else None
+            trial_ends_at = datetime.combine(subscription_expiry, datetime.min.time(), tzinfo=UTC) if is_trial and subscription_expiry else None
 
             tenant = Tenant(
                 name=data.name,
@@ -536,6 +588,10 @@ class DeveloperAdminService:
                 billing_cycle=billing_cycle,
                 subscription_start=subscription_start,
                 subscription_expiry=subscription_expiry,
+                trial_started_at=trial_started_at,
+                trial_ends_at=trial_ends_at,
+                subscription_status=SubscriptionStatus.TRIAL if is_trial else SubscriptionStatus.ACTIVE,
+                is_profile_only=False,
                 notes=data.notes,
             )
             self.db.add(tenant)
@@ -543,6 +599,7 @@ class DeveloperAdminService:
 
             await self.sync_tenant_modules_from_plan(tenant.id, plan.code)
             await self._ensure_onboarding_domains(tenant, data.domain)
+            await self._provision_platform_subdomain_records(tenant)
             subscription = await self._create_subscription(
                 tenant_id=tenant.id,
                 plan=plan,
@@ -558,6 +615,8 @@ class DeveloperAdminService:
                 if subscription.status == SubscriptionStatus.TRIAL
                 else TenantStatus.ACTIVE
             )
+            tenant.subscription_status = subscription.status
+            tenant.is_profile_only = subscription.status == SubscriptionStatus.EXPIRED
 
             tenant_admin = await self._create_tenant_admin(tenant, password_override=admin_password)
             await provision_tenant_operational_database(tenant, tenant_admin)
@@ -714,14 +773,29 @@ class DeveloperAdminService:
             None,
         )
         login_host = active_domain.host if active_domain else self._default_platform_domain(tenant.slug)
+        login_url = self._build_login_url(request, login_host)
+        system_settings = await self._get_system_settings()
+        await send_welcome_email(
+            self.db,
+            tenant_id=tenant.id,
+            farm_name=tenant.name,
+            contact_name=tenant.contact_person,
+            recipient=tenant.email,
+            workspace_url=login_url,
+            trial_expiry_date=tenant.subscription_expiry,
+            system_settings=system_settings,
+        )
+        await self.db.commit()
         return TenantRegistrationOut(
             tenant_id=tenant.id,
             tenant_name=tenant.name,
             admin_email=tenant.email,
             login_host=login_host,
-            login_url=self._build_login_url(request, login_host),
+            login_url=login_url,
             primary_domain=primary_domain.host if primary_domain else login_host,
             primary_domain_status=self._enum_value(primary_domain.status) if primary_domain else DomainStatus.ACTIVE.value,
+            trial_start_date=tenant.subscription_start,
+            trial_expiry_date=tenant.subscription_expiry,
             fallback_domain=fallback_domain.host if fallback_domain and fallback_domain.host != login_host else None,
             custom_domain=custom_domain.host if custom_domain else None,
             custom_domain_status=self._enum_value(custom_domain.status) if custom_domain else None,

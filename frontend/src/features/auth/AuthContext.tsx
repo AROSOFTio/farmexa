@@ -73,6 +73,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!session) {
         throw new Error('Unable to load the authenticated session.')
       }
+      if (session.tenant?.is_profile_only || ['expired', 'cancelled', 'suspended'].includes(session.tenant?.subscription_status ?? '')) {
+        navigate('/subscription/expired', { replace: true })
+        return
+      }
     } catch (error) {
       clearSession()
       throw error
@@ -105,7 +109,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (roleName === 'super_manager' || roleName === 'developer_admin') return true
       if (!state.tenant) return true
       if (state.tenant.is_suspended) return false
-      if (state.tenant.subscription_status && ['expired', 'cancelled', 'suspended'].includes(state.tenant.subscription_status)) return false
+      if (state.tenant.is_profile_only || (state.tenant.subscription_status && ['expired', 'cancelled', 'suspended'].includes(state.tenant.subscription_status))) {
+        return ['farm_profile', 'settings'].includes(moduleKey)
+      }
       return state.enabledModules.includes(moduleKey)
     },
     [state.enabledModules, state.tenant, state.user]

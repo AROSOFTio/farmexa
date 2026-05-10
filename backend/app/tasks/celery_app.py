@@ -28,5 +28,25 @@ celery_app.conf.update(
             "task": "tasks.process_compliance_reminders",
             "schedule": crontab(hour=6, minute=0),
         },
+        "process-trial-day-7-warnings": {
+            "task": "tasks.process_trial_day_7_warnings",
+            "schedule": crontab(hour=7, minute=0),
+        },
+        "process-trial-day-13-warnings": {
+            "task": "tasks.process_trial_day_13_warnings",
+            "schedule": crontab(hour=7, minute=10),
+        },
+        "process-expired-trials": {
+            "task": "tasks.process_expired_trials",
+            "schedule": crontab(hour=7, minute=20),
+        },
+        "process-subscription-status-updates": {
+            "task": "tasks.process_subscription_status_updates",
+            "schedule": crontab(hour=7, minute=30),
+        },
+        "process-email-retries": {
+            "task": "tasks.process_email_retries",
+            "schedule": crontab(minute="*/30"),
+        },
     },
 )

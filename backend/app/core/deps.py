@@ -23,7 +23,7 @@ def _is_platform_admin(user) -> bool:
 def _module_keys_from_request(request: Request) -> set[str] | None:
     path = str(request.url.path)
     method = request.method.upper()
-    if "/api/v1/analytics/kpis" in path:
+    if "/api/v1/analytics/kpis" in path or "/api/v1/analytics/erp-dashboard" in path:
         return {"dashboard"}
     if "/api/v1/analytics/" in path or "/api/v1/reports/" in path:
         return {"reports"}

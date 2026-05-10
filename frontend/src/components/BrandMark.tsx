@@ -1,5 +1,6 @@
-import { APP_SHORT_NAME, APP_TAGLINE } from '@/lib/branding'
 import { clsx } from 'clsx'
+import { APP_TAGLINE } from '@/lib/branding'
+import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 
 interface BrandMarkProps {
   className?: string
@@ -14,6 +15,7 @@ export function BrandMark({
   light = false,
   showTagline = false,
 }: BrandMarkProps) {
+  const { settings } = usePlatformSettings()
   const textClass = light ? 'text-[var(--sidebar-heading)]' : 'text-ink-900'
   const mutedClass = light ? 'text-[var(--sidebar-text-muted)]' : 'text-ink-500'
   const markClass = light ? 'text-[var(--sidebar-heading)]' : 'text-[var(--brand-secondary)]'
@@ -39,7 +41,7 @@ export function BrandMark({
       {!compact && (
         <div className="min-w-0">
           <div className={clsx('text-[14.5px] font-semibold leading-tight', textClass)}>
-            {APP_SHORT_NAME}
+            {settings.system_name}
           </div>
           {showTagline ? (
             <div className={clsx('mt-0.5 max-w-[118px] text-[10.5px] font-medium leading-[1.2]', mutedClass)}>

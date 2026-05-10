@@ -78,6 +78,8 @@ services:
       redis:
         condition: service_healthy
     command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
+    healthcheck:
+      disable: true
     networks:
       - perp_net
 
@@ -97,7 +99,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: celery -A app.tasks.celery_app beat --loglevel=info --scheduler celery.schedulers:DatabaseScheduler
+    command: celery -A app.tasks.celery_app beat --loglevel=info
+    healthcheck:
+      disable: true
     networks:
       - perp_net
 

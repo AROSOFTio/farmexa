@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import smtplib
 from datetime import UTC, date, datetime, timedelta
-from email.message import EmailMessage
 from pathlib import Path
 from uuid import uuid4
 
@@ -22,6 +20,7 @@ from app.models.compliance import (
 from app.models.user import User
 from app.modules.users.catalog import COMPLIANCE_NOTIFICATION_ROLES
 from app.modules.compliance.schemas import ComplianceAlertOut
+from app.services.email_service import log_and_send_email
 
 
 REMINDER_OFFSETS = (30, 15, 7)
@@ -251,22 +250,12 @@ async def _send_reminder_email(db: AsyncSession, reminder: DocumentReminder) -> 
         f"Reference number: {document.reference_number or 'Not set'}\n"
         f"Please renew or replace this document before it expires."
     )
-    _deliver_email(subject, body, sorted(recipients))
-
-
-def _deliver_email(subject: str, body: str, recipients: list[str]) -> None:
-    if not settings.SMTP_HOST or not settings.SMTP_FROM_EMAIL:
-        return
-
-    message = EmailMessage()
-    message["Subject"] = subject
-    message["From"] = settings.SMTP_FROM_EMAIL
-    message["To"] = ", ".join(recipients)
-    message.set_content(body)
-
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=20) as server:
-        if settings.SMTP_USE_TLS:
-            server.starttls()
-        if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
-            server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-        server.send_message(message)
+    for recipient in sorted(recipients):
+        await log_and_send_email(
+            db,
+            tenant_id=tenant.id,
+            recipient=recipient,
+            subject=subject,
+            body=body,
+            email_type="Compliance Reminder",
+        )

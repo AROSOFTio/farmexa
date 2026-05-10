@@ -15,7 +15,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    APP_NAME: str = "Farmexa ERP"
+    APP_NAME: str = "Farmexa"
     APP_VERSION: str = "1.0.0"
     APP_ENV: str = "development"
     DEBUG: bool = False
@@ -56,8 +56,12 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost,http://localhost:5173"
     PRIMARY_PLATFORM_DOMAIN: str = "farmexa.arosoft.io"
     PLATFORM_HOSTS: str = "farmexa.arosoft.io,localhost,127.0.0.1"
-    DEFAULT_TENANT_DOMAIN_SUFFIX: str = "farmexa.arosoft.io"
+    DEFAULT_TENANT_DOMAIN_SUFFIX: str = "arosoft.io"
     TENANT_DOMAIN_TARGET_IP: str | None = None
+    CLOUDFLARE_API_TOKEN: str | None = None
+    CLOUDFLARE_ZONE_ID: str | None = None
+    CLOUDFLARE_DNS_RECORD_TYPE: str = "A"
+    ENABLE_CLOUDFLARE_DNS_AUTOMATION: bool = True
     DOMAIN_VERIFY_TIMEOUT_SECONDS: int = 5
     CERTBOT_BIN: str = "/usr/bin/certbot"
     CERTBOT_WEBROOT: str = "/var/www/certbot"
@@ -78,6 +82,7 @@ class Settings(BaseSettings):
     SMTP_USERNAME: str | None = None
     SMTP_PASSWORD: str | None = None
     SMTP_FROM_EMAIL: str | None = None
+    SMTP_FROM_NAME: str = "Farmexa"
     SMTP_USE_TLS: bool = True
 
     @property
@@ -91,6 +96,16 @@ class Settings(BaseSettings):
     @property
     def platform_hosts(self) -> list[str]:
         return [host.strip().lower() for host in self.PLATFORM_HOSTS.split(",") if host.strip()]
+
+    @property
+    def trusted_hosts(self) -> list[str]:
+        hosts = set(self.platform_hosts)
+        hosts.add(self.PRIMARY_PLATFORM_DOMAIN.lower())
+        suffix = self.DEFAULT_TENANT_DOMAIN_SUFFIX.strip().lower()
+        if suffix:
+            hosts.add(suffix)
+            hosts.add(f"*.{suffix}")
+        return sorted(hosts)
 
 
 @lru_cache

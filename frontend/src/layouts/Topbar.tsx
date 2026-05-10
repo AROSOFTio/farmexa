@@ -1,49 +1,49 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Bell, ChevronDown, ClipboardPlus, Egg, FilePlus2, LogOut, Menu, Moon, Search, Settings, Skull, Sun } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Bell, Building2, ChevronDown, CreditCard, HelpCircle, LogOut, Menu, Search, UserRound } from 'lucide-react'
 import { clsx } from 'clsx'
 import { toast } from 'sonner'
-import { BrandMark } from '@/components/BrandMark'
 import { useAuth } from '@/features/auth/AuthContext'
-import { ROLE_LABELS } from '@/lib/branding'
-import { THEME_STORAGE_KEY, applyTheme, type ThemeMode } from '@/lib/theme'
+
+function titleFromPath(pathname: string) {
+  if (pathname.startsWith('/dev-admin')) return 'Dev Admin  Dashboard'
+  if (pathname.startsWith('/feed-mill')) return 'Feed Mill'
+  if (pathname.startsWith('/farm')) return 'Farm Operations'
+  if (pathname.startsWith('/inventory')) return 'Inventory & Transfers'
+  if (pathname.startsWith('/slaughter')) return 'Slaughter'
+  if (pathname.startsWith('/sales')) return 'Sales & POS'
+  if (pathname.startsWith('/finance')) return 'Finance'
+  if (pathname.startsWith('/compliance')) return 'Compliance'
+  if (pathname.startsWith('/reports')) return 'Reports'
+  if (pathname.startsWith('/settings')) return 'Settings'
+  return 'Dashboard'
+}
 
 export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
-  const { user, logout, hasPermission } = useAuth()
+  const { user, tenant, logout } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
   const [profileOpen, setProfileOpen] = useState(false)
-  const [quickOpen, setQuickOpen] = useState(false)
-  const [theme, setTheme] = useState<ThemeMode>('light')
+  const [farmOpen, setFarmOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const initials = useMemo(() => {
+    const source = user?.full_name || user?.email || 'NF'
+    return source.split(/[ @.]/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
+  }, [user])
 
-  useEffect(() => {
-    const currentTheme = document.documentElement.dataset.theme
-    setTheme(currentTheme === 'dark' ? 'dark' : 'light')
-  }, [])
-
-  const initials = useMemo(
-    () =>
-      user?.full_name
-        .split(' ')
-        .map((name) => name[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase() ?? 'FX',
-    [user?.full_name]
-  )
-
-  const roleLabel = user?.role?.name ? ROLE_LABELS[user.role.name] ?? user.role.name : 'User'
-  const profileLabel = user?.job_title ?? roleLabel
-  const quickActions = [
-    { label: 'Batch', icon: ClipboardPlus, path: '/farm/batches' },
-    { label: 'Eggs', icon: Egg, path: '/farm/eggs' },
-    { label: 'Mortality', icon: Skull, path: '/farm/mortality' },
-    hasPermission('dev_admin:read')
-      ? { label: 'Tenant', icon: FilePlus2, path: '/dev-admin/tenants' }
-      : { label: 'Settings', icon: Settings, path: '/settings/config' },
-  ]
+  const isDevAdmin = user?.role?.name === 'developer_admin'
+  const title = titleFromPath(location.pathname)
+  const trialLabel = useMemo(() => {
+    if (!tenant) return null
+    if (tenant.is_profile_only || tenant.subscription_status === 'expired') return 'Trial Expired'
+    if (tenant.subscription_status === 'trial' && tenant.subscription_expiry) {
+      const days = Math.max(Math.ceil((new Date(tenant.subscription_expiry).getTime() - Date.now()) / 86_400_000), 0)
+      return `Trial: ${days} days remaining`
+    }
+    return 'Subscription Active'
+  }, [tenant])
 
   const handleLogout = async () => {
-    setProfileOpen(false)
     try {
       await logout()
     } catch {
@@ -51,146 +51,135 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
     }
   }
 
-  const toggleTheme = () => {
-    const nextTheme: ThemeMode = theme === 'light' ? 'dark' : 'light'
-    applyTheme(nextTheme)
-    window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
-    setTheme(nextTheme)
-  }
-
   return (
-    <header className="topbar fixed right-0 top-0 z-30 flex h-[68px] items-center gap-3 px-4 sm:px-5 lg:px-6">
-      <button
-        type="button"
-        onClick={onOpenSidebar}
-        className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-default)] lg:hidden"
-        aria-label="Open navigation"
-      >
-        <Menu className="h-4 w-4" />
+    <header className={clsx('topbar fixed right-0 top-0 z-30 flex h-[56px] items-center gap-4 border-b bg-white px-4 lg:px-5', isDevAdmin && 'bg-[#050910] text-white')}>
+      <button type="button" onClick={onOpenSidebar} className={clsx('flex h-8 w-8 items-center justify-center rounded-md', isDevAdmin ? 'text-white hover:bg-white/10' : 'text-[#111827] hover:bg-slate-100')} aria-label="Open navigation">
+        <Menu className="h-5 w-5" />
       </button>
 
-      <div className="lg:hidden">
-        <BrandMark compact />
-      </div>
-
-      <div className="hidden w-full max-w-[420px] lg:block">
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[var(--text-muted)]" />
-          <input type="search" placeholder="Search records, plans, tenants" className="form-input h-11 rounded-full border-[var(--border-subtle)] bg-[var(--surface-soft)] pl-11" />
-        </div>
+      <div className="flex min-w-0 items-center gap-7">
+        <h1 className={clsx('text-[18px] font-extrabold', isDevAdmin ? 'text-white' : 'text-[#111827]')}>{title}</h1>
+        {!isDevAdmin ? (
+          <div className="relative hidden md:block">
+            <button
+              type="button"
+              onClick={() => setFarmOpen((open) => !open)}
+              className="flex items-center gap-2 rounded-[7px] border border-transparent px-2 py-1.5 text-[13px] font-semibold text-[#111827] hover:border-[#e6ddc8] hover:bg-[#fffaf0]"
+            >
+              Farm: {tenant?.name ?? 'Tenant Workspace'}
+              <ChevronDown className={clsx('h-3.5 w-3.5 transition-transform', farmOpen && 'rotate-180')} />
+            </button>
+            {farmOpen ? (
+              <>
+                <button type="button" className="fixed inset-0 z-30" onClick={() => setFarmOpen(false)} />
+                <div className="absolute left-0 top-full z-40 mt-2 w-72 overflow-hidden rounded-[10px] border border-[#e8dcc3] bg-white shadow-xl">
+                  <div className="border-b border-[#efe5d2] px-4 py-3">
+                    <div className="text-[13px] font-extrabold text-[#111827]">{tenant?.name ?? 'Tenant Workspace'}</div>
+                    <div className="text-[12px] text-slate-500">{tenant?.subscription_status ?? 'active'} plan workspace</div>
+                  </div>
+                  {[
+                    { label: 'Farm Profile', path: '/farm/profile', icon: Building2 },
+                    { label: 'Subscription', path: '/subscription/upgrade', icon: CreditCard },
+                    { label: 'Support', path: '/support', icon: HelpCircle },
+                  ].map((item) => {
+                    const Icon = item.icon
+                    return (
+                      <button
+                        key={item.path}
+                        type="button"
+                        onClick={() => {
+                          setFarmOpen(false)
+                          navigate(item.path)
+                        }}
+                        className="flex w-full items-center gap-2 px-4 py-3 text-left text-[13px] font-bold text-[#111827] hover:bg-[#fff7e2]"
+                      >
+                        <Icon className="h-4 w-4 text-[#b98512]" />
+                        {item.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div className="flex-1" />
 
-      <div className="relative hidden sm:block">
+      <div className="hidden w-full max-w-[270px] lg:block">
+        <div className="relative">
+          <input
+            className="h-9 w-full rounded-[8px] border border-[#e6ddc8] bg-white px-3 pr-9 text-[12px] text-[#111827] outline-none placeholder:text-slate-400 focus:border-[#d4a42c]"
+            placeholder="Search anything..."
+          />
+          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+        </div>
+      </div>
+
+      {trialLabel ? (
+        <button type="button" onClick={() => navigate('/subscription')} className="hidden h-9 rounded-[9px] bg-gradient-to-r from-[#e1b23b] to-[#c99316] px-4 text-[12px] font-extrabold text-[#111827] md:inline-flex md:items-center">
+          {trialLabel}
+        </button>
+      ) : null}
+
+      <div className="relative">
         <button
           type="button"
-          onClick={() => setQuickOpen((open) => !open)}
-          className="btn-secondary h-9 rounded-full px-4"
+          onClick={() => setNotificationsOpen((open) => !open)}
+          className={clsx('relative flex h-9 w-9 items-center justify-center rounded-full border', isDevAdmin ? 'border-white/20 text-white' : 'border-[#e6ddc8] text-[#111827]')}
+          aria-label="Notifications"
         >
-          <ClipboardPlus className="h-[15px] w-[15px] text-[var(--brand-primary)]" />
-          Quick
-          <ChevronDown className={clsx('h-[15px] w-[15px] text-[var(--text-muted)] transition-transform', quickOpen && 'rotate-180')} />
+          <Bell className="h-4 w-4" />
+          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#d4a42c]" />
         </button>
-        {quickOpen ? (
+        {notificationsOpen ? (
           <>
-            <button type="button" className="fixed inset-0 z-30" onClick={() => setQuickOpen(false)} />
-            <div className="card absolute right-0 top-full z-40 mt-2 w-56 p-2">
-              {quickActions.map((action) => {
-                const Icon = action.icon
-                return (
-                  <button
-                    key={action.path}
-                    type="button"
-                    onClick={() => {
-                      setQuickOpen(false)
-                      navigate(action.path)
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2.5 text-left text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
-                  >
-                    <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-50 text-[var(--brand-primary)]">
-                      <Icon className="h-[15px] w-[15px]" />
-                    </span>
-                    {action.label}
-                  </button>
-                )
-              })}
+            <button type="button" className="fixed inset-0 z-30" onClick={() => setNotificationsOpen(false)} />
+            <div className="absolute right-0 top-full z-40 mt-2 w-72 overflow-hidden rounded-[10px] border border-[#e8dcc3] bg-white shadow-xl">
+              <div className="border-b border-[#efe5d2] px-4 py-3">
+                <div className="text-[13px] font-extrabold text-[#111827]">Notifications</div>
+                <div className="text-[12px] text-slate-500">Tenant alerts and trial messages.</div>
+              </div>
+              <button type="button" onClick={() => { setNotificationsOpen(false); navigate('/compliance/alerts') }} className="block w-full px-4 py-3 text-left hover:bg-[#fff7e2]">
+                <div className="text-[13px] font-bold text-[#111827]">Compliance alerts</div>
+                <div className="text-[12px] text-slate-500">Review documents due for renewal.</div>
+              </button>
+              <button type="button" onClick={() => { setNotificationsOpen(false); navigate('/subscription/upgrade') }} className="block w-full px-4 py-3 text-left hover:bg-[#fff7e2]">
+                <div className="text-[13px] font-bold text-[#111827]">{trialLabel ?? 'Subscription'}</div>
+                <div className="text-[12px] text-slate-500">Open billing and subscription options.</div>
+              </button>
             </div>
           </>
         ) : null}
       </div>
 
-      <button
-        type="button"
-        onClick={toggleTheme}
-        className="flex h-10 items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 text-[var(--text-default)] shadow-[0_10px_26px_-22px_rgba(var(--brand-secondary-rgb),0.35)] transition-colors hover:bg-[var(--surface-soft)]"
-        aria-label="Toggle theme"
-      >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[rgba(var(--brand-primary-rgb),0.12)] text-[var(--brand-primary)]">
-          {theme === 'light' ? <Moon className="h-[15px] w-[15px]" /> : <Sun className="h-[15px] w-[15px]" />}
-        </span>
-        <span className="hidden text-[12.5px] font-semibold sm:inline">{theme === 'light' ? 'Dark mode' : 'Light mode'}</span>
-      </button>
-
-      <button
-        type="button"
-        className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-default)]"
-        aria-label="Notifications"
-      >
-        <Bell className="h-[15px] w-[15px]" />
-        <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-[var(--brand-primary)] ring-2 ring-[var(--surface-card)]" />
-      </button>
-
       <div className="relative">
-        <button
-          type="button"
-          onClick={() => setProfileOpen((open) => !open)}
-          className="flex items-center gap-2.5 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-2"
-        >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand-primary)] text-[11px] font-bold text-[var(--brand-secondary)]">{initials}</div>
-          <div className="hidden text-left sm:block">
-            <div className="text-[12px] font-semibold leading-tight text-[var(--text-strong)]">{user?.full_name ?? 'Loading...'}</div>
-            <div className="text-[11px] leading-tight text-[var(--text-muted)]">{profileLabel}</div>
-          </div>
-          <ChevronDown className={clsx('hidden h-[15px] w-[15px] text-[var(--text-muted)] sm:block', profileOpen && 'rotate-180')} />
+        <button type="button" onClick={() => setProfileOpen((open) => !open)} className={clsx('flex items-center gap-2 rounded-[9px] px-2 py-1.5', isDevAdmin ? 'text-white hover:bg-white/10' : 'text-[#111827] hover:bg-slate-50')}>
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#d4a42c] text-[11px] font-extrabold text-[#111827]">{initials}</span>
+          <span className="hidden min-w-0 text-left sm:block">
+            <span className={clsx('block truncate text-[12px] font-extrabold leading-4', isDevAdmin ? 'text-white' : 'text-[#111827]')}>{tenant?.name ?? user?.full_name ?? 'Ngali Farm'}</span>
+            <span className={clsx('block text-[10px] leading-3', isDevAdmin ? 'text-white/70' : 'text-slate-500')}>{user?.job_title ?? 'Admin'}</span>
+          </span>
+          <ChevronDown className="hidden h-3.5 w-3.5 sm:block" />
         </button>
 
         {profileOpen ? (
           <>
             <button type="button" className="fixed inset-0 z-30" onClick={() => setProfileOpen(false)} />
-            <div className="card absolute right-0 top-full z-40 mt-2 w-72 overflow-hidden">
-              <div className="border-b border-[var(--border-subtle)] px-4 py-4">
-                <div className="text-sm font-semibold text-[var(--text-strong)]">{user?.full_name}</div>
-                <div className="mt-1 text-xs text-[var(--text-muted)]">{user?.email}</div>
-                <div className="mt-1 text-[11px] uppercase tracking-[0.08em] text-[var(--text-muted)]">{profileLabel}</div>
+            <div className="absolute right-0 top-full z-40 mt-2 w-64 overflow-hidden rounded-[10px] border border-[#e8dcc3] bg-white shadow-xl">
+              <div className="border-b border-[#efe5d2] px-4 py-3">
+                <div className="text-[13px] font-extrabold text-[#111827]">{user?.full_name}</div>
+                <div className="text-[12px] text-slate-500">{user?.email}</div>
               </div>
-              <div className="p-2">
-                {hasPermission('settings:read') ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProfileOpen(false)
-                      navigate('/settings/config')
-                    }}
-                    className="flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
-                  >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-[var(--brand-primary)]">
-                      <Settings className="h-4 w-4" />
-                    </span>
-                    Settings
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="flex w-full items-center gap-3 rounded-[12px] px-3 py-2.5 text-[13px] font-medium text-[var(--text-default)] hover:bg-[var(--surface-muted)]"
-                >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-[var(--brand-primary)]">
-                    <LogOut className="h-4 w-4" />
-                  </span>
-                  Sign out
-                </button>
-              </div>
+              <button type="button" onClick={() => { setProfileOpen(false); navigate('/settings/profile') }} className="flex w-full items-center gap-2 px-4 py-3 text-left text-[13px] font-bold text-[#111827] hover:bg-[#fff7e2]">
+                <UserRound className="h-4 w-4 text-[#b98512]" />
+                Profile
+              </button>
+              <button type="button" onClick={handleLogout} className="flex w-full items-center gap-2 px-4 py-3 text-left text-[13px] font-bold text-[#111827] hover:bg-[#fff7e2]">
+                <LogOut className="h-4 w-4 text-[#b98512]" />
+                Logout
+              </button>
             </div>
           </>
         ) : null}

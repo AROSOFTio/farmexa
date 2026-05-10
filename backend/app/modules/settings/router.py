@@ -1,13 +1,29 @@
 from typing import List
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_permission
+from app.db.session import get_db
 from app.db.tenant_db import get_tenant_sync_db
+from app.models.settings import SystemSettings
 from app.modules.settings import schemas, service
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
+
+
+@router.get("/public", response_model=schemas.PublicSystemSettingsOut)
+async def public_settings(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(SystemSettings).order_by(SystemSettings.id).limit(1))
+    settings_row = result.scalar_one_or_none()
+    if settings_row is None:
+        settings_row = SystemSettings()
+        db.add(settings_row)
+        await db.commit()
+        await db.refresh(settings_row)
+    return settings_row
 
 
 @router.get("/config", response_model=List[schemas.SystemConfigOut])

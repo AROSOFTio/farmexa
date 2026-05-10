@@ -4,12 +4,13 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { AxiosError } from 'axios'
 import { ArrowLeft, Building2, UserPlus } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { BrandMark } from '@/components/BrandMark'
 import { authService } from '@/services/authService'
 import { ApiError, VendorRegistrationResponse } from '@/types'
+import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 
 const registrationSchema = z.object({
   name: z.string().min(2, 'Tenant or farm name is required'),
@@ -21,6 +22,10 @@ const registrationSchema = z.object({
   country: z.string().optional(),
   domain: z.string().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
+  confirm_password: z.string().min(8, 'Confirm your password'),
+}).refine((values) => values.password === values.confirm_password, {
+  message: 'Passwords do not match',
+  path: ['confirm_password'],
 })
 
 type RegistrationFormValues = z.infer<typeof registrationSchema>
@@ -31,6 +36,8 @@ function getApiErrorMessage(error: unknown, fallback: string) {
 }
 
 export function VendorRegistrationPage() {
+  const navigate = useNavigate()
+  const { settings } = usePlatformSettings()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [registration, setRegistration] = useState<VendorRegistrationResponse | null>(null)
   const form = useForm<RegistrationFormValues>({
@@ -45,6 +52,7 @@ export function VendorRegistrationPage() {
       country: 'Uganda',
       domain: '',
       password: '',
+      confirm_password: '',
     },
   })
 
@@ -54,6 +62,7 @@ export function VendorRegistrationPage() {
       const response = await authService.registerVendor(values)
       setRegistration(response)
       toast.success('Workspace registered.')
+      navigate('/registration-success', { state: response, replace: true })
     } catch (error) {
       toast.error(getApiErrorMessage(error, 'Registration failed.'))
     } finally {
@@ -71,9 +80,9 @@ export function VendorRegistrationPage() {
         <div className="card p-6 sm:p-8">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
-              <h1 className="text-[1.8rem] font-semibold text-ink-900">Register vendor workspace</h1>
+              <h1 className="text-[1.8rem] font-semibold text-ink-900">Start your 14-day free trial</h1>
               <p className="text-[14px] text-ink-500">
-                New tenants can only register from the main Farmexa domain. Their staff will sign in on the assigned workspace domain after setup.
+                Create a farm workspace on {settings.system_name}. Your team will sign in on its own subdomain after setup.
               </p>
             </div>
             <Link to="/login" className="btn-secondary">
@@ -98,7 +107,7 @@ export function VendorRegistrationPage() {
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="mt-6 grid gap-4 md:grid-cols-2">
             <div className="md:col-span-2">
-              <label className="form-label">Tenant / Farm Name</label>
+              <label className="form-label">Farm name</label>
               <input className="form-input" {...form.register('name')} />
               {form.formState.errors.name ? <p className="form-error">{form.formState.errors.name.message}</p> : null}
             </div>
@@ -111,7 +120,7 @@ export function VendorRegistrationPage() {
               <input className="form-input" {...form.register('contact_person')} />
             </div>
             <div>
-              <label className="form-label">Admin Email</label>
+              <label className="form-label">Email</label>
               <input className="form-input" type="email" {...form.register('email')} />
               {form.formState.errors.email ? <p className="form-error">{form.formState.errors.email.message}</p> : null}
             </div>
@@ -128,13 +137,18 @@ export function VendorRegistrationPage() {
               <input className="form-input" {...form.register('country')} />
             </div>
             <div className="md:col-span-2">
-              <label className="form-label">Preferred domain</label>
-              <input className="form-input" placeholder="farm.example.com" {...form.register('domain')} />
+              <label className="form-label">Preferred workspace subdomain or custom domain</label>
+              <input className="form-input" placeholder={`ngali.${settings.tenant_domain_suffix}`} {...form.register('domain')} />
             </div>
             <div className="md:col-span-2">
               <label className="form-label">Admin password</label>
               <input className="form-input" type="password" {...form.register('password')} />
               {form.formState.errors.password ? <p className="form-error">{form.formState.errors.password.message}</p> : null}
+            </div>
+            <div className="md:col-span-2">
+              <label className="form-label">Confirm password</label>
+              <input className="form-input" type="password" {...form.register('confirm_password')} />
+              {form.formState.errors.confirm_password ? <p className="form-error">{form.formState.errors.confirm_password.message}</p> : null}
             </div>
             <div className="md:col-span-2 rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700">
               <div className="flex items-center gap-2 font-semibold text-slate-900">
@@ -148,7 +162,7 @@ export function VendorRegistrationPage() {
             <div className="md:col-span-2">
               <button type="submit" disabled={isSubmitting} className="btn-primary btn-lg w-full">
                 <UserPlus className="h-4.5 w-4.5" />
-                {isSubmitting ? 'Registering...' : 'Register workspace'}
+                {isSubmitting ? 'Registering...' : 'Start 14-Day Free Trial'}
               </button>
             </div>
           </form>

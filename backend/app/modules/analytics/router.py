@@ -27,6 +27,14 @@ async def get_kpis(
     return await service.analytics_service.get_kpi_dashboard(db, resolved_start, resolved_end)
 
 
+@router.get("/erp-dashboard", response_model=schemas.DashboardOverviewOut)
+async def get_erp_dashboard(
+    db: AsyncSession = Depends(get_tenant_db),
+    current_user=Depends(require_permission("dashboard:read")),
+):
+    return await service.analytics_service.get_erp_dashboard(db, current_user)
+
+
 @router.get("/profit", response_model=schemas.ProfitDashboardOut)
 async def get_profit_timeline(
     start_date: date | None = Query(default=None),

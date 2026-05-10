@@ -89,6 +89,17 @@ class Tenant(Base):
 
     subscription_start: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     subscription_expiry: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    trial_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    trial_ends_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    trial_warning_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    final_warning_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    trial_expired_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    subscription_status: Mapped[SubscriptionStatus] = mapped_column(
+        db_enum(SubscriptionStatus, name="subscriptionstatus"),
+        default=SubscriptionStatus.TRIAL,
+        server_default=SubscriptionStatus.TRIAL.value,
+    )
+    is_profile_only: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     is_suspended: Mapped[bool] = mapped_column(Boolean, default=False)
 
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -276,6 +287,7 @@ class Subscription(Base):
     next_invoice_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     amount: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
     currency: Mapped[str] = mapped_column(String(10), default="UGX")
+    trial_days: Mapped[int] = mapped_column(nullable=False, default=0, server_default="0")
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

@@ -1,585 +1,449 @@
-import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import {
-  AlertTriangle,
-  ArrowRight,
+  Activity,
+  BadgeAlert,
   Bird,
-  Boxes,
   ClipboardCheck,
-  Egg,
-  FilePlus2,
+  Factory,
+  Home,
   Package,
-  Receipt,
-  Scissors,
-  Skull,
+  ShieldCheck,
+  ShoppingCart,
+  Soup,
+  Syringe,
+  Truck,
+  Warehouse,
   Wheat,
+  Zap,
 } from 'lucide-react'
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import type { ComponentType, ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
+
 import api from '@/services/api'
-import { useAuth } from '@/features/auth/AuthContext'
-
-interface KpiData {
-  total_revenue: number
-}
-
-interface Batch {
-  id: number
-  batch_number: string
-  breed: string
-  arrival_date: string
-  active_quantity: number
-  status: string
-}
-
-interface FeedItem {
-  id: number
-  name: string
-  unit: string
-  current_stock: number
-  reorder_threshold: number
-}
-
-interface FeedConsumption {
-  id: number
-  record_date: string
-  quantity: number
-}
-
-interface EggSummary {
-  total_eggs: number
-  total_good: number
-  avg_production_rate: number | null
-}
-
-interface EggLog {
-  id: number
-  record_date: string
-  total_eggs: number
-}
-
-interface Invoice {
-  id: number
-  invoice_number: string
-  status: 'draft' | 'issued' | 'partial' | 'paid' | 'overdue' | 'cancelled'
-  total_amount: number
-  paid_amount: number
-  due_date: string
-}
-
-interface SlaughterRecord {
-  id: number
-  slaughter_date: string
-  live_birds_count: number
-  total_dressed_weight?: number | null
-  outputs?: Array<{
-    id: number
-    output_type: string
-    quantity: number
-  }>
-}
-
-interface MortalityLog {
-  id: number
-  record_date: string
-  quantity: number
-}
 
 interface DashboardOverview {
-  kpis: KpiData
-  batches: Batch[]
-  feedItems: FeedItem[]
-  consumptions: FeedConsumption[]
-  eggSummary: EggSummary
-  eggLogs: EggLog[]
-  invoices: Invoice[]
-  slaughterRecords: SlaughterRecord[]
-  mortalityByBatch: Record<number, MortalityLog[]>
-  partialErrors: string[]
+  kpis: {
+    total_birds: number
+    active_houses: number
+    total_houses: number
+    feed_stock_kg: number
+    feed_used_today_kg: number
+    mortality_today: number
+    mortality_rate_today: number
+    meat_stock_kg: number
+    sales_today: number
+    compliance_alerts: number
+  }
+  feed_stock: Array<{
+    id: number
+    name: string
+    category: string
+    unit: string
+    current_stock: number
+    reorder_threshold: number
+    status: string
+  }>
+  houses: Array<{
+    id: number
+    name: string
+    birds: number
+    active_batches: number
+    feed_today_kg: number
+    mortality_today: number
+    vaccination_due: number
+    status: string
+  }>
+  slaughter_stock: Array<{
+    id: number
+    product: string
+    kg: number
+    unit: string
+    status: string
+  }>
+  sales: {
+    cash_sales: number
+    mobile_money_sales: number
+    bank_sales: number
+    pending_payments: number
+    orders_today: number
+    top_product: string | null
+  }
+  recent_transfers: Array<{
+    id: number
+    reference: string
+    movement_type: string
+    item: string
+    quantity: number
+    unit: string
+    status: string
+    created_at: string
+  }>
+  compliance_documents: Array<{
+    id: number
+    title: string
+    document_type: string
+    expiry_date: string | null
+    days_left: number | null
+    status: string
+  }>
+  slaughter_summary: {
+    birds_received_today: number
+    dressed_weight_today_kg: number
+    average_yield_percentage: number
+    byproducts_kg: number
+  }
 }
 
-const chartTooltipStyle = {
-  border: '1px solid var(--border-subtle)',
-  borderRadius: '12px',
-  background: 'var(--surface-card)',
-  boxShadow: '0 16px 32px -28px rgba(15, 23, 42, 0.28)',
+type IconType = ComponentType<{ className?: string }>
+
+function formatNumber(value: number, decimals = 0) {
+  return value.toLocaleString('en-UG', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })
 }
 
-const saleableOutputTypes = new Set<string>([
-  'dressed_chicken',
-  'chicken_breast',
-  'chicken_thighs',
-  'chicken_wings',
-  'chicken_drumsticks',
-  'gizzards',
-  'liver',
-  'neck_backs',
-])
-
-const byproductOutputTypes = new Set<string>(['poultry_manure', 'feet', 'head'])
-
-function sameDay(value: string) {
-  return new Date(value).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)
+function formatMoney(value: number) {
+  return `UGX ${formatNumber(value)}`
 }
 
-function formatCurrency(value: number) {
-  return `UGX ${value.toLocaleString()}`
+function formatDate(value: string | null) {
+  if (!value) return '-'
+  return new Date(value).toLocaleDateString('en-UG', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function ActionButton({ children, to, primary = false }: { children: string; to: string; primary?: boolean }) {
+  const navigate = useNavigate()
+  return (
+    <button type="button" onClick={() => navigate(to)} className={primary ? 'erp-action-primary' : 'erp-action'}>
+      {children}
+    </button>
+  )
+}
+
+function KpiCard({ title, value, note, icon: Icon }: { title: string; value: string; note: string; icon: IconType }) {
+  return (
+    <div className="erp-kpi">
+      <div className="erp-kpi-icon"><Icon className="h-8 w-8" /></div>
+      <div>
+        <div className="erp-kpi-title">{title}</div>
+        <div className="erp-kpi-value">{value}</div>
+        <div className="erp-kpi-note">{note}</div>
+      </div>
+    </div>
+  )
+}
+
+function MiniStat({ title, value, note, icon: Icon }: { title: string; value: string; note?: string; icon: IconType }) {
+  return (
+    <div className="erp-mini-stat">
+      <Icon className="h-5 w-5 text-[#c99316]" />
+      <div>
+        <div className="text-[10px] font-bold text-slate-500">{title}</div>
+        <div className="text-[15px] font-extrabold leading-5 text-[#111827]">{value}</div>
+        {note ? <div className="text-[10px] text-slate-500">{note}</div> : null}
+      </div>
+    </div>
+  )
+}
+
+function Panel({ title, viewAllTo, children }: { title: string; viewAllTo: string; children: ReactNode }) {
+  const navigate = useNavigate()
+  return (
+    <section className="erp-panel">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-md border border-[#ecd8a9] bg-[#fff7e2] text-[#b98512]">
+            <ClipboardCheck className="h-4 w-4" />
+          </span>
+          <h2 className="text-[14px] font-extrabold text-[#111827]">{title}</h2>
+        </div>
+        <button type="button" onClick={() => navigate(viewAllTo)} className="text-[11px] font-bold text-[#a56f07]">View all</button>
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function Status({ value }: { value: string }) {
+  const normalized = value.toLowerCase()
+  const tone =
+    normalized.includes('low') || normalized.includes('expired') ? 'bg-[#ef5d46]' :
+      normalized.includes('pending') || normalized.includes('warning') ? 'bg-[#ef9f24]' :
+        'bg-[#3f9a35]'
+
+  return <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${tone}`}>{value}</span>
+}
+
+function EmptyRow({ colSpan, label }: { colSpan: number; label: string }) {
+  return (
+    <tr>
+      <td colSpan={colSpan} className="py-8 text-center text-[12px] font-semibold text-slate-500">
+        {label}
+      </td>
+    </tr>
+  )
+}
+
+function LoadingState() {
+  return (
+    <div className="erp-dashboard">
+      <div className="grid gap-3 xl:grid-cols-8">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <div key={index} className="h-[96px] animate-pulse rounded-[10px] border border-[#ecd8a9] bg-white" />
+        ))}
+      </div>
+      <div className="grid gap-3 xl:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div key={index} className="h-[260px] animate-pulse rounded-[10px] border border-[#ecd8a9] bg-white" />
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export function DashboardPage() {
-  const navigate = useNavigate()
-  const { enabledModules, hasModuleAccess, hasPermission, permissions } = useAuth()
-
-  const overview = useQuery<DashboardOverview>({
-    queryKey: ['dashboard-overview-v4', permissions.join('|'), enabledModules.join('|')],
-    queryFn: async () => {
-      const canBatches = hasPermission('farm:read') && hasModuleAccess('batches')
-      const canEggProduction = hasPermission('farm:read') && hasModuleAccess('egg_production')
-      const canFeedStock = hasPermission('feed:read') && hasModuleAccess('feed_stock')
-      const canFeedConsumption = hasPermission('feed:read') && hasModuleAccess('feed_consumption')
-      const canSalesInvoices = hasPermission('sales:read') && hasModuleAccess('invoices')
-      const canSlaughterRecords = hasPermission('slaughter:read') && hasModuleAccess('slaughter_records')
-      const canMortality = hasPermission('farm:read') && hasModuleAccess('mortality')
-      const partialErrors: string[] = []
-
-      const loadOrFallback = async <T,>(label: string, enabled: boolean, fallback: T, request: () => Promise<T>) => {
-        if (!enabled) return fallback
-        try {
-          return await request()
-        } catch {
-          partialErrors.push(label)
-          return fallback
-        }
-      }
-
-      const [kpis, batches, feedItems, consumptions, eggSummary, eggLogs, invoices, slaughterRecords] = await Promise.all([
-        loadOrFallback('overview', true, { total_revenue: 0 }, () =>
-          api.get<KpiData>('/analytics/kpis').then((response) => response.data)
-        ),
-        loadOrFallback('batches', canBatches, [] as Batch[], () =>
-          api.get<Batch[]>('/farm/batches').then((response) => response.data)
-        ),
-        loadOrFallback('feed stock', canFeedStock, [] as FeedItem[], () =>
-          api.get<FeedItem[]>('/feed/items').then((response) => response.data)
-        ),
-        loadOrFallback('feed usage', canFeedConsumption, [] as FeedConsumption[], () =>
-          api.get<FeedConsumption[]>('/feed/consumptions').then((response) => response.data)
-        ),
-        loadOrFallback('egg summary', canEggProduction, { total_eggs: 0, total_good: 0, avg_production_rate: null }, () =>
-          api.get<EggSummary>('/eggs/summary').then((response) => response.data)
-        ),
-        loadOrFallback('egg logs', canEggProduction, [] as EggLog[], () =>
-          api.get<EggLog[]>('/eggs').then((response) => response.data)
-        ),
-        loadOrFallback('invoices', canSalesInvoices, [] as Invoice[], () =>
-          api.get<Invoice[]>('/sales/invoices').then((response) => response.data)
-        ),
-        loadOrFallback('slaughter', canSlaughterRecords, [] as SlaughterRecord[], () =>
-          api.get<SlaughterRecord[]>('/slaughter/records').then((response) => response.data)
-        ),
-      ])
-
-      const mortalityByBatch: Record<number, MortalityLog[]> = {}
-      if (canMortality && batches.length) {
-        const results = await Promise.all(
-          batches.slice(0, 6).map((batch) =>
-            api
-              .get<MortalityLog[]>(`/farm/batches/${batch.id}/mortality`)
-              .then((response) => ({ batchId: batch.id, logs: response.data }))
-              .catch(() => ({ batchId: batch.id, logs: [] as MortalityLog[] }))
-          )
-        )
-        results.forEach(({ batchId, logs }) => {
-          mortalityByBatch[batchId] = logs
-        })
-      }
-
-      return {
-        kpis,
-        batches,
-        feedItems,
-        consumptions,
-        eggSummary,
-        eggLogs,
-        invoices,
-        slaughterRecords,
-        mortalityByBatch,
-        partialErrors,
-      }
-    },
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['erp-dashboard'],
+    queryFn: () => api.get<DashboardOverview>('/analytics/erp-dashboard').then((response) => response.data),
     refetchInterval: 60_000,
   })
 
-  const data = overview.data
+  if (isLoading) return <LoadingState />
 
-  const activeBirds = useMemo(
-    () => (data?.batches ?? []).filter((batch) => batch.status === 'active').reduce((sum, batch) => sum + batch.active_quantity, 0),
-    [data?.batches]
-  )
+  if (isError || !data) {
+    return (
+      <div className="erp-panel">
+        <h1 className="text-[16px] font-extrabold text-[#111827]">Dashboard unavailable</h1>
+        <p className="mt-2 text-sm text-slate-600">The dashboard could not load tenant data from the server.</p>
+        <button type="button" onClick={() => refetch()} className="erp-action-primary mt-4">Retry</button>
+      </div>
+    )
+  }
 
-  const eggsToday = useMemo(
-    () => (data?.eggLogs ?? []).filter((entry) => sameDay(entry.record_date)).reduce((sum, entry) => sum + entry.total_eggs, 0),
-    [data?.eggLogs]
-  )
-
-  const feedRemaining = useMemo(
-    () => (data?.feedItems ?? []).reduce((sum, item) => sum + item.current_stock, 0),
-    [data?.feedItems]
-  )
-
-  const salesThisMonth = useMemo(() => data?.kpis.total_revenue ?? 0, [data?.kpis.total_revenue])
-
-  const processingOutputs = useMemo(
-    () =>
-      (data?.slaughterRecords ?? []).flatMap((record) =>
-        (record.outputs ?? []).map((output) => ({
-          ...output,
-          slaughter_date: record.slaughter_date,
-        }))
-      ),
-    [data?.slaughterRecords]
-  )
-
-  const processingSummary = useMemo(() => {
-    const cutLines = processingOutputs.filter((output) => saleableOutputTypes.has(output.output_type))
-    const byproductLines = processingOutputs.filter((output) => byproductOutputTypes.has(output.output_type))
-    return {
-      cutLines: cutLines.length,
-      byproductLines: byproductLines.length,
-      totalKg: processingOutputs.reduce((sum, output) => sum + Number(output.quantity || 0), 0),
-    }
-  }, [processingOutputs])
-
-  const productionTrend = useMemo(
-    () =>
-      [...(data?.eggLogs ?? [])]
-        .sort((left, right) => new Date(left.record_date).getTime() - new Date(right.record_date).getTime())
-        .slice(-14)
-        .map((entry) => ({
-          day: new Date(entry.record_date).toLocaleDateString('en-UG', { month: 'short', day: 'numeric' }),
-          eggs: entry.total_eggs,
-        })),
-    [data?.eggLogs]
-  )
-
-  const alerts = useMemo(() => {
-    const items: Array<{ title: string; detail: string }> = []
-
-    ;(data?.feedItems ?? [])
-      .filter((item) => item.current_stock <= item.reorder_threshold)
-      .slice(0, 2)
-      .forEach((item) => {
-        items.push({
-          title: 'Low feed',
-          detail: `${item.name}: ${item.current_stock.toLocaleString()} ${item.unit}`,
-        })
-      })
-
-    Object.entries(data?.mortalityByBatch ?? {})
-      .map(([batchId, logs]) => ({ batchId, total: logs.reduce((sum, log) => sum + log.quantity, 0) }))
-      .filter((entry) => entry.total >= 5)
-      .slice(0, 2)
-      .forEach((entry) => {
-        items.push({
-          title: 'Mortality',
-          detail: `Batch ${entry.batchId}: ${entry.total.toLocaleString()}`,
-        })
-      })
-
-    ;(data?.invoices ?? [])
-      .filter((invoice) => invoice.status === 'overdue')
-      .slice(0, 2)
-      .forEach((invoice) => {
-        items.push({
-          title: 'Overdue',
-          detail: `${invoice.invoice_number}: ${formatCurrency(invoice.total_amount - invoice.paid_amount)}`,
-        })
-      })
-
-    return items.slice(0, 5)
-  }, [data?.feedItems, data?.invoices, data?.mortalityByBatch])
-
-  const todayTasks = useMemo(() => {
-    const items: Array<{ title: string; detail: string; path: string }> = []
-
-    if ((data?.batches?.length ?? 0) > 0 && eggsToday === 0) {
-      items.push({ title: 'Record eggs', detail: 'No entry today', path: '/farm/eggs' })
-    }
-
-    const feedLoggedToday = (data?.consumptions ?? []).some((entry) => sameDay(entry.record_date))
-    if ((data?.batches?.length ?? 0) > 0 && !feedLoggedToday) {
-      items.push({ title: 'Record feed', detail: 'No entry today', path: '/feed/consumption' })
-    }
-
-    const overdueInvoice = (data?.invoices ?? []).find((invoice) => invoice.status === 'overdue')
-    if (overdueInvoice) {
-      items.push({ title: 'Collect invoice', detail: overdueInvoice.invoice_number, path: '/sales/payments' })
-    }
-
-    if (alerts.length) {
-      items.push({ title: 'Check alerts', detail: `${alerts.length} open`, path: '/feed/stock' })
-    }
-
-    return items.slice(0, 4)
-  }, [alerts.length, data?.batches?.length, data?.consumptions, data?.invoices, eggsToday])
-
-  const recentActivity = useMemo(() => {
-    const activity = [
-      ...(data?.eggLogs ?? []).slice(-3).map((entry) => ({
-        type: 'Eggs',
-        detail: `${entry.total_eggs.toLocaleString()} recorded`,
-        date: entry.record_date,
-      })),
-      ...(data?.slaughterRecords ?? []).slice(-2).map((entry) => ({
-        type: 'Slaughter',
-        detail: `${entry.live_birds_count.toLocaleString()} birds`,
-        date: entry.slaughter_date,
-      })),
-      ...(data?.invoices ?? []).slice(-3).map((entry) => ({
-        type: 'Invoice',
-        detail: entry.invoice_number,
-        date: entry.due_date,
-      })),
-    ]
-
-    return activity
-      .sort((left, right) => new Date(right.date).getTime() - new Date(left.date).getTime())
-      .slice(0, 6)
-  }, [data?.eggLogs, data?.invoices, data?.slaughterRecords])
-
-  const quickActions = [
-    hasPermission('farm:read') && hasModuleAccess('batches') ? { label: 'Batch', icon: Bird, path: '/farm/batches' } : null,
-    hasPermission('farm:read') && hasModuleAccess('egg_production') ? { label: 'Eggs', icon: Egg, path: '/farm/eggs' } : null,
-    hasPermission('feed:read') && hasModuleAccess('feed_consumption') ? { label: 'Feed', icon: Wheat, path: '/feed/consumption' } : null,
-    hasPermission('farm:read') && hasModuleAccess('mortality') ? { label: 'Mortality', icon: Skull, path: '/farm/mortality' } : null,
-    hasPermission('dev_admin:read')
-      ? { label: 'Vendor', icon: FilePlus2, path: '/dev-admin/tenants' }
-      : hasPermission('sales:read') && hasModuleAccess('sales_orders')
-        ? { label: 'Sale', icon: Receipt, path: '/sales/orders' }
-        : null,
-    hasPermission('reports:read') && hasModuleAccess('reports') ? { label: 'Reports', icon: ClipboardCheck, path: '/reports/production' } : null,
-  ].filter((item): item is { label: string; icon: typeof Bird; path: string } => item !== null)
-
-  const primaryCards = [
-    { title: 'Birds', value: activeBirds.toLocaleString(), description: 'Active birds currently in live farm batches.', icon: Bird },
-    { title: 'Eggs', value: eggsToday.toLocaleString(), description: 'Eggs recorded for today across available flocks.', icon: Egg },
-    { title: 'Feed', value: `${feedRemaining.toLocaleString()} kg`, description: 'Current feed stock balance across tracked items.', icon: Package },
-    { title: 'Sales', value: formatCurrency(salesThisMonth), description: 'Revenue posted this month from tenant activity.', icon: Receipt },
-  ]
+  const { kpis } = data
+  const rawFeedStock = data.feed_stock.reduce((sum, item) => sum + item.current_stock, 0)
+  const finishedFeedStock = data.feed_stock
+    .filter((item) => item.category.toLowerCase().includes('finish') || item.name.toLowerCase().includes('feed'))
+    .reduce((sum, item) => sum + item.current_stock, 0)
+  const lowStockCount = data.feed_stock.filter((item) => item.status.toLowerCase().includes('low')).length
+  const vaccinationDue = data.houses.reduce((sum, house) => sum + house.vaccination_due, 0)
 
   return (
-    <div className="animate-fade-in space-y-5 pb-5">
-      <section className="dashboard-hero">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div
-              className="text-[11px] font-semibold uppercase tracking-[0.14em]"
-              style={{ color: 'rgba(var(--brand-secondary-rgb), 0.72)' }}
-            >
-              Overview
+    <div className="erp-dashboard">
+      <section className="grid gap-3 xl:grid-cols-8">
+        <KpiCard title="Total Birds" value={formatNumber(kpis.total_birds)} note="Live birds in active batches" icon={Bird} />
+        <KpiCard title="Active Houses" value={`${formatNumber(kpis.active_houses)} / ${formatNumber(kpis.total_houses)}`} note="Operational houses" icon={Home} />
+        <KpiCard title="Feed Stock" value={`${formatNumber(kpis.feed_stock_kg)} KG`} note="Current feed item balance" icon={Package} />
+        <KpiCard title="Feed Used Today" value={`${formatNumber(kpis.feed_used_today_kg)} KG`} note="Recorded feed consumption" icon={Zap} />
+        <KpiCard title="Mortality Rate" value={`${formatNumber(kpis.mortality_rate_today, 2)}%`} note={`${formatNumber(kpis.mortality_today)} mortality today`} icon={Activity} />
+        <KpiCard title="Meat Stock" value={`${formatNumber(kpis.meat_stock_kg)} KG`} note="Finished product inventory" icon={Soup} />
+        <KpiCard title="Sales Today" value={formatMoney(kpis.sales_today)} note="Posted payments today" icon={ShoppingCart} />
+        <KpiCard title="Compliance Alerts" value={formatNumber(kpis.compliance_alerts)} note="Expired or due soon" icon={ShieldCheck} />
+      </section>
+
+      <section className="grid gap-3 xl:grid-cols-12">
+        <div className="xl:col-span-4">
+          <Panel title="Feed Mill Overview" viewAllTo="/feed/stock">
+            <div className="mb-3 grid grid-cols-4 gap-2">
+              <MiniStat title="Raw Materials" value={`${formatNumber(rawFeedStock)} KG`} note="All feed stock" icon={Warehouse} />
+              <MiniStat title="Finished Feed" value={`${formatNumber(finishedFeedStock)} KG`} note="Named feed items" icon={Package} />
+              <MiniStat title="Feed Items" value={formatNumber(data.feed_stock.length)} note="Tracked" icon={Wheat} />
+              <MiniStat title="Low Stock" value={formatNumber(lowStockCount)} note="Needs attention" icon={Truck} />
             </div>
-            <h1 className="mt-2 text-[2rem] font-semibold text-[var(--brand-secondary)]">Dashboard</h1>
-            <p
-              className="mt-2 max-w-[38rem] text-[14px] leading-6"
-              style={{ color: 'rgba(var(--brand-secondary-rgb), 0.76)' }}
-            >
-              Clean overview of birds, feed, eggs, sales, and the items that need attention today.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <div className="dashboard-hero-chip">{activeBirds.toLocaleString()} birds</div>
-            <div className="dashboard-hero-chip">{todayTasks.length} tasks</div>
-            <div className="dashboard-hero-chip">{alerts.length} alerts</div>
-            <div className="dashboard-hero-chip">{formatCurrency(salesThisMonth)} sales</div>
-          </div>
+            <div className="overflow-x-auto">
+              <table className="erp-table">
+                <thead><tr><th>Feed Item</th><th>Category</th><th>Stock</th><th>Reorder</th><th>Status</th></tr></thead>
+                <tbody>
+                  {data.feed_stock.length === 0 ? (
+                    <EmptyRow colSpan={5} label="No feed stock has been entered yet." />
+                  ) : data.feed_stock.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.name}</td>
+                      <td>{item.category}</td>
+                      <td>{formatNumber(item.current_stock)} {item.unit}</td>
+                      <td>{formatNumber(item.reorder_threshold)} {item.unit}</td>
+                      <td><Status value={item.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="erp-actions">
+              <ActionButton primary to="/feed/stock">Create Feed Item</ActionButton>
+              <ActionButton to="/feed/purchases">Record Purchase</ActionButton>
+              <ActionButton to="/feed/consumption">Record Usage</ActionButton>
+              <ActionButton to="/inventory/movements">Stock Ledger</ActionButton>
+            </div>
+          </Panel>
+        </div>
+
+        <div className="xl:col-span-4">
+          <Panel title="Farm Operations Overview" viewAllTo="/farm/houses">
+            <div className="mb-3 grid grid-cols-4 gap-2">
+              <MiniStat title="Mortality Today" value={formatNumber(kpis.mortality_today)} icon={BadgeAlert} />
+              <MiniStat title="Vaccinations Due" value={formatNumber(vaccinationDue)} icon={Syringe} />
+              <MiniStat title="Feed Used Today" value={`${formatNumber(kpis.feed_used_today_kg)} KG`} icon={Wheat} />
+              <MiniStat title="Houses" value={formatNumber(kpis.total_houses)} icon={Home} />
+            </div>
+            <div className="overflow-x-auto">
+              <table className="erp-table">
+                <thead><tr><th>House</th><th>Birds</th><th>Batches</th><th>Feed Today</th><th>Mortality</th><th>Vaccination Due</th><th>Status</th></tr></thead>
+                <tbody>
+                  {data.houses.length === 0 ? (
+                    <EmptyRow colSpan={7} label="No houses have been created yet." />
+                  ) : data.houses.map((house) => (
+                    <tr key={house.id}>
+                      <td>{house.name}</td>
+                      <td>{formatNumber(house.birds)}</td>
+                      <td>{formatNumber(house.active_batches)}</td>
+                      <td>{formatNumber(house.feed_today_kg)} KG</td>
+                      <td>{formatNumber(house.mortality_today)}</td>
+                      <td>{formatNumber(house.vaccination_due)}</td>
+                      <td><Status value={house.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="erp-actions">
+              <ActionButton to="/farm/mortality">Record Mortality</ActionButton>
+              <ActionButton to="/farm/vaccination">Record Vaccination</ActionButton>
+              <ActionButton to="/farm/feed-usage">Feed Usage</ActionButton>
+              <ActionButton to="/slaughter/planning">Transfer to Slaughter</ActionButton>
+            </div>
+          </Panel>
+        </div>
+
+        <div className="xl:col-span-4">
+          <Panel title="Slaughter Overview" viewAllTo="/slaughter/records">
+            <div className="mb-3 grid grid-cols-4 gap-2">
+              <MiniStat title="Birds Received" value={formatNumber(data.slaughter_summary.birds_received_today)} icon={Bird} />
+              <MiniStat title="Dressed Weight" value={`${formatNumber(data.slaughter_summary.dressed_weight_today_kg)} KG`} icon={Soup} />
+              <MiniStat title="Avg Yield" value={`${formatNumber(data.slaughter_summary.average_yield_percentage, 1)}%`} icon={Activity} />
+              <MiniStat title="By-products" value={`${formatNumber(data.slaughter_summary.byproducts_kg)} KG`} icon={Package} />
+            </div>
+            <div className="overflow-x-auto">
+              <table className="erp-table">
+                <thead><tr><th>Product</th><th>Quantity</th><th>Unit</th><th>Status</th></tr></thead>
+                <tbody>
+                  {data.slaughter_stock.length === 0 ? (
+                    <EmptyRow colSpan={4} label="No slaughter output stock has been posted yet." />
+                  ) : data.slaughter_stock.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.product}</td>
+                      <td>{formatNumber(item.kg)}</td>
+                      <td>{item.unit}</td>
+                      <td><Status value={item.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="erp-actions">
+              <ActionButton to="/slaughter/planning">Receive Birds</ActionButton>
+              <ActionButton to="/slaughter/records">Record Slaughter</ActionButton>
+              <ActionButton to="/slaughter/outputs">Post Output</ActionButton>
+              <ActionButton to="/slaughter/yield">Yield Analysis</ActionButton>
+            </div>
+          </Panel>
         </div>
       </section>
 
-      {overview.isError ? (
-        <div className="card flex items-center gap-4 p-6 text-[var(--text-default)]">
-          <AlertTriangle className="h-6 w-6 text-[var(--brand-primary)]" />
-          <div className="font-semibold">Dashboard data could not be loaded.</div>
-        </div>
-      ) : null}
-
-      {!overview.isError && (data?.partialErrors?.length ?? 0) > 0 ? (
-        <div className="card flex items-center gap-4 p-4 text-[var(--text-default)]">
-          <AlertTriangle className="h-5 w-5 text-[var(--brand-primary)]" />
-          <div className="text-[13px] font-medium">
-            Some dashboard widgets are unavailable right now: {data?.partialErrors.join(', ')}.
-          </div>
-        </div>
-      ) : null}
-
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {primaryCards.map((card) => {
-          const Icon = card.icon
-          return (
-            <div key={card.title} className="metric-card">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="metric-label">{card.title}</div>
-                  <div className="metric-value">{card.value}</div>
-                  <div className="metric-note">{card.description}</div>
-                </div>
-                <div className="metric-icon">
-                  <Icon className="h-5 w-5" />
-                </div>
+      <section className="grid gap-3 xl:grid-cols-12">
+        <div className="xl:col-span-4">
+          <Panel title="Sales & POS Overview" viewAllTo="/sales/orders">
+            <div className="grid gap-3 lg:grid-cols-[0.95fr_1fr]">
+              <table className="erp-table">
+                <tbody>
+                  <tr><td>Today's Sales</td><td>{formatMoney(kpis.sales_today)}</td></tr>
+                  <tr><td>Cash Sales</td><td>{formatMoney(data.sales.cash_sales)}</td></tr>
+                  <tr><td>Mobile Money</td><td>{formatMoney(data.sales.mobile_money_sales)}</td></tr>
+                  <tr><td>Bank Sales</td><td>{formatMoney(data.sales.bank_sales)}</td></tr>
+                  <tr><td>Pending Orders</td><td>{formatMoney(data.sales.pending_payments)}</td></tr>
+                  <tr><td>Orders Today</td><td>{formatNumber(data.sales.orders_today)}</td></tr>
+                </tbody>
+              </table>
+              <div className="rounded-[8px] border border-[#ecd8a9] bg-[#fffaf0] p-3">
+                <div className="text-[10px] font-bold uppercase text-slate-500">Sales stock comes from inventory</div>
+                <div className="mt-2 text-[22px] font-extrabold text-[#111827]">{formatNumber(kpis.meat_stock_kg)} KG</div>
+                <div className="mt-1 text-[11px] text-slate-500">Top product: {data.sales.top_product ?? 'No completed sales yet'}</div>
               </div>
             </div>
-          )
-        })}
-      </section>
-
-      <section className="grid gap-5 xl:grid-cols-[0.9fr_1.2fr_0.82fr]">
-        <div className="card p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Tasks</h2>
-            <ClipboardCheck className="h-[18px] w-[18px] text-[var(--brand-primary)]" />
-          </div>
-          <div className="mt-4 space-y-2.5">
-            {todayTasks.length ? todayTasks.map((task) => (
-              <button
-                key={task.title}
-                type="button"
-                onClick={() => navigate(task.path)}
-                className="flex w-full items-start justify-between rounded-[12px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3 text-left hover:bg-[var(--surface-muted)]"
-              >
-                <div>
-                  <div className="text-[14px] font-semibold text-[var(--text-strong)]">{task.title}</div>
-                  <div className="mt-0.5 text-[13px] text-[var(--text-muted)]">{task.detail}</div>
-                </div>
-                <ArrowRight className="mt-1 h-4 w-4 text-[var(--brand-primary)]" />
-              </button>
-            )) : (
-              <div className="rounded-[12px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-8 text-center text-[13px] text-[var(--text-muted)]">
-                No tasks
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="card p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Production</h2>
-            <Egg className="h-[18px] w-[18px] text-[var(--brand-primary)]" />
-          </div>
-          <div className="mt-3 h-[292px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={productionTrend}>
-                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
-                <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: 'var(--chart-axis)', fontSize: 12 }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fill: 'var(--chart-axis)', fontSize: 12 }} />
-                <Tooltip contentStyle={chartTooltipStyle} />
-                <Line type="monotone" dataKey="eggs" stroke="var(--brand-primary)" strokeWidth={3} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="card p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Alerts</h2>
-            <AlertTriangle className="h-[18px] w-[18px] text-[var(--brand-primary)]" />
-          </div>
-          <div className="mt-4 space-y-2.5">
-            {alerts.length ? alerts.map((alert) => (
-              <div key={`${alert.title}-${alert.detail}`} className="rounded-[12px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <span className="status-dot bg-[var(--brand-primary)]" />
-                  <div className="text-[14px] font-semibold text-[var(--text-strong)]">{alert.title}</div>
-                </div>
-                <div className="mt-0.5 text-[13px] text-[var(--text-muted)]">{alert.detail}</div>
-              </div>
-            )) : (
-              <div className="rounded-[12px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-8 text-center text-[13px] text-[var(--text-muted)]">
-                No alerts
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {hasPermission('slaughter:read') &&
-      (hasModuleAccess('slaughter_outputs') || hasModuleAccess('slaughter_cut_parts') || hasModuleAccess('slaughter_byproducts')) ? (
-        <section className="grid gap-3 md:grid-cols-3">
-          <div className="card p-4">
-            <div className="flex items-center gap-2 text-[var(--text-muted)]">
-              <Scissors className="h-4 w-4 text-[var(--brand-primary)]" />
-              <span className="text-[11px] font-semibold tracking-[0.08em]">Cut parts</span>
+            <div className="erp-actions">
+              <ActionButton primary to="/sales/orders">Open Sales</ActionButton>
+              <ActionButton to="/sales/customers">Customers</ActionButton>
+              <ActionButton to="/sales/invoices">Invoices</ActionButton>
+              <ActionButton to="/sales/payments">Payments</ActionButton>
             </div>
-            <div className="mt-3 text-[1.6rem] font-semibold text-[var(--text-strong)]">{processingSummary.cutLines}</div>
-            <div className="mt-1 text-[13px] text-[var(--text-muted)]">Saleable cuts and processed poultry items already posted.</div>
-          </div>
-          <div className="card p-4">
-            <div className="flex items-center gap-2 text-[var(--text-muted)]">
-              <Boxes className="h-4 w-4 text-[var(--brand-primary)]" />
-              <span className="text-[11px] font-semibold tracking-[0.08em]">Byproducts</span>
-            </div>
-            <div className="mt-3 text-[1.6rem] font-semibold text-[var(--text-strong)]">{processingSummary.byproductLines}</div>
-            <div className="mt-1 text-[13px] text-[var(--text-muted)]">Manure, feet, and head batches transferred into inventory.</div>
-          </div>
-          <div className="card p-4">
-            <div className="flex items-center gap-2 text-[var(--text-muted)]">
-              <Package className="h-4 w-4 text-[var(--brand-primary)]" />
-              <span className="text-[11px] font-semibold tracking-[0.08em]">Processed kg</span>
-            </div>
-            <div className="mt-3 text-[1.6rem] font-semibold text-[var(--text-strong)]">{processingSummary.totalKg.toLocaleString()} kg</div>
-            <div className="mt-1 text-[13px] text-[var(--text-muted)]">Combined output quantity from approved slaughter postings.</div>
-          </div>
-        </section>
-      ) : null}
-
-      <section className="grid gap-5 xl:grid-cols-[1fr_0.9fr]">
-        <div className="card p-5">
-          <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Recent</h2>
-          <div className="mt-4 space-y-2.5">
-            {recentActivity.length ? recentActivity.map((entry) => (
-              <div key={`${entry.type}-${entry.detail}-${entry.date}`} className="flex items-start justify-between rounded-[12px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
-                <div>
-                  <div className="text-[14px] font-semibold text-[var(--text-strong)]">{entry.type}</div>
-                  <div className="mt-0.5 text-[13px] text-[var(--text-muted)]">{entry.detail}</div>
-                </div>
-                <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--text-muted)]">
-                  {new Date(entry.date).toLocaleDateString('en-UG', { month: 'short', day: 'numeric' })}
-                </div>
-              </div>
-            )) : (
-              <div className="rounded-[12px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-8 text-center text-[13px] text-[var(--text-muted)]">
-                No activity
-              </div>
-            )}
-          </div>
+          </Panel>
         </div>
 
-        <div className="card p-5">
-          <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Quick</h2>
-          <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
-            {quickActions.map((action) => {
-              const Icon = action.icon
-              return (
-                <button
-                  key={action.label}
-                  type="button"
-                  onClick={() => navigate(action.path)}
-                  className="flex items-center gap-3 rounded-[12px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-2.5 text-left hover:bg-[var(--surface-muted)]"
-                >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-50 text-[var(--brand-primary)]">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className="text-[14px] font-semibold text-[var(--text-strong)]">{action.label}</span>
-                </button>
-              )
-            })}
-          </div>
+        <div className="xl:col-span-4">
+          <Panel title="Transfers Overview" viewAllTo="/inventory/movements">
+            <div className="mb-3 grid grid-cols-3 gap-2">
+              <MiniStat title="Movements" value={formatNumber(data.recent_transfers.length)} icon={Truck} />
+              <MiniStat title="Low Stock" value={formatNumber(lowStockCount)} icon={BadgeAlert} />
+              <MiniStat title="Stock Items" value={formatNumber(data.slaughter_stock.length + data.feed_stock.length)} icon={Package} />
+            </div>
+            <div className="overflow-x-auto">
+              <table className="erp-table">
+                <thead><tr><th>Ref</th><th>Type</th><th>Item</th><th>Qty</th><th>Status</th></tr></thead>
+                <tbody>
+                  {data.recent_transfers.length === 0 ? (
+                    <EmptyRow colSpan={5} label="No stock movements have been posted yet." />
+                  ) : data.recent_transfers.map((movement) => (
+                    <tr key={movement.id}>
+                      <td>{movement.reference}</td>
+                      <td>{movement.movement_type}</td>
+                      <td>{movement.item}</td>
+                      <td>{formatNumber(movement.quantity)} {movement.unit}</td>
+                      <td><Status value={movement.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="erp-actions">
+              <ActionButton primary to="/inventory/movements">Post Movement</ActionButton>
+              <ActionButton to="/inventory/items">Stock Items</ActionButton>
+              <ActionButton to="/inventory/medicine">Medicine Stock</ActionButton>
+              <ActionButton to="/reports/inventory">Reports</ActionButton>
+            </div>
+          </Panel>
+        </div>
+
+        <div className="xl:col-span-4">
+          <Panel title="Compliance & Quality Control" viewAllTo="/compliance/documents">
+            <div className="mb-3 grid grid-cols-3 gap-2">
+              <MiniStat title="Documents" value={formatNumber(data.compliance_documents.length)} icon={ShieldCheck} />
+              <MiniStat title="Alerts" value={formatNumber(kpis.compliance_alerts)} icon={BadgeAlert} />
+              <MiniStat title="Due Soon" value={formatNumber(data.compliance_documents.filter((doc) => doc.days_left !== null && doc.days_left <= 7).length)} icon={ClipboardCheck} />
+            </div>
+            <div className="overflow-x-auto">
+              <table className="erp-table">
+                <thead><tr><th>Document</th><th>Type</th><th>Expiry Date</th><th>Days Left</th><th>Status</th></tr></thead>
+                <tbody>
+                  {data.compliance_documents.length === 0 ? (
+                    <EmptyRow colSpan={5} label="No compliance documents have been uploaded yet." />
+                  ) : data.compliance_documents.map((document) => (
+                    <tr key={document.id}>
+                      <td>{document.title}</td>
+                      <td>{document.document_type}</td>
+                      <td>{formatDate(document.expiry_date)}</td>
+                      <td>{document.days_left ?? '-'}</td>
+                      <td><Status value={document.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="erp-actions">
+              <ActionButton primary to="/compliance/documents">Upload Document</ActionButton>
+              <ActionButton to="/compliance/alerts">Expiry Alerts</ActionButton>
+              <ActionButton to="/reports/compliance">Reports</ActionButton>
+            </div>
+          </Panel>
         </div>
       </section>
     </div>

@@ -6,7 +6,15 @@ import asyncio
 import logging
 
 from app.db.session import AsyncSessionLocal
+from datetime import UTC, datetime
+
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+
+from app.models.settings import SystemSettings
+from app.models.tenant import Subscription, SubscriptionStatus, Tenant, TenantModule, TenantStatus
 from app.modules.compliance.service import process_due_document_reminders
+from app.services.email_service import log_and_send_email
 from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger("farmexa.tasks")
@@ -30,3 +38,143 @@ async def _process_compliance_reminders_async() -> int:
         processed = await process_due_document_reminders(db)
         logger.info("Processed %s compliance reminder(s).", processed)
         return processed
+
+
+@celery_app.task(name="tasks.process_trial_day_7_warnings")
+def process_trial_day_7_warnings() -> int:
+    return asyncio.run(_process_trial_warnings_async(day=7))
+
+
+@celery_app.task(name="tasks.process_trial_day_13_warnings")
+def process_trial_day_13_warnings() -> int:
+    return asyncio.run(_process_trial_warnings_async(day=13))
+
+
+@celery_app.task(name="tasks.process_expired_trials")
+def process_expired_trials() -> int:
+    return asyncio.run(_process_expired_trials_async())
+
+
+@celery_app.task(name="tasks.process_subscription_status_updates")
+def process_subscription_status_updates() -> int:
+    return asyncio.run(_process_expired_trials_async())
+
+
+@celery_app.task(name="tasks.process_email_retries")
+def process_email_retries() -> int:
+    logger.info("Email retry task is ready; failed email requeue is managed from the email dashboard.")
+    return 0
+
+
+async def _system_settings(db):
+    result = await db.execute(select(SystemSettings).order_by(SystemSettings.id).limit(1))
+    return result.scalar_one_or_none()
+
+
+async def _latest_subscription(db, tenant_id: int) -> Subscription | None:
+    result = await db.execute(
+        select(Subscription)
+        .where(Subscription.tenant_id == tenant_id)
+        .order_by(Subscription.start_date.desc(), Subscription.created_at.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def _process_trial_warnings_async(*, day: int) -> int:
+    now = datetime.now(UTC)
+    async with AsyncSessionLocal() as db:
+        system_settings = await _system_settings(db)
+        warning_attr = "trial_warning_sent_at" if day == 7 else "final_warning_sent_at"
+        result = await db.execute(
+            select(Tenant)
+            .where(
+                Tenant.subscription_status == SubscriptionStatus.TRIAL,
+                Tenant.trial_started_at.is_not(None),
+                Tenant.trial_ends_at.is_not(None),
+                getattr(Tenant, warning_attr).is_(None),
+            )
+            .options(selectinload(Tenant.subscriptions))
+        )
+        processed = 0
+        for tenant in result.scalars().all():
+            elapsed_days = (now.date() - tenant.trial_started_at.date()).days
+            if elapsed_days < day:
+                continue
+            days_remaining = max((tenant.trial_ends_at.date() - now.date()).days, 0)
+            if day == 7:
+                subject = "Your Farmexa free trial has 7 days remaining"
+                body = (
+                    f"Hello {tenant.contact_person or tenant.name},\n\n"
+                    "Your free trial has 7 days remaining. Upgrade to keep using all modules.\n\n"
+                    f"Workspace: {tenant.name}\nTrial ends: {tenant.trial_ends_at.date()}\n\nFarmexa Team"
+                )
+            else:
+                subject = "Your Farmexa free trial ends tomorrow"
+                body = (
+                    f"Hello {tenant.contact_person or tenant.name},\n\n"
+                    "Your free trial ends tomorrow. Upgrade now to avoid module deactivation.\n\n"
+                    f"Workspace: {tenant.name}\nDays remaining: {days_remaining}\n\nFarmexa Team"
+                )
+            await log_and_send_email(
+                db,
+                tenant_id=tenant.id,
+                recipient=tenant.email,
+                subject=subject,
+                body=body,
+                email_type="Trial Day-7 Warning" if day == 7 else "Trial Day-13 Final Warning",
+                system_settings=system_settings,
+            )
+            setattr(tenant, warning_attr, now)
+            processed += 1
+        await db.commit()
+        return processed
+
+
+async def _process_expired_trials_async() -> int:
+    now = datetime.now(UTC)
+    async with AsyncSessionLocal() as db:
+        system_settings = await _system_settings(db)
+        result = await db.execute(
+            select(Tenant).where(
+                Tenant.subscription_status == SubscriptionStatus.TRIAL,
+                Tenant.trial_ends_at.is_not(None),
+                Tenant.trial_ends_at <= now,
+                Tenant.trial_expired_at.is_(None),
+            )
+        )
+        expired = 0
+        for tenant in result.scalars().all():
+            tenant.status = TenantStatus.EXPIRED
+            tenant.subscription_status = SubscriptionStatus.EXPIRED
+            tenant.is_profile_only = True
+            tenant.trial_expired_at = now
+
+            latest = await _latest_subscription(db, tenant.id)
+            if latest:
+                latest.status = SubscriptionStatus.EXPIRED
+
+            modules = (
+                await db.execute(select(TenantModule).where(TenantModule.tenant_id == tenant.id))
+            ).scalars().all()
+            for module in modules:
+                module.is_enabled = module.module_key in {"farm_profile", "settings"}
+
+            body = (
+                f"Hello {tenant.contact_person or tenant.name},\n\n"
+                "Your Farmexa trial has ended. Operational modules are temporarily disabled, "
+                "but your farm data is safe. Upgrade your subscription to reactivate your modules.\n\n"
+                "Farmexa Team"
+            )
+            await log_and_send_email(
+                db,
+                tenant_id=tenant.id,
+                recipient=tenant.email,
+                subject="Your Farmexa trial has ended",
+                body=body,
+                email_type="Trial Expired Email",
+                system_settings=system_settings,
+            )
+            expired += 1
+        await db.commit()
+        return expired

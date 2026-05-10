@@ -31,3 +31,21 @@ class ProductCatalogOut(ProductCatalogBase):
 
     class Config:
         from_attributes = True
+
+
+class PublicSystemSettingsOut(BaseModel):
+    system_name: str
+    system_logo_url: Optional[str] = None
+    system_favicon_url: Optional[str] = None
+    primary_color: str
+    secondary_color: str
+    platform_domain: str
+    tenant_domain_suffix: str
+    sender_email: str
+    sender_name: str
+    support_email: str
+    company_name: str
+    footer_text: str
+
+    class Config:
+        from_attributes = True

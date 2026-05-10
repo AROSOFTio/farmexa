@@ -9,7 +9,7 @@
     --surface-card: #ffffff;
     --surface-soft: #f8fafc;
     --surface-muted: #f1f5f9;
-    --sidebar-bg: linear-gradient(to bottom, #d5aa3d, #c79a31, #b98624);
+    --sidebar-bg: linear-gradient(180deg, #05080d 0%, #0b1018 58%, #020305 100%);
     --sidebar-active: #ffffff;
     --topbar-bg: rgba(255, 255, 255, 0.94);
     --border-subtle: #e5e7eb;
@@ -475,6 +475,82 @@
     background: rgba(var(--brand-primary-rgb), 0.08);
     color: var(--brand-accent);
     border: 1px solid rgba(var(--brand-primary-rgb), 0.16);
+  }
+
+  .erp-dashboard {
+    @apply space-y-3 pb-4;
+    color: #111827;
+  }
+
+  .erp-kpi {
+    @apply flex min-h-[84px] items-center gap-3 rounded-[10px] border bg-white px-4 py-3;
+    border-color: #eadcc1;
+    box-shadow: 0 10px 24px -22px rgba(23, 18, 8, 0.45);
+  }
+
+  .erp-kpi-icon {
+    @apply flex h-12 w-12 shrink-0 items-center justify-center text-[#c99316];
+  }
+
+  .erp-kpi-title {
+    @apply text-[10px] font-extrabold uppercase leading-4 text-[#111827];
+  }
+
+  .erp-kpi-value {
+    @apply text-[18px] font-extrabold leading-6 text-[#111827];
+  }
+
+  .erp-kpi-note {
+    @apply text-[11px] leading-4 text-slate-500;
+  }
+
+  .erp-panel {
+    @apply rounded-[10px] border bg-white p-3;
+    border-color: #eadcc1;
+    box-shadow: 0 10px 24px -22px rgba(23, 18, 8, 0.45);
+  }
+
+  .erp-mini-stat {
+    @apply flex min-h-[56px] items-center gap-2 rounded-[8px] border bg-white px-2.5 py-2;
+    border-color: #eadcc1;
+  }
+
+  .erp-table {
+    @apply w-full min-w-max border-collapse text-[11px];
+  }
+
+  .erp-table th {
+    @apply whitespace-nowrap border-b px-3 py-2 text-left text-[10px] font-extrabold text-[#111827];
+    background: #f8f2e6;
+    border-color: #eadcc1;
+  }
+
+  .erp-table td {
+    @apply whitespace-nowrap border-b px-3 py-1.5 font-medium text-[#111827];
+    border-color: #f0e6d2;
+  }
+
+  .erp-table tbody tr:nth-child(even) {
+    background: #fffdf8;
+  }
+
+  .erp-actions {
+    @apply mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4;
+  }
+
+  .erp-action,
+  .erp-action-primary {
+    @apply h-8 rounded-[7px] border px-3 text-[11px] font-extrabold transition-colors;
+    border-color: #d6a62e;
+  }
+
+  .erp-action {
+    @apply bg-white text-[#a56f07] hover:bg-[#fff7e2];
+  }
+
+  .erp-action-primary {
+    @apply text-[#111827];
+    background: linear-gradient(90deg, #e1b23b, #c99316);
   }
 
   [data-theme='dark'] .card,

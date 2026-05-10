@@ -62,6 +62,7 @@ async def run_seed() -> None:
     async with AsyncSessionLocal() as db:
         try:
             await _seed_roles_and_permissions(db)
+            await _seed_system_settings(db)
             await _seed_saas_catalog(db)
             await _backfill_tenant_staff_access(db)
             await _seed_admin(db)
@@ -152,6 +153,39 @@ async def _seed_roles_and_permissions(db: AsyncSession) -> None:
                 .on_conflict_do_nothing(index_elements=["role_id", "permission_id"])
             )
             await db.execute(statement)
+
+
+async def _seed_system_settings(db: AsyncSession) -> None:
+    from app.models.settings import SystemSettings
+
+    result = await db.execute(select(SystemSettings).order_by(SystemSettings.id).limit(1))
+    if result.scalar_one_or_none():
+        return
+
+    db.add(
+        SystemSettings(
+            system_name="Farmexa",
+            primary_color="#d6a62e",
+            secondary_color="#0b1018",
+            platform_domain=settings.PRIMARY_PLATFORM_DOMAIN,
+            tenant_domain_suffix=settings.DEFAULT_TENANT_DOMAIN_SUFFIX,
+            sender_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoft.io",
+            sender_name=settings.SMTP_FROM_NAME,
+            support_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoft.io",
+            company_name="AROSOFT",
+            footer_text="Powered by AROSOFT",
+            smtp_host=settings.SMTP_HOST,
+            smtp_port=settings.SMTP_PORT,
+            smtp_username=settings.SMTP_USERNAME,
+            smtp_password=settings.SMTP_PASSWORD,
+            smtp_use_tls=settings.SMTP_USE_TLS,
+            cloudflare_api_token=settings.CLOUDFLARE_API_TOKEN,
+            cloudflare_zone_id=settings.CLOUDFLARE_ZONE_ID,
+            tenant_domain_target_ip=settings.TENANT_DOMAIN_TARGET_IP,
+            enable_cloudflare_dns_automation=settings.ENABLE_CLOUDFLARE_DNS_AUTOMATION,
+            enable_automatic_ssl_provisioning=settings.ENABLE_AUTOMATIC_SSL_PROVISIONING,
+        )
+    )
 
 
 async def _backfill_tenant_staff_access(db: AsyncSession) -> None:

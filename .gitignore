@@ -35,6 +35,7 @@ frontend/.env.*
 # Logs
 *.log
 logs/
+backend/celerybeat-schedule
 
 # Alembic
 backend/alembic/versions/__pycache__/

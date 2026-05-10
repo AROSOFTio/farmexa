@@ -12,7 +12,7 @@ from app.models.inventory import StockItem, StockMovement  # noqa: F401
 from app.models.slaughter import SlaughterRecord, SlaughterOutput  # noqa: F401
 from app.models.sales import Customer, Order, OrderItem, Invoice, Payment  # noqa: F401
 from app.models.finance import ExpenseCategory, Expense, IncomeCategory, Income  # noqa: F401
-from app.models.settings import ProductCatalog, ReferenceItem, SystemConfig  # noqa: F401
+from app.models.settings import EmailLog, ProductCatalog, ReferenceItem, SystemConfig, SystemSettings  # noqa: F401
 from app.models.egg_production import EggProductionLog  # noqa: F401
 from app.models.tenant import (  # noqa: F401
     BillingInvoice,
@@ -69,6 +69,8 @@ __all__ = [
     "ProductCatalog",
     "ReferenceItem",
     "SystemConfig",
+    "SystemSettings",
+    "EmailLog",
     "EggProductionLog",
     "BillingInvoice",
     "BillingPayment",

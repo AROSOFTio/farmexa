@@ -129,11 +129,14 @@ class AuthService:
                 slug=user.tenant.slug,
                 plan=latest_subscription.plan_code if latest_subscription else user.tenant.plan,
                 subscription_status=latest_subscription.status.value if latest_subscription else (
-                    user.tenant.status.value if hasattr(user.tenant.status, "value") else str(user.tenant.status)
+                    user.tenant.subscription_status.value if hasattr(user.tenant.subscription_status, "value") else str(user.tenant.subscription_status)
                 ),
                 primary_domain=domains[0].host if domains else None,
                 is_suspended=user.tenant.is_suspended,
+                is_profile_only=user.tenant.is_profile_only,
                 subscription_expiry=latest_subscription.expiry_date if latest_subscription else user.tenant.subscription_expiry,
+                trial_started_at=user.tenant.trial_started_at,
+                trial_ends_at=user.tenant.trial_ends_at,
             )
         return MeResponse(
             user=UserOut.model_validate(user),

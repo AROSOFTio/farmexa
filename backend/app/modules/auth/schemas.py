@@ -3,7 +3,7 @@ Pydantic v2 schemas for authentication endpoints.
 """
 
 from datetime import date, datetime
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
 class LoginRequest(BaseModel):
@@ -21,6 +21,30 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str = Field(min_length=8)
+    confirm_password: str
+
+    @model_validator(mode="after")
+    def passwords_match(self):
+        if self.password != self.confirm_password:
+            raise ValueError("Password confirmation does not match.")
+        return self
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class MessageOut(BaseModel):
+    message: str
+
+
 class TenantRegistrationRequest(BaseModel):
     name: str = Field(min_length=2)
     business_name: str | None = None
@@ -31,6 +55,13 @@ class TenantRegistrationRequest(BaseModel):
     country: str | None = None
     domain: str | None = None
     password: str = Field(min_length=8)
+    confirm_password: str | None = None
+
+    @model_validator(mode="after")
+    def passwords_match(self):
+        if self.confirm_password is not None and self.confirm_password != self.password:
+            raise ValueError("Password confirmation does not match.")
+        return self
 
 
 class TokenPair(BaseModel):
@@ -79,7 +110,10 @@ class TenantSessionOut(BaseModel):
     subscription_status: str | None = None
     primary_domain: str | None = None
     is_suspended: bool
+    is_profile_only: bool = False
     subscription_expiry: date | None = None
+    trial_started_at: datetime | None = None
+    trial_ends_at: datetime | None = None
 
 
 class TenantRegistrationOut(BaseModel):
@@ -90,6 +124,8 @@ class TenantRegistrationOut(BaseModel):
     login_url: str
     primary_domain: str
     primary_domain_status: str
+    trial_start_date: date | None = None
+    trial_expiry_date: date | None = None
     fallback_domain: str | None = None
     custom_domain: str | None = None
     custom_domain_status: str | None = None
@@ -104,3 +140,30 @@ class MeResponse(BaseModel):
 
 VendorRegistrationRequest = TenantRegistrationRequest
 VendorRegistrationOut = TenantRegistrationOut
+
+
+class TenantProfileOut(BaseModel):
+    id: int
+    name: str
+    slug: str
+    business_name: str | None = None
+    contact_person: str | None = None
+    email: EmailStr
+    phone: str | None = None
+    address: str | None = None
+    country: str | None = None
+    plan: str
+    subscription_status: str | None = None
+    primary_domain: str | None = None
+    trial_started_at: datetime | None = None
+    trial_ends_at: datetime | None = None
+
+
+class TenantProfileUpdate(BaseModel):
+    name: str = Field(min_length=2)
+    business_name: str | None = None
+    contact_person: str | None = None
+    email: EmailStr
+    phone: str | None = None
+    address: str | None = None
+    country: str | None = None

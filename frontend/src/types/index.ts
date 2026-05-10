@@ -34,7 +34,10 @@ export interface TenantSession {
   subscription_status: string | null
   primary_domain: string | null
   is_suspended: boolean
+  is_profile_only: boolean
   subscription_expiry: string | null
+  trial_started_at?: string | null
+  trial_ends_at?: string | null
 }
 
 export interface TokenPair {
@@ -68,6 +71,7 @@ export interface TenantRegistrationRequest {
   country?: string
   domain?: string
   password: string
+  confirm_password?: string
 }
 
 export interface TenantRegistrationResponse {
@@ -78,6 +82,8 @@ export interface TenantRegistrationResponse {
   login_url: string
   primary_domain: string
   primary_domain_status: string
+  trial_start_date?: string | null
+  trial_expiry_date?: string | null
   fallback_domain?: string | null
   custom_domain?: string | null
   custom_domain_status?: string | null

@@ -123,11 +123,14 @@ export function LoginPage() {
             </button>
 
             {showRegisterAction ? (
-              <Link to="/register-vendor" className="btn-secondary btn-lg w-full">
+              <Link to="/register" className="btn-secondary btn-lg w-full">
                 <UserPlus className="h-4.5 w-4.5" />
-                Register new tenant
+                Start Free Trial
               </Link>
             ) : null}
+            <Link to="/forgot-password" className="block text-center text-[13px] font-semibold text-[var(--brand-primary)]">
+              Forgot password?
+            </Link>
           </form>
         </div>
       </motion.div>
