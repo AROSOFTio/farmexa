@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { useAuth } from '@/features/auth/AuthContext'
 
 function titleFromPath(pathname: string) {
-  if (pathname.startsWith('/dev-admin')) return 'Dev Admin  Dashboard'
+  if (pathname.startsWith('/dev-admin')) return 'Dev Admin Dashboard'
   if (pathname.startsWith('/feed-mill')) return 'Feed Mill'
   if (pathname.startsWith('/farm')) return 'Farm Operations'
   if (pathname.startsWith('/inventory')) return 'Inventory & Transfers'

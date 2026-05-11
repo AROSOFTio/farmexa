@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { AxiosError } from 'axios'
-import { ArrowLeft, Building2, UserPlus } from 'lucide-react'
+import { ArrowLeft, Building2, CheckCircle2, Globe2, ShieldCheck, UserPlus } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
@@ -71,23 +71,46 @@ export function VendorRegistrationPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] px-4 py-10">
-      <div className="w-full max-w-[760px]">
-        <div className="mb-7 flex justify-center">
-          <BrandMark />
-        </div>
-
-        <div className="card p-6 sm:p-8">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <h1 className="text-[1.8rem] font-semibold text-ink-900">Start your 14-day free trial</h1>
-              <p className="text-[14px] text-ink-500">
-                Create a farm workspace on {settings.system_name}. Your team will sign in on its own subdomain after setup.
+    <div className="min-h-screen bg-[#f6f7f9] px-4 py-8">
+      <div className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-[1180px] overflow-hidden rounded-[18px] border border-[#eadcc1] bg-white shadow-[0_28px_80px_-48px_rgba(15,23,42,.45)] lg:grid-cols-[390px_minmax(0,1fr)]">
+        <aside className="relative bg-[#030910] p-8 text-white">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(212,164,44,.24),transparent_32%)]" />
+          <div className="relative">
+            <BrandMark light showTagline />
+            <div className="mt-12">
+              <div className="auth-eyebrow border-[#d4a42c]/30 bg-[#d4a42c]/10 text-[#f3cf78]">14-day free trial</div>
+              <h1 className="mt-5 text-4xl font-black leading-tight text-white">Create a clean Farmexa workspace.</h1>
+              <p className="mt-4 text-[14px] leading-7 text-white/68">
+                Your farm gets tenant isolation, a workspace URL, trial lifecycle automation, and operational modules ready for real records.
               </p>
             </div>
-            <Link to="/login" className="btn-secondary">
+            <div className="mt-8 space-y-3">
+              {[
+                'Automatic farm workspace',
+                `Subdomain on ${settings.tenant_domain_suffix}`,
+                'Welcome email and trial expiry tracking',
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-3 rounded-[10px] border border-white/10 bg-white/[.06] px-3 py-3 text-[13px] font-semibold">
+                  <CheckCircle2 className="h-4 w-4 text-[#d4a42c]" />
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        <main className="px-5 py-7 sm:px-8">
+          <div className="mb-7 flex items-start justify-between gap-4">
+            <div>
+              <div className="page-eyebrow">Tenant onboarding</div>
+              <h1 className="mt-2 text-[2rem] font-black leading-tight text-ink-900">Start your 14-day free trial</h1>
+              <p className="mt-2 max-w-2xl text-[14px] leading-6 text-ink-500">
+                Register the farm, primary admin, and workspace details. Farmexa will create the tenant and login URL.
+              </p>
+            </div>
+            <Link to="/login" className="btn-secondary shrink-0">
               <ArrowLeft className="h-4 w-4" />
-              Back
+              Sign in
             </Link>
           </div>
 
@@ -105,68 +128,88 @@ export function VendorRegistrationPage() {
             </div>
           ) : null}
 
-          <form onSubmit={form.handleSubmit(onSubmit)} className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className="md:col-span-2">
-              <label className="form-label">Farm name</label>
-              <input className="form-input" {...form.register('name')} />
-              {form.formState.errors.name ? <p className="form-error">{form.formState.errors.name.message}</p> : null}
-            </div>
-            <div>
-              <label className="form-label">Business Name</label>
-              <input className="form-input" {...form.register('business_name')} />
-            </div>
-            <div>
-              <label className="form-label">Contact Person</label>
-              <input className="form-input" {...form.register('contact_person')} />
-            </div>
-            <div>
-              <label className="form-label">Email</label>
-              <input className="form-input" type="email" {...form.register('email')} />
-              {form.formState.errors.email ? <p className="form-error">{form.formState.errors.email.message}</p> : null}
-            </div>
-            <div>
-              <label className="form-label">Phone</label>
-              <input className="form-input" {...form.register('phone')} />
-            </div>
-            <div>
-              <label className="form-label">Address</label>
-              <input className="form-input" {...form.register('address')} />
-            </div>
-            <div>
-              <label className="form-label">Country</label>
-              <input className="form-input" {...form.register('country')} />
-            </div>
-            <div className="md:col-span-2">
-              <label className="form-label">Preferred workspace subdomain or custom domain</label>
-              <input className="form-input" placeholder={`ngali.${settings.tenant_domain_suffix}`} {...form.register('domain')} />
-            </div>
-            <div className="md:col-span-2">
-              <label className="form-label">Admin password</label>
-              <input className="form-input" type="password" {...form.register('password')} />
-              {form.formState.errors.password ? <p className="form-error">{form.formState.errors.password.message}</p> : null}
-            </div>
-            <div className="md:col-span-2">
-              <label className="form-label">Confirm password</label>
-              <input className="form-input" type="password" {...form.register('confirm_password')} />
-              {form.formState.errors.confirm_password ? <p className="form-error">{form.formState.errors.confirm_password.message}</p> : null}
-            </div>
-            <div className="md:col-span-2 rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700">
-              <div className="flex items-center gap-2 font-semibold text-slate-900">
-                <Building2 className="h-4 w-4" />
-                Domain handling
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-5">
+            <section className="form-section">
+              <div className="mb-4 flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-[var(--brand-primary)]" />
+                <div className="form-section-title mb-0">Farm identity</div>
               </div>
-              <p className="mt-2 leading-6">
-                Custom domains remain pending until DNS and SSL are activated. Farmexa fallback access stays available on the platform subdomain.
-              </p>
-            </div>
-            <div className="md:col-span-2">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <label className="form-label">Farm name</label>
+                  <input className="form-input" {...form.register('name')} />
+                  {form.formState.errors.name ? <p className="form-error">{form.formState.errors.name.message}</p> : null}
+                </div>
+                <div>
+                  <label className="form-label">Business name</label>
+                  <input className="form-input" {...form.register('business_name')} />
+                </div>
+                <div>
+                  <label className="form-label">Country</label>
+                  <input className="form-input" {...form.register('country')} />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="form-label">Address</label>
+                  <input className="form-input" {...form.register('address')} />
+                </div>
+              </div>
+            </section>
+
+            <section className="form-section">
+              <div className="mb-4 flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-[var(--brand-primary)]" />
+                <div className="form-section-title mb-0">Administrator access</div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="form-label">Contact person</label>
+                  <input className="form-input" {...form.register('contact_person')} />
+                </div>
+                <div>
+                  <label className="form-label">Phone</label>
+                  <input className="form-input" {...form.register('phone')} />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="form-label">Email</label>
+                  <input className="form-input" type="email" {...form.register('email')} />
+                  {form.formState.errors.email ? <p className="form-error">{form.formState.errors.email.message}</p> : null}
+                </div>
+                <div>
+                  <label className="form-label">Admin password</label>
+                  <input className="form-input" type="password" {...form.register('password')} />
+                  {form.formState.errors.password ? <p className="form-error">{form.formState.errors.password.message}</p> : null}
+                </div>
+                <div>
+                  <label className="form-label">Confirm password</label>
+                  <input className="form-input" type="password" {...form.register('confirm_password')} />
+                  {form.formState.errors.confirm_password ? <p className="form-error">{form.formState.errors.confirm_password.message}</p> : null}
+                </div>
+              </div>
+            </section>
+
+            <section className="form-section">
+              <div className="mb-4 flex items-center gap-2">
+                <Globe2 className="h-4 w-4 text-[var(--brand-primary)]" />
+                <div className="form-section-title mb-0">Workspace domain</div>
+              </div>
+              <div>
+                <label className="form-label">Preferred workspace subdomain or custom domain</label>
+                <input className="form-input" placeholder={`ngali.${settings.tenant_domain_suffix}`} {...form.register('domain')} />
+                <p className="form-hint">Leave blank to let Farmexa generate a clean farm subdomain automatically.</p>
+              </div>
+              <div className="mt-4 rounded-[10px] border border-[#eadcc1] bg-[#fffaf0] px-4 py-3 text-[13px] leading-6 text-slate-700">
+                DNS and SSL status are tracked after signup. Fallback workspace access remains available while custom domain setup completes.
+              </div>
+            </section>
+
+            <div>
               <button type="submit" disabled={isSubmitting} className="btn-primary btn-lg w-full">
                 <UserPlus className="h-4.5 w-4.5" />
-                {isSubmitting ? 'Registering...' : 'Start 14-Day Free Trial'}
+                {isSubmitting ? 'Creating workspace...' : 'Create Farmexa Workspace'}
               </button>
             </div>
           </form>
-        </div>
+        </main>
       </div>
     </div>
   )

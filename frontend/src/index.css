@@ -26,8 +26,8 @@
     --warning: #bc8b17;
     --danger: #dc5f5f;
     --info: #1d4ed8;
-    --shadow-card: 0 4px 12px -2px rgba(15, 23, 42, 0.05);
-    --shadow-card-hover: 0 8px 24px -4px rgba(15, 23, 42, 0.08);
+    --shadow-card: 0 10px 26px -24px rgba(15, 23, 42, 0.34);
+    --shadow-card-hover: 0 18px 34px -26px rgba(15, 23, 42, 0.42);
     --shadow-modal: 0 20px 40px -8px rgba(15, 23, 42, 0.12);
     --shadow-shell: 0 4px 12px -2px rgba(15, 23, 42, 0.05);
     --chart-grid: #e6ebf3;
@@ -174,11 +174,11 @@
   }
 
   .page-container {
-    @apply mx-auto w-full max-w-[1780px] px-4 py-5 sm:px-5 lg:px-7 lg:py-6;
+    @apply mx-auto w-full max-w-[1780px] px-4 py-4 sm:px-5 lg:px-6 lg:py-5;
   }
 
   .card {
-    @apply rounded-[1.25rem];
+    @apply rounded-[10px];
     background: rgba(255, 255, 255, 0.98);
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-card);
@@ -193,7 +193,7 @@
   }
 
   .kpi-card {
-    @apply rounded-[1.25rem] p-5;
+    @apply rounded-[10px] p-4;
     background: #ffffff;
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-card);
@@ -204,12 +204,12 @@
   }
 
   .section-title {
-    @apply text-[1.8rem] font-semibold;
+    @apply text-[1.55rem] font-black tracking-tight;
     color: var(--text-strong);
   }
 
   .section-subtitle {
-    @apply mt-1 max-w-3xl text-[14px] leading-6;
+    @apply mt-1 max-w-3xl text-[13.5px] leading-6;
     color: var(--text-muted);
   }
 
@@ -235,7 +235,7 @@
   }
 
   .metric-card {
-    @apply rounded-[1.25rem] p-5;
+    @apply rounded-[10px] p-4;
     background: #ffffff;
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-card);
@@ -247,23 +247,23 @@
   }
 
   .metric-value {
-    @apply mt-3 text-[1.95rem] font-semibold leading-none;
+    @apply mt-2 text-[1.65rem] font-black leading-none;
     color: var(--text-strong);
   }
 
   .metric-note {
-    @apply mt-2 text-[13px] leading-6;
+    @apply mt-1.5 text-[12.5px] leading-5;
     color: var(--text-muted);
   }
 
   .metric-icon {
-    @apply flex h-11 w-11 items-center justify-center rounded-[1rem];
+    @apply flex h-10 w-10 items-center justify-center rounded-[8px];
     background: rgba(var(--brand-primary-rgb), 0.1);
     color: var(--brand-primary);
   }
 
   .form-section {
-    @apply rounded-[1rem] border p-4;
+    @apply rounded-[10px] border p-4;
     background: var(--surface-soft);
     border-color: var(--border-subtle);
   }
@@ -274,7 +274,7 @@
   }
 
   .inline-note {
-    @apply rounded-[1rem] border px-4 py-3 text-[13px] leading-6;
+    @apply rounded-[10px] border px-4 py-3 text-[13px] leading-6;
     background: var(--surface-soft);
     border-color: var(--border-subtle);
     color: var(--text-default);
@@ -285,14 +285,14 @@
   }
 
   .data-table th {
-    @apply whitespace-nowrap px-5 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.14em];
+    @apply whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-black uppercase tracking-[0.12em];
     background: var(--surface-soft);
     color: var(--text-muted);
     border-bottom: 1px solid var(--border-subtle);
   }
 
   .data-table td {
-    @apply px-5 py-4 align-top text-[14px];
+    @apply px-4 py-3 align-top text-[13px];
     color: var(--text-default);
     border-bottom: 1px solid var(--border-subtle);
   }
@@ -302,7 +302,7 @@
   }
 
   .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold;
+    @apply inline-flex items-center rounded-[6px] px-2 py-1 text-[10.5px] font-bold uppercase tracking-[0.05em];
   }
 
   .badge-success,
@@ -319,12 +319,12 @@
   }
 
   .form-label {
-    @apply mb-2 block text-[13.5px] font-semibold;
+    @apply mb-1.5 block text-[12px] font-black uppercase tracking-[0.08em];
     color: var(--text-default);
   }
 
   .form-input {
-    @apply w-full rounded-[1rem] px-4 py-3 text-[14.5px] transition-all disabled:cursor-not-allowed;
+    @apply min-h-11 w-full rounded-[8px] px-3.5 py-2.5 text-[14px] transition-all disabled:cursor-not-allowed;
     background: var(--surface-card);
     color: var(--text-strong);
     border: 1px solid var(--border-subtle);
@@ -351,11 +351,11 @@
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-[1rem] text-[13.5px] font-semibold transition-all disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-[8px] text-[13px] font-black transition-all disabled:pointer-events-none disabled:opacity-50;
   }
 
   .btn-sm {
-    @apply gap-1.5 px-3.5 py-2.5 text-[12px];
+    @apply gap-1.5 px-3 py-2 text-[11.5px];
   }
 
   .btn-primary {
@@ -446,32 +446,34 @@
   }
 
   .auth-page {
-    background: #f4f7fb;
+    background:
+      radial-gradient(circle at top left, rgba(var(--brand-primary-rgb), 0.12), transparent 30%),
+      linear-gradient(180deg, #f9fafb 0%, #eef2f7 100%);
   }
 
   .auth-panel {
-    @apply rounded-[1.25rem];
+    @apply rounded-[12px];
     background: var(--surface-card);
     border: 1px solid rgba(var(--brand-primary-rgb), 0.18);
     box-shadow: 0 28px 64px -40px rgba(var(--brand-secondary-rgb), 0.18);
   }
 
   .auth-eyebrow {
-    @apply inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em];
+    @apply inline-flex rounded-[6px] px-2.5 py-1 text-[10.5px] font-black uppercase tracking-[0.14em];
     background: rgba(var(--brand-primary-rgb), 0.08);
     color: var(--brand-primary);
     border: 1px solid rgba(var(--brand-primary-rgb), 0.18);
   }
 
   .dashboard-hero {
-    @apply rounded-[1.35rem] px-6 py-6 sm:px-7;
+    @apply rounded-[10px] px-5 py-5 sm:px-6;
     background: #fff7e2;
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-card);
   }
 
   .dashboard-hero-chip {
-    @apply inline-flex items-center rounded-full px-3 py-1.5 text-[12px] font-semibold;
+    @apply inline-flex items-center rounded-[7px] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.08em];
     background: rgba(var(--brand-primary-rgb), 0.08);
     color: var(--brand-accent);
     border: 1px solid rgba(var(--brand-primary-rgb), 0.16);
