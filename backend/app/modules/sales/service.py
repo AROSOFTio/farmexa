@@ -166,5 +166,66 @@ class SalesService:
         db.refresh(db_payment)
         return db_payment
 
+    def checkout_pos(self, db: Session, payload: schemas.PosCheckoutCreate):
+        customer = None
+        if payload.customer_id:
+            customer = db.query(Customer).filter(Customer.id == payload.customer_id, Customer.is_active.is_(True)).first()
+            if not customer:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected customer is not active")
+        else:
+            customer = db.query(Customer).filter(Customer.name == payload.customer_name).first()
+            if not customer:
+                customer = Customer(name=payload.customer_name or "Walk-in Customer", customer_type="retail", is_active=True)
+                db.add(customer)
+                db.flush()
+
+        order = self.create_order(
+            db,
+            schemas.OrderCreate(
+                customer_id=customer.id,
+                status="completed",
+                notes=payload.notes,
+                items=[
+                    schemas.OrderItemCreate(
+                        product_id=item.product_id,
+                        quantity=item.quantity,
+                        unit_price=item.unit_price,
+                    )
+                    for item in payload.items
+                ],
+            ),
+        )
+        invoice = (
+            db.query(Invoice)
+            .options(joinedload(Invoice.customer), joinedload(Invoice.payments))
+            .filter(Invoice.order_id == order.id)
+            .first()
+        )
+        if not invoice:
+            raise HTTPException(status_code=500, detail="POS invoice was not generated")
+
+        payment = self.add_payment(
+            db,
+            invoice.id,
+            schemas.PaymentCreate(
+                amount=invoice.total_amount,
+                payment_method=payload.payment_method,
+                payment_date=date.today(),
+                reference=payload.payment_reference,
+            ),
+        )
+        invoice = (
+            db.query(Invoice)
+            .options(joinedload(Invoice.customer), joinedload(Invoice.payments))
+            .filter(Invoice.id == invoice.id)
+            .first()
+        )
+        return {
+            "receipt_number": f"RCP-{invoice.invoice_number}",
+            "order": order,
+            "invoice": invoice,
+            "payment": payment,
+        }
+
 
 sales_service = SalesService()

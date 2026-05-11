@@ -109,3 +109,25 @@ class InvoiceOut(InvoiceBase):
 
     class Config:
         from_attributes = True
+
+
+class PosLineCreate(BaseModel):
+    product_id: int
+    quantity: float = Field(gt=0)
+    unit_price: float = Field(ge=0)
+
+
+class PosCheckoutCreate(BaseModel):
+    customer_id: Optional[int] = None
+    customer_name: str = "Walk-in Customer"
+    payment_method: PaymentMethod
+    payment_reference: Optional[str] = None
+    notes: Optional[str] = None
+    items: List[PosLineCreate] = Field(min_length=1)
+
+
+class PosCheckoutOut(BaseModel):
+    receipt_number: str
+    order: OrderOut
+    invoice: InvoiceOut
+    payment: Optional[PaymentOut] = None

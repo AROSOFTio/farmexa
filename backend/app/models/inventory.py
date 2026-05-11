@@ -22,6 +22,18 @@ class MovementType(str, enum.Enum):
     ADJUSTMENT = "adjustment"
 
 
+class TransferStatus(str, enum.Enum):
+    DRAFT = "draft"
+    ISSUED = "issued"
+    RECEIVED = "received"
+    CANCELLED = "cancelled"
+
+
+class TransferType(str, enum.Enum):
+    GIV = "giv"
+    GRN = "grn"
+
+
 class StockItem(Base):
     __tablename__ = "stock_items"
 
@@ -61,3 +73,23 @@ class StockMovement(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     item = relationship("StockItem", back_populates="movements")
+
+
+class StockTransfer(Base):
+    __tablename__ = "stock_transfers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reference_number = Column(String, unique=True, index=True, nullable=False)
+    transfer_type = Column(db_enum(TransferType, name="transfertype"), nullable=False, default=TransferType.GIV)
+    item_id = Column(Integer, ForeignKey("stock_items.id"), nullable=False)
+    quantity = Column(Float, nullable=False)
+    unit = Column(String, nullable=False, default="kg")
+    from_location = Column(String, nullable=False)
+    to_location = Column(String, nullable=False)
+    status = Column(db_enum(TransferStatus, name="transferstatus"), nullable=False, default=TransferStatus.DRAFT)
+    notes = Column(Text, nullable=True)
+    issued_at = Column(DateTime(timezone=True), nullable=True)
+    received_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    item = relationship("StockItem")

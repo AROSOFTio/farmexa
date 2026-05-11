@@ -22,6 +22,7 @@ from app.core.deps import get_current_user
 from app.db.base import Base
 from app.db.session import AsyncSessionLocal, SyncSessionLocal
 from app.models.auth import Role
+from app.models.feed import FeedCategory, FeedItem
 from app.models.inventory import StockCategory, StockItem
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -84,6 +85,14 @@ DEFAULT_PRODUCTION_STOCK_ITEMS = [
         "sku": "PRD-HEAD",
         "description": "Processed head handled as a reusable poultry byproduct.",
     },
+]
+
+DEFAULT_FEED_RAW_MATERIALS = [
+    ("Maize", 18750.0),
+    ("Concentrate", 4200.0),
+    ("Soya Cake", 3600.0),
+    ("Sunflower", 2400.0),
+    ("Limestone", 1200.0),
 ]
 
 _cache_lock = RLock()
@@ -260,6 +269,10 @@ def _ensure_schema_ready_sync(database_name: str) -> sessionmaker[Session]:
 def _apply_runtime_schema_patches(engine: Engine) -> None:
     Base.metadata.tables["reference_items"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["poultry_house_sections"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["feed_formulations"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["feed_formulation_ingredients"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["feed_production_batches"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["stock_transfers"].create(bind=engine, checkfirst=True)
     inspector = inspect(engine)
     with engine.begin() as connection:
         connection.execute(
@@ -451,6 +464,26 @@ def _seed_default_inventory_items(session: Session) -> None:
                 average_cost=0.0,
                 description=item["description"],
                 is_active=True,
+            )
+        )
+
+    raw_category = session.query(FeedCategory).filter(FeedCategory.name == "Raw Materials").first()
+    if raw_category is None:
+        raw_category = FeedCategory(name="Raw Materials", description="Feed mill raw material stock.")
+        session.add(raw_category)
+        session.flush()
+
+    for name, opening_stock in DEFAULT_FEED_RAW_MATERIALS:
+        existing_feed = session.query(FeedItem).filter(FeedItem.name == name).first()
+        if existing_feed is not None:
+            continue
+        session.add(
+            FeedItem(
+                name=name,
+                category_id=raw_category.id,
+                unit="kg",
+                current_stock=opening_stock,
+                reorder_threshold=500.0,
             )
         )
 

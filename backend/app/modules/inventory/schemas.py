@@ -1,7 +1,7 @@
 ﻿from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
-from app.models.inventory import StockCategory, MovementType
+from app.models.inventory import StockCategory, MovementType, TransferStatus, TransferType
 
 class StockItemBase(BaseModel):
     name: str
@@ -52,6 +52,36 @@ class StockMovementOut(StockMovementBase):
     id: int
     previous_quantity: float
     new_quantity: float
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class StockTransferBase(BaseModel):
+    transfer_type: TransferType = TransferType.GIV
+    item_id: int
+    quantity: float
+    unit: str = "kg"
+    from_location: str
+    to_location: str
+    notes: Optional[str] = None
+
+
+class StockTransferCreate(StockTransferBase):
+    status: TransferStatus = TransferStatus.DRAFT
+
+
+class StockTransferStatusUpdate(BaseModel):
+    status: TransferStatus
+
+
+class StockTransferOut(StockTransferBase):
+    id: int
+    reference_number: str
+    status: TransferStatus
+    issued_at: Optional[datetime] = None
+    received_at: Optional[datetime] = None
     created_at: datetime
 
     class Config:

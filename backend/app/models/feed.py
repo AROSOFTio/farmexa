@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from typing import Optional
-from sqlalchemy import String, Integer, Date, ForeignKey, Numeric, Text, Float
+from sqlalchemy import String, Integer, Date, ForeignKey, Numeric, Text, Float, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -85,3 +85,50 @@ class FeedConsumption(Base):
 
     batch: Mapped["Batch"] = relationship("Batch")
     feed_item: Mapped["FeedItem"] = relationship("FeedItem", back_populates="consumptions")
+
+
+class FeedFormulation(Base):
+    __tablename__ = "feed_formulations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(150), unique=True, index=True)
+    stage: Mapped[str] = mapped_column(String(50), index=True)
+    texture: Mapped[str] = mapped_column(String(50), default="Mash")
+    output_quantity_kg: Mapped[float] = mapped_column(Float, default=1000.0)
+    cost_per_kg: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+    ingredients: Mapped[list["FeedFormulationIngredient"]] = relationship(
+        "FeedFormulationIngredient",
+        back_populates="formulation",
+        cascade="all, delete-orphan",
+    )
+    productions: Mapped[list["FeedProductionBatch"]] = relationship("FeedProductionBatch", back_populates="formulation")
+
+
+class FeedFormulationIngredient(Base):
+    __tablename__ = "feed_formulation_ingredients"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    formulation_id: Mapped[int] = mapped_column(ForeignKey("feed_formulations.id"), index=True)
+    feed_item_id: Mapped[int] = mapped_column(ForeignKey("feed_items.id"))
+    percentage: Mapped[float] = mapped_column(Float)
+
+    formulation: Mapped["FeedFormulation"] = relationship("FeedFormulation", back_populates="ingredients")
+    feed_item: Mapped["FeedItem"] = relationship("FeedItem")
+
+
+class FeedProductionBatch(Base):
+    __tablename__ = "feed_production_batches"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    batch_number: Mapped[str] = mapped_column(String(60), unique=True, index=True)
+    formulation_id: Mapped[int] = mapped_column(ForeignKey("feed_formulations.id"))
+    output_item_id: Mapped[int] = mapped_column(ForeignKey("feed_items.id"))
+    output_quantity_kg: Mapped[float] = mapped_column(Float)
+    cost_per_kg: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    produced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+    formulation: Mapped["FeedFormulation"] = relationship("FeedFormulation", back_populates="productions")
+    output_item: Mapped["FeedItem"] = relationship("FeedItem")

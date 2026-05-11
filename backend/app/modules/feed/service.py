@@ -1,14 +1,20 @@
+import uuid
+
 from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 
+from app.models.feed import FeedCategory, FeedFormulation, FeedFormulationIngredient, FeedItem, FeedProductionBatch
 from app.modules.feed.repository import FeedRepository
 from app.modules.feed.schemas import (
     SupplierCreate, SupplierUpdate, SupplierOut,
     FeedCategoryCreate, FeedCategoryUpdate, FeedCategoryOut,
     FeedItemCreate, FeedItemUpdate, FeedItemOut,
     FeedPurchaseCreate, FeedPurchaseOut,
-    FeedConsumptionCreate, FeedConsumptionOut
+    FeedConsumptionCreate, FeedConsumptionOut,
+    FeedFormulationCreate, FeedFormulationOut, FeedProductionCreate, FeedProductionOut
 )
 from app.modules.farm.repository import FarmRepository
 
@@ -112,3 +118,116 @@ class FeedService:
         consumption = await self.repo.create_consumption(data)
         await self.db.commit()
         return FeedConsumptionOut.model_validate(consumption)
+
+    async def get_formulations(self) -> list[FeedFormulationOut]:
+        result = await self.db.execute(
+            select(FeedFormulation)
+            .options(
+                selectinload(FeedFormulation.ingredients).selectinload(FeedFormulationIngredient.feed_item),
+            )
+            .order_by(FeedFormulation.stage, FeedFormulation.name)
+        )
+        return [FeedFormulationOut.model_validate(item) for item in result.scalars().all()]
+
+    async def create_formulation(self, data: FeedFormulationCreate) -> FeedFormulationOut:
+        total_percentage = round(sum(item.percentage for item in data.ingredients), 4)
+        if total_percentage != 100:
+            raise HTTPException(status_code=422, detail="Ingredient percentages must total exactly 100%.")
+
+        item_ids = [item.feed_item_id for item in data.ingredients]
+        items_result = await self.db.execute(select(FeedItem).where(FeedItem.id.in_(item_ids)))
+        feed_items = {item.id: item for item in items_result.scalars().all()}
+        missing = [item_id for item_id in item_ids if item_id not in feed_items]
+        if missing:
+            raise HTTPException(status_code=400, detail=f"Unknown feed item(s): {', '.join(map(str, missing))}")
+
+        cost_per_kg = 0.0
+        for ingredient in data.ingredients:
+            feed_item = feed_items[ingredient.feed_item_id]
+            cost_per_kg += (float(getattr(feed_item, "reorder_threshold", 0) or 0) * ingredient.percentage) / 100
+
+        formulation = FeedFormulation(
+            name=data.name,
+            stage=data.stage,
+            texture=data.texture,
+            output_quantity_kg=data.output_quantity_kg,
+            cost_per_kg=cost_per_kg,
+        )
+        self.db.add(formulation)
+        await self.db.flush()
+        for ingredient in data.ingredients:
+            self.db.add(
+                FeedFormulationIngredient(
+                    formulation_id=formulation.id,
+                    feed_item_id=ingredient.feed_item_id,
+                    percentage=ingredient.percentage,
+                )
+            )
+        await self.db.commit()
+
+        refreshed = await self.db.execute(
+            select(FeedFormulation)
+            .where(FeedFormulation.id == formulation.id)
+            .options(selectinload(FeedFormulation.ingredients).selectinload(FeedFormulationIngredient.feed_item))
+        )
+        return FeedFormulationOut.model_validate(refreshed.scalar_one())
+
+    async def get_productions(self) -> list[FeedProductionOut]:
+        result = await self.db.execute(select(FeedProductionBatch).order_by(FeedProductionBatch.produced_at.desc()))
+        return [FeedProductionOut.model_validate(item) for item in result.scalars().all()]
+
+    async def create_production(self, data: FeedProductionCreate) -> FeedProductionOut:
+        result = await self.db.execute(
+            select(FeedFormulation)
+            .where(FeedFormulation.id == data.formulation_id)
+            .options(selectinload(FeedFormulation.ingredients).selectinload(FeedFormulationIngredient.feed_item))
+        )
+        formulation = result.scalar_one_or_none()
+        if not formulation:
+            raise HTTPException(status_code=404, detail="Feed formulation not found.")
+
+        deductions: list[tuple[FeedItem, float]] = []
+        for ingredient in formulation.ingredients:
+            required_kg = data.output_quantity_kg * (ingredient.percentage / 100)
+            feed_item = ingredient.feed_item
+            if feed_item.current_stock < required_kg:
+                raise HTTPException(status_code=400, detail=f"Insufficient raw material: {feed_item.name}")
+            deductions.append((feed_item, required_kg))
+
+        category_result = await self.db.execute(select(FeedCategory).where(FeedCategory.name == "Finished Feed"))
+        finished_category = category_result.scalar_one_or_none()
+        if not finished_category:
+            finished_category = FeedCategory(name="Finished Feed", description="Finished poultry feed produced from formulas.")
+            self.db.add(finished_category)
+            await self.db.flush()
+
+        output_name = f"{formulation.stage} {formulation.texture} Feed"
+        output_result = await self.db.execute(select(FeedItem).where(FeedItem.name == output_name))
+        output_item = output_result.scalar_one_or_none()
+        if not output_item:
+            output_item = FeedItem(
+                name=output_name,
+                category_id=finished_category.id,
+                unit="kg",
+                current_stock=0,
+                reorder_threshold=0,
+            )
+            self.db.add(output_item)
+            await self.db.flush()
+
+        for feed_item, required_kg in deductions:
+            feed_item.current_stock -= required_kg
+        output_item.current_stock += data.output_quantity_kg
+
+        batch = FeedProductionBatch(
+            batch_number=f"FPB-{uuid.uuid4().hex[:10].upper()}",
+            formulation_id=formulation.id,
+            output_item_id=output_item.id,
+            output_quantity_kg=data.output_quantity_kg,
+            cost_per_kg=formulation.cost_per_kg,
+            notes=data.notes,
+        )
+        self.db.add(batch)
+        await self.db.commit()
+        await self.db.refresh(batch)
+        return FeedProductionOut.model_validate(batch)

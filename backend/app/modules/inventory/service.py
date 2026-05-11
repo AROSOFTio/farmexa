@@ -1,7 +1,10 @@
+from datetime import datetime, timezone
+import uuid
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models.inventory import MovementType, StockCategory, StockItem, StockMovement
+from app.models.inventory import MovementType, StockCategory, StockItem, StockMovement, StockTransfer, TransferStatus
 
 from . import schemas
 
@@ -108,6 +111,99 @@ class InventoryService:
         db.commit()
         db.refresh(db_movement)
         return db_movement
+
+    def get_transfers(self, db: Session, skip: int = 0, limit: int = 100, status_filter: TransferStatus | None = None):
+        query = db.query(StockTransfer)
+        if status_filter is not None:
+            query = query.filter(StockTransfer.status == status_filter)
+        return query.order_by(StockTransfer.created_at.desc()).offset(skip).limit(limit).all()
+
+    def create_transfer(self, db: Session, transfer: schemas.StockTransferCreate):
+        item = db.query(StockItem).filter(StockItem.id == transfer.item_id, StockItem.is_active.is_(True)).first()
+        if not item:
+            raise HTTPException(status_code=404, detail="Stock item not found")
+        if transfer.quantity <= 0:
+            raise HTTPException(status_code=422, detail="Transfer quantity must be greater than zero")
+
+        db_transfer = StockTransfer(
+            reference_number=f"{transfer.transfer_type.value.upper()}-{uuid.uuid4().hex[:8].upper()}",
+            transfer_type=transfer.transfer_type,
+            item_id=transfer.item_id,
+            quantity=transfer.quantity,
+            unit=transfer.unit,
+            from_location=transfer.from_location,
+            to_location=transfer.to_location,
+            status=TransferStatus.DRAFT,
+            notes=transfer.notes,
+        )
+        db.add(db_transfer)
+        db.commit()
+        db.refresh(db_transfer)
+
+        if transfer.status == TransferStatus.ISSUED:
+            return self.update_transfer_status(db, db_transfer.id, schemas.StockTransferStatusUpdate(status=TransferStatus.ISSUED))
+        return db_transfer
+
+    def update_transfer_status(self, db: Session, transfer_id: int, payload: schemas.StockTransferStatusUpdate):
+        transfer = db.query(StockTransfer).filter(StockTransfer.id == transfer_id).first()
+        if not transfer:
+            raise HTTPException(status_code=404, detail="Transfer not found")
+        item = db.query(StockItem).filter(StockItem.id == transfer.item_id).first()
+        if not item:
+            raise HTTPException(status_code=404, detail="Transfer stock item not found")
+
+        if transfer.status == payload.status:
+            return transfer
+        if transfer.status == TransferStatus.CANCELLED:
+            raise HTTPException(status_code=409, detail="Cancelled transfers cannot be changed")
+        if transfer.status == TransferStatus.RECEIVED:
+            raise HTTPException(status_code=409, detail="Received transfers cannot be changed")
+
+        now = datetime.now(timezone.utc)
+        if payload.status == TransferStatus.ISSUED:
+            if transfer.status != TransferStatus.DRAFT:
+                raise HTTPException(status_code=409, detail="Only draft transfers can be issued")
+            self.create_movement(
+                db,
+                schemas.StockMovementCreate(
+                    item_id=transfer.item_id,
+                    movement_type=MovementType.OUT,
+                    quantity=transfer.quantity,
+                    reference_type="GIV",
+                    reference_id=transfer.id,
+                    unit_cost=item.average_cost,
+                    notes=f"{transfer.reference_number}: {transfer.from_location} to {transfer.to_location}",
+                ),
+            )
+            transfer.status = TransferStatus.ISSUED
+            transfer.issued_at = now
+        elif payload.status == TransferStatus.RECEIVED:
+            if transfer.status != TransferStatus.ISSUED:
+                raise HTTPException(status_code=409, detail="Only issued transfers can be received")
+            self.create_movement(
+                db,
+                schemas.StockMovementCreate(
+                    item_id=transfer.item_id,
+                    movement_type=MovementType.IN,
+                    quantity=transfer.quantity,
+                    reference_type="GRN",
+                    reference_id=transfer.id,
+                    unit_cost=item.average_cost,
+                    notes=f"{transfer.reference_number}: received at {transfer.to_location}",
+                ),
+            )
+            transfer.status = TransferStatus.RECEIVED
+            transfer.received_at = now
+        elif payload.status == TransferStatus.CANCELLED:
+            if transfer.status != TransferStatus.DRAFT:
+                raise HTTPException(status_code=409, detail="Only draft transfers can be cancelled")
+            transfer.status = TransferStatus.CANCELLED
+        elif payload.status == TransferStatus.DRAFT:
+            raise HTTPException(status_code=409, detail="Transfers cannot be moved back to draft")
+
+        db.commit()
+        db.refresh(transfer)
+        return transfer
 
 
 inventory_service = InventoryService()

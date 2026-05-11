@@ -3,10 +3,13 @@ import { AuthProvider } from '@/features/auth/AuthContext'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { VendorRegistrationPage } from '@/features/auth/VendorRegistrationPage'
 import { RegistrationSuccessPage } from '@/features/auth/RegistrationSuccessPage'
+import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from '@/features/auth/AuthActionPages'
 import { PublicHomePage } from '@/features/public/PublicHomePage'
+import { PricingPage } from '@/features/public/PricingPage'
 import { ProfitDashboard } from '@/features/analytics/ProfitDashboard'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { FeedManagementPage } from '@/features/feed/FeedManagementPage'
+import { FeedMillProductionPage } from '@/features/feed/FeedMillProductionPage'
 import { ExpensesPage } from '@/features/finance/ExpensesPage'
 import { IncomesPage } from '@/features/finance/IncomesPage'
 import { BatchesPage } from '@/features/farm/BatchesPage'
@@ -14,9 +17,11 @@ import { FarmProfilePage } from '@/features/farm/FarmProfilePage'
 import { FarmOperationsPage } from '@/features/farm/FarmOperationsPage'
 import { HousesPage } from '@/features/farm/HousesPage'
 import { InventoryPage } from '@/features/inventory/InventoryPage'
+import { InventoryTransfersPage } from '@/features/inventory/InventoryTransfersPage'
 import { CustomersPage } from '@/features/sales/CustomersPage'
 import { InvoicesPage } from '@/features/sales/InvoicesPage'
 import { OrdersPage } from '@/features/sales/OrdersPage'
+import { PosPage } from '@/features/sales/PosPage'
 import { SettingsConfigPage } from '@/features/settings/SettingsConfigPage'
 import { UsersPage } from '@/features/settings/users/UsersPage'
 import { RolesPage } from '@/features/settings/users/RolesPage'
@@ -30,7 +35,7 @@ import { ModuleGuard, ModuleDisabledPage } from '@/components/ModuleGuard'
 import { CompliancePage } from '@/features/compliance/CompliancePage'
 import { UpgradeModulesPage } from '@/features/subscriptions/UpgradeModulesPage'
 import { SubscriptionExpiredPage } from '@/features/subscriptions/SubscriptionExpiredPage'
-import { ErpModulePage } from '@/components/ErpModulePage'
+import { BillingPage, SubscriptionPage, SupportPage } from '@/features/subscriptions/AccountPages'
 
 export default function App() {
   return (
@@ -42,10 +47,10 @@ export default function App() {
         <Route path="/register-tenant" element={<VendorRegistrationPage />} />
         <Route path="/register-vendor" element={<VendorRegistrationPage />} />
         <Route path="/registration-success" element={<RegistrationSuccessPage />} />
-        <Route path="/forgot-password" element={<ErpModulePage title="Forgot Password" description="Request a secure password reset link for your Farmexa account." />} />
-        <Route path="/reset-password" element={<ErpModulePage title="Reset Password" description="Set a new password using your secure reset token." />} />
-        <Route path="/verify-email" element={<ErpModulePage title="Verify Email" description="Confirm your email address for secure workspace access." />} />
-        <Route path="/pricing" element={<ErpModulePage title="Plans and Pricing" description="Trial, Basic, Standard, Premium, and Custom Farmexa packages." />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
         <Route path="/features" element={<PublicHomePage />} />
 
         <Route
@@ -419,21 +424,21 @@ export default function App() {
 
           <Route path="feed-mill">
             <Route path="raw-materials" element={<ProtectedRoute permission="feed:read"><ModuleGuard moduleKey="feed_stock"><FeedManagementPage section="stock" /></ModuleGuard></ProtectedRoute>} />
-            <Route path="formulations" element={<ProtectedRoute permission="feed:read"><ModuleGuard moduleKey="feed_stock"><FeedManagementPage section="stock" /></ModuleGuard></ProtectedRoute>} />
-            <Route path="production" element={<ProtectedRoute permission="feed:write"><ModuleGuard moduleKey="feed_purchases"><FeedManagementPage section="purchases" /></ModuleGuard></ProtectedRoute>} />
+            <Route path="formulations" element={<ProtectedRoute permission="feed:read"><ModuleGuard moduleKey="feed_stock"><FeedMillProductionPage section="formulations" /></ModuleGuard></ProtectedRoute>} />
+            <Route path="production" element={<ProtectedRoute permission="feed:write"><ModuleGuard moduleKey="feed_purchases"><FeedMillProductionPage section="production" /></ModuleGuard></ProtectedRoute>} />
             <Route path="stock" element={<ProtectedRoute permission="feed:read"><ModuleGuard moduleKey="feed_stock"><FeedManagementPage section="stock" /></ModuleGuard></ProtectedRoute>} />
-            <Route path="transfers" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_movements"><InventoryPage section="movements" /></ModuleGuard></ProtectedRoute>} />
+            <Route path="transfers" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_movements"><InventoryTransfersPage view="transfers" /></ModuleGuard></ProtectedRoute>} />
           </Route>
 
           <Route path="inventory">
-            <Route path="transfers" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_movements"><InventoryPage section="movements" /></ModuleGuard></ProtectedRoute>} />
-            <Route path="grn" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_movements"><InventoryPage section="movements" /></ModuleGuard></ProtectedRoute>} />
-            <Route path="giv" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_movements"><InventoryPage section="movements" /></ModuleGuard></ProtectedRoute>} />
-            <Route path="low-stock" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_items"><InventoryPage section="items" /></ModuleGuard></ProtectedRoute>} />
+            <Route path="transfers" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_movements"><InventoryTransfersPage view="transfers" /></ModuleGuard></ProtectedRoute>} />
+            <Route path="grn" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_movements"><InventoryTransfersPage view="grn" /></ModuleGuard></ProtectedRoute>} />
+            <Route path="giv" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_movements"><InventoryTransfersPage view="giv" /></ModuleGuard></ProtectedRoute>} />
+            <Route path="low-stock" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_items"><InventoryTransfersPage view="low-stock" /></ModuleGuard></ProtectedRoute>} />
           </Route>
 
           <Route path="sales">
-            <Route path="pos" element={<ProtectedRoute permission="sales:write"><ModuleGuard moduleKey="sales_orders"><OrdersPage /></ModuleGuard></ProtectedRoute>} />
+            <Route path="pos" element={<ProtectedRoute permission="sales:write"><ModuleGuard moduleKey="sales_orders"><PosPage /></ModuleGuard></ProtectedRoute>} />
             <Route path="receipts" element={<ProtectedRoute permission="sales:read"><ModuleGuard moduleKey="payments"><InvoicesPage section="payments" /></ModuleGuard></ProtectedRoute>} />
             <Route path="store-stock" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_items"><InventoryPage section="items" /></ModuleGuard></ProtectedRoute>} />
           </Route>
@@ -450,15 +455,15 @@ export default function App() {
 
           <Route path="settings">
             <Route path="profile" element={<ProtectedRoute><ModuleGuard moduleKey="farm_profile"><FarmProfilePage /></ModuleGuard></ProtectedRoute>} />
-            <Route path="subscription" element={<ProtectedRoute><ErpModulePage title="Subscription" /></ProtectedRoute>} />
-            <Route path="company" element={<ProtectedRoute permission="settings:read"><ModuleGuard moduleKey="settings"><ErpModulePage title="Company Settings" /></ModuleGuard></ProtectedRoute>} />
+            <Route path="subscription" element={<ProtectedRoute><SubscriptionPage /></ProtectedRoute>} />
+            <Route path="company" element={<ProtectedRoute permission="settings:read"><ModuleGuard moduleKey="settings"><SettingsConfigPage /></ModuleGuard></ProtectedRoute>} />
           </Route>
 
-          <Route path="subscription" element={<ProtectedRoute><ErpModulePage title="Subscription" /></ProtectedRoute>} />
+          <Route path="subscription" element={<ProtectedRoute><SubscriptionPage /></ProtectedRoute>} />
           <Route path="subscription/upgrade" element={<ProtectedRoute><UpgradeModulesPage /></ProtectedRoute>} />
           <Route path="subscription/expired" element={<ProtectedRoute><SubscriptionExpiredPage /></ProtectedRoute>} />
-          <Route path="billing" element={<ProtectedRoute><ErpModulePage title="Billing" /></ProtectedRoute>} />
-          <Route path="support" element={<ProtectedRoute><ErpModulePage title="Support" /></ProtectedRoute>} />
+          <Route path="billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
+          <Route path="support" element={<ProtectedRoute><SupportPage /></ProtectedRoute>} />
           
           <Route path="dev-admin">
             <Route

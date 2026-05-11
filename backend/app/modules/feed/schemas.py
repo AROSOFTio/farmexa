@@ -114,3 +114,60 @@ class FeedConsumptionCreate(FeedConsumptionBase):
 class FeedConsumptionOut(FeedConsumptionBase):
     id: int
     model_config = {"from_attributes": True}
+
+
+class FeedFormulationIngredientCreate(BaseModel):
+    feed_item_id: int
+    percentage: float = Field(gt=0, le=100)
+
+
+class FeedIngredientItemOut(BaseModel):
+    id: int
+    name: str
+    unit: str
+    current_stock: float
+    reorder_threshold: float
+    model_config = {"from_attributes": True}
+
+
+class FeedFormulationIngredientOut(FeedFormulationIngredientCreate):
+    id: int
+    formulation_id: int
+    feed_item: Optional[FeedIngredientItemOut] = None
+    model_config = {"from_attributes": True}
+
+
+class FeedFormulationCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=150)
+    stage: str = Field(pattern="^(Starter|Grower|Finisher)$")
+    texture: str = Field(pattern="^(Mash|Pellet)$")
+    output_quantity_kg: float = Field(gt=0)
+    ingredients: list[FeedFormulationIngredientCreate] = Field(min_length=1)
+
+
+class FeedFormulationOut(BaseModel):
+    id: int
+    name: str
+    stage: str
+    texture: str
+    output_quantity_kg: float
+    cost_per_kg: float
+    ingredients: list[FeedFormulationIngredientOut] = []
+    model_config = {"from_attributes": True}
+
+
+class FeedProductionCreate(BaseModel):
+    formulation_id: int
+    output_quantity_kg: float = Field(gt=0)
+    notes: Optional[str] = None
+
+
+class FeedProductionOut(BaseModel):
+    id: int
+    batch_number: str
+    formulation_id: int
+    output_item_id: int
+    output_quantity_kg: float
+    cost_per_kg: float
+    notes: Optional[str] = None
+    model_config = {"from_attributes": True}

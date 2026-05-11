@@ -12,6 +12,10 @@ from app.modules.feed.schemas import (
     FeedItemOut,
     FeedPurchaseCreate,
     FeedPurchaseOut,
+    FeedFormulationCreate,
+    FeedFormulationOut,
+    FeedProductionCreate,
+    FeedProductionOut,
     SupplierCreate,
     SupplierOut,
 )
@@ -104,3 +108,37 @@ async def create_consumption(
     current_user=Depends(require_permission("feed:write")),
 ):
     return await FeedService(db).create_consumption(data)
+
+
+@router.get("/formulations", response_model=list[FeedFormulationOut])
+async def list_formulations(
+    db: AsyncSession = Depends(get_tenant_db),
+    current_user=Depends(require_permission("feed:read")),
+):
+    return await FeedService(db).get_formulations()
+
+
+@router.post("/formulations", response_model=FeedFormulationOut, status_code=status.HTTP_201_CREATED)
+async def create_formulation(
+    data: FeedFormulationCreate,
+    db: AsyncSession = Depends(get_tenant_db),
+    current_user=Depends(require_permission("feed:write")),
+):
+    return await FeedService(db).create_formulation(data)
+
+
+@router.get("/productions", response_model=list[FeedProductionOut])
+async def list_productions(
+    db: AsyncSession = Depends(get_tenant_db),
+    current_user=Depends(require_permission("feed:read")),
+):
+    return await FeedService(db).get_productions()
+
+
+@router.post("/productions", response_model=FeedProductionOut, status_code=status.HTTP_201_CREATED)
+async def create_production(
+    data: FeedProductionCreate,
+    db: AsyncSession = Depends(get_tenant_db),
+    current_user=Depends(require_permission("feed:write")),
+):
+    return await FeedService(db).create_production(data)

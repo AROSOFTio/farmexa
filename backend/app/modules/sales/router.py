@@ -66,3 +66,12 @@ def add_payment(
     current_user=Depends(require_permission("sales:write")),
 ):
     return service.sales_service.add_payment(db, invoice_id, payment)
+
+
+@router.post("/pos/checkout", response_model=schemas.PosCheckoutOut)
+def checkout_pos(
+    payload: schemas.PosCheckoutCreate,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("sales:write")),
+):
+    return service.sales_service.checkout_pos(db, payload)
