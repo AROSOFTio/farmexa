@@ -80,6 +80,12 @@ class Settings(BaseSettings):
     SEED_DEV_ADMIN_EMAIL: str = "devadmin@farmexa.local"
     SEED_DEV_ADMIN_PASSWORD: str = "DevAdmin@2026!"
     SEED_DEV_ADMIN_FULL_NAME: str = "Farmexa Developer Admin"
+    SEED_DEMO_TENANT_ENABLED: bool = False
+    SEED_DEMO_TENANT_NAME: str = "Farmexa Test Farm"
+    SEED_DEMO_TENANT_SLUG: str = "testfarm"
+    SEED_DEMO_TENANT_ADMIN_EMAIL: str = "tenantadmin@farmexa.local"
+    SEED_DEMO_TENANT_ADMIN_PASSWORD: str = "TenantAdmin@2026!"
+    SEED_DEMO_TENANT_ADMIN_FULL_NAME: str = "Farmexa Tenant Administrator"
 
     UPLOAD_DIR: str = "/app/uploads"
     SMTP_HOST: str | None = None

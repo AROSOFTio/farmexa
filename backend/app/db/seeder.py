@@ -4,6 +4,7 @@ Seeds roles, permissions, and the initial super manager account if not present.
 """
 
 import logging
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
@@ -67,6 +68,7 @@ async def run_seed() -> None:
             await _backfill_tenant_staff_access(db)
             await _seed_admin(db)
             await _seed_developer_admin(db)
+            await _seed_demo_tenant_if_enabled(db)
             await db.commit()
             logger.info("Database seed completed successfully.")
         except Exception as exc:
@@ -362,3 +364,163 @@ async def _seed_developer_admin(db: AsyncSession) -> None:
     )
     db.add(admin)
     logger.info("Developer admin user staged for creation: %s", settings.SEED_DEV_ADMIN_EMAIL)
+
+
+async def _seed_demo_tenant_if_enabled(db: AsyncSession) -> None:
+    """Create a login-only tenant/admin only when explicitly enabled.
+
+    The seed is disabled by default and does not create operational demo records.
+    """
+    if not settings.SEED_DEMO_TENANT_ENABLED:
+        logger.info("Demo tenant seed is disabled.")
+        return
+
+    from app.models.auth import Role
+    from app.models.tenant import (
+        BillingCycle,
+        DomainStatus,
+        DomainType,
+        PlanDefinition,
+        Subscription,
+        SubscriptionStatus,
+        Tenant,
+        TenantDomain,
+        TenantModule,
+        TenantStatus,
+    )
+    from app.models.user import User
+
+    slug = settings.SEED_DEMO_TENANT_SLUG.strip().lower()
+    host = f"{slug}.{settings.DEFAULT_TENANT_DOMAIN_SUFFIX}"
+    today = date.today()
+    trial_expiry = today + timedelta(days=14)
+
+    plan = (
+        await db.execute(select(PlanDefinition).where(PlanDefinition.code == "full_trial"))
+    ).scalar_one_or_none()
+    if plan is None:
+        logger.error("Cannot seed demo tenant because the full_trial plan is missing.")
+        return
+
+    tenant = (await db.execute(select(Tenant).where(Tenant.slug == slug))).scalar_one_or_none()
+    if tenant is None:
+        tenant = Tenant(
+            name=settings.SEED_DEMO_TENANT_NAME,
+            slug=slug,
+            business_name=settings.SEED_DEMO_TENANT_NAME,
+            contact_person=settings.SEED_DEMO_TENANT_ADMIN_FULL_NAME,
+            email=settings.SEED_DEMO_TENANT_ADMIN_EMAIL,
+            country="Uganda",
+            status=TenantStatus.TRIAL,
+            plan="full_trial",
+            billing_cycle=BillingCycle.MONTHLY,
+            subscription_start=today,
+            subscription_expiry=trial_expiry,
+            trial_started_at=datetime.combine(today, datetime.min.time(), tzinfo=UTC),
+            trial_ends_at=datetime.combine(trial_expiry, datetime.min.time(), tzinfo=UTC),
+            subscription_status=SubscriptionStatus.TRIAL,
+            is_profile_only=False,
+            notes="Seeded login-only tenant for explicit testing. Contains no demo operational records.",
+        )
+        db.add(tenant)
+        await db.flush()
+    else:
+        tenant.name = settings.SEED_DEMO_TENANT_NAME
+        tenant.business_name = tenant.business_name or settings.SEED_DEMO_TENANT_NAME
+        tenant.contact_person = settings.SEED_DEMO_TENANT_ADMIN_FULL_NAME
+        tenant.email = settings.SEED_DEMO_TENANT_ADMIN_EMAIL
+        tenant.plan = "full_trial"
+        tenant.status = TenantStatus.TRIAL
+        tenant.subscription_status = SubscriptionStatus.TRIAL
+        tenant.subscription_start = tenant.subscription_start or today
+        tenant.subscription_expiry = tenant.subscription_expiry or trial_expiry
+        tenant.trial_started_at = tenant.trial_started_at or datetime.combine(today, datetime.min.time(), tzinfo=UTC)
+        tenant.trial_ends_at = tenant.trial_ends_at or datetime.combine(trial_expiry, datetime.min.time(), tzinfo=UTC)
+        tenant.is_profile_only = False
+
+    existing_domain = (
+        await db.execute(select(TenantDomain).where(TenantDomain.normalized_host == host))
+    ).scalar_one_or_none()
+    if existing_domain is None:
+        db.add(
+            TenantDomain(
+                tenant_id=tenant.id,
+                host=host,
+                normalized_host=host,
+                domain_type=DomainType.PLATFORM_SUBDOMAIN,
+                is_primary=True,
+                status=DomainStatus.ACTIVE,
+                verification_target=settings.TENANT_DNS_TARGET_VALUE or settings.TENANT_DOMAIN_TARGET_IP,
+                dns_verified_at=datetime.now(UTC),
+                activated_at=datetime.now(UTC),
+            )
+        )
+    elif existing_domain.tenant_id == tenant.id:
+        existing_domain.is_primary = True
+        existing_domain.status = DomainStatus.ACTIVE
+        existing_domain.activated_at = existing_domain.activated_at or datetime.now(UTC)
+
+    for module in DEFAULT_MODULES:
+        statement = (
+            insert(TenantModule)
+            .values(tenant_id=tenant.id, module_key=module["key"], is_enabled=True, is_manual_override=False)
+            .on_conflict_do_update(
+                index_elements=["tenant_id", "module_key"],
+                set_={"is_enabled": True, "is_manual_override": False},
+            )
+        )
+        await db.execute(statement)
+
+    latest_subscription = (
+        await db.execute(
+            select(Subscription)
+            .where(Subscription.tenant_id == tenant.id, Subscription.plan_code == "full_trial")
+            .order_by(Subscription.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if latest_subscription is None:
+        db.add(
+            Subscription(
+                tenant_id=tenant.id,
+                plan_code="full_trial",
+                status=SubscriptionStatus.TRIAL,
+                billing_cycle=BillingCycle.MONTHLY,
+                start_date=today,
+                expiry_date=trial_expiry,
+                next_invoice_date=trial_expiry,
+                amount=0,
+                currency=plan.currency,
+                trial_days=14,
+                notes="Seeded login-only test tenant subscription.",
+            )
+        )
+
+    role = (await db.execute(select(Role).where(Role.name == TENANT_ADMIN_ROLE_NAME))).scalar_one_or_none()
+    if role is None:
+        logger.error("Cannot seed demo tenant admin because tenant_admin role is missing.")
+        return
+
+    user = (
+        await db.execute(select(User).where(User.email == settings.SEED_DEMO_TENANT_ADMIN_EMAIL))
+    ).scalar_one_or_none()
+    if user is None:
+        db.add(
+            User(
+                email=settings.SEED_DEMO_TENANT_ADMIN_EMAIL,
+                full_name=settings.SEED_DEMO_TENANT_ADMIN_FULL_NAME,
+                job_title="Tenant Administrator",
+                hashed_password=hash_password(settings.SEED_DEMO_TENANT_ADMIN_PASSWORD),
+                is_active=True,
+                role_id=role.id,
+                tenant_id=tenant.id,
+            )
+        )
+    else:
+        user.full_name = settings.SEED_DEMO_TENANT_ADMIN_FULL_NAME
+        user.job_title = user.job_title or "Tenant Administrator"
+        user.role_id = role.id
+        user.tenant_id = tenant.id
+        user.is_active = True
+
+    logger.info("Demo tenant/admin seed staged for %s at %s.", settings.SEED_DEMO_TENANT_ADMIN_EMAIL, host)
