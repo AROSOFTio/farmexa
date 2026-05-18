@@ -48,5 +48,9 @@ celery_app.conf.update(
             "task": "tasks.process_email_retries",
             "schedule": crontab(minute="*/30"),
         },
+        "process-customer-balance-reminders": {
+            "task": "tasks.process_customer_balance_reminders",
+            "schedule": crontab(hour=6, minute=30),
+        },
     },
 )

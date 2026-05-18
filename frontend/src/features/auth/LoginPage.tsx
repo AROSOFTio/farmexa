@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { BarChart3, CheckCircle2, Eye, EyeOff, LockKeyhole, LogIn, ShieldCheck, UserPlus } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff, LogIn, UserPlus } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -51,70 +51,35 @@ export function LoginPage() {
   }
 
   return (
-    <div className="auth-page min-h-screen px-4 py-8">
-      <div className="mx-auto mb-4 flex w-full max-w-[1120px] justify-end">
+    <div
+      className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8"
+      style={{
+        backgroundImage:
+          'linear-gradient(135deg, rgba(11,16,24,0.72), rgba(11,16,24,0.34)), url(/images/auth/farmexa-login-background.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+        <Link to="/" className="theme-icon-button" aria-label="Back to home" title="Back to home">
+          <ArrowLeft className="h-4 w-4" />
+        </Link>
         <ThemeToggle />
       </div>
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28 }}
-        className="mx-auto grid min-h-[calc(100vh-5rem)] w-full max-w-[1040px] overflow-hidden rounded-[14px] border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-[0_24px_70px_-48px_rgba(15,23,42,.45)] lg:grid-cols-[.92fr_1.08fr]"
+        className="auth-panel relative z-10 w-full max-w-[430px] overflow-hidden p-5 shadow-[0_30px_90px_-50px_rgba(0,0,0,.58)] sm:p-8"
       >
-        <section className="relative hidden bg-[var(--brand-secondary)] p-9 text-white lg:flex lg:flex-col lg:justify-between">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(var(--brand-primary-rgb),.18),transparent_34%)]" />
-          <div className="relative">
-            <div className="flex items-center gap-3">
-              <BrandMark compact light />
-              <div>
-                <div className="text-[15px] font-semibold text-white">Farmexa</div>
-                <div className="text-[11px] text-white/62">Manage Smart. Grow Better.</div>
-              </div>
-            </div>
-            <div className="mt-14 max-w-md">
-              <div className="inline-flex rounded-[7px] border border-[rgba(var(--brand-primary-rgb),0.3)] bg-[rgba(var(--brand-primary-rgb),0.1)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#f3cf78]">
-                Secure ERP workspace
-              </div>
-              <h1 className="mt-5 text-[2.55rem] font-bold leading-[1.08] tracking-tight text-white">
-                Secure access to your farm workspace.
-              </h1>
-              <p className="mt-5 text-[15px] leading-7 text-white/68">
-                Manage feed, houses, stock, sales, finance, and reports from one tenant-isolated Farmexa account.
-              </p>
-            </div>
-          </div>
-          <div className="relative grid grid-cols-3 gap-3">
-            {[
-              { label: 'Tenant isolated', icon: ShieldCheck },
-              { label: 'Role secured', icon: LockKeyhole },
-              { label: 'Live reports', icon: BarChart3 },
-            ].map((item) => {
-              const Icon = item.icon
-              return (
-                <div key={item.label} className="rounded-[12px] border border-white/10 bg-white/[.06] p-4">
-                  <Icon className="h-5 w-5 text-[var(--brand-primary)]" />
-                  <div className="mt-3 text-[12px] font-bold text-white">{item.label}</div>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-
-        <section className="flex items-center px-5 py-8 sm:px-10">
-          <div className="mx-auto w-full max-w-[430px]">
-            <div className="mb-8 lg:hidden">
-              <BrandMark />
-            </div>
-            <div className="space-y-3">
-              <div className="auth-eyebrow">Workspace access</div>
-              <h1 className="text-[1.9rem] font-bold leading-tight text-ink-900">Sign in to {settings.system_name}</h1>
-              <p className="text-[14px] leading-6 text-ink-500">Use your farm workspace account. Platform admins should sign in from the platform domain.</p>
-            </div>
-
-            <div className="mt-6 grid gap-3 rounded-[12px] border border-[#eadcc1] bg-[#fffaf0] p-4 text-[12px] font-semibold text-ink-700">
-              <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-[#b88a1d]" /> Tenant data is isolated by workspace.</div>
-              <div className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-[#b88a1d]" /> Refresh sessions are protected by server validation.</div>
-            </div>
+        <div className="mx-auto mb-6 flex justify-center">
+          <BrandMark />
+        </div>
+        <div className="text-center">
+          <div className="auth-eyebrow">Secure workspace access</div>
+          <h1 className="mt-3 text-[1.65rem] font-bold leading-tight text-ink-900">Sign in to {settings.system_name}</h1>
+          <p className="mt-2 text-[13.5px] leading-6 text-ink-500">Use your farm workspace account to continue.</p>
+        </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="mt-7 space-y-5">
               <div>
@@ -180,9 +145,10 @@ export function LoginPage() {
                   Start Free Trial
                 </button>
               ) : null}
+              <Link to="/" className="btn-ghost w-full">
+                Back to home
+              </Link>
             </form>
-          </div>
-        </section>
       </motion.div>
       <RegistrationWizardModal isOpen={isRegistrationOpen} onClose={() => setIsRegistrationOpen(false)} />
     </div>

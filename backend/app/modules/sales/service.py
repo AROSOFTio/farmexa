@@ -1,16 +1,112 @@
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
+from email.message import EmailMessage
+import smtplib
 import uuid
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.config import settings
 from app.models.inventory import MovementType, StockItem, StockMovement
-from app.models.sales import Customer, Invoice, InvoiceStatus, Order, OrderItem, Payment
+from app.models.sales import Customer, Invoice, InvoiceBalanceReminder, InvoiceStatus, Order, OrderItem, Payment
+from app.models.settings import EmailLog
 
 from . import schemas
 
 
 class SalesService:
+    def _send_customer_email(self, db: Session, invoice: Invoice, *, email_type: str, subject: str, body: str) -> str:
+        customer = invoice.customer
+        if not customer or not customer.email:
+            return "skipped_no_customer_email"
+
+        sender_email = settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME or "farmexa@arosoft.io"
+        sender_name = settings.SMTP_FROM_NAME or "Farmexa"
+        log = EmailLog(
+            tenant_id=None,
+            recipient=customer.email,
+            sender=f"{sender_name} <{sender_email}>",
+            email_type=email_type,
+            subject=subject,
+            body_preview=body[:500],
+            status="pending",
+        )
+        db.add(log)
+        db.flush()
+
+        if not settings.SMTP_HOST:
+            log.status = "skipped"
+            log.error_message = "SMTP_HOST is not configured."
+            return log.status
+
+        try:
+            message = EmailMessage()
+            message["From"] = log.sender
+            message["To"] = customer.email
+            message["Subject"] = subject
+            message.set_content(body)
+            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=20) as server:
+                if settings.SMTP_USE_TLS:
+                    server.starttls()
+                if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
+                    server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+                server.send_message(message)
+            log.status = "sent"
+            log.sent_at = datetime.now(UTC)
+        except Exception as exc:  # pragma: no cover - external SMTP
+            log.status = "failed"
+            log.error_message = str(exc)
+        return log.status
+
+    def _send_invoice_balance_email(self, db: Session, invoice: Invoice, *, reason: str) -> str:
+        balance = max(float(invoice.total_amount or 0) - float(invoice.paid_amount or 0), 0)
+        body = (
+            f"Hello {invoice.customer.name if invoice.customer else 'Customer'},\n\n"
+            f"Invoice {invoice.invoice_number} has a balance of UGX {balance:,.0f}.\n"
+            f"Total: UGX {float(invoice.total_amount or 0):,.0f}\n"
+            f"Paid: UGX {float(invoice.paid_amount or 0):,.0f}\n"
+            f"Due date: {invoice.due_date}\n\n"
+            "Thank you.\nFarmexa"
+        )
+        return self._send_customer_email(
+            db,
+            invoice,
+            email_type=reason,
+            subject=f"Farmexa invoice {invoice.invoice_number} balance",
+            body=body,
+        )
+
+    def _schedule_balance_reminders(self, db: Session, invoice: Invoice) -> None:
+        balance = max(float(invoice.total_amount or 0) - float(invoice.paid_amount or 0), 0)
+        if balance <= 0:
+            return
+        reminder_dates = {
+            "due_in_7_days": invoice.due_date - timedelta(days=7),
+            "due_tomorrow": invoice.due_date - timedelta(days=1),
+            "overdue_7_days": invoice.due_date + timedelta(days=7),
+        }
+        for reminder_type, scheduled_for in reminder_dates.items():
+            existing = (
+                db.query(InvoiceBalanceReminder)
+                .filter(
+                    InvoiceBalanceReminder.invoice_id == invoice.id,
+                    InvoiceBalanceReminder.reminder_type == reminder_type,
+                )
+                .first()
+            )
+            if existing:
+                existing.scheduled_for = scheduled_for
+                continue
+            db.add(
+                InvoiceBalanceReminder(
+                    invoice_id=invoice.id,
+                    customer_id=invoice.customer_id,
+                    reminder_type=reminder_type,
+                    scheduled_for=scheduled_for,
+                    status="pending",
+                )
+            )
+
     def get_customers(self, db: Session, skip: int = 0, limit: int = 100):
         return db.query(Customer).order_by(Customer.created_at.desc()).offset(skip).limit(limit).all()
 
@@ -180,12 +276,106 @@ class SalesService:
 
         if invoice.customer:
             invoice.customer.balance = max(invoice.customer.balance - payment.amount, 0)
+        if invoice.paid_amount >= invoice.total_amount:
+            db.query(InvoiceBalanceReminder).filter(
+                InvoiceBalanceReminder.invoice_id == invoice.id,
+                InvoiceBalanceReminder.status == "pending",
+            ).update({"status": "cancelled"})
+        else:
+            self._schedule_balance_reminders(db, invoice)
+        self._send_customer_email(
+            db,
+            invoice,
+            email_type="Payment Received",
+            subject=f"Payment received for invoice {invoice.invoice_number}",
+            body=(
+                f"Hello {invoice.customer.name if invoice.customer else 'Customer'},\n\n"
+                f"We received UGX {payment.amount:,.0f} for invoice {invoice.invoice_number}.\n"
+                f"Outstanding balance: UGX {max(invoice.total_amount - invoice.paid_amount, 0):,.0f}\n\n"
+                "Thank you.\nFarmexa"
+            ),
+        )
 
         db.commit()
         db.refresh(db_payment)
         return db_payment
 
+    def process_due_balance_reminders(self, db: Session) -> int:
+        reminders = (
+            db.query(InvoiceBalanceReminder)
+            .options(joinedload(InvoiceBalanceReminder.invoice).joinedload(Invoice.customer))
+            .filter(
+                InvoiceBalanceReminder.status == "pending",
+                InvoiceBalanceReminder.scheduled_for <= date.today(),
+            )
+            .limit(100)
+            .all()
+        )
+        processed = 0
+        for reminder in reminders:
+            invoice = reminder.invoice
+            if invoice is None:
+                reminder.status = "skipped"
+                reminder.last_error = "Invoice not found."
+                processed += 1
+                continue
+            balance = max(float(invoice.total_amount or 0) - float(invoice.paid_amount or 0), 0)
+            if balance <= 0:
+                reminder.status = "cancelled"
+                processed += 1
+                continue
+            status_text = self._send_invoice_balance_email(
+                db,
+                invoice,
+                reason=f"Balance Reminder {reminder.reminder_type}",
+            )
+            reminder.status = status_text
+            if status_text == "sent":
+                reminder.sent_at = datetime.now(UTC)
+            else:
+                reminder.last_error = status_text
+            processed += 1
+        db.commit()
+        return processed
+
     def checkout_pos(self, db: Session, payload: schemas.PosCheckoutCreate):
+        expected_total = sum(float(item.quantity) * float(item.unit_price) for item in payload.items)
+        if payload.sale_payment_mode == "full":
+            requested_paid = expected_total if payload.amount_paid_now is None else float(payload.amount_paid_now)
+        else:
+            requested_paid = float(payload.amount_paid_now or 0)
+
+        if requested_paid < 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Amount paid cannot be negative")
+        if requested_paid > expected_total:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Amount paid cannot exceed the sale total",
+            )
+        if payload.sale_payment_mode == "full" and requested_paid != expected_total:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Full payment must match the sale total",
+            )
+        if payload.sale_payment_mode == "partial" and not (0 < requested_paid < expected_total):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Partial payment must be greater than zero and less than the sale total",
+            )
+        if requested_paid > 0 and not payload.payment_method:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Payment method is required when money is received",
+            )
+        if expected_total - requested_paid > 0 and not payload.customer_id:
+            has_contact = bool((payload.customer_email or "").strip() or (payload.customer_phone or "").strip())
+            has_named_customer = bool((payload.customer_name or "").strip().lower() not in {"", "walk-in customer"})
+            if not has_contact or not has_named_customer:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Credit or partial sales require a named customer with email or phone contact.",
+                )
+
         customer = None
         if payload.customer_id:
             customer = db.query(Customer).filter(Customer.id == payload.customer_id, Customer.is_active.is_(True)).first()
@@ -194,9 +384,20 @@ class SalesService:
         else:
             customer = db.query(Customer).filter(Customer.name == payload.customer_name).first()
             if not customer:
-                customer = Customer(name=payload.customer_name or "Walk-in Customer", customer_type="retail", is_active=True)
+                customer = Customer(
+                    name=payload.customer_name or "Walk-in Customer",
+                    customer_type="retail",
+                    email=payload.customer_email,
+                    phone=payload.customer_phone,
+                    is_active=True,
+                )
                 db.add(customer)
                 db.flush()
+            else:
+                if payload.customer_email and not customer.email:
+                    customer.email = payload.customer_email
+                if payload.customer_phone and not customer.phone:
+                    customer.phone = payload.customer_phone
 
         order = self.create_order(
             db,
@@ -227,16 +428,64 @@ class SalesService:
         if not invoice:
             raise HTTPException(status_code=500, detail="POS invoice was not generated")
 
-        payment = self.add_payment(
-            db,
-            invoice.id,
-            schemas.PaymentCreate(
-                amount=invoice.total_amount,
-                payment_method=payload.payment_method,
-                payment_date=date.today(),
-                reference=payload.payment_reference,
-            ),
-        )
+        invoice_total = float(invoice.total_amount or 0)
+        if payload.sale_payment_mode == "full":
+            amount_paid_now = invoice_total if payload.amount_paid_now is None else float(payload.amount_paid_now)
+        elif payload.sale_payment_mode == "partial":
+            amount_paid_now = float(payload.amount_paid_now or 0)
+        else:
+            amount_paid_now = float(payload.amount_paid_now or 0)
+
+        if amount_paid_now < 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Amount paid cannot be negative")
+        if amount_paid_now > invoice_total:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Amount paid cannot exceed the sale total",
+            )
+        if payload.sale_payment_mode == "full" and amount_paid_now != invoice_total:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Full payment must match the sale total",
+            )
+        if payload.sale_payment_mode == "partial" and not (0 < amount_paid_now < invoice_total):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Partial payment must be greater than zero and less than the sale total",
+            )
+        if amount_paid_now > 0 and not payload.payment_method:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Payment method is required when money is received",
+            )
+
+        balance_due = max(invoice_total - amount_paid_now, 0)
+        if balance_due > 0:
+            if customer.name.lower().strip() == "walk-in customer" and not (customer.email or customer.phone):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Credit or partial sales require a named customer with email or phone contact.",
+                )
+            invoice.due_date = payload.credit_due_date or date.today() + timedelta(days=14)
+            invoice.status = InvoiceStatus.ISSUED
+            self._schedule_balance_reminders(db, invoice)
+            db.commit()
+            email_status = "balance_reminders_scheduled"
+        else:
+            email_status = "ready"
+
+        payment = None
+        if amount_paid_now > 0:
+            payment = self.add_payment(
+                db,
+                invoice.id,
+                schemas.PaymentCreate(
+                    amount=amount_paid_now,
+                    payment_method=payload.payment_method,
+                    payment_date=date.today(),
+                    reference=payload.payment_reference,
+                ),
+            )
         invoice = (
             db.query(Invoice)
             .options(
@@ -247,11 +496,17 @@ class SalesService:
             .filter(Invoice.id == invoice.id)
             .first()
         )
+        final_balance = max(invoice.total_amount - invoice.paid_amount, 0)
+        if final_balance > 0:
+            email_status = self._send_invoice_balance_email(db, invoice, reason="Customer Balance Statement")
+            db.commit()
         return {
             "receipt_number": f"RCP-{invoice.invoice_number}",
             "order": order,
             "invoice": invoice,
             "payment": payment,
+            "balance_due": final_balance,
+            "email_status": email_status if final_balance > 0 else "sent_or_logged",
         }
 
 

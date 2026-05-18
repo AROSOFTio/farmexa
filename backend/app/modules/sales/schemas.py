@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -120,8 +120,13 @@ class PosLineCreate(BaseModel):
 class PosCheckoutCreate(BaseModel):
     customer_id: Optional[int] = None
     customer_name: str = "Walk-in Customer"
-    payment_method: PaymentMethod
+    customer_email: Optional[str] = None
+    customer_phone: Optional[str] = None
+    sale_payment_mode: Literal["full", "partial", "credit"] = "full"
+    amount_paid_now: Optional[float] = None
+    payment_method: Optional[PaymentMethod] = None
     payment_reference: Optional[str] = None
+    credit_due_date: Optional[date] = None
     notes: Optional[str] = None
     items: List[PosLineCreate] = Field(min_length=1)
 
@@ -131,3 +136,5 @@ class PosCheckoutOut(BaseModel):
     order: OrderOut
     invoice: InvoiceOut
     payment: Optional[PaymentOut] = None
+    balance_due: float = 0.0
+    email_status: Optional[str] = None

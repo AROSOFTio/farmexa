@@ -11,5 +11,6 @@ export function usePlatformSettings() {
   return {
     settings: query.data ?? defaultPlatformSettings,
     isLoading: query.isLoading,
+    isWorkspaceUnknown: (query.error as { response?: { status?: number } } | null)?.response?.status === 404,
   }
 }

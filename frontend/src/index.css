@@ -100,6 +100,44 @@
     --sidebar-panel-border: rgba(255, 255, 255, 0.1);
   }
 
+  [data-brand-theme='green-black'][data-theme='dark'],
+  [data-brand-theme='green-black'][data-appearance='dark'] {
+    color-scheme: dark;
+    --app-bg: #181818;
+    --surface-card: #202020;
+    --surface-soft: #262626;
+    --surface-muted: #303030;
+    --sidebar-bg: linear-gradient(180deg, #202020 0%, #202020 58%, #181818 100%);
+    --sidebar-active: #35c97a;
+    --topbar-bg: rgba(32, 32, 32, 0.9);
+    --border-subtle: rgba(148, 163, 184, 0.18);
+    --border-strong: rgba(226, 232, 240, 0.26);
+    --text-strong: #f8fafc;
+    --text-default: #d6dee9;
+    --text-muted: #9cafc3;
+    --brand-primary: #35c97a;
+    --brand-primary-hover: #2fa66a;
+    --brand-primary-rgb: 53, 201, 122;
+    --brand-secondary: #202020;
+    --brand-secondary-rgb: 32, 32, 32;
+    --brand-accent: #6ee7a5;
+    --success: #35c97a;
+    --warning: #d6a62e;
+    --danger: #ef7373;
+    --info: #63a7ff;
+    --chart-grid: rgba(148, 163, 184, 0.18);
+    --chart-axis: #9cafc3;
+    --sidebar-text: rgba(255, 255, 255, 0.74);
+    --sidebar-text-muted: rgba(255, 255, 255, 0.52);
+    --sidebar-heading: #ffffff;
+    --sidebar-hover: rgba(53, 201, 122, 0.1);
+    --sidebar-active-bg: rgba(53, 201, 122, 0.16);
+    --sidebar-active-text: #6ee7a5;
+    --sidebar-icon: rgba(255, 255, 255, 0.64);
+    --sidebar-panel: rgba(53, 201, 122, 0.06);
+    --sidebar-panel-border: rgba(53, 201, 122, 0.14);
+  }
+
   *,
   *::before,
   *::after {

@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional
 
@@ -46,6 +47,31 @@ class PublicSystemSettingsOut(BaseModel):
     support_email: str
     company_name: str
     footer_text: str
+
+    class Config:
+        from_attributes = True
+
+
+class MasterDataRequestCreate(BaseModel):
+    request_type: str
+    suggested_name: str
+    source_module: Optional[str] = None
+    note: Optional[str] = None
+
+
+class MasterDataRequestResolve(BaseModel):
+    status: str
+    resolution_note: Optional[str] = None
+
+
+class MasterDataRequestOut(MasterDataRequestCreate):
+    id: int
+    status: str
+    requester_user_id: Optional[int] = None
+    resolved_by_user_id: Optional[int] = None
+    resolution_note: Optional[str] = None
+    created_at: datetime
+    resolved_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

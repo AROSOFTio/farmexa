@@ -1,7 +1,13 @@
 import pytest
 from fastapi import HTTPException
+from types import SimpleNamespace
+from starlette.requests import Request
+from starlette.responses import Response
 
 from app.core.config import settings
+from app.middleware import tenant_domain as tenant_domain_middleware
+from app.middleware.tenant_domain import TenantDomainResolverMiddleware
+from app.models.tenant import DomainStatus, TenantStatus
 from app.modules.developer_admin.catalog import DEFAULT_MODULES, DEFAULT_PLAN_MODULES
 from app.modules.developer_admin.service import DeveloperAdminService
 from app.modules.affiliates.schemas import AffiliateRegisterRequest
@@ -32,6 +38,109 @@ def test_tenant_domain_suffix_uses_cloudflare_zone_when_env_is_nested(monkeypatc
     assert tenant_domain_suffix() == "arosoft.io"
     assert default_platform_domain("arofa") == "arofa.arosoft.io"
     assert DeveloperAdminService(None)._default_platform_domain("arofa") == "arofa.arosoft.io"
+
+
+@pytest.mark.asyncio
+async def test_unknown_tenant_host_returns_workspace_not_found(monkeypatch):
+    monkeypatch.setattr(settings, "PLATFORM_HOSTS", "farmexa.arosoft.io,localhost,127.0.0.1")
+
+    class FakeResult:
+        def scalar_one_or_none(self):
+            return None
+
+    class FakeSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def execute(self, *_args, **_kwargs):
+            return FakeResult()
+
+    monkeypatch.setattr(tenant_domain_middleware, "AsyncSessionLocal", FakeSession)
+    middleware = TenantDomainResolverMiddleware(app=None)
+    request = Request({"type": "http", "method": "GET", "path": "/api/v1/settings/public", "headers": [(b"host", b"randomunknown.arosoft.io")]})
+
+    async def call_next(_request):
+        raise AssertionError("Unknown tenant hosts must not fall through to the app.")
+
+    response = await middleware.dispatch(request, call_next)
+
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_valid_active_tenant_host_resolves(monkeypatch):
+    monkeypatch.setattr(settings, "PLATFORM_HOSTS", "farmexa.arosoft.io,localhost,127.0.0.1")
+    domain = SimpleNamespace(
+        id=7,
+        tenant_id=12,
+        status=DomainStatus.ACTIVE,
+        tenant=SimpleNamespace(id=12, is_suspended=False, status=TenantStatus.TRIAL),
+    )
+
+    class FakeResult:
+        def scalar_one_or_none(self):
+            return domain
+
+    class FakeSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def execute(self, *_args, **_kwargs):
+            return FakeResult()
+
+    monkeypatch.setattr(tenant_domain_middleware, "AsyncSessionLocal", FakeSession)
+    middleware = TenantDomainResolverMiddleware(app=None)
+    request = Request({"type": "http", "method": "GET", "path": "/api/v1/settings/public", "headers": [(b"host", b"ngali.arosoft.io")]})
+
+    async def call_next(resolved_request):
+        assert resolved_request.state.tenant_id == 12
+        assert resolved_request.state.tenant_domain_id == 7
+        return Response("ok")
+
+    response = await middleware.dispatch(request, call_next)
+
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_suspended_tenant_host_does_not_resolve(monkeypatch):
+    domain = SimpleNamespace(
+        id=7,
+        tenant_id=12,
+        status=DomainStatus.ACTIVE,
+        tenant=SimpleNamespace(id=12, is_suspended=True, status=TenantStatus.SUSPENDED),
+    )
+
+    class FakeResult:
+        def scalar_one_or_none(self):
+            return domain
+
+    class FakeSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def execute(self, *_args, **_kwargs):
+            return FakeResult()
+
+    monkeypatch.setattr(tenant_domain_middleware, "AsyncSessionLocal", FakeSession)
+    middleware = TenantDomainResolverMiddleware(app=None)
+    request = Request({"type": "http", "method": "GET", "path": "/api/v1/auth/login", "headers": [(b"host", b"ngali.arosoft.io")]})
+
+    async def call_next(_request):
+        raise AssertionError("Suspended tenant hosts must not reach app routes.")
+
+    response = await middleware.dispatch(request, call_next)
+
+    assert response.status_code == 404
 
 
 def test_full_trial_plan_includes_every_module():

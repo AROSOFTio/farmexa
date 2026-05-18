@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import type { ReactNode } from 'react'
 import { AuthProvider } from '@/features/auth/AuthContext'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterModalPage } from '@/features/auth/RegisterModalPage'
@@ -30,6 +31,8 @@ import { SlaughterPage } from '@/features/slaughter/SlaughterPage'
 import { AppLayout } from '@/layouts/AppLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { NotFoundPage } from '@/components/NotFoundPage'
+import { WorkspaceNotFoundPage } from '@/components/WorkspaceNotFoundPage'
+import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { EggProductionPage } from '@/features/farm/EggProductionPage'
 import { TenantsPage } from '@/features/developer_admin/TenantsPage'
 import { AffiliatesPage } from '@/features/developer_admin/AffiliatesPage'
@@ -42,7 +45,8 @@ import { BillingPage, SubscriptionPage, SupportPage } from '@/features/subscript
 
 export default function App() {
   return (
-    <AuthProvider>
+    <HostValidationGate>
+      <AuthProvider>
       <Routes>
         <Route path="/login" element={<><SEO title="Sign in to Farmexa" description="Sign in to your Farmexa workspace." canonicalPath="/login" robots="noindex,nofollow" /><LoginPage /></>} />
         <Route path="/" element={<PublicHomePage />} />
@@ -569,6 +573,21 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-    </AuthProvider>
+      </AuthProvider>
+    </HostValidationGate>
   )
+}
+
+function HostValidationGate({ children }: { children: ReactNode }) {
+  const { isLoading, isWorkspaceUnknown } = usePlatformSettings()
+
+  if (isWorkspaceUnknown) {
+    return <WorkspaceNotFoundPage />
+  }
+
+  if (isLoading) {
+    return <div className="min-h-screen bg-[var(--app-bg)]" />
+  }
+
+  return <>{children}</>
 }

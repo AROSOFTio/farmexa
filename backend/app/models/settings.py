@@ -84,6 +84,24 @@ class EmailLog(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
+class MasterDataRequest(Base):
+    """Request queue for missing dropdown/master-data items during entry."""
+
+    __tablename__ = "master_data_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    request_type = Column(String(80), nullable=False, index=True)
+    suggested_name = Column(String(180), nullable=False)
+    source_module = Column(String(120), nullable=True)
+    note = Column(Text, nullable=True)
+    status = Column(String(40), nullable=False, default="pending", index=True)
+    requester_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    resolved_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    resolution_note = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+
+
 class ReferenceDataType(str, enum.Enum):
     BATCH_BREED = "batch_breed"
     BIRD_TYPE = "bird_type"

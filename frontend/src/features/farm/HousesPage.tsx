@@ -12,6 +12,13 @@ interface PoultryHouse {
   name: string
   capacity: number
   status: 'active' | 'maintenance' | 'inactive'
+  sections?: Array<{
+    id?: number
+    name: string
+    section_type: 'broilers' | 'layers' | 'chicks' | 'quarantine' | 'general'
+    capacity: number
+    status: 'active' | 'maintenance' | 'inactive'
+  }>
 }
 
 interface BatchSummary {
@@ -181,6 +188,21 @@ export function HousesPage() {
                     <div className="h-full rounded-full bg-brand-600" style={{ width: `${house.occupancy}%` }} />
                   </div>
                 </div>
+                {house.sections?.length ? (
+                  <div className="mt-5 rounded-[10px] border border-neutral-150 bg-neutral-50 p-3">
+                    <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500">
+                      {house.sections.length} section{house.sections.length === 1 ? '' : 's'}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {house.sections.slice(0, 4).map((section) => (
+                        <span key={section.id ?? section.name} className="badge badge-neutral">
+                          {section.name} - {section.capacity.toLocaleString()}
+                        </span>
+                      ))}
+                      {house.sections.length > 4 ? <span className="badge badge-neutral">+{house.sections.length - 4} more</span> : null}
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <div className="flex items-center justify-between border-t border-neutral-150 px-6 py-4">
@@ -222,6 +244,7 @@ export function HousesPage() {
                 name: selectedHouse.name,
                 capacity: selectedHouse.capacity,
                 status: selectedHouse.status,
+                sections: selectedHouse.sections ?? [],
               }}
               onSuccess={() => setSelectedHouse(null)}
             />

@@ -111,3 +111,20 @@ class Payment(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     invoice = relationship("Invoice", back_populates="payments")
+
+
+class InvoiceBalanceReminder(Base):
+    __tablename__ = "invoice_balance_reminders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=False, index=True)
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True, index=True)
+    reminder_type = Column(String(40), nullable=False, index=True)
+    scheduled_for = Column(Date, nullable=False, index=True)
+    status = Column(String(40), nullable=False, default="pending", index=True)
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+    last_error = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    invoice = relationship("Invoice")
+    customer = relationship("Customer")

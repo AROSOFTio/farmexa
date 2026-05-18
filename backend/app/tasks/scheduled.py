@@ -14,8 +14,10 @@ from sqlalchemy.orm import selectinload
 from app.models.settings import SystemSettings
 from app.models.tenant import Subscription, SubscriptionStatus, Tenant, TenantModule, TenantStatus
 from app.modules.compliance.service import process_due_document_reminders
+from app.modules.sales.service import sales_service
 from app.services.email_service import log_and_send_email
 from app.tasks.celery_app import celery_app
+from app.db.tenant_db import _ensure_schema_ready_sync, operational_db_name_for_tenant
 
 logger = logging.getLogger("farmexa.tasks")
 
@@ -66,9 +68,30 @@ def process_email_retries() -> int:
     return 0
 
 
+@celery_app.task(name="tasks.process_customer_balance_reminders")
+def process_customer_balance_reminders() -> int:
+    return asyncio.run(_process_customer_balance_reminders_async())
+
+
 async def _system_settings(db):
     result = await db.execute(select(SystemSettings).order_by(SystemSettings.id).limit(1))
     return result.scalar_one_or_none()
+
+
+async def _process_customer_balance_reminders_async() -> int:
+    async with AsyncSessionLocal() as db:
+        tenants = (await db.execute(select(Tenant).where(Tenant.operational_db_status == "ready"))).scalars().all()
+    processed = 0
+    for tenant in tenants:
+        database_name = tenant.operational_db_name or operational_db_name_for_tenant(int(tenant.id))
+        try:
+            session_factory = _ensure_schema_ready_sync(database_name)
+            with session_factory() as tenant_db:
+                processed += sales_service.process_due_balance_reminders(tenant_db)
+        except Exception as exc:  # pragma: no cover - tenant runtime/database availability
+            logger.exception("Failed to process balance reminders for tenant %s: %s", tenant.id, exc)
+    logger.info("Processed %s customer balance reminder(s).", processed)
+    return processed
 
 
 async def _latest_subscription(db, tenant_id: int) -> Subscription | None:

@@ -275,6 +275,9 @@ def _apply_runtime_schema_patches(engine: Engine) -> None:
     Base.metadata.tables["feed_formulation_ingredients"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["feed_production_batches"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["stock_transfers"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["email_logs"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["master_data_requests"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["invoice_balance_reminders"].create(bind=engine, checkfirst=True)
     inspector = inspect(engine)
     with engine.begin() as connection:
         connection.execute(
