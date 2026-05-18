@@ -23,6 +23,18 @@ type LoginFormValues = z.infer<typeof loginSchema>
 
 function getApiErrorMessage(error: unknown, fallback: string) {
   const axiosError = error as AxiosError<ApiError>
+  if (!axiosError.response) {
+    return 'Farmexa server is unreachable. Check backend and reverse proxy status.'
+  }
+  if (axiosError.response.status === 401) {
+    return axiosError.response.data?.detail ?? 'Invalid email or password.'
+  }
+  if (axiosError.response.status === 403) {
+    return axiosError.response.data?.detail ?? 'This account cannot sign in from this domain.'
+  }
+  if (axiosError.response.status >= 500) {
+    return 'Farmexa server is not ready. Check backend logs and database migrations.'
+  }
   return axiosError.response?.data?.detail ?? fallback
 }
 
