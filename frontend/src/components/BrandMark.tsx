@@ -32,7 +32,7 @@ export function BrandMark({
   const themedFullLogo = brandTheme === 'green-black' ? BRAND_LOGO_FULL_GREEN : BRAND_LOGO_FULL
   const themedIconLogo = brandTheme === 'green-black' ? BRAND_LOGO_ICON_GREEN : BRAND_LOGO_ICON
   const systemLogoIsDefault = !settings.system_logo_url || settings.system_logo_url === BRAND_LOGO_FULL
-  const fullLogo = systemLogoIsDefault ? themedFullLogo : settings.system_logo_url
+  const fullLogo = systemLogoIsDefault ? themedFullLogo : settings.system_logo_url ?? undefined
 
   return (
     <div className={clsx('flex items-center gap-2.5', className)}>
