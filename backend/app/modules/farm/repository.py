@@ -1,6 +1,6 @@
 from typing import Sequence
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -60,16 +60,19 @@ class FarmRepository:
         house = PoultryHouse(name=data.name, capacity=data.capacity, status=data.status)
         self.db.add(house)
         await self.db.flush()
-        await self.replace_house_sections(house, data.sections)
+        await self._insert_house_sections(house.id, data.sections)
         await self.db.flush()
         return house
 
-    async def replace_house_sections(self, house: PoultryHouse, sections: list) -> None:
-        house.sections.clear()
-        await self.db.flush()
+    async def _insert_house_sections(self, house_id: int, sections: list) -> None:
         for section in sections:
             payload = section.model_dump() if hasattr(section, "model_dump") else dict(section)
-            house.sections.append(PoultryHouseSection(**payload))
+            self.db.add(PoultryHouseSection(house_id=house_id, **payload))
+
+    async def replace_house_sections(self, house: PoultryHouse, sections: list) -> None:
+        await self.db.execute(delete(PoultryHouseSection).where(PoultryHouseSection.house_id == house.id))
+        await self.db.flush()
+        await self._insert_house_sections(house.id, sections)
         await self.db.flush()
 
     async def update_house(self, house: PoultryHouse, data: PoultryHouseUpdate) -> PoultryHouse:
