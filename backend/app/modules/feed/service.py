@@ -89,9 +89,50 @@ class FeedService:
         supplier = await self.repo.get_supplier(data.supplier_id)
         if not supplier:
             raise HTTPException(status_code=400, detail="Invalid supplier_id")
-            
+
         purchase_data = data.model_dump(exclude={"items"})
-        items_data = [item.model_dump() for item in data.items]
+        items_data = []
+        for item in data.items:
+            item_payload = item.model_dump(
+                exclude={
+                    "other_feed_item_name",
+                    "other_feed_category_id",
+                    "other_feed_unit",
+                    "other_reorder_threshold",
+                }
+            )
+            if item.feed_item_id <= 0:
+                item_name = (item.other_feed_item_name or "").strip()
+                if not item_name:
+                    raise HTTPException(status_code=422, detail="Feed item is required. Select an item or enter an other item name.")
+
+                category_id = item.other_feed_category_id
+                if category_id:
+                    category = await self.repo.get_category(category_id)
+                else:
+                    category = await self.repo.get_category_by_name("Raw Materials")
+                    if not category:
+                        category = await self.repo.create_category(
+                            FeedCategoryCreate(name="Raw Materials", description="Feed mill raw material stock.")
+                        )
+
+                if not category:
+                    raise HTTPException(status_code=400, detail="Invalid feed item category.")
+
+                existing_item = await self.repo.get_item_by_name(item_name)
+                if existing_item:
+                    feed_item = existing_item
+                else:
+                    feed_item = await self.repo.create_item(
+                        FeedItemCreate(
+                            name=item_name,
+                            category_id=category.id,
+                            unit=item.other_feed_unit or "kg",
+                            reorder_threshold=item.other_reorder_threshold,
+                        )
+                    )
+                item_payload["feed_item_id"] = feed_item.id
+            items_data.append(item_payload)
 
         purchase = await self.repo.create_purchase(purchase_data, items_data)
         await self.db.commit()

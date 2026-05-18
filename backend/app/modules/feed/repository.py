@@ -46,6 +46,10 @@ class FeedRepository:
         res = await self.db.execute(select(FeedCategory).where(FeedCategory.id == category_id))
         return res.scalar_one_or_none()
 
+    async def get_category_by_name(self, name: str) -> FeedCategory | None:
+        res = await self.db.execute(select(FeedCategory).where(FeedCategory.name == name.strip()))
+        return res.scalar_one_or_none()
+
     async def create_category(self, data: FeedCategoryCreate) -> FeedCategory:
         category = FeedCategory(**data.model_dump())
         self.db.add(category)
@@ -69,6 +73,12 @@ class FeedRepository:
     async def get_item(self, item_id: int) -> FeedItem | None:
         res = await self.db.execute(
             select(FeedItem).where(FeedItem.id == item_id).options(selectinload(FeedItem.category))
+        )
+        return res.scalar_one_or_none()
+
+    async def get_item_by_name(self, name: str) -> FeedItem | None:
+        res = await self.db.execute(
+            select(FeedItem).where(FeedItem.name == name.strip()).options(selectinload(FeedItem.category))
         )
         return res.scalar_one_or_none()
 

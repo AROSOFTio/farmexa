@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from typing import Optional
-from sqlalchemy import String, Integer, Date, ForeignKey, Numeric, Text, Float, DateTime
+from sqlalchemy import Boolean, String, Integer, Date, ForeignKey, Numeric, Text, Float, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -12,10 +12,19 @@ class Supplier(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(150), index=True)
+    supplier_type: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    products_supplied: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     contact_person: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    supplier_officer: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    alternate_phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     email: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    tax_id: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    payment_terms: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    lead_time_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     purchases: Mapped[list["FeedPurchase"]] = relationship("FeedPurchase", back_populates="supplier")
 

@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import api from '@/services/api'
 import { Modal } from '@/components/Modal'
 import { useAuth } from '@/features/auth/AuthContext'
+import { getErrorMessage } from '@/lib/errors'
 
 type FeedSection = 'stock' | 'purchases' | 'consumption' | 'suppliers'
 type FeedModal = 'supplier' | 'category' | 'item' | 'purchase' | 'consumption' | null
@@ -16,10 +17,19 @@ type FeedModal = 'supplier' | 'category' | 'item' | 'purchase' | 'consumption' |
 interface Supplier {
   id: number
   name: string
+  supplier_type?: string | null
+  products_supplied?: string | null
   contact_person?: string | null
+  supplier_officer?: string | null
   phone?: string | null
+  alternate_phone?: string | null
   email?: string | null
   address?: string | null
+  tax_id?: string | null
+  payment_terms?: string | null
+  lead_time_days?: number | null
+  notes?: string | null
+  is_active: boolean
 }
 
 interface FeedCategory {
@@ -42,6 +52,10 @@ interface FeedPurchaseItem {
   id: number
   purchase_id: number
   feed_item_id: number
+  other_feed_item_name?: string | null
+  other_feed_category_id?: number | null
+  other_feed_unit?: string | null
+  other_reorder_threshold?: number | null
   quantity: number
   unit_price: number
   total_price: number
@@ -105,10 +119,19 @@ const sectionCopy: Record<
 
 const supplierSchema = z.object({
   name: z.string().min(2, 'Supplier name is required'),
+  supplier_type: z.string().optional(),
+  products_supplied: z.string().optional(),
   contact_person: z.string().optional(),
+  supplier_officer: z.string().optional(),
   phone: z.string().optional(),
+  alternate_phone: z.string().optional(),
   email: z.string().optional(),
   address: z.string().optional(),
+  tax_id: z.string().optional(),
+  payment_terms: z.string().optional(),
+  lead_time_days: z.coerce.number().min(0).optional().or(z.literal('')),
+  notes: z.string().optional(),
+  is_active: z.boolean().default(true),
 })
 
 const categorySchema = z.object({
@@ -127,10 +150,18 @@ const purchaseSchema = z.object({
   supplier_id: z.coerce.number().int().positive('Supplier is required'),
   purchase_date: z.string().min(1, 'Purchase date is required'),
   invoice_number: z.string().optional(),
-  feed_item_id: z.coerce.number().int().positive('Feed item is required'),
+  feed_item_id: z.coerce.number().int().min(0, 'Feed item is required'),
+  other_feed_item_name: z.string().optional(),
+  other_feed_category_id: z.coerce.number().int().optional(),
+  other_feed_unit: z.string().optional(),
+  other_reorder_threshold: z.coerce.number().min(0, 'Reorder threshold must be zero or more').optional(),
   quantity: z.coerce.number().positive('Quantity must be greater than zero'),
   unit_price: z.coerce.number().min(0, 'Unit price must be zero or more'),
   notes: z.string().optional(),
+}).superRefine((value, ctx) => {
+  if (value.feed_item_id === 0 && !value.other_feed_item_name?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['other_feed_item_name'], message: 'Enter the other feed item name' })
+  }
 })
 
 const consumptionSchema = z.object({
@@ -157,7 +188,22 @@ function formatDate(value?: string | null) {
 }
 
 function emptySupplierValues(): SupplierFormValues {
-  return { name: '', contact_person: '', phone: '', email: '', address: '' }
+  return {
+    name: '',
+    supplier_type: '',
+    products_supplied: '',
+    contact_person: '',
+    supplier_officer: '',
+    phone: '',
+    alternate_phone: '',
+    email: '',
+    address: '',
+    tax_id: '',
+    payment_terms: '',
+    lead_time_days: '',
+    notes: '',
+    is_active: true,
+  }
 }
 
 function emptyCategoryValues(): CategoryFormValues {
@@ -169,7 +215,19 @@ function emptyItemValues(): ItemFormValues {
 }
 
 function emptyPurchaseValues(): PurchaseFormValues {
-  return { supplier_id: 0, purchase_date: todayValue(), invoice_number: '', feed_item_id: 0, quantity: 0, unit_price: 0, notes: '' }
+  return {
+    supplier_id: 0,
+    purchase_date: todayValue(),
+    invoice_number: '',
+    feed_item_id: 0,
+    other_feed_item_name: '',
+    other_feed_category_id: 0,
+    other_feed_unit: 'kg',
+    other_reorder_threshold: 0,
+    quantity: 0,
+    unit_price: 0,
+    notes: '',
+  }
 }
 
 function emptyConsumptionValues(): ConsumptionFormValues {
@@ -239,6 +297,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
     resolver: zodResolver(purchaseSchema),
     defaultValues: emptyPurchaseValues(),
   })
+  const selectedPurchaseFeedItemId = purchaseForm.watch('feed_item_id')
 
   const consumptionForm = useForm<ConsumptionFormValues>({
     resolver: zodResolver(consumptionSchema),
@@ -246,7 +305,21 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
   })
 
   const createSupplier = useMutation({
-    mutationFn: (values: SupplierFormValues) => api.post('/feed/suppliers', values),
+    mutationFn: (values: SupplierFormValues) => api.post('/feed/suppliers', {
+      ...values,
+      lead_time_days: values.lead_time_days === '' ? null : values.lead_time_days,
+      supplier_type: values.supplier_type || null,
+      products_supplied: values.products_supplied || null,
+      contact_person: values.contact_person || null,
+      supplier_officer: values.supplier_officer || null,
+      phone: values.phone || null,
+      alternate_phone: values.alternate_phone || null,
+      email: values.email || null,
+      address: values.address || null,
+      tax_id: values.tax_id || null,
+      payment_terms: values.payment_terms || null,
+      notes: values.notes || null,
+    }),
     onSuccess: () => {
       toast.success('Supplier saved.')
       qc.invalidateQueries({ queryKey: ['feed-suppliers'] })
@@ -254,7 +327,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
       setActiveModal(null)
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.detail ?? 'Failed to save supplier.')
+      toast.error(getErrorMessage(error, 'Failed to save supplier.'))
     },
   })
 
@@ -267,7 +340,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
       setActiveModal(null)
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.detail ?? 'Failed to create category.')
+      toast.error(getErrorMessage(error, 'Failed to create category.'))
     },
   })
 
@@ -280,7 +353,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
       setActiveModal(null)
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.detail ?? 'Failed to create feed item.')
+      toast.error(getErrorMessage(error, 'Failed to create feed item.'))
     },
   })
 
@@ -296,6 +369,10 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
         items: [
           {
             feed_item_id: values.feed_item_id,
+            other_feed_item_name: values.feed_item_id === 0 ? values.other_feed_item_name || null : null,
+            other_feed_category_id: values.feed_item_id === 0 && values.other_feed_category_id ? values.other_feed_category_id : null,
+            other_feed_unit: values.feed_item_id === 0 ? values.other_feed_unit || 'kg' : null,
+            other_reorder_threshold: values.feed_item_id === 0 ? values.other_reorder_threshold || 0 : 0,
             quantity: values.quantity,
             unit_price: values.unit_price,
             total_price: total,
@@ -311,7 +388,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
       setActiveModal(null)
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.detail ?? 'Failed to record purchase.')
+      toast.error(getErrorMessage(error, 'Failed to record purchase.'))
     },
   })
 
@@ -325,7 +402,7 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
       setActiveModal(null)
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.detail ?? 'Failed to record consumption.')
+      toast.error(getErrorMessage(error, 'Failed to record consumption.'))
     },
   })
 
@@ -464,15 +541,16 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
               <thead>
                 <tr>
                   <th className="pl-6">Supplier</th>
+                  <th>Products</th>
                   <th>Contact</th>
-                  <th>Email</th>
+                  <th>Procurement</th>
                   <th className="pr-6">Phone</th>
                 </tr>
               </thead>
               <tbody>
                 {suppliers.length === 0 ? (
                   <tr>
-                    <td className="pl-6 py-14 text-center text-base font-medium text-ink-500" colSpan={4}>
+                    <td className="pl-6 py-14 text-center text-base font-medium text-ink-500" colSpan={5}>
                       No suppliers.
                     </td>
                   </tr>
@@ -481,11 +559,15 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
                     <tr key={supplier.id}>
                       <td className="pl-6">
                         <div className="font-bold text-ink-900">{supplier.name}</div>
-                        <div className="text-sm text-ink-500">{supplier.address || 'No address'}</div>
+                        <div className="text-sm text-ink-500">{supplier.supplier_type || 'General supplier'} · {supplier.address || 'No address'}</div>
                       </td>
+                      <td>{supplier.products_supplied || '-'}</td>
                       <td>{supplier.contact_person || '-'}</td>
-                      <td>{supplier.email || '-'}</td>
-                      <td className="pr-6">{supplier.phone || '-'}</td>
+                      <td>
+                        <div>{supplier.supplier_officer || supplier.email || '-'}</div>
+                        <div className="text-xs text-ink-500">{supplier.payment_terms || ''}</div>
+                      </td>
+                      <td className="pr-6">{supplier.phone || supplier.alternate_phone || '-'}</td>
                     </tr>
                   ))
                 )}
@@ -633,30 +715,83 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
         isOpen={activeModal === 'supplier'}
         onClose={() => setActiveModal(null)}
         title="Add supplier"
-        description="Create a supplier contact for feed procurement."
+        description="Create a supplier profile, products supplied, and procurement contacts."
       >
         <form className="space-y-4" onSubmit={supplierForm.handleSubmit((values) => (canManageFeed ? createSupplier.mutate(values) : blockWriteAction()))}>
-          <div>
-            <label className="form-label">Supplier name</label>
-            <input className="form-input" {...supplierForm.register('name')} />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="form-label">Supplier name</label>
+              <input className="form-input" {...supplierForm.register('name')} />
+            </div>
+            <div>
+              <label className="form-label">Supplier type</label>
+              <select className="form-input" {...supplierForm.register('supplier_type')}>
+                <option value="">Choose type</option>
+                <option value="Feed mill">Feed mill</option>
+                <option value="Raw materials">Raw materials</option>
+                <option value="Medicine">Medicine</option>
+                <option value="Equipment">Equipment</option>
+                <option value="Transport">Transport</option>
+                <option value="General">General</option>
+              </select>
+            </div>
           </div>
           <div>
-            <label className="form-label">Contact person</label>
-            <input className="form-input" {...supplierForm.register('contact_person')} />
+            <label className="form-label">Products supplied</label>
+            <textarea className="form-input min-h-[88px]" placeholder="Maize, concentrate, soya cake, vaccines, crates..." {...supplierForm.register('products_supplied')} />
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
+              <label className="form-label">Contact person</label>
+              <input className="form-input" {...supplierForm.register('contact_person')} />
+            </div>
+            <div>
+              <label className="form-label">Supplier officer</label>
+              <input className="form-input" placeholder="Procurement/account officer" {...supplierForm.register('supplier_officer')} />
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
               <label className="form-label">Phone</label>
               <input className="form-input" {...supplierForm.register('phone')} />
+            </div>
+            <div>
+              <label className="form-label">Alternate phone</label>
+              <input className="form-input" {...supplierForm.register('alternate_phone')} />
             </div>
             <div>
               <label className="form-label">Email</label>
               <input className="form-input" type="email" {...supplierForm.register('email')} />
             </div>
           </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <label className="form-label">Tax ID / TIN</label>
+              <input className="form-input" {...supplierForm.register('tax_id')} />
+            </div>
+            <div>
+              <label className="form-label">Payment terms</label>
+              <input className="form-input" placeholder="Cash, 7 days, 30 days..." {...supplierForm.register('payment_terms')} />
+            </div>
+            <div>
+              <label className="form-label">Lead time days</label>
+              <input className="form-input" type="number" min={0} {...supplierForm.register('lead_time_days')} />
+            </div>
+          </div>
           <div>
             <label className="form-label">Address</label>
-            <textarea className="form-input min-h-[120px]" {...supplierForm.register('address')} />
+            <textarea className="form-input min-h-[88px]" {...supplierForm.register('address')} />
+          </div>
+          <div>
+            <label className="form-label">Notes</label>
+            <textarea className="form-input min-h-[88px]" {...supplierForm.register('notes')} />
+          </div>
+          <label className="flex items-center gap-2 text-sm font-bold text-ink-700">
+            <input type="checkbox" className="h-4 w-4 rounded border-neutral-300" {...supplierForm.register('is_active')} />
+            Active supplier
+          </label>
+          <div className="rounded-lg border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-ink-600">
+            If a purchase product is not listed here, choose Other during purchase entry and Farmexa will add it to the feed stock register.
           </div>
           <div className="flex justify-end gap-3">
             <button type="button" className="btn-secondary" onClick={() => setActiveModal(null)}>Close</button>
@@ -752,12 +887,41 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
           <div>
             <label className="form-label">Feed item</label>
             <select className="form-input" {...purchaseForm.register('feed_item_id')}>
-              <option value={0}>Choose item</option>
+              <option value={0}>Other / not listed</option>
               {items.map((item) => (
                 <option key={item.id} value={item.id}>{item.name}</option>
               ))}
             </select>
           </div>
+          {Number(selectedPurchaseFeedItemId) === 0 ? (
+            <div className="rounded-xl border border-brand-100 bg-brand-50 p-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="form-label">Other item name</label>
+                  <input className="form-input bg-white" placeholder="e.g. Cotton seed cake" {...purchaseForm.register('other_feed_item_name')} />
+                </div>
+                <div>
+                  <label className="form-label">Category</label>
+                  <select className="form-input bg-white" {...purchaseForm.register('other_feed_category_id')}>
+                    <option value={0}>Raw Materials</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="form-label">Unit</label>
+                  <input className="form-input bg-white" {...purchaseForm.register('other_feed_unit')} />
+                </div>
+                <div>
+                  <label className="form-label">Reorder threshold</label>
+                  <input className="form-input bg-white" type="number" min={0} step="0.01" {...purchaseForm.register('other_reorder_threshold')} />
+                </div>
+              </div>
+            </div>
+          ) : null}
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="form-label">Purchase date</label>

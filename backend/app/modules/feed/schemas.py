@@ -7,20 +7,38 @@ from pydantic import BaseModel, Field
 
 class SupplierBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=150)
+    supplier_type: Optional[str] = None
+    products_supplied: Optional[str] = None
     contact_person: Optional[str] = None
+    supplier_officer: Optional[str] = None
     phone: Optional[str] = None
+    alternate_phone: Optional[str] = None
     email: Optional[str] = None
     address: Optional[str] = None
+    tax_id: Optional[str] = None
+    payment_terms: Optional[str] = None
+    lead_time_days: Optional[int] = Field(default=None, ge=0)
+    notes: Optional[str] = None
+    is_active: bool = True
 
 class SupplierCreate(SupplierBase):
     pass
 
 class SupplierUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=150)
+    supplier_type: Optional[str] = None
+    products_supplied: Optional[str] = None
     contact_person: Optional[str] = None
+    supplier_officer: Optional[str] = None
     phone: Optional[str] = None
+    alternate_phone: Optional[str] = None
     email: Optional[str] = None
     address: Optional[str] = None
+    tax_id: Optional[str] = None
+    payment_terms: Optional[str] = None
+    lead_time_days: Optional[int] = Field(default=None, ge=0)
+    notes: Optional[str] = None
+    is_active: Optional[bool] = None
 
 class SupplierOut(SupplierBase):
     id: int
@@ -72,14 +90,22 @@ class FeedItemOut(FeedItemBase):
 # ── Feed Purchase ──────────────────────────────────────────────
 
 class FeedPurchaseItemCreate(BaseModel):
-    feed_item_id: int
+    feed_item_id: int = 0
+    other_feed_item_name: Optional[str] = Field(default=None, max_length=150)
+    other_feed_category_id: Optional[int] = None
+    other_feed_unit: Optional[str] = Field(default="kg", max_length=50)
+    other_reorder_threshold: float = Field(default=0.0, ge=0.0)
     quantity: float = Field(..., gt=0.0)
     unit_price: float = Field(..., ge=0.0)
     total_price: float = Field(..., ge=0.0)
 
-class FeedPurchaseItemOut(FeedPurchaseItemCreate):
+class FeedPurchaseItemOut(BaseModel):
     id: int
     purchase_id: int
+    feed_item_id: int
+    quantity: float
+    unit_price: float
+    total_price: float
     model_config = {"from_attributes": True}
 
 class FeedPurchaseBase(BaseModel):
