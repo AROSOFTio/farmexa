@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { clsx } from 'clsx'
 import { Plus, Trash2 } from 'lucide-react'
 import api from '@/services/api'
+import { getErrorMessage } from '@/lib/errors'
 
 const sectionSchema = z.object({
   id: z.number().optional(),
@@ -80,9 +81,7 @@ export function HouseForm({ houseId, initialValues, onSuccess }: HouseFormProps)
       onSuccess?.()
     },
     onError: (error: any) => {
-      const detail = error?.response?.data?.detail
-      const validation = error?.response?.data?.errors?.[0]?.message
-      toast.error(typeof detail === 'string' ? detail : validation ?? `Failed to ${isEditing ? 'save' : 'create'} house.`)
+      toast.error(getErrorMessage(error, `Failed to ${isEditing ? 'save' : 'create'} house.`))
     },
   })
 
@@ -217,4 +216,3 @@ export function HouseForm({ houseId, initialValues, onSuccess }: HouseFormProps)
     </form>
   )
 }
-

@@ -23,6 +23,7 @@ from app.db.base import Base
 from app.db.session import AsyncSessionLocal, SyncSessionLocal
 from app.models.auth import Role
 from app.models.feed import FeedCategory, FeedItem
+from app.models.farm import PoultryHouse, PoultryHouseSection  # noqa: F401
 from app.models.inventory import StockCategory, StockItem
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -268,6 +269,7 @@ def _ensure_schema_ready_sync(database_name: str) -> sessionmaker[Session]:
 
 def _apply_runtime_schema_patches(engine: Engine) -> None:
     Base.metadata.tables["reference_items"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["poultry_houses"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["poultry_house_sections"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["feed_formulations"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["feed_formulation_ingredients"].create(bind=engine, checkfirst=True)
