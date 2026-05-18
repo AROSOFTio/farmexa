@@ -6,7 +6,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "012_cloudflare_domain_provisioning"
+revision = "012_cloudflare_dns"
 down_revision = "011_platform_trial_email"
 branch_labels = None
 depends_on = None
