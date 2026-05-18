@@ -437,7 +437,7 @@ export function DashboardPage() {
             <div className="erp-actions">
               <ActionButton primary to="/compliance/documents">Upload Document</ActionButton>
               <ActionButton to="/compliance/alerts">Expiry Alerts</ActionButton>
-              <ActionButton to="/reports/compliance">Reports</ActionButton>
+              <ActionButton to="/reports/compliance-expiring">Reports</ActionButton>
             </div>
           </Panel>
         </div>

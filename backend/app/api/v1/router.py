@@ -19,6 +19,7 @@ from app.modules.egg_production.router import router as egg_production_router
 from app.modules.developer_admin.router import router as developer_admin_router
 from app.modules.subscriptions.router import router as subscriptions_router
 from app.modules.affiliates.router import router as affiliates_router
+from app.modules.reports.router import router as reports_router
 
 api_router = APIRouter()
 
@@ -37,3 +38,4 @@ api_router.include_router(egg_production_router)
 api_router.include_router(developer_admin_router)
 api_router.include_router(subscriptions_router)
 api_router.include_router(affiliates_router)
+api_router.include_router(reports_router)

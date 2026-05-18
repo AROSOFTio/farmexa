@@ -120,12 +120,31 @@ class SalesService:
     def get_invoices(self, db: Session, skip: int = 0, limit: int = 100):
         return (
             db.query(Invoice)
-            .options(joinedload(Invoice.customer), joinedload(Invoice.payments))
+            .options(
+                joinedload(Invoice.customer),
+                joinedload(Invoice.payments),
+                joinedload(Invoice.order).joinedload(Order.items).joinedload(OrderItem.product),
+            )
             .order_by(Invoice.created_at.desc())
             .offset(skip)
             .limit(limit)
             .all()
         )
+
+    def get_invoice(self, db: Session, invoice_id: int):
+        invoice = (
+            db.query(Invoice)
+            .options(
+                joinedload(Invoice.customer),
+                joinedload(Invoice.payments),
+                joinedload(Invoice.order).joinedload(Order.items).joinedload(OrderItem.product),
+            )
+            .filter(Invoice.id == invoice_id)
+            .first()
+        )
+        if not invoice:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invoice not found")
+        return invoice
 
     def add_payment(self, db: Session, invoice_id: int, payment: schemas.PaymentCreate):
         invoice = (
@@ -197,7 +216,11 @@ class SalesService:
         )
         invoice = (
             db.query(Invoice)
-            .options(joinedload(Invoice.customer), joinedload(Invoice.payments))
+            .options(
+                joinedload(Invoice.customer),
+                joinedload(Invoice.payments),
+                joinedload(Invoice.order).joinedload(Order.items).joinedload(OrderItem.product),
+            )
             .filter(Invoice.order_id == order.id)
             .first()
         )
@@ -216,7 +239,11 @@ class SalesService:
         )
         invoice = (
             db.query(Invoice)
-            .options(joinedload(Invoice.customer), joinedload(Invoice.payments))
+            .options(
+                joinedload(Invoice.customer),
+                joinedload(Invoice.payments),
+                joinedload(Invoice.order).joinedload(Order.items).joinedload(OrderItem.product),
+            )
             .filter(Invoice.id == invoice.id)
             .first()
         )

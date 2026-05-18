@@ -1,3 +1,5 @@
+import { BRAND_FAVICON, BRAND_LOGO_ICON_GREEN } from '@/lib/branding'
+
 export type AppearanceMode = 'light' | 'dark'
 export type BrandTheme = 'navy-gold' | 'green-black'
 export type ThemeMode = AppearanceMode
@@ -54,6 +56,10 @@ export function applyTheme(theme: ThemePreference | AppearanceMode) {
   document.body.dataset.brandTheme = preference.brandTheme
   document.body.dataset.appearance = preference.appearance
   document.body.dataset.theme = preference.appearance
+  const favicon = document.querySelector<HTMLLinkElement>("link[rel='icon']")
+  if (favicon) {
+    favicon.href = preference.brandTheme === 'green-black' ? BRAND_LOGO_ICON_GREEN : BRAND_FAVICON
+  }
 }
 
 export function persistThemePreference(preference: ThemePreference) {

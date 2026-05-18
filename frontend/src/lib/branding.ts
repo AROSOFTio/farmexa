@@ -5,6 +5,8 @@ export const APP_DESCRIPTION =
   'Farmexa poultry ERP for farm operations, inventory, sales, and finance.'
 export const BRAND_LOGO_FULL = '/brand/farmexa-logo-full.png'
 export const BRAND_LOGO_ICON = '/brand/farmexa-logo-icon.png'
+export const BRAND_LOGO_FULL_GREEN = '/brand/farmexa-logo-full-green.png'
+export const BRAND_LOGO_ICON_GREEN = '/brand/farmexa-logo-icon-green.png'
 export const BRAND_FAVICON = '/favicon.svg'
 export const BRAND_SOCIAL_IMAGE = '/brand/farmexa-logo-full.png'
 

@@ -20,7 +20,7 @@ export const defaultPlatformSettings: PublicSystemSettings = {
   system_logo_url: '/brand/farmexa-logo-full.png',
   system_favicon_url: '/favicon.svg',
   primary_color: '#d6a62e',
-  secondary_color: '#0b1018',
+  secondary_color: '#202020',
   platform_domain: 'farmexa.arosoft.io',
   tenant_domain_suffix: 'arosoft.io',
   sender_email: 'farmexa@arosoft.io',

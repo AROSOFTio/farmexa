@@ -7,7 +7,7 @@ import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from '@/featur
 import { PublicHomePage } from '@/features/public/PublicHomePage'
 import { PricingPage } from '@/features/public/PricingPage'
 import { AffiliateProgramPage } from '@/features/public/AffiliateProgramPage'
-import { ProfitDashboard } from '@/features/analytics/ProfitDashboard'
+import { ReportCenterPage } from '@/features/reports/ReportCenterPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { FeedManagementPage } from '@/features/feed/FeedManagementPage'
 import { FeedMillProductionPage } from '@/features/feed/FeedMillProductionPage'
@@ -417,11 +417,11 @@ export default function App() {
           </Route>
 
           <Route path="reports">
-            <Route index element={<Navigate to="/analytics" replace />} />
-            <Route path="*" element={
+            <Route index element={<ProtectedRoute permission="reports:read"><ModuleGuard moduleKey="reports"><ReportCenterPage /></ModuleGuard></ProtectedRoute>} />
+            <Route path=":reportKey" element={
               <ProtectedRoute permission="reports:read">
                 <ModuleGuard moduleKey="reports">
-                  <ProfitDashboard />
+                  <ReportCenterPage />
                 </ModuleGuard>
               </ProtectedRoute>
             } />
@@ -450,8 +450,8 @@ export default function App() {
 
           <Route path="finance">
             <Route path="income" element={<ProtectedRoute permission="finance:read"><ModuleGuard moduleKey="income"><IncomesPage /></ModuleGuard></ProtectedRoute>} />
-            <Route path="profit-loss" element={<ProtectedRoute permission="reports:read"><ModuleGuard moduleKey="profit_loss"><ProfitDashboard /></ModuleGuard></ProtectedRoute>} />
-            <Route path="cash-flow" element={<ProtectedRoute permission="reports:read"><ModuleGuard moduleKey="reports"><ProfitDashboard /></ModuleGuard></ProtectedRoute>} />
+            <Route path="profit-loss" element={<Navigate to="/reports/profit-loss" replace />} />
+            <Route path="cash-flow" element={<Navigate to="/reports/profit-loss" replace />} />
           </Route>
 
           <Route path="compliance">
@@ -549,7 +549,7 @@ export default function App() {
             element={
               <ProtectedRoute permission="reports:read">
                 <ModuleGuard moduleKey="reports">
-                  <ProfitDashboard />
+                  <ReportCenterPage />
                 </ModuleGuard>
               </ProtectedRoute>
             }

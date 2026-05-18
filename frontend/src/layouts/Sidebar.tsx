@@ -118,8 +118,8 @@ const FARM_NAV: NavGroup[] = [
     children: [
       { label: 'Expenses', path: '/finance/expenses', permission: 'finance:read', moduleKey: 'expenses' },
       { label: 'Income', path: '/finance/income', permission: 'finance:read', moduleKey: 'income' },
-      { label: 'Profit & Loss', path: '/finance/profit-loss', permission: 'reports:read', moduleKey: 'profit_loss' },
-      { label: 'Cash Flow', path: '/finance/cash-flow', permission: 'reports:read', moduleKey: 'reports' },
+      { label: 'Profit & Loss', path: '/reports/profit-loss', permission: 'reports:read', moduleKey: 'profit_loss' },
+      { label: 'Cash Flow', path: '/reports/profit-loss', permission: 'reports:read', moduleKey: 'reports' },
     ],
   },
   {
@@ -135,12 +135,13 @@ const FARM_NAV: NavGroup[] = [
     label: 'Reports',
     icon: BarChart3,
     children: [
-      { label: 'Farm Reports', path: '/reports/farm', permission: 'reports:read', moduleKey: 'reports' },
-      { label: 'Feed Reports', path: '/reports/feed', permission: 'reports:read', moduleKey: 'reports' },
-      { label: 'Slaughter Reports', path: '/reports/slaughter', permission: 'reports:read', moduleKey: 'reports' },
-      { label: 'Sales Reports', path: '/reports/sales', permission: 'reports:read', moduleKey: 'reports' },
-      { label: 'Finance Reports', path: '/reports/finance', permission: 'reports:read', moduleKey: 'reports' },
-      { label: 'Compliance Reports', path: '/reports/compliance', permission: 'reports:read', moduleKey: 'reports' },
+      { label: 'Sales Summary', path: '/reports/sales-summary', permission: 'reports:read', moduleKey: 'reports' },
+      { label: 'Payments', path: '/reports/payments', permission: 'reports:read', moduleKey: 'reports' },
+      { label: 'Inventory Stock', path: '/reports/inventory-stock', permission: 'reports:read', moduleKey: 'reports' },
+      { label: 'Feed Stock', path: '/reports/feed-stock', permission: 'reports:read', moduleKey: 'reports' },
+      { label: 'Feed Consumption', path: '/reports/feed-consumption', permission: 'reports:read', moduleKey: 'reports' },
+      { label: 'Profit & Loss', path: '/reports/profit-loss', permission: 'reports:read', moduleKey: 'reports' },
+      { label: 'Compliance Expiry', path: '/reports/compliance-expiring', permission: 'reports:read', moduleKey: 'reports' },
     ],
   },
   {

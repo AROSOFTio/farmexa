@@ -131,7 +131,7 @@ export function PublicHomePage() {
       </header>
 
       <main id="home">
-        <section className="relative overflow-hidden border-b border-black/10 bg-[#0b1018] text-white">
+        <section className="relative overflow-hidden border-b border-black/10 bg-[#202020] text-white">
           <div className="pointer-events-none absolute inset-0 opacity-[0.16] [background-image:linear-gradient(rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:44px_44px]" />
           <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 lg:grid-cols-[1fr_0.85fr] lg:px-6 lg:py-[4.5rem]">
             <motion.div
@@ -170,15 +170,15 @@ export function PublicHomePage() {
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <div className="text-[12px] font-semibold uppercase text-[#9b7618]">Farm Admin Dashboard</div>
-                    <div className="text-[20px] font-bold text-[#151515]">{settings.system_name} dashboard</div>
+                    <div className="text-[20px] font-bold text-[#202020]">{settings.system_name} dashboard</div>
                   </div>
-                  <div className="rounded-full bg-[#d6a62e] px-3 py-1 text-[12px] font-bold text-[#151515]">Trial: 7 days remaining</div>
+                  <div className="rounded-full bg-[#d6a62e] px-3 py-1 text-[12px] font-bold text-[#202020]">Trial: 7 days remaining</div>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-4">
                   {['28,540 birds', '12,450 kg feed', '2,850 kg meat', 'UGX 8.45M sales'].map((item, index) => (
                     <motion.div
                       key={item}
-                      className="rounded-[8px] border border-[#ead9ac] bg-white p-3 text-center text-[12px] font-bold text-[#151515]"
+                      className="rounded-[8px] border border-[#ead9ac] bg-white p-3 text-center text-[12px] font-bold text-[#202020]"
                       initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.34 + index * 0.06, duration: 0.42 }}
@@ -196,7 +196,7 @@ export function PublicHomePage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.52 + index * 0.06, duration: 0.45 }}
                     >
-                      <div className="mb-3 text-[13px] font-bold text-[#151515]">{title}</div>
+                      <div className="mb-3 text-[13px] font-bold text-[#202020]">{title}</div>
                       <div className="space-y-2">
                         {[1, 2, 3].map((row) => <div key={row} className="h-2 rounded-full bg-[#f0e2bd]" />)}
                       </div>
@@ -294,7 +294,7 @@ export function PublicHomePage() {
         </section>
 
         <section id="contact" className="mx-auto max-w-7xl px-4 py-14 lg:px-6">
-          <Reveal className="rounded-[8px] bg-[#0b1018] p-8 text-white md:p-10">
+          <Reveal className="rounded-[8px] bg-[#202020] p-8 text-white md:p-10">
             <h2 className="text-[2rem] font-bold text-white">Start your 14-day free trial today.</h2>
             <p className="mt-3 max-w-2xl text-white/72">
               No installation required. Your farm gets its own workspace like {workspaceExample}.

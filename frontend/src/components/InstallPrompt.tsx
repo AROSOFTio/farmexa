@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
-import { BRAND_LOGO_ICON } from '@/lib/branding'
+import { BRAND_LOGO_ICON, BRAND_LOGO_ICON_GREEN } from '@/lib/branding'
+import { resolveInitialTheme, THEME_CHANGE_EVENT, type BrandTheme } from '@/lib/theme'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -11,6 +12,7 @@ export function InstallPrompt() {
   const [promptEvent, setPromptEvent] = useState<BeforeInstallPromptEvent | null>(null)
   const [dismissed, setDismissed] = useState(() => localStorage.getItem('farmexa_install_prompt_dismissed') === 'true')
   const [isStandalone, setIsStandalone] = useState(false)
+  const [brandTheme, setBrandTheme] = useState<BrandTheme>(() => resolveInitialTheme().brandTheme)
 
   useEffect(() => {
     setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true)
@@ -20,6 +22,15 @@ export function InstallPrompt() {
     }
     window.addEventListener('beforeinstallprompt', handler)
     return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  useEffect(() => {
+    const onThemeChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ brandTheme?: BrandTheme }>).detail
+      if (detail?.brandTheme) setBrandTheme(detail.brandTheme)
+    }
+    window.addEventListener(THEME_CHANGE_EVENT, onThemeChange)
+    return () => window.removeEventListener(THEME_CHANGE_EVENT, onThemeChange)
   }, [])
 
   if (dismissed || isStandalone) return null
@@ -44,7 +55,7 @@ export function InstallPrompt() {
     <div className="fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-md rounded-[8px] border border-brand-200 bg-white p-4 shadow-modal">
       <div className="flex items-start gap-3">
         <div className="rounded-[8px] bg-brand-50 p-1.5 text-brand-800">
-          <img src={BRAND_LOGO_ICON} alt="Farmexa" className="h-7 w-7 object-contain" />
+          <img src={brandTheme === 'green-black' ? BRAND_LOGO_ICON_GREEN : BRAND_LOGO_ICON} alt="Farmexa" className="h-7 w-7 object-contain" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="font-semibold text-ink-900">Install Farmexa App</div>

@@ -855,7 +855,7 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
                   dataKey="value"
                 >
                   {plans.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={['#b88a1d', '#0f172a', '#64748b', '#e2e8f0'][index % 4]} />
+                    <Cell key={`cell-${index}`} fill={['#b88a1d', '#202020', '#64748b', '#e2e8f0'][index % 4]} />
                   ))}
                 </Pie>
                 <Tooltip

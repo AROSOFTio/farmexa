@@ -687,9 +687,9 @@ export function ProfitDashboard() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <button type="button" onClick={() => window.print()} className="btn-secondary">
+          <button type="button" onClick={() => toast.info('Use the Report Center export buttons for PDF, Excel, and CSV documents.')} className="btn-secondary">
             <FileDown className="h-4.5 w-4.5" />
-            Print / PDF
+            Export from Report Center
           </button>
           <button type="button" onClick={() => reports.refetch()} className="btn-primary" disabled={reports.isFetching}>
             <RefreshCw className={`h-4.5 w-4.5 ${reports.isFetching ? 'animate-spin' : ''}`} />

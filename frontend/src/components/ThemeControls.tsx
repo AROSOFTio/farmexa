@@ -11,8 +11,8 @@ import {
 } from '@/lib/theme'
 
 const themeOptions: Array<{ value: BrandTheme; label: string; note: string; swatches: string[] }> = [
-  { value: 'navy-gold', label: 'Navy & Gold', note: 'Default', swatches: ['#0b1018', '#d6a62e'] },
-  { value: 'green-black', label: 'Green & Black', note: 'Agriculture', swatches: ['#07130d', '#2fa66a'] },
+  { value: 'navy-gold', label: 'Navy & Gold', note: 'Default', swatches: ['#202020', '#d6a62e'] },
+  { value: 'green-black', label: 'Green & Black', note: 'Agriculture', swatches: ['#202020', '#2fa66a'] },
 ]
 
 function useThemePreference() {

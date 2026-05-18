@@ -7,7 +7,7 @@ logger = logging.getLogger("farmexa.pdf_branding")
 
 BRAND_LOGO_FULL_PATH = Path(__file__).resolve().parents[1] / "assets" / "brand" / "farmexa-logo-full.png"
 BRAND_PRIMARY = "#d6a62e"
-BRAND_DARK = "#0b1018"
+BRAND_DARK = "#202020"
 
 
 def draw_pdf_brand_header(canvas, page_width: float, page_height: float, title: str | None = None) -> float:

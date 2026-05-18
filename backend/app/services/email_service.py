@@ -103,7 +103,7 @@ def branded_email_html(
     if action_url and action_label:
         action = (
             f'<p style="margin:24px 0 0"><a href="{action_url}" '
-            'style="display:inline-block;background:#d6a62e;color:#0b1018;text-decoration:none;'
+            'style="display:inline-block;background:#d6a62e;color:#202020;text-decoration:none;'
             'font-weight:700;padding:12px 18px;border-radius:8px"> '
             f"{action_label}</a></p>"
         )
@@ -123,14 +123,14 @@ def branded_email_html(
             </tr>
             <tr>
               <td style="padding:28px 30px 30px">
-                <h1 style="margin:0 0 12px;font-size:24px;line-height:1.25;color:#0b1018">{title}</h1>
+                <h1 style="margin:0 0 12px;font-size:24px;line-height:1.25;color:#202020">{title}</h1>
                 <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:#475569">{intro}</p>
                 <div style="font-size:15px;line-height:1.7;color:#334155">{body_html}</div>
                 {action}
               </td>
             </tr>
             <tr>
-              <td style="padding:18px 30px;background:#0b1018;color:#d6dee9;font-size:12px;line-height:1.6">
+              <td style="padding:18px 30px;background:#202020;color:#d6dee9;font-size:12px;line-height:1.6">
                 {system_name} support: {support_email}
               </td>
             </tr>

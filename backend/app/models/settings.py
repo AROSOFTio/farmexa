@@ -38,7 +38,7 @@ class SystemSettings(Base):
     system_logo_url = Column(String(500), nullable=True)
     system_favicon_url = Column(String(500), nullable=True)
     primary_color = Column(String(40), nullable=False, default="#d6a62e")
-    secondary_color = Column(String(40), nullable=False, default="#0b1018")
+    secondary_color = Column(String(40), nullable=False, default="#202020")
     platform_domain = Column(String(255), nullable=False, default="farmexa.arosoft.io")
     tenant_domain_suffix = Column(String(255), nullable=False, default="arosoft.io")
     sender_email = Column(String(255), nullable=False, default="farmexa@arosoft.io")

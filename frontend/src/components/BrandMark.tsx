@@ -1,6 +1,8 @@
 import { clsx } from 'clsx'
-import { BRAND_LOGO_FULL, BRAND_LOGO_ICON } from '@/lib/branding'
+import { useEffect, useState } from 'react'
+import { BRAND_LOGO_FULL, BRAND_LOGO_FULL_GREEN, BRAND_LOGO_ICON, BRAND_LOGO_ICON_GREEN } from '@/lib/branding'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
+import { resolveInitialTheme, THEME_CHANGE_EVENT, type BrandTheme } from '@/lib/theme'
 
 interface BrandMarkProps {
   className?: string
@@ -16,12 +18,26 @@ export function BrandMark({
   showTagline = false,
 }: BrandMarkProps) {
   const { settings } = usePlatformSettings()
-  const fullLogo = settings.system_logo_url || BRAND_LOGO_FULL
+  const [brandTheme, setBrandTheme] = useState<BrandTheme>(() => resolveInitialTheme().brandTheme)
+
+  useEffect(() => {
+    const onThemeChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ brandTheme?: BrandTheme }>).detail
+      if (detail?.brandTheme) setBrandTheme(detail.brandTheme)
+    }
+    window.addEventListener(THEME_CHANGE_EVENT, onThemeChange)
+    return () => window.removeEventListener(THEME_CHANGE_EVENT, onThemeChange)
+  }, [])
+
+  const themedFullLogo = brandTheme === 'green-black' ? BRAND_LOGO_FULL_GREEN : BRAND_LOGO_FULL
+  const themedIconLogo = brandTheme === 'green-black' ? BRAND_LOGO_ICON_GREEN : BRAND_LOGO_ICON
+  const systemLogoIsDefault = !settings.system_logo_url || settings.system_logo_url === BRAND_LOGO_FULL
+  const fullLogo = systemLogoIsDefault ? themedFullLogo : settings.system_logo_url
 
   return (
     <div className={clsx('flex items-center gap-2.5', className)}>
       <img
-        src={compact ? BRAND_LOGO_ICON : fullLogo}
+        src={compact ? themedIconLogo : fullLogo}
         alt={compact ? `${settings.system_name} icon` : `${settings.system_name} logo`}
         className={clsx(
           'shrink-0 object-contain',

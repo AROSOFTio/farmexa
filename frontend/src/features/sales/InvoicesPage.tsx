@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { CreditCard, FileText, Landmark, Receipt } from 'lucide-react'
+import { CreditCard, Download, FileText, Landmark, Receipt } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
 
@@ -81,6 +81,25 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
     () => invoices.reduce((sum, invoice) => sum + Math.max(invoice.total_amount - invoice.paid_amount, 0), 0),
     [invoices]
   )
+
+  const downloadReceipt = async (invoice: Invoice, paper = 'a4') => {
+    try {
+      const response = await api.get(`/sales/invoices/${invoice.id}/receipt-download.pdf`, {
+        params: { paper },
+        responseType: 'blob',
+      })
+      const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${invoice.invoice_number}-${paper}-receipt.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('Receipt PDF could not be downloaded.')
+    }
+  }
 
   const paymentMutation = useMutation({
     mutationFn: (values: PaymentFormValues) =>
@@ -216,13 +235,14 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
                     <th>Status</th>
                     <th>Issue / Due</th>
                     <th>Paid</th>
-                    <th className="pr-6">Outstanding</th>
+                    <th>Outstanding</th>
+                    <th className="pr-6">Document</th>
                   </tr>
                 </thead>
                 <tbody>
                   {invoices.length === 0 ? (
                     <tr>
-                      <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={5}>
+                      <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={6}>
                         No invoices.
                       </td>
                     </tr>
@@ -240,8 +260,14 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
                         </td>
                         <td>{formatDate(invoice.issue_date)} / {formatDate(invoice.due_date)}</td>
                         <td>UGX {invoice.paid_amount.toLocaleString()}</td>
-                        <td className="pr-6 font-semibold text-neutral-900">
+                        <td className="font-semibold text-neutral-900">
                           UGX {Math.max(invoice.total_amount - invoice.paid_amount, 0).toLocaleString()}
+                        </td>
+                        <td className="pr-6">
+                          <button type="button" className="btn-secondary btn-sm" onClick={() => downloadReceipt(invoice)}>
+                            <Download className="h-3.5 w-3.5" />
+                            PDF
+                          </button>
                         </td>
                       </tr>
                     ))

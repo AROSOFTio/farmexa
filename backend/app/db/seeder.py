@@ -192,7 +192,7 @@ async def _seed_system_settings(db: AsyncSession) -> None:
             system_logo_url="/brand/farmexa-logo-full.png",
             system_favicon_url="/favicon.svg",
             primary_color="#d6a62e",
-            secondary_color="#0b1018",
+            secondary_color="#202020",
             platform_domain=settings.PRIMARY_PLATFORM_DOMAIN,
             tenant_domain_suffix=tenant_domain_suffix(),
             sender_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoft.io",
