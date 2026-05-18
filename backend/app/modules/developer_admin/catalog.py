@@ -56,6 +56,18 @@ MANDATORY_TENANT_MODULE_KEYS = {"dashboard", "users", "settings"}
 
 DEFAULT_PLANS = [
     {
+        "code": "full_trial",
+        "name": "Full Trial",
+        "description": "14-day full-feature Farmexa trial with every module enabled",
+        "billing_cycle": "monthly",
+        "monthly_price": 0,
+        "quarterly_price": 0,
+        "annual_price": 0,
+        "currency": "UGX",
+        "trial_days": 14,
+        "is_custom": False,
+    },
+    {
         "code": "basic",
         "name": "Core",
         "description": "Core farm operation modules",
@@ -106,6 +118,7 @@ DEFAULT_PLANS = [
 ]
 
 DEFAULT_PLAN_MODULES = {
+    "full_trial": [module["key"] for module in DEFAULT_MODULES],
     "basic": [
         "dashboard",
         "users",

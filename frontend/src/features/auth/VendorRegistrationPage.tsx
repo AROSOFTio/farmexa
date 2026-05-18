@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { AxiosError } from 'axios'
-import { ArrowLeft, Building2, CheckCircle2, Globe2, ShieldCheck, UserPlus } from 'lucide-react'
+import { ArrowLeft, Building2, CheckCircle2, ShieldCheck, UserPlus } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
@@ -20,7 +20,6 @@ const registrationSchema = z.object({
   phone: z.string().optional(),
   address: z.string().optional(),
   country: z.string().optional(),
-  domain: z.string().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirm_password: z.string().min(8, 'Confirm your password'),
 }).refine((values) => values.password === values.confirm_password, {
@@ -50,7 +49,6 @@ export function VendorRegistrationPage() {
       phone: '',
       address: '',
       country: 'Uganda',
-      domain: '',
       password: '',
       confirm_password: '',
     },
@@ -87,7 +85,7 @@ export function VendorRegistrationPage() {
             <div className="mt-8 space-y-3">
               {[
                 'Automatic farm workspace',
-                `Subdomain on ${settings.tenant_domain_suffix}`,
+                `Automatic subdomain on ${settings.tenant_domain_suffix}`,
                 'Welcome email and trial expiry tracking',
               ].map((item) => (
                 <div key={item} className="flex items-center gap-3 rounded-[10px] border border-white/10 bg-white/[.06] px-3 py-3 text-[13px] font-semibold">
@@ -105,7 +103,7 @@ export function VendorRegistrationPage() {
               <div className="page-eyebrow">Tenant onboarding</div>
               <h1 className="mt-2 text-[2rem] font-black leading-tight text-ink-900">Start your 14-day free trial</h1>
               <p className="mt-2 max-w-2xl text-[14px] leading-6 text-ink-500">
-                Register the farm, primary admin, and workspace details. Farmexa will create the tenant and login URL.
+                Register the farm and primary admin. Farmexa automatically creates the tenant, database, DNS, and login URL.
               </p>
             </div>
             <Link to="/login" className="btn-secondary shrink-0">
@@ -184,21 +182,6 @@ export function VendorRegistrationPage() {
                   <input className="form-input" type="password" {...form.register('confirm_password')} />
                   {form.formState.errors.confirm_password ? <p className="form-error">{form.formState.errors.confirm_password.message}</p> : null}
                 </div>
-              </div>
-            </section>
-
-            <section className="form-section">
-              <div className="mb-4 flex items-center gap-2">
-                <Globe2 className="h-4 w-4 text-[var(--brand-primary)]" />
-                <div className="form-section-title mb-0">Workspace domain</div>
-              </div>
-              <div>
-                <label className="form-label">Preferred workspace subdomain or custom domain</label>
-                <input className="form-input" placeholder={`ngali.${settings.tenant_domain_suffix}`} {...form.register('domain')} />
-                <p className="form-hint">Leave blank to let Farmexa generate a clean farm subdomain automatically.</p>
-              </div>
-              <div className="mt-4 rounded-[10px] border border-[#eadcc1] bg-[#fffaf0] px-4 py-3 text-[13px] leading-6 text-slate-700">
-                DNS and SSL status are tracked after signup. Fallback workspace access remains available while custom domain setup completes.
               </div>
             </section>
 

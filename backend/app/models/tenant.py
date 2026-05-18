@@ -252,6 +252,10 @@ class TenantDomain(Base):
         db_enum(DomainStatus, name="domainstatus"), default=DomainStatus.PENDING_DNS
     )
     verification_target: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    cloudflare_record_id: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    cloudflare_provision_status: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    cloudflare_last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    cloudflare_provisioned_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     dns_verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     ssl_requested_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     ssl_issued_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   BadgeCheck,
   BarChart3,
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { BrandMark } from '@/components/BrandMark'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
+import { RegistrationWizardModal } from '@/features/auth/RegistrationWizardModal'
 
 const features = [
   ['Feed Mill Management', Wheat],
@@ -74,7 +75,9 @@ function Reveal({ children, className = '' }: { children: ReactNode; className?:
 
 export function PublicHomePage() {
   const { settings } = usePlatformSettings()
+  const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
   const workspaceExample = `ngali.${settings.tenant_domain_suffix}`
+  const openRegistration = () => setIsRegistrationOpen(true)
 
   return (
     <div className="min-h-screen bg-[#fbfaf7] text-[#151515]">
@@ -91,7 +94,7 @@ export function PublicHomePage() {
           </nav>
           <div className="flex items-center gap-2">
             <Link to="/login" className="btn-secondary">Sign In</Link>
-            <Link to="/register" className="btn-primary">Start Free Trial</Link>
+            <button type="button" onClick={openRegistration} className="btn-primary">Start Free Trial</button>
           </div>
         </div>
       </header>
@@ -122,7 +125,7 @@ export function PublicHomePage() {
                 POS sales, finance, compliance, and reports from one cloud ERP.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Link to="/register" className="btn-primary btn-lg">Start 14-Day Free Trial</Link>
+                <button type="button" onClick={openRegistration} className="btn-primary btn-lg">Start 14-Day Free Trial</button>
                 <Link to="/login" className="btn-secondary btn-lg border-white/20 bg-white/10 text-white hover:bg-white/15">Sign In</Link>
               </div>
             </motion.div>
@@ -252,7 +255,7 @@ export function PublicHomePage() {
               No installation required. Your farm gets its own workspace like {workspaceExample}.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link to="/register" className="btn-primary btn-lg">Start Free Trial</Link>
+              <button type="button" onClick={openRegistration} className="btn-primary btn-lg">Start Free Trial</button>
               <Link to="/login" className="btn-secondary btn-lg border-white/20 bg-white/10 text-white hover:bg-white/15">Sign In</Link>
             </div>
           </Reveal>
@@ -267,6 +270,7 @@ export function PublicHomePage() {
           <div className="flex gap-4"><Link to="/privacy">Privacy Policy</Link><Link to="/terms">Terms of Service</Link></div>
         </div>
       </footer>
+      <RegistrationWizardModal isOpen={isRegistrationOpen} onClose={() => setIsRegistrationOpen(false)} />
     </div>
   )
 }

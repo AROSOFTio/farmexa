@@ -35,7 +35,7 @@ def upgrade() -> None:
         sa.Column("primary_color", sa.String(length=40), nullable=False, server_default="#d6a62e"),
         sa.Column("secondary_color", sa.String(length=40), nullable=False, server_default="#0b1018"),
         sa.Column("platform_domain", sa.String(length=255), nullable=False, server_default="farmexa.arosoft.io"),
-        sa.Column("tenant_domain_suffix", sa.String(length=255), nullable=False, server_default="arosoft.io"),
+        sa.Column("tenant_domain_suffix", sa.String(length=255), nullable=False, server_default="farmexa.arosoft.io"),
         sa.Column("sender_email", sa.String(length=255), nullable=False, server_default="farmexa@arosoft.io"),
         sa.Column("sender_name", sa.String(length=120), nullable=False, server_default="Farmexa"),
         sa.Column("support_email", sa.String(length=255), nullable=False, server_default="farmexa@arosoft.io"),

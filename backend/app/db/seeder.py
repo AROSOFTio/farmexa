@@ -159,7 +159,15 @@ async def _seed_system_settings(db: AsyncSession) -> None:
     from app.models.settings import SystemSettings
 
     result = await db.execute(select(SystemSettings).order_by(SystemSettings.id).limit(1))
-    if result.scalar_one_or_none():
+    settings_row = result.scalar_one_or_none()
+    if settings_row:
+        settings_row.platform_domain = settings.PRIMARY_PLATFORM_DOMAIN
+        if settings_row.tenant_domain_suffix == "arosoft.io":
+            settings_row.tenant_domain_suffix = settings.DEFAULT_TENANT_DOMAIN_SUFFIX
+        settings_row.cloudflare_api_token = settings.CLOUDFLARE_API_TOKEN
+        settings_row.cloudflare_zone_id = settings.CLOUDFLARE_ZONE_ID
+        settings_row.tenant_domain_target_ip = settings.TENANT_DNS_TARGET_VALUE or settings.TENANT_DOMAIN_TARGET_IP
+        settings_row.enable_cloudflare_dns_automation = settings.ENABLE_CLOUDFLARE_DNS_AUTOMATION
         return
 
     db.add(
@@ -181,7 +189,7 @@ async def _seed_system_settings(db: AsyncSession) -> None:
             smtp_use_tls=settings.SMTP_USE_TLS,
             cloudflare_api_token=settings.CLOUDFLARE_API_TOKEN,
             cloudflare_zone_id=settings.CLOUDFLARE_ZONE_ID,
-            tenant_domain_target_ip=settings.TENANT_DOMAIN_TARGET_IP,
+            tenant_domain_target_ip=settings.TENANT_DNS_TARGET_VALUE or settings.TENANT_DOMAIN_TARGET_IP,
             enable_cloudflare_dns_automation=settings.ENABLE_CLOUDFLARE_DNS_AUTOMATION,
             enable_automatic_ssl_provisioning=settings.ENABLE_AUTOMATIC_SSL_PROVISIONING,
         )

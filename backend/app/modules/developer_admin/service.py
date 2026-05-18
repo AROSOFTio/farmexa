@@ -171,7 +171,7 @@ class DeveloperAdminService:
             smtp_use_tls=settings.SMTP_USE_TLS,
             cloudflare_api_token=settings.CLOUDFLARE_API_TOKEN,
             cloudflare_zone_id=settings.CLOUDFLARE_ZONE_ID,
-            tenant_domain_target_ip=settings.TENANT_DOMAIN_TARGET_IP,
+            tenant_domain_target_ip=settings.TENANT_DNS_TARGET_VALUE or settings.TENANT_DOMAIN_TARGET_IP,
             enable_cloudflare_dns_automation=settings.ENABLE_CLOUDFLARE_DNS_AUTOMATION,
             enable_automatic_ssl_provisioning=settings.ENABLE_AUTOMATIC_SSL_PROVISIONING,
         )
@@ -457,10 +457,17 @@ class DeveloperAdminService:
                 domain.dns_verified_at = datetime.now(UTC)
                 domain.activated_at = datetime.now(UTC)
                 domain.verification_target = result.target or settings.PRIMARY_PLATFORM_DOMAIN
+                domain.cloudflare_record_id = result.record_id
+                domain.cloudflare_provision_status = result.status
+                domain.cloudflare_provisioned_at = datetime.now(UTC)
+                domain.cloudflare_last_error = None
                 domain.last_error = result.message
             else:
                 domain.status = DomainStatus.FAILED
+                domain.cloudflare_provision_status = result.status
+                domain.cloudflare_last_error = result.message
                 domain.last_error = result.message
+                raise HTTPException(status_code=503, detail=f"Tenant DNS provisioning failed for {domain.host}: {result.message}")
         await self.db.flush()
 
     async def _create_subscription(
@@ -744,8 +751,8 @@ class DeveloperAdminService:
                 phone=payload.phone,
                 address=payload.address,
                 country=payload.country,
-                domain=payload.domain,
-                plan="basic",
+                domain=None,
+                plan="full_trial",
                 billing_cycle="monthly",
             ),
             actor=None,

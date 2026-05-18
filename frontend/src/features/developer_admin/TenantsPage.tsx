@@ -55,6 +55,10 @@ interface TenantDomain {
   is_primary: boolean
   status: string
   verification_target?: string | null
+  cloudflare_record_id?: string | null
+  cloudflare_provision_status?: string | null
+  cloudflare_last_error?: string | null
+  cloudflare_provisioned_at?: string | null
   dns_verified_at?: string | null
   ssl_requested_at?: string | null
   ssl_issued_at?: string | null
@@ -1080,7 +1084,9 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
                             {domain.is_primary ? <span className="badge badge-brand">Primary</span> : null}
                           </div>
                           <div className="mt-1 text-xs text-slate-500">{domain.domain_type.replace(/_/g, ' ')} • {domain.status.replace(/_/g, ' ')}</div>
-                          {domain.last_error ? <div className="mt-2 text-xs text-red-600">{domain.last_error}</div> : null}
+                          {domain.cloudflare_record_id ? <div className="mt-2 text-xs text-slate-500">Cloudflare record: {domain.cloudflare_record_id}</div> : null}
+                          {domain.cloudflare_provision_status ? <div className="mt-1 text-xs text-slate-500">DNS automation: {domain.cloudflare_provision_status.replace(/_/g, ' ')}</div> : null}
+                          {domain.cloudflare_last_error || domain.last_error ? <div className="mt-2 text-xs text-red-600">{domain.cloudflare_last_error ?? domain.last_error}</div> : null}
                         </div>
                         {canManage ? (
                           <div className="flex flex-wrap justify-end gap-2">

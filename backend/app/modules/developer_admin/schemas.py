@@ -126,6 +126,10 @@ class TenantDomainOut(BaseModel):
     is_primary: bool
     status: str
     verification_target: Optional[str] = None
+    cloudflare_record_id: Optional[str] = None
+    cloudflare_provision_status: Optional[str] = None
+    cloudflare_last_error: Optional[str] = None
+    cloudflare_provisioned_at: Optional[datetime] = None
     dns_verified_at: Optional[datetime] = None
     ssl_requested_at: Optional[datetime] = None
     ssl_issued_at: Optional[datetime] = None
