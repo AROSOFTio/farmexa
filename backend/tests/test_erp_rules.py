@@ -4,6 +4,8 @@ from fastapi import HTTPException
 from app.core.config import settings
 from app.modules.developer_admin.catalog import DEFAULT_MODULES, DEFAULT_PLAN_MODULES
 from app.modules.developer_admin.service import DeveloperAdminService
+from app.modules.affiliates.schemas import AffiliateRegisterRequest
+from app.modules.affiliates.service import DEFAULT_COMMISSION_PERCENT
 from app.services import cloudflare_service
 from app.services.cloudflare_service import create_tenant_dns_record
 from app.services.erp_rules import (
@@ -35,6 +37,21 @@ def test_tenant_domain_suffix_uses_cloudflare_zone_when_env_is_nested(monkeypatc
 def test_full_trial_plan_includes_every_module():
     all_module_keys = {module["key"] for module in DEFAULT_MODULES}
     assert set(DEFAULT_PLAN_MODULES["full_trial"]) == all_module_keys
+
+
+def test_affiliate_default_commission_is_twenty_percent():
+    assert DEFAULT_COMMISSION_PERCENT == 20
+
+
+def test_affiliate_registration_requires_terms():
+    with pytest.raises(Exception):
+        AffiliateRegisterRequest(
+            full_name="Farm Partner",
+            email="partner@example.com",
+            phone="+256700000000",
+            country="Uganda",
+            accepted_terms=False,
+        )
 
 
 def test_feed_formula_percentages_must_equal_100():

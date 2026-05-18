@@ -24,6 +24,13 @@ from app.models.sales import Customer, Order, OrderItem, Invoice, Payment  # noq
 from app.models.finance import ExpenseCategory, Expense, IncomeCategory, Income  # noqa: F401
 from app.models.settings import EmailLog, ProductCatalog, ReferenceItem, SystemConfig, SystemSettings  # noqa: F401
 from app.models.egg_production import EggProductionLog  # noqa: F401
+from app.models.affiliate import (  # noqa: F401
+    Affiliate,
+    AffiliateActivityLog,
+    AffiliateCommission,
+    AffiliateCommissionRule,
+    AffiliateReferral,
+)
 from app.models.tenant import (  # noqa: F401
     BillingInvoice,
     BillingPayment,
@@ -86,6 +93,11 @@ __all__ = [
     "SystemSettings",
     "EmailLog",
     "EggProductionLog",
+    "Affiliate",
+    "AffiliateActivityLog",
+    "AffiliateCommission",
+    "AffiliateCommissionRule",
+    "AffiliateReferral",
     "BillingInvoice",
     "BillingPayment",
     "Tenant",

@@ -165,6 +165,7 @@ const DEV_NAV: NavGroup[] = [
   { label: 'Users & Roles', path: '/settings/users', permission: 'dev_admin:read', icon: Users },
   { label: 'Email Automation', path: '/dev-admin/emails', permission: 'dev_admin:read', icon: ClipboardCheck },
   { label: 'Payments & Billing', path: '/dev-admin/billing', permission: 'dev_admin:read', icon: CreditCard },
+  { label: 'Affiliates', path: '/dev-admin/affiliates', permission: 'dev_admin:read', icon: Users },
   { label: 'System Health', path: '/dev-admin/system-health', permission: 'dev_admin:read', icon: Gauge },
   { label: 'Audit Logs', path: '/dev-admin/audit-logs', permission: 'dev_admin:read', icon: BarChart3 },
   { label: 'Settings', path: '/dev-admin/settings', permission: 'dev_admin:read', icon: Settings },

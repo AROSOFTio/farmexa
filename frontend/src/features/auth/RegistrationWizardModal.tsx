@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { Modal } from '@/components/Modal'
 import { getErrorMessage } from '@/lib/errors'
 import { authService } from '@/services/authService'
+import { getStoredReferralCode } from '@/lib/referrals'
 import { VendorRegistrationResponse } from '@/types'
 
 const registrationSchema = z.object({
@@ -107,6 +108,7 @@ export function RegistrationWizardModal({ isOpen, onClose }: RegistrationWizardM
         country: values.country,
         password: values.password,
         confirm_password: values.confirm_password,
+        referral_code: getStoredReferralCode() ?? undefined,
       })
       setRegistration(response)
       toast.success('Farmexa workspace registered.')

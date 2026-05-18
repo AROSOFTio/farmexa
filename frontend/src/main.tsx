@@ -8,8 +8,16 @@ import { Toaster } from 'sonner'
 import App from './App'
 import './index.css'
 import { applyTheme, resolveInitialTheme } from '@/lib/theme'
+import { captureReferralFromUrl } from '@/lib/referrals'
 
 applyTheme(resolveInitialTheme())
+captureReferralFromUrl()
+
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').catch(() => undefined)
+  })
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {

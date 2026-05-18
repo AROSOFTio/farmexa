@@ -6,6 +6,7 @@ import { RegistrationSuccessPage } from '@/features/auth/RegistrationSuccessPage
 import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from '@/features/auth/AuthActionPages'
 import { PublicHomePage } from '@/features/public/PublicHomePage'
 import { PricingPage } from '@/features/public/PricingPage'
+import { AffiliateProgramPage } from '@/features/public/AffiliateProgramPage'
 import { ProfitDashboard } from '@/features/analytics/ProfitDashboard'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { FeedManagementPage } from '@/features/feed/FeedManagementPage'
@@ -31,7 +32,9 @@ import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { NotFoundPage } from '@/components/NotFoundPage'
 import { EggProductionPage } from '@/features/farm/EggProductionPage'
 import { TenantsPage } from '@/features/developer_admin/TenantsPage'
+import { AffiliatesPage } from '@/features/developer_admin/AffiliatesPage'
 import { ModuleGuard, ModuleDisabledPage } from '@/components/ModuleGuard'
+import { SEO } from '@/components/SEO'
 import { CompliancePage } from '@/features/compliance/CompliancePage'
 import { UpgradeModulesPage } from '@/features/subscriptions/UpgradeModulesPage'
 import { SubscriptionExpiredPage } from '@/features/subscriptions/SubscriptionExpiredPage'
@@ -41,16 +44,18 @@ export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<><SEO title="Sign in to Farmexa" description="Sign in to your Farmexa workspace." canonicalPath="/login" robots="noindex,nofollow" /><LoginPage /></>} />
         <Route path="/" element={<PublicHomePage />} />
-        <Route path="/register" element={<RegisterModalPage />} />
-        <Route path="/register-tenant" element={<RegisterModalPage />} />
-        <Route path="/register-vendor" element={<RegisterModalPage />} />
-        <Route path="/registration-success" element={<RegistrationSuccessPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/register" element={<><SEO title="Register Farmexa" description="Create a Farmexa trial workspace." canonicalPath="/register" robots="noindex,nofollow" /><RegisterModalPage /></>} />
+        <Route path="/register-tenant" element={<><SEO title="Register Farmexa Tenant" description="Create a Farmexa trial workspace." canonicalPath="/register-tenant" robots="noindex,nofollow" /><RegisterModalPage /></>} />
+        <Route path="/register-vendor" element={<><SEO title="Register Farmexa Tenant" description="Create a Farmexa trial workspace." canonicalPath="/register-vendor" robots="noindex,nofollow" /><RegisterModalPage /></>} />
+        <Route path="/registration-success" element={<><SEO title="Farmexa Registration Success" description="Farmexa registration confirmation." canonicalPath="/registration-success" robots="noindex,nofollow" /><RegistrationSuccessPage /></>} />
+        <Route path="/forgot-password" element={<><SEO title="Forgot Farmexa Password" description="Request a Farmexa password reset." canonicalPath="/forgot-password" robots="noindex,nofollow" /><ForgotPasswordPage /></>} />
+        <Route path="/reset-password" element={<><SEO title="Reset Farmexa Password" description="Reset your Farmexa password." canonicalPath="/reset-password" robots="noindex,nofollow" /><ResetPasswordPage /></>} />
+        <Route path="/verify-email" element={<><SEO title="Verify Farmexa Email" description="Verify your Farmexa account email." canonicalPath="/verify-email" robots="noindex,nofollow" /><VerifyEmailPage /></>} />
         <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/affiliates" element={<AffiliateProgramPage />} />
+        <Route path="/affiliate-program" element={<AffiliateProgramPage />} />
         <Route path="/features" element={<PublicHomePage />} />
 
         <Route
@@ -502,6 +507,7 @@ export default function App() {
             <Route path="modules" element={<ProtectedRoute permission="dev_admin:read"><TenantsPage section="plans" /></ProtectedRoute>} />
             <Route path="emails" element={<ProtectedRoute permission="dev_admin:read"><TenantsPage section="activity" /></ProtectedRoute>} />
             <Route path="billing" element={<ProtectedRoute permission="dev_admin:read"><TenantsPage section="settings" /></ProtectedRoute>} />
+            <Route path="affiliates" element={<ProtectedRoute permission="dev_admin:read"><AffiliatesPage /></ProtectedRoute>} />
             <Route path="system-health" element={<ProtectedRoute permission="dev_admin:read"><TenantsPage section="settings" /></ProtectedRoute>} />
             <Route path="audit-logs" element={<ProtectedRoute permission="dev_admin:read"><TenantsPage section="activity" /></ProtectedRoute>} />
             <Route

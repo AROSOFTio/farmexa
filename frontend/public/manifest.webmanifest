@@ -1,0 +1,18 @@
+{
+  "name": "Farmexa",
+  "short_name": "Farmexa",
+  "description": "Farmexa poultry and farm ERP SaaS",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fbfaf7",
+  "theme_color": "#d6a62e",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /register-tenant
+Disallow: /register-vendor
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /registration-success
+Disallow: /dashboard
+Disallow: /farm
+Disallow: /feed
+Disallow: /feed-mill
+Disallow: /inventory
+Disallow: /slaughter
+Disallow: /sales
+Disallow: /finance
+Disallow: /compliance
+Disallow: /settings
+Disallow: /reports
+Disallow: /dev-admin
+Disallow: /subscription
+Disallow: /billing
+
+Sitemap: https://farmexa.arosoft.io/sitemap.xml

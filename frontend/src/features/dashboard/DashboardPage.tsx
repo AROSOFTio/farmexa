@@ -213,6 +213,7 @@ function LoadingState() {
 }
 
 export function DashboardPage() {
+  const navigate = useNavigate()
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['erp-dashboard'],
     queryFn: () => api.get<DashboardOverview>('/analytics/erp-dashboard').then((response) => response.data),
@@ -238,6 +239,16 @@ export function DashboardPage() {
     .reduce((sum, item) => sum + item.current_stock, 0)
   const lowStockCount = data.feed_stock.filter((item) => item.status.toLowerCase().includes('low')).length
   const vaccinationDue = data.houses.reduce((sum, house) => sum + house.vaccination_due, 0)
+  const onboardingItems = [
+    { label: 'Complete farm profile', done: true, to: '/farm/profile' },
+    { label: 'Add poultry house or pen', done: data.houses.length > 0, to: '/farm/houses' },
+    { label: 'Add first flock or batch', done: kpis.total_birds > 0, to: '/farm/batches' },
+    { label: 'Record first feed item', done: data.feed_stock.length > 0, to: '/feed/stock' },
+    { label: 'Add users or staff', done: false, to: '/settings/users' },
+    { label: 'View dashboard alerts', done: kpis.compliance_alerts + lowStockCount + vaccinationDue > 0, to: '/dashboard' },
+  ]
+  const onboardingDone = onboardingItems.filter((item) => item.done).length
+  const hideOnboarding = localStorage.getItem('farmexa_onboarding_dismissed') === 'true'
 
   return (
     <div className="erp-dashboard">
@@ -255,6 +266,29 @@ export function DashboardPage() {
         <SignalCard label="Orders today" value={formatNumber(data.sales.orders_today)} icon={ShoppingCart} />
         <SignalCard label="Open payments" value={formatMoney(data.sales.pending_payments)} icon={BadgeAlert} />
       </section>
+
+      {!hideOnboarding && onboardingDone < onboardingItems.length ? (
+        <section className="erp-panel">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-[16px] font-extrabold text-[#111827]">Start using Farmexa</h2>
+              <p className="mt-1 text-sm text-slate-600">Finish these simple steps to make your dashboard useful.</p>
+            </div>
+            <button type="button" className="erp-action" onClick={() => { localStorage.setItem('farmexa_onboarding_dismissed', 'true'); window.location.reload() }}>Hide checklist</button>
+          </div>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full bg-[#d4a42c]" style={{ width: `${Math.round((onboardingDone / onboardingItems.length) * 100)}%` }} />
+          </div>
+          <div className="mt-4 grid gap-2 md:grid-cols-3">
+            {onboardingItems.map((item) => (
+              <button key={item.label} type="button" onClick={() => navigate(item.to)} className="flex items-center gap-3 rounded-[8px] border border-[#ecd8a9] bg-white px-4 py-3 text-left text-sm font-bold text-[#111827]">
+                <span className={item.done ? 'text-emerald-600' : 'text-[#b98512]'}>{item.done ? '✓' : '○'}</span>
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid gap-4 xl:grid-cols-12">
         <div className="xl:col-span-8">

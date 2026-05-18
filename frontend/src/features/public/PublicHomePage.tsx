@@ -17,6 +17,8 @@ import {
   Wheat,
 } from 'lucide-react'
 import { BrandMark } from '@/components/BrandMark'
+import { InstallPrompt } from '@/components/InstallPrompt'
+import { SEO } from '@/components/SEO'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { RegistrationWizardModal } from '@/features/auth/RegistrationWizardModal'
 
@@ -81,6 +83,15 @@ export function PublicHomePage() {
 
   return (
     <div className="min-h-screen bg-[#fbfaf7] text-[#151515]">
+      <SEO
+        title="Farmexa ERP | Poultry Farm Management SaaS"
+        description="Farmexa is a cloud poultry ERP for feed mill, flocks, inventory, slaughter, sales, finance, compliance, reports, and secure tenant workspaces."
+        canonicalPath="/"
+        jsonLd={[
+          { '@context': 'https://schema.org', '@type': 'Organization', name: 'Farmexa', url: 'https://farmexa.arosoft.io' },
+          { '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Farmexa', applicationCategory: 'BusinessApplication', operatingSystem: 'Web', url: 'https://farmexa.arosoft.io' },
+        ]}
+      />
       <header className="sticky top-0 z-30 border-b border-black/10 bg-white/92 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-5 px-4 py-3 lg:px-6">
           <BrandMark />
@@ -89,6 +100,7 @@ export function PublicHomePage() {
             <a href="#features">Features</a>
             <a href="#modules">Modules</a>
             <Link to="/pricing">Pricing</Link>
+            <Link to="/affiliate-program">Affiliates</Link>
             <a href="#why">Why {settings.system_name}</a>
             <a href="#contact">Contact</a>
           </nav>
@@ -271,6 +283,7 @@ export function PublicHomePage() {
         </div>
       </footer>
       <RegistrationWizardModal isOpen={isRegistrationOpen} onClose={() => setIsRegistrationOpen(false)} />
+      <InstallPrompt />
     </div>
   )
 }

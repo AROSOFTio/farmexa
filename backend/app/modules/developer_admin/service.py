@@ -41,6 +41,7 @@ from app.models.tenant import (
 )
 from app.models.user import User
 from app.modules.auth.schemas import TenantRegistrationOut, TenantRegistrationRequest
+from app.modules.affiliates.service import AffiliateService
 from app.modules.developer_admin.catalog import MANDATORY_TENANT_MODULE_KEYS
 from app.modules.developer_admin.schemas import (
     ActivityLogOut,
@@ -803,6 +804,11 @@ class DeveloperAdminService:
                 welcome_email.status,
                 welcome_email.error_message,
             )
+        await AffiliateService(self.db).record_registration_referral(
+            referral_code=payload.referral_code,
+            tenant=tenant,
+            request=request,
+        )
         await self.db.commit()
         return TenantRegistrationOut(
             tenant_id=tenant.id,
@@ -1128,6 +1134,7 @@ class DeveloperAdminService:
             entity_id=tenant.id,
             meta={"old_plan": old_plan, "new_plan": plan.code, "billing_cycle": billing_cycle.value},
         )
+        await AffiliateService(self.db).create_commission_for_referred_tenant(tenant)
         await self.db.commit()
         return await self._get_tenant_model(tenant_id)
 

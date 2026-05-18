@@ -67,6 +67,7 @@ async def run_seed() -> None:
             await _seed_system_settings(db)
             await _repair_legacy_tenant_domain_suffixes(db)
             await _seed_saas_catalog(db)
+            await _seed_affiliate_commission_rules(db)
             await _backfill_tenant_staff_access(db)
             await _seed_admin(db)
             await _seed_developer_admin(db)
@@ -369,6 +370,13 @@ async def _seed_saas_catalog(db: AsyncSession) -> None:
             )
         )
         await db.execute(statement)
+
+
+async def _seed_affiliate_commission_rules(db: AsyncSession) -> None:
+    from app.modules.affiliates.service import AffiliateService
+
+    logger.info("Seeding affiliate commission rules.")
+    await AffiliateService(db).seed_default_rules()
 
 
 async def _seed_admin(db: AsyncSession) -> None:

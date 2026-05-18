@@ -56,6 +56,7 @@ class TenantRegistrationRequest(BaseModel):
     domain: str | None = None
     password: str = Field(min_length=8)
     confirm_password: str | None = None
+    referral_code: str | None = Field(default=None, max_length=40)
 
     @model_validator(mode="after")
     def passwords_match(self):

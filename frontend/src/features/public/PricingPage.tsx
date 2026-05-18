@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { RegistrationWizardModal } from '@/features/auth/RegistrationWizardModal'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
+import { SEO } from '@/components/SEO'
 
 const plans = [
   { name: 'Trial', price: 'Free', note: '14 days', features: ['All core modules', 'Tenant workspace', 'Email onboarding', 'No installation'] },
@@ -17,6 +18,11 @@ export function PricingPage() {
 
   return (
     <main className="min-h-screen bg-white">
+      <SEO
+        title="Farmexa Pricing | Poultry ERP Plans"
+        description="Review Farmexa pricing and start a 14-day trial for poultry ERP modules including feed, flocks, inventory, slaughter, sales, finance, compliance, and reports."
+        canonicalPath="/pricing"
+      />
       <section className="bg-ink-950 px-4 py-16 text-white">
         <div className="mx-auto max-w-6xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-brand-400/40 bg-brand-400/10 px-4 py-2 text-sm font-bold text-brand-100">
