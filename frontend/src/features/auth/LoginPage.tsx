@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { AxiosError } from 'axios'
 import { BarChart3, CheckCircle2, Eye, EyeOff, LockKeyhole, LogIn, ShieldCheck, UserPlus } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
@@ -11,8 +10,8 @@ import { toast } from 'sonner'
 import { BrandMark } from '@/components/BrandMark'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
+import { getErrorMessage } from '@/lib/errors'
 import { isPlatformRegistrationHost } from '@/lib/platform'
-import { ApiError } from '@/types'
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email address'),
@@ -20,23 +19,6 @@ const loginSchema = z.object({
 })
 
 type LoginFormValues = z.infer<typeof loginSchema>
-
-function getApiErrorMessage(error: unknown, fallback: string) {
-  const axiosError = error as AxiosError<ApiError>
-  if (!axiosError.response) {
-    return 'Farmexa server is unreachable. Check backend and reverse proxy status.'
-  }
-  if (axiosError.response.status === 401) {
-    return axiosError.response.data?.detail ?? 'Invalid email or password.'
-  }
-  if (axiosError.response.status === 403) {
-    return axiosError.response.data?.detail ?? 'This account cannot sign in from this domain.'
-  }
-  if (axiosError.response.status >= 500) {
-    return 'Farmexa server is not ready. Check backend logs and database migrations.'
-  }
-  return axiosError.response?.data?.detail ?? fallback
-}
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -59,7 +41,7 @@ export function LoginPage() {
       await login(values)
       toast.success('Signed in.')
     } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Login failed.'))
+      toast.error(getErrorMessage(error, 'Login failed.'))
     } finally {
       setIsSubmitting(false)
     }

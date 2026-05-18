@@ -2,14 +2,14 @@ import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { AxiosError } from 'axios'
 import { CheckCircle2, Loader2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { Modal } from '@/components/Modal'
+import { getErrorMessage } from '@/lib/errors'
 import { authService } from '@/services/authService'
-import { ApiError, VendorRegistrationResponse } from '@/types'
+import { VendorRegistrationResponse } from '@/types'
 
 const registrationSchema = z.object({
   name: z.string().min(2, 'Farm name is required'),
@@ -49,28 +49,6 @@ const steps = [
     fields: ['accepted_terms'] as const,
   },
 ]
-
-function getApiErrorMessage(error: unknown, fallback: string) {
-  const axiosError = error as AxiosError<ApiError>
-  const detail = axiosError.response?.data?.detail
-  if (typeof detail === 'string' && detail.trim()) return detail
-  if (Array.isArray(detail) && detail.length > 0) {
-    return detail
-      .map((item) => {
-        if (typeof item === 'string') return item
-        if (item && typeof item === 'object' && 'msg' in item) return String(item.msg)
-        return JSON.stringify(item)
-      })
-      .join(' ')
-  }
-  if (axiosError.response?.status) {
-    return `${fallback} Server returned HTTP ${axiosError.response.status}.`
-  }
-  if (axiosError.message) {
-    return `${fallback} ${axiosError.message}`
-  }
-  return fallback
-}
 
 interface RegistrationWizardModalProps {
   isOpen: boolean
@@ -133,7 +111,7 @@ export function RegistrationWizardModal({ isOpen, onClose }: RegistrationWizardM
       setRegistration(response)
       toast.success('Farmexa workspace registered.')
     } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Registration failed.'))
+      toast.error(getErrorMessage(error, 'Registration failed.'))
     } finally {
       setIsSubmitting(false)
     }

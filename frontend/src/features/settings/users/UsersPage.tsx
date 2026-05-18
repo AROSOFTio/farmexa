@@ -23,10 +23,10 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
-import { format } from 'date-fns'
 import { clsx } from 'clsx'
 import { ROLE_LABELS } from '@/lib/branding'
 import { useAuth } from '@/features/auth/AuthContext'
+import { getErrorMessage } from '@/lib/errors'
 import { usersService } from '@/services/usersService'
 import { ApiError, Role, User } from '@/types'
 
@@ -72,6 +72,16 @@ const updateStaffSchema = z.object({
 
 type CreateStaffForm = z.infer<typeof createStaffSchema>
 type UpdateStaffForm = z.infer<typeof updateStaffSchema>
+
+const dateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: '2-digit',
+  year: 'numeric',
+})
+
+function formatDisplayDate(value: string) {
+  return dateFormatter.format(new Date(value))
+}
 
 function roleDescriptionFor(roles: Role[], roleId?: number | null) {
   const selected = roles.find((role) => role.id === roleId)
@@ -132,7 +142,7 @@ function RegisterStaffModal({
       onClose()
     },
     onError: (error: AxiosError<ApiError>) => {
-      toast.error(error.response?.data?.detail ?? 'Failed to register staff member.')
+      toast.error(getErrorMessage(error, 'Failed to register staff member.'))
     },
   })
 
@@ -278,7 +288,7 @@ function EditStaffModal({
       onClose()
     },
     onError: (error: AxiosError<ApiError>) => {
-      toast.error(error.response?.data?.detail ?? 'Failed to update staff profile.')
+      toast.error(getErrorMessage(error, 'Failed to update staff profile.'))
     },
   })
 
@@ -530,7 +540,7 @@ export function UsersPage() {
                         {user.is_active ? 'Active' : 'Inactive'}
                       </div>
                     </td>
-                    <td className="text-xs font-medium text-neutral-400">{format(new Date(user.created_at), 'MMM dd, yyyy')}</td>
+                    <td className="text-xs font-medium text-neutral-400">{formatDisplayDate(user.created_at)}</td>
                     {hasPermission('users:write') ? (
                       <td className="pr-6 text-right">
                         <div className="relative inline-block">

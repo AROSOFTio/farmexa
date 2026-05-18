@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { AxiosError } from 'axios'
 import { ArrowLeft, Building2, CheckCircle2, ShieldCheck, UserPlus } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { BrandMark } from '@/components/BrandMark'
+import { getErrorMessage } from '@/lib/errors'
 import { authService } from '@/services/authService'
-import { ApiError, VendorRegistrationResponse } from '@/types'
+import { VendorRegistrationResponse } from '@/types'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 
 const registrationSchema = z.object({
@@ -28,11 +28,6 @@ const registrationSchema = z.object({
 })
 
 type RegistrationFormValues = z.infer<typeof registrationSchema>
-
-function getApiErrorMessage(error: unknown, fallback: string) {
-  const axiosError = error as AxiosError<ApiError>
-  return axiosError.response?.data?.detail ?? fallback
-}
 
 export function VendorRegistrationPage() {
   const navigate = useNavigate()
@@ -62,7 +57,7 @@ export function VendorRegistrationPage() {
       toast.success('Workspace registered.')
       navigate('/registration-success', { state: response, replace: true })
     } catch (error) {
-      toast.error(getApiErrorMessage(error, 'Registration failed.'))
+      toast.error(getErrorMessage(error, 'Registration failed.'))
     } finally {
       setIsSubmitting(false)
     }

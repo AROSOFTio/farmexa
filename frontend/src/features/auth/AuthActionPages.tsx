@@ -4,6 +4,7 @@ import { useMutation } from '@tanstack/react-query'
 import { CheckCircle2, KeyRound, MailCheck, Send } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { getErrorMessage } from '@/lib/errors'
 import api from '@/services/api'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 
@@ -33,7 +34,7 @@ export function ForgotPasswordPage() {
   const mutation = useMutation({
     mutationFn: () => api.post('/auth/forgot-password', { email }),
     onSuccess: () => toast.success('Password reset email queued.'),
-    onError: (error: any) => toast.error(error?.response?.data?.detail ?? 'Unable to request password reset.'),
+    onError: (error: unknown) => toast.error(getErrorMessage(error, 'Unable to request password reset.')),
   })
 
   return (
@@ -57,7 +58,7 @@ export function ResetPasswordPage() {
   const mutation = useMutation({
     mutationFn: () => api.post('/auth/reset-password', form),
     onSuccess: () => toast.success('Password reset completed. You can sign in now.'),
-    onError: (error: any) => toast.error(error?.response?.data?.detail ?? 'Unable to reset password.'),
+    onError: (error: unknown) => toast.error(getErrorMessage(error, 'Unable to reset password.')),
   })
 
   return (
@@ -89,7 +90,7 @@ export function VerifyEmailPage() {
   const mutation = useMutation({
     mutationFn: () => api.post('/auth/verify-email', { token }),
     onSuccess: () => toast.success('Email verified.'),
-    onError: (error: any) => toast.error(error?.response?.data?.detail ?? 'Unable to verify email.'),
+    onError: (error: unknown) => toast.error(getErrorMessage(error, 'Unable to verify email.')),
   })
 
   return (
