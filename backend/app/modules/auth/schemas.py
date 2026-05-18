@@ -129,6 +129,8 @@ class TenantRegistrationOut(BaseModel):
     fallback_domain: str | None = None
     custom_domain: str | None = None
     custom_domain_status: str | None = None
+    welcome_email_status: str | None = None
+    welcome_email_error: str | None = None
 
 
 class MeResponse(BaseModel):

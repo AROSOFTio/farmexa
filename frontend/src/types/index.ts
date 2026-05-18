@@ -87,6 +87,8 @@ export interface TenantRegistrationResponse {
   fallback_domain?: string | null
   custom_domain?: string | null
   custom_domain_status?: string | null
+  welcome_email_status?: string | null
+  welcome_email_error?: string | null
 }
 
 export type VendorRegistrationRequest = TenantRegistrationRequest

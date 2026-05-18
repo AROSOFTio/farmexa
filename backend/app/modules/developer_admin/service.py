@@ -742,6 +742,10 @@ class DeveloperAdminService:
                 detail="Tenant self-registration is only available from the platform sign-in domain.",
             )
 
+        logger.info(
+            "Registering tenant from public flow with tenant suffix '%s'.",
+            settings.DEFAULT_TENANT_DOMAIN_SUFFIX,
+        )
         tenant = await self._create_tenant_internal(
             TenantCreate(
                 name=payload.name,
@@ -782,7 +786,7 @@ class DeveloperAdminService:
         login_host = active_domain.host if active_domain else self._default_platform_domain(tenant.slug)
         login_url = self._build_login_url(request, login_host)
         system_settings = await self._get_system_settings()
-        await send_welcome_email(
+        welcome_email = await send_welcome_email(
             self.db,
             tenant_id=tenant.id,
             farm_name=tenant.name,
@@ -792,6 +796,13 @@ class DeveloperAdminService:
             trial_expiry_date=tenant.subscription_expiry,
             system_settings=system_settings,
         )
+        if welcome_email.status != "sent":
+            logger.warning(
+                "Welcome email to %s was not sent. status=%s error=%s",
+                tenant.email,
+                welcome_email.status,
+                welcome_email.error_message,
+            )
         await self.db.commit()
         return TenantRegistrationOut(
             tenant_id=tenant.id,
@@ -806,6 +817,8 @@ class DeveloperAdminService:
             fallback_domain=fallback_domain.host if fallback_domain and fallback_domain.host != login_host else None,
             custom_domain=custom_domain.host if custom_domain else None,
             custom_domain_status=self._enum_value(custom_domain.status) if custom_domain else None,
+            welcome_email_status=welcome_email.status,
+            welcome_email_error=welcome_email.error_message,
         )
 
     async def list_tenants(self) -> list[Tenant]:

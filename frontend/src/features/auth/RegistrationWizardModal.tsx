@@ -157,6 +157,12 @@ export function RegistrationWizardModal({ isOpen, onClose }: RegistrationWizardM
               <div>Admin email: {registration.admin_email}</div>
               <div>Tenant domain: {registration.primary_domain}</div>
               <div>Trial ends: {registration.trial_expiry_date ?? '14 days after activation'}</div>
+              {registration.welcome_email_status && registration.welcome_email_status !== 'sent' ? (
+                <div className="font-semibold text-amber-700">
+                  Welcome email: {registration.welcome_email_status}
+                  {registration.welcome_email_error ? ` - ${registration.welcome_email_error}` : ''}
+                </div>
+              ) : null}
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
