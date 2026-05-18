@@ -1,10 +1,12 @@
 import { useEffect } from 'react'
+import { BRAND_SOCIAL_IMAGE } from '@/lib/branding'
 
 interface SEOProps {
   title: string
   description: string
   canonicalPath?: string
   robots?: string
+  image?: string
   jsonLd?: Record<string, unknown> | Record<string, unknown>[]
 }
 
@@ -20,9 +22,10 @@ function setMeta(selector: string, attr: 'name' | 'property', key: string, conte
   element.setAttribute('content', content)
 }
 
-export function SEO({ title, description, canonicalPath = '/', robots = 'index,follow', jsonLd }: SEOProps) {
+export function SEO({ title, description, canonicalPath = '/', robots = 'index,follow', image = BRAND_SOCIAL_IMAGE, jsonLd }: SEOProps) {
   useEffect(() => {
     const url = `${ORIGIN}${canonicalPath}`
+    const imageUrl = image.startsWith('http') ? image : `${ORIGIN}${image}`
     document.title = title
     setMeta('meta[name="description"]', 'name', 'description', description)
     setMeta('meta[name="robots"]', 'name', 'robots', robots)
@@ -30,9 +33,11 @@ export function SEO({ title, description, canonicalPath = '/', robots = 'index,f
     setMeta('meta[property="og:description"]', 'property', 'og:description', description)
     setMeta('meta[property="og:url"]', 'property', 'og:url', url)
     setMeta('meta[property="og:type"]', 'property', 'og:type', 'website')
+    setMeta('meta[property="og:image"]', 'property', 'og:image', imageUrl)
     setMeta('meta[name="twitter:card"]', 'name', 'twitter:card', 'summary_large_image')
     setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', title)
     setMeta('meta[name="twitter:description"]', 'name', 'twitter:description', description)
+    setMeta('meta[name="twitter:image"]', 'name', 'twitter:image', imageUrl)
 
     let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
     if (!canonical) {
@@ -50,7 +55,7 @@ export function SEO({ title, description, canonicalPath = '/', robots = 'index,f
       script.text = JSON.stringify(jsonLd)
       document.head.appendChild(script)
     }
-  }, [canonicalPath, description, jsonLd, robots, title])
+  }, [canonicalPath, description, image, jsonLd, robots, title])
 
   return null
 }

@@ -1,17 +1,23 @@
 {
   "name": "Farmexa",
   "short_name": "Farmexa",
-  "description": "Farmexa poultry and farm ERP SaaS",
+  "description": "Farmexa poultry and farm ERP SaaS for feed, flocks, inventory, sales, finance, and compliance.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#fbfaf7",
+  "background_color": "#ffffff",
   "theme_color": "#d6a62e",
   "icons": [
     {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

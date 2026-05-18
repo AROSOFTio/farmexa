@@ -19,6 +19,7 @@ import {
 import { BrandMark } from '@/components/BrandMark'
 import { InstallPrompt } from '@/components/InstallPrompt'
 import { SEO } from '@/components/SEO'
+import { ThemeSelector, ThemeToggle } from '@/components/ThemeControls'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { RegistrationWizardModal } from '@/features/auth/RegistrationWizardModal'
 
@@ -48,6 +49,13 @@ const reasons = [
   'Supports cloud access',
   'Secure multi-tenant SaaS workspace',
   'Free 14-day trial',
+]
+
+const faqs = [
+  ['What is Farmexa?', 'Farmexa is a cloud ERP for poultry and farm operations. It helps teams manage feed, birds, stock, sales, finance, compliance, and reports.'],
+  ['Who can use Farmexa?', 'Farm owners, managers, accountants, inventory officers, sales teams, and poultry consultants can use Farmexa from a browser.'],
+  ['Is there a free trial?', 'Yes. New farms can start with a 14-day trial workspace before choosing a plan.'],
+  ['Does each farm get separate data?', 'Yes. Each tenant workspace is isolated so farm records, users, and reports stay separate.'],
 ]
 
 const reveal = {
@@ -82,7 +90,7 @@ export function PublicHomePage() {
   const openRegistration = () => setIsRegistrationOpen(true)
 
   return (
-    <div className="min-h-screen bg-[#fbfaf7] text-[#151515]">
+    <div className="min-h-screen bg-[var(--app-bg)] text-[var(--text-strong)]">
       <SEO
         title="Farmexa ERP | Poultry Farm Management SaaS"
         description="Farmexa is a cloud poultry ERP for feed mill, flocks, inventory, slaughter, sales, finance, compliance, reports, and secure tenant workspaces."
@@ -90,9 +98,18 @@ export function PublicHomePage() {
         jsonLd={[
           { '@context': 'https://schema.org', '@type': 'Organization', name: 'Farmexa', url: 'https://farmexa.arosoft.io' },
           { '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Farmexa', applicationCategory: 'BusinessApplication', operatingSystem: 'Web', url: 'https://farmexa.arosoft.io' },
+          {
+            '@context': 'https://schema.org',
+            '@type': 'FAQPage',
+            mainEntity: faqs.map(([question, answer]) => ({
+              '@type': 'Question',
+              name: question,
+              acceptedAnswer: { '@type': 'Answer', text: answer },
+            })),
+          },
         ]}
       />
-      <header className="sticky top-0 z-30 border-b border-black/10 bg-white/92 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-[var(--border-subtle)] bg-[var(--topbar-bg)] backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-5 px-4 py-3 lg:px-6">
           <BrandMark />
           <nav className="hidden items-center gap-6 text-[13px] font-semibold text-slate-700 lg:flex">
@@ -105,6 +122,8 @@ export function PublicHomePage() {
             <a href="#contact">Contact</a>
           </nav>
           <div className="flex items-center gap-2">
+            <ThemeSelector compact />
+            <ThemeToggle />
             <Link to="/login" className="btn-secondary">Sign In</Link>
             <button type="button" onClick={openRegistration} className="btn-primary">Start Free Trial</button>
           </div>
@@ -114,7 +133,7 @@ export function PublicHomePage() {
       <main id="home">
         <section className="relative overflow-hidden border-b border-black/10 bg-[#0b1018] text-white">
           <div className="pointer-events-none absolute inset-0 opacity-[0.16] [background-image:linear-gradient(rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:44px_44px]" />
-          <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 lg:grid-cols-[1fr_0.95fr] lg:px-6 lg:py-20">
+          <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 lg:grid-cols-[1fr_0.85fr] lg:px-6 lg:py-[4.5rem]">
             <motion.div
               className="relative z-10 flex flex-col justify-center"
               initial={{ opacity: 0, y: 24 }}
@@ -122,19 +141,18 @@ export function PublicHomePage() {
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             >
               <motion.div
-                className="mb-4 inline-flex w-fit rounded-full border border-[#d6a62e]/40 bg-[#d6a62e]/12 px-3 py-1 text-[12px] font-semibold text-[#f0cf70]"
+                className="mb-4 inline-flex w-fit rounded-[7px] border border-[#d6a62e]/30 bg-[#d6a62e]/10 px-3 py-1 text-[12px] font-semibold text-[#f0cf70]"
                 initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.12, duration: 0.45 }}
               >
                 14-day free poultry ERP trial
               </motion.div>
-              <h1 className="max-w-3xl text-[2.7rem] font-bold leading-[1.05] text-white md:text-[4.3rem]">
-                Run Your Poultry Farm Smarter With {settings.system_name}
+              <h1 className="max-w-3xl text-[2.35rem] font-bold leading-[1.08] text-white md:text-[3.6rem]">
+                Poultry farm management that stays organized.
               </h1>
               <p className="mt-5 max-w-2xl text-[16px] leading-8 text-white/74">
-                {settings.system_name} helps poultry farms manage feed mill operations, farm houses, flocks, slaughter, inventory,
-                POS sales, finance, compliance, and reports from one cloud ERP.
+                {settings.system_name} connects feed mill operations, houses, flocks, inventory, slaughter, sales, finance, compliance, and reporting in one secure workspace.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <button type="button" onClick={openRegistration} className="btn-primary btn-lg">Start 14-Day Free Trial</button>
@@ -143,7 +161,7 @@ export function PublicHomePage() {
             </motion.div>
 
             <motion.div
-              className="relative z-10 rounded-[8px] border border-white/12 bg-white p-3 shadow-2xl"
+              className="relative z-10 rounded-[10px] border border-white/12 bg-white p-3 shadow-[0_28px_80px_-48px_rgba(0,0,0,.65)]"
               initial={{ opacity: 0, y: 28, rotateX: 7 }}
               animate={{ opacity: 1, y: 0, rotateX: 0 }}
               transition={{ delay: 0.18, duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
@@ -193,7 +211,7 @@ export function PublicHomePage() {
         <section className="mx-auto max-w-7xl px-4 py-14 lg:px-6">
           <Reveal className="max-w-3xl">
             <div className="page-eyebrow">What is {settings.system_name}?</div>
-            <h2 className="mt-2 text-[2rem] font-bold">{settings.system_name} is a cloud-based poultry ERP system.</h2>
+            <h2 className="mt-2 text-[1.8rem] font-bold">{settings.system_name} is a cloud-based poultry ERP system.</h2>
             <p className="mt-4 text-[15px] leading-8 text-slate-600">
               It gives farms full control over production, stock, slaughter, sales, finance, compliance, and reporting across secure tenant workspaces.
             </p>
@@ -220,9 +238,9 @@ export function PublicHomePage() {
                   key={label}
                   variants={reveal}
                   transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
-                  className="group rounded-[8px] border border-[#ead9ac] bg-[#fffdfa] p-4 transition-all duration-300 hover:-translate-y-1 hover:border-[#d6a62e] hover:shadow-[0_22px_44px_-34px_rgba(15,23,42,.42)]"
+                  className="group rounded-[8px] border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-primary)] hover:shadow-card"
                 >
-                  <Icon className="mb-3 h-5 w-5 text-[#b88a1d]" />
+                  <Icon className="mb-3 h-5 w-5 text-[var(--brand-primary)]" />
                   <div className="text-[14px] font-bold text-slate-900">{label}</div>
                 </motion.div>
               ))}
@@ -233,7 +251,7 @@ export function PublicHomePage() {
         <section id="modules" className="mx-auto max-w-7xl px-4 py-14 lg:px-6">
           <Reveal>
             <div className="page-eyebrow">Modules</div>
-            <h2 className="mt-2 text-[2rem] font-bold">One connected operating system for poultry teams</h2>
+            <h2 className="mt-2 text-[1.8rem] font-bold">One connected operating system for poultry teams</h2>
           </Reveal>
           <motion.div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.14 }}>
             {modules.map((module) => (
@@ -248,7 +266,7 @@ export function PublicHomePage() {
           <div className="mx-auto max-w-7xl px-4 lg:px-6">
             <Reveal>
               <div className="page-eyebrow">Why Choose {settings.system_name}?</div>
-              <h2 className="mt-2 text-[2rem] font-bold">Control stock, reduce losses, and keep every department aligned</h2>
+              <h2 className="mt-2 text-[1.8rem] font-bold">Control stock, reduce losses, and keep every department aligned</h2>
             </Reveal>
             <motion.div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.16 }}>
               {reasons.map((reason) => (
@@ -257,6 +275,21 @@ export function PublicHomePage() {
                 </motion.div>
               ))}
             </motion.div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-4 py-14 lg:px-6">
+          <Reveal>
+            <div className="page-eyebrow">FAQ</div>
+            <h2 className="mt-2 text-[1.8rem] font-bold">Simple answers before you start</h2>
+          </Reveal>
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            {faqs.map(([question, answer]) => (
+              <article key={question} className="card p-5">
+                <h3 className="text-[15px] font-semibold text-ink-900">{question}</h3>
+                <p className="mt-2 text-[13.5px] leading-6 text-ink-600">{answer}</p>
+              </article>
+            ))}
           </div>
         </section>
 

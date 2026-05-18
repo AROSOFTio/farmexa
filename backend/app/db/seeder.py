@@ -166,6 +166,10 @@ async def _seed_system_settings(db: AsyncSession) -> None:
     result = await db.execute(select(SystemSettings).order_by(SystemSettings.id).limit(1))
     settings_row = result.scalar_one_or_none()
     if settings_row:
+        if not settings_row.system_logo_url:
+            settings_row.system_logo_url = "/brand/farmexa-logo-full.png"
+        if not settings_row.system_favicon_url:
+            settings_row.system_favicon_url = "/favicon.svg"
         settings_row.platform_domain = settings.PRIMARY_PLATFORM_DOMAIN
         settings_row.tenant_domain_suffix = tenant_domain_suffix()
         settings_row.sender_email = settings.SMTP_FROM_EMAIL or settings_row.sender_email
@@ -185,6 +189,8 @@ async def _seed_system_settings(db: AsyncSession) -> None:
     db.add(
         SystemSettings(
             system_name="Farmexa",
+            system_logo_url="/brand/farmexa-logo-full.png",
+            system_favicon_url="/favicon.svg",
             primary_color="#d6a62e",
             secondary_color="#0b1018",
             platform_domain=settings.PRIMARY_PLATFORM_DOMAIN,

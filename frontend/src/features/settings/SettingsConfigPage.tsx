@@ -5,6 +5,9 @@ import { z } from 'zod'
 import { Package, Settings2 } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
+import { BrandMark } from '@/components/BrandMark'
+import { ThemeSelector, ThemeToggle } from '@/components/ThemeControls'
+import { BRAND_FAVICON, BRAND_LOGO_FULL } from '@/lib/branding'
 
 interface SystemConfig {
   id: number
@@ -94,6 +97,32 @@ export function SettingsConfigPage() {
         <div>
           <h1 className="section-title">Settings</h1>
           <p className="section-subtitle">Maintain system values and catalog pricing with clearer forms and cleaner reference tables.</p>
+        </div>
+      </div>
+
+      <div className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="card p-5">
+          <div className="page-eyebrow">Brand defaults</div>
+          <div className="mt-3 flex flex-wrap items-center gap-5">
+            <BrandMark showTagline />
+            <div className="rounded-[8px] border border-neutral-200 bg-white p-2">
+              <img src={BRAND_FAVICON} alt="Current favicon" className="h-9 w-9 object-contain" />
+            </div>
+            <div className="text-sm leading-6 text-ink-600">
+              Logo URL: <span className="font-semibold text-ink-900">{BRAND_LOGO_FULL}</span><br />
+              Favicon URL: <span className="font-semibold text-ink-900">{BRAND_FAVICON}</span>
+            </div>
+          </div>
+        </div>
+        <div className="card p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <div className="text-sm font-semibold text-ink-900">Appearance</div>
+              <div className="text-xs text-ink-500">Saved on this device.</div>
+            </div>
+            <ThemeToggle />
+          </div>
+          <ThemeSelector />
         </div>
       </div>
 

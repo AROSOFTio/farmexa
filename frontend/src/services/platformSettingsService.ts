@@ -17,8 +17,8 @@ export interface PublicSystemSettings {
 
 export const defaultPlatformSettings: PublicSystemSettings = {
   system_name: 'Farmexa',
-  system_logo_url: null,
-  system_favicon_url: null,
+  system_logo_url: '/brand/farmexa-logo-full.png',
+  system_favicon_url: '/favicon.svg',
   primary_color: '#d6a62e',
   secondary_color: '#0b1018',
   platform_domain: 'farmexa.arosoft.io',

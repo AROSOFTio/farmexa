@@ -1,5 +1,19 @@
-const CACHE_NAME = 'farmexa-public-v1'
-const PUBLIC_ASSETS = ['/', '/pricing', '/affiliate-program', '/manifest.webmanifest', '/favicon.svg']
+const CACHE_NAME = 'farmexa-public-v2'
+const PUBLIC_ASSETS = [
+  '/',
+  '/pricing',
+  '/affiliate-program',
+  '/manifest.webmanifest',
+  '/favicon.svg',
+  '/favicon.ico',
+  '/favicon-32x32.png',
+  '/favicon-16x16.png',
+  '/android-chrome-192x192.png',
+  '/android-chrome-512x512.png',
+  '/apple-touch-icon.png',
+  '/brand/farmexa-logo-full.png',
+  '/brand/farmexa-logo-icon.png',
+]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PUBLIC_ASSETS)).catch(() => undefined))

@@ -72,7 +72,7 @@ export function AffiliatesPage() {
   })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="section-header">
         <div>
           <div className="page-eyebrow">Developer Admin</div>
@@ -81,7 +81,7 @@ export function AffiliatesPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-4">
         {[
           ['Total affiliates', overview.data?.total_affiliates ?? 0],
           ['Pending approval', overview.data?.pending_affiliates ?? 0],
@@ -96,7 +96,7 @@ export function AffiliatesPage() {
       </div>
 
       <section className="card p-5">
-        <h2 className="text-lg font-black">Commission rates by plan</h2>
+        <h2 className="text-lg font-bold">Commission rates by plan</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {(rules.data ?? []).map((rule) => (
             <form
@@ -108,7 +108,7 @@ export function AffiliatesPage() {
                 updateRule.mutate({ planCode: rule.plan_code, percent: Number(form.get('percent')) })
               }}
             >
-              <div className="font-black uppercase">{rule.plan_code}</div>
+              <div className="font-semibold uppercase">{rule.plan_code}</div>
               <label className="form-label mt-3">Commission percent</label>
               <input className="form-input" name="percent" type="number" min={0} max={100} step="0.01" defaultValue={String(rule.commission_percent)} />
               <p className="mt-2 text-xs text-ink-500">First successful subscription payment only. Default is 20%.</p>
@@ -120,9 +120,9 @@ export function AffiliatesPage() {
 
       <section className="card overflow-hidden">
         <div className="border-b border-neutral-200 p-5">
-          <h2 className="text-lg font-black">Affiliate applications</h2>
+          <h2 className="text-lg font-bold">Affiliate applications</h2>
         </div>
-        <table>
+        <table className="data-table">
           <thead>
             <tr>
               <th className="pl-6">Affiliate</th>
@@ -135,7 +135,7 @@ export function AffiliatesPage() {
             {(affiliates.data ?? []).map((affiliate) => (
               <tr key={affiliate.id}>
                 <td className="pl-6">
-                  <div className="font-bold">{affiliate.full_name}</div>
+                  <div className="font-semibold">{affiliate.full_name}</div>
                   <div className="text-xs text-ink-500">{affiliate.email} · {affiliate.country || 'No country'}</div>
                 </td>
                 <td>{affiliate.referral_code}</td>
@@ -155,9 +155,9 @@ export function AffiliatesPage() {
 
       <section className="card overflow-hidden">
         <div className="border-b border-neutral-200 p-5">
-          <h2 className="text-lg font-black">Commission ledger</h2>
+          <h2 className="text-lg font-bold">Commission ledger</h2>
         </div>
-        <table>
+        <table className="data-table">
           <thead>
             <tr>
               <th className="pl-6">Tenant</th>

@@ -41,7 +41,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           position="top-right"
           toastOptions={{
             style: {
-              fontFamily: 'Montserrat, "Segoe UI", Inter, system-ui, sans-serif',
+              fontFamily: 'Inter, Manrope, "Segoe UI", system-ui, sans-serif',
               fontSize: '0.9rem',
             },
             classNames: {

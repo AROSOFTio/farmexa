@@ -3,6 +3,10 @@ export const APP_SHORT_NAME = 'Farmexa'
 export const APP_TAGLINE = 'Manage Smart. Grow Better.'
 export const APP_DESCRIPTION =
   'Farmexa poultry ERP for farm operations, inventory, sales, and finance.'
+export const BRAND_LOGO_FULL = '/brand/farmexa-logo-full.png'
+export const BRAND_LOGO_ICON = '/brand/farmexa-logo-icon.png'
+export const BRAND_FAVICON = '/favicon.svg'
+export const BRAND_SOCIAL_IMAGE = '/brand/farmexa-logo-full.png'
 
 export const ROLE_LABELS: Record<string, string> = {
   super_manager: 'Platform Administrator',

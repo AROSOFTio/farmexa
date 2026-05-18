@@ -21,6 +21,7 @@ import {
 import { clsx } from 'clsx'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
+import { BrandMark } from '@/components/BrandMark'
 
 interface NavLeaf {
   label: string
@@ -232,20 +233,18 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
       {isOpen ? <button type="button" className="fixed inset-0 z-40 bg-black/45 lg:hidden" onClick={onClose} /> : null}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-50 flex w-[232px] flex-col bg-[#030910] text-white shadow-[18px_0_38px_-30px_rgba(0,0,0,.7)] transition-transform duration-300 lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-[232px] flex-col sidebar text-white shadow-[18px_0_38px_-30px_rgba(0,0,0,.7)] transition-transform duration-300 lg:translate-x-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         <div className="border-b border-white/10 px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#d4a42c] bg-[#080d14] text-[#d4a42c]">
-              <Wheat className="h-6 w-6" />
-            </div>
+            <BrandMark compact light />
             <div className="min-w-0">
               <div className="truncate text-[18px] font-extrabold uppercase leading-5 tracking-wide">
                 {isDevAdmin ? settings.company_name : workspaceName.split(' ')[0]}
               </div>
-              <div className="mt-1 text-[11px] font-bold uppercase leading-3 text-[#d4a42c]">
+              <div className="mt-1 text-[11px] font-semibold uppercase leading-3 text-[var(--brand-primary)]">
                 {isDevAdmin ? 'SaaS Control Center' : 'Poultry ERP'}
               </div>
             </div>
@@ -273,11 +272,11 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                     className={clsx(
                       'group flex h-10 w-full items-center gap-3 rounded-[7px] px-3 text-left text-[12.5px] font-semibold transition-all',
                       active
-                        ? 'bg-gradient-to-r from-[#e1b23b] to-[#c99316] text-[#111827] shadow-[0_12px_26px_-20px_rgba(226,178,59,.9)]'
+                        ? 'bg-[var(--brand-primary)] text-[#111827] shadow-[0_12px_26px_-20px_rgba(226,178,59,.9)]'
                         : 'text-white/88 hover:bg-white/8 hover:text-white'
                     )}
                   >
-                      <Icon className={clsx('h-4 w-4', active ? 'text-[#111827]' : 'text-[#d4a42c]')} />
+                      <Icon className={clsx('h-4 w-4', active ? 'text-[#111827]' : 'text-[var(--brand-primary)]')} />
                     <span className="min-w-0 flex-1 truncate">{group.label}</span>
                     {hasChildren ? (
                       <ChevronDown className={clsx('h-3.5 w-3.5 transition-transform', open && 'rotate-180', active ? 'text-[#111827]' : 'text-white/60')} />
@@ -296,7 +295,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                           className={({ isActive }) => clsx(
                             'block rounded-[6px] px-3 py-1.5 text-[11.5px] font-semibold transition-colors',
                             isActive || isActivePath(location.pathname, child.path)
-                              ? 'bg-[#d4a42c]/18 text-[#f5cf67]'
+                              ? 'bg-[rgba(var(--brand-primary-rgb),0.18)] text-[var(--brand-primary)]'
                               : 'text-white/68 hover:bg-white/8 hover:text-white'
                           )}
                         >
@@ -313,21 +312,21 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
         {!isDevAdmin ? (
           <div className="border-t border-white/10 p-3">
-            <div className="rounded-[10px] border border-[#d4a42c]/35 bg-[#07111b] px-3 py-3">
+            <div className="rounded-[10px] border border-[rgba(var(--brand-primary-rgb),0.35)] bg-[var(--sidebar-panel)] px-3 py-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="truncate text-[11.5px] font-extrabold text-white">{workspaceName}</div>
-                  <div className="mt-0.5 text-[10.5px] font-bold uppercase tracking-wide text-[#d4a42c]">{tenant?.plan ?? 'Trial'} plan</div>
+                  <div className="mt-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--brand-primary)]">{tenant?.plan ?? 'Trial'} plan</div>
                 </div>
-                <div className="rounded-[8px] border border-[#d4a42c]/35 bg-[#d4a42c]/12 px-2.5 py-1 text-right">
+                <div className="rounded-[8px] border border-[rgba(var(--brand-primary-rgb),0.35)] bg-[rgba(var(--brand-primary-rgb),0.12)] px-2.5 py-1 text-right">
                   <div className="text-[17px] font-black leading-none text-white">{trialDays}</div>
                   <div className="text-[9px] font-bold uppercase tracking-wide text-white/60">days</div>
                 </div>
               </div>
               <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
-                <div className="h-full rounded-full bg-gradient-to-r from-[#e1b23b] to-[#c99316]" style={{ width: `${Math.max(Math.min((trialDays / 14) * 100, 100), 0)}%` }} />
+                <div className="h-full rounded-full bg-[var(--brand-primary)]" style={{ width: `${Math.max(Math.min((trialDays / 14) * 100, 100), 0)}%` }} />
               </div>
-              <button type="button" onClick={() => navigate('/subscription/upgrade')} className="mt-3 h-8 w-full rounded-[7px] bg-gradient-to-r from-[#e1b23b] to-[#c99316] text-[11.5px] font-extrabold text-[#111827]">
+              <button type="button" onClick={() => navigate('/subscription/upgrade')} className="mt-3 h-8 w-full rounded-[7px] bg-[var(--brand-primary)] text-[11.5px] font-semibold text-[#111827]">
                 Upgrade
               </button>
             </div>

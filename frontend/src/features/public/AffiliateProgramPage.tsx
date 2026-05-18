@@ -9,6 +9,8 @@ import { toast } from 'sonner'
 import { InstallPrompt } from '@/components/InstallPrompt'
 import { Modal } from '@/components/Modal'
 import { SEO } from '@/components/SEO'
+import { BrandMark } from '@/components/BrandMark'
+import { ThemeToggle } from '@/components/ThemeControls'
 import { getErrorMessage } from '@/lib/errors'
 import api from '@/services/api'
 
@@ -82,28 +84,29 @@ export function AffiliateProgramPage() {
   ]
 
   return (
-    <main className="min-h-screen bg-[#fbfaf7] text-ink-900">
+    <main className="min-h-screen bg-[var(--app-bg)] text-ink-900">
       <SEO
         title="Farmexa Affiliate Program | Earn by Referring Poultry Farms"
         description="Join the Farmexa affiliate program and refer poultry farms to a cloud ERP for feed, flock, inventory, sales, finance, and compliance management."
         canonicalPath="/affiliate-program"
         jsonLd={jsonLd}
       />
-      <header className="border-b border-black/10 bg-white">
+      <header className="border-b border-[var(--border-subtle)] bg-[var(--topbar-bg)]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <Link to="/" className="text-xl font-black">Farmexa</Link>
+          <Link to="/" aria-label="Farmexa home"><BrandMark /></Link>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Link to="/pricing" className="btn-secondary">Pricing</Link>
             <button type="button" className="btn-primary" onClick={() => setIsOpen(true)}>Become an Affiliate</button>
           </div>
         </div>
       </header>
 
-      <section className="bg-ink-950 px-4 py-16 text-white">
+      <section className="bg-[var(--brand-secondary)] px-4 py-14 text-white">
         <div className="mx-auto max-w-6xl">
           <div className="page-eyebrow text-brand-200">Farmexa Affiliate Program</div>
-          <h1 className="mt-4 max-w-3xl text-4xl font-black md:text-6xl">Refer farms. Help them modernize. Earn commission.</h1>
-          <p className="mt-5 max-w-2xl text-lg leading-8 text-white/72">
+          <h1 className="mt-4 max-w-3xl text-[2.25rem] font-bold leading-tight text-white md:text-[3.35rem]">Refer farms to software that helps them operate clearly.</h1>
+          <p className="mt-5 max-w-2xl text-[15.5px] leading-8 text-white/72">
             Farmexa affiliates introduce poultry farms, consultants, software resellers, and agricultural networks to a practical farm ERP. Approved affiliates earn up to 20% by default unless plan rates are adjusted by the platform team.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
@@ -115,9 +118,9 @@ export function AffiliateProgramPage() {
 
       <section className="mx-auto grid max-w-6xl gap-5 px-4 py-12 md:grid-cols-3">
         {processCards.map(({ icon: Icon, title, text }) => (
-          <article key={title} className="card p-6">
+          <article key={title} className="card p-5">
             <Icon className="h-6 w-6 text-brand-700" />
-            <h2 className="mt-4 text-xl font-black">{title}</h2>
+            <h2 className="mt-4 text-lg font-bold">{title}</h2>
             <p className="mt-3 text-sm leading-7 text-ink-600">{text}</p>
           </article>
         ))}
@@ -125,7 +128,7 @@ export function AffiliateProgramPage() {
 
       <section className="border-y border-black/10 bg-white px-4 py-12">
         <div className="mx-auto max-w-6xl">
-          <h2 className="text-3xl font-black">Helpful facts for affiliates</h2>
+          <h2 className="text-2xl font-bold">Helpful facts for affiliates</h2>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {[
               ['Who can join?', 'Agriculture consultants, farm advisors, software resellers, poultry networks, and creators who serve farm owners.'],
@@ -134,7 +137,7 @@ export function AffiliateProgramPage() {
               ['Payout rule', 'This implementation records first successful subscription payment commissions. Recurring commissions can be enabled per plan later.'],
             ].map(([question, answer]) => (
               <div key={question} className="rounded-[8px] border border-neutral-200 p-5">
-                <div className="font-black">{question}</div>
+                <div className="font-semibold">{question}</div>
                 <p className="mt-2 text-sm leading-7 text-ink-600">{answer}</p>
               </div>
             ))}

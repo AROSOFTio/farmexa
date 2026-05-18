@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { APP_TAGLINE } from '@/lib/branding'
+import { BRAND_LOGO_FULL, BRAND_LOGO_ICON } from '@/lib/branding'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 
 interface BrandMarkProps {
@@ -16,44 +16,21 @@ export function BrandMark({
   showTagline = false,
 }: BrandMarkProps) {
   const { settings } = usePlatformSettings()
-  const textClass = light ? 'text-[var(--sidebar-heading)]' : 'text-ink-900'
-  const mutedClass = light ? 'text-[var(--sidebar-text-muted)]' : 'text-ink-500'
-  const markClass = light ? 'text-[var(--sidebar-heading)]' : 'text-[var(--brand-secondary)]'
+  const fullLogo = settings.system_logo_url || BRAND_LOGO_FULL
 
   return (
     <div className={clsx('flex items-center gap-2.5', className)}>
-      <svg
-        viewBox="0 0 96 96"
-        aria-hidden="true"
-        className={clsx(compact ? 'h-9 w-9' : 'h-11 w-11', 'shrink-0', markClass)}
-      >
-        <path
-          d="M17 60c0-19 10-35 30-47-10 10-15 21-15 34 0 11 4 20 13 28 8 7 18 11 29 11-8 5-17 7-26 7-19 0-31-12-31-33Z"
-          fill="var(--brand-primary)"
-        />
-        <path
-          d="M47 10h28c6 0 10 6 8 11l-3 7c-2 4-6 7-11 7H56v12h16c6 0 10 6 8 11l-2 5c-2 5-7 8-12 8H56v15H47c-6 0-11-5-11-11V22c0-7 5-12 11-12Z"
-          fill="currentColor"
-          opacity={light ? 0.94 : 1}
-        />
-      </svg>
-
-      {!compact && (
-        <div className="min-w-0">
-          <div className={clsx('text-[14.5px] font-semibold leading-tight', textClass)}>
-            {settings.system_name}
-          </div>
-          {showTagline ? (
-            <div className={clsx('mt-0.5 max-w-[118px] text-[10.5px] font-medium leading-[1.2]', mutedClass)}>
-              {APP_TAGLINE}
-            </div>
-          ) : (
-            <div className={clsx('text-[11px] font-medium tracking-[0.04em]', mutedClass)}>
-              ERP
-            </div>
-          )}
-        </div>
-      )}
+      <img
+        src={compact ? BRAND_LOGO_ICON : fullLogo}
+        alt={compact ? `${settings.system_name} icon` : `${settings.system_name} logo`}
+        className={clsx(
+          'shrink-0 object-contain',
+          compact ? 'h-9 w-9 rounded-[8px]' : 'h-11 w-auto max-w-[170px]',
+          light && 'drop-shadow-[0_1px_0_rgba(255,255,255,.08)]'
+        )}
+        loading="eager"
+      />
+      {!compact && showTagline ? <span className="sr-only">{settings.system_name} - Manage Smart. Grow Better.</span> : null}
     </div>
   )
 }

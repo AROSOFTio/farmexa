@@ -277,7 +277,7 @@ export function DashboardPage() {
             <button type="button" className="erp-action" onClick={() => { localStorage.setItem('farmexa_onboarding_dismissed', 'true'); window.location.reload() }}>Hide checklist</button>
           </div>
           <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
-            <div className="h-full rounded-full bg-[#d4a42c]" style={{ width: `${Math.round((onboardingDone / onboardingItems.length) * 100)}%` }} />
+            <div className="h-full rounded-full bg-[var(--brand-primary)]" style={{ width: `${Math.round((onboardingDone / onboardingItems.length) * 100)}%` }} />
           </div>
           <div className="mt-4 grid gap-2 md:grid-cols-3">
             {onboardingItems.map((item) => (

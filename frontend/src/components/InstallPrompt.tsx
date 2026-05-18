@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Download, X } from 'lucide-react'
+import { X } from 'lucide-react'
+import { BRAND_LOGO_ICON } from '@/lib/branding'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -42,8 +43,8 @@ export function InstallPrompt() {
   return (
     <div className="fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-md rounded-[8px] border border-brand-200 bg-white p-4 shadow-modal">
       <div className="flex items-start gap-3">
-        <div className="rounded-[8px] bg-brand-50 p-2 text-brand-800">
-          <Download className="h-5 w-5" />
+        <div className="rounded-[8px] bg-brand-50 p-1.5 text-brand-800">
+          <img src={BRAND_LOGO_ICON} alt="Farmexa" className="h-7 w-7 object-contain" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="font-black text-ink-900">Install Farmexa App</div>
