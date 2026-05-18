@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '@/features/auth/AuthContext'
 import { LoginPage } from '@/features/auth/LoginPage'
-import { VendorRegistrationPage } from '@/features/auth/VendorRegistrationPage'
+import { RegisterModalPage } from '@/features/auth/RegisterModalPage'
 import { RegistrationSuccessPage } from '@/features/auth/RegistrationSuccessPage'
 import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from '@/features/auth/AuthActionPages'
 import { PublicHomePage } from '@/features/public/PublicHomePage'
@@ -43,9 +43,9 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<PublicHomePage />} />
-        <Route path="/register" element={<VendorRegistrationPage />} />
-        <Route path="/register-tenant" element={<VendorRegistrationPage />} />
-        <Route path="/register-vendor" element={<VendorRegistrationPage />} />
+        <Route path="/register" element={<RegisterModalPage />} />
+        <Route path="/register-tenant" element={<RegisterModalPage />} />
+        <Route path="/register-vendor" element={<RegisterModalPage />} />
         <Route path="/registration-success" element={<RegistrationSuccessPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />

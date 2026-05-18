@@ -13,12 +13,23 @@ from app.services.erp_rules import (
     ensure_sufficient_stock,
     validate_feed_formula_percentages,
 )
+from app.utils.domains import default_platform_domain, tenant_domain_suffix
 
 
 def test_slug_generation_uses_clean_farm_name():
     assert DeveloperAdminService._slugify("Ngali Poultry Farm") == "ngali"
     assert DeveloperAdminService._slugify("Golden Farm Ltd") == "golden"
     assert DeveloperAdminService(None)._default_platform_domain("ngali") == "ngali.arosoft.io"
+
+
+def test_tenant_domain_suffix_uses_cloudflare_zone_when_env_is_nested(monkeypatch):
+    monkeypatch.setattr(settings, "DEFAULT_TENANT_DOMAIN_SUFFIX", "farmexa.arosoft.io")
+    monkeypatch.setattr(settings, "CLOUDFLARE_ZONE_NAME", "arosoft.io")
+    monkeypatch.setattr(settings, "PRIMARY_PLATFORM_DOMAIN", "farmexa.arosoft.io")
+
+    assert tenant_domain_suffix() == "arosoft.io"
+    assert default_platform_domain("arofa") == "arofa.arosoft.io"
+    assert DeveloperAdminService(None)._default_platform_domain("arofa") == "arofa.arosoft.io"
 
 
 def test_full_trial_plan_includes_every_module():

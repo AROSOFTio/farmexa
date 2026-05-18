@@ -109,10 +109,21 @@ class Settings(BaseSettings):
         return [host.strip().lower() for host in self.PLATFORM_HOSTS.split(",") if host.strip()]
 
     @property
+    def tenant_domain_suffix(self) -> str:
+        suffix = self.DEFAULT_TENANT_DOMAIN_SUFFIX.strip().lower().removeprefix("www.")
+        zone_name = self.CLOUDFLARE_ZONE_NAME.strip().lower().removeprefix("www.")
+        platform_domain = self.PRIMARY_PLATFORM_DOMAIN.strip().lower().removeprefix("www.")
+        if zone_name and suffix == platform_domain:
+            return zone_name
+        if zone_name and suffix.endswith(f".{zone_name}") and suffix.count(".") > zone_name.count("."):
+            return zone_name
+        return suffix or "arosoft.io"
+
+    @property
     def trusted_hosts(self) -> list[str]:
         hosts = set(self.platform_hosts)
         hosts.add(self.PRIMARY_PLATFORM_DOMAIN.lower())
-        suffix = self.DEFAULT_TENANT_DOMAIN_SUFFIX.strip().lower()
+        suffix = self.tenant_domain_suffix
         if suffix:
             hosts.add(suffix)
             hosts.add(f"*.{suffix}")

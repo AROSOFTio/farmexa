@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { BrandMark } from '@/components/BrandMark'
+import { RegistrationWizardModal } from '@/features/auth/RegistrationWizardModal'
 import { useAuth } from '@/features/auth/AuthContext'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { getErrorMessage } from '@/lib/errors'
@@ -25,6 +26,7 @@ export function LoginPage() {
   const { settings } = usePlatformSettings()
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
   const showRegisterAction = isPlatformRegistrationHost()
 
   const {
@@ -163,15 +165,16 @@ export function LoginPage() {
               </button>
 
               {showRegisterAction ? (
-                <Link to="/register" className="btn-secondary btn-lg w-full">
+                <button type="button" onClick={() => setIsRegistrationOpen(true)} className="btn-secondary btn-lg w-full">
                   <UserPlus className="h-4.5 w-4.5" />
                   Start Free Trial
-                </Link>
+                </button>
               ) : null}
             </form>
           </div>
         </section>
       </motion.div>
+      <RegistrationWizardModal isOpen={isRegistrationOpen} onClose={() => setIsRegistrationOpen(false)} />
     </div>
   )
 }

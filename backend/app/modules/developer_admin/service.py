@@ -61,7 +61,7 @@ from app.modules.developer_admin.schemas import (
 )
 from app.modules.users.catalog import TENANT_ADMIN_ROLE_NAME
 from app.utils.audit import write_audit_log
-from app.utils.domains import infer_domain_type, normalize_host, strip_port, verify_domain_points_to_target
+from app.utils.domains import default_platform_domain, infer_domain_type, normalize_host, strip_port, tenant_domain_suffix, verify_domain_points_to_target
 from app.services.cloudflare_service import create_tenant_dns_record
 from app.services.email_service import send_welcome_email
 
@@ -151,7 +151,7 @@ class DeveloperAdminService:
         return SubscriptionStatus.ACTIVE
 
     def _default_platform_domain(self, slug: str) -> str:
-        return f"{slug}.{settings.DEFAULT_TENANT_DOMAIN_SUFFIX}"
+        return default_platform_domain(slug)
 
     async def _get_system_settings(self) -> SystemSettings:
         result = await self.db.execute(select(SystemSettings).order_by(SystemSettings.id).limit(1))
@@ -160,7 +160,7 @@ class DeveloperAdminService:
             return settings_row
         settings_row = SystemSettings(
             platform_domain=settings.PRIMARY_PLATFORM_DOMAIN,
-            tenant_domain_suffix=settings.DEFAULT_TENANT_DOMAIN_SUFFIX,
+            tenant_domain_suffix=tenant_domain_suffix(),
             sender_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoft.io",
             sender_name=settings.SMTP_FROM_NAME,
             support_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoft.io",
@@ -744,7 +744,7 @@ class DeveloperAdminService:
 
         logger.info(
             "Registering tenant from public flow with tenant suffix '%s'.",
-            settings.DEFAULT_TENANT_DOMAIN_SUFFIX,
+            tenant_domain_suffix(),
         )
         tenant = await self._create_tenant_internal(
             TenantCreate(
@@ -1565,7 +1565,7 @@ class DeveloperAdminService:
         total_plans = (await self.db.execute(select(func.count()).select_from(PlanDefinition))).scalar_one()
         return DeveloperAdminSettingsOut(
             primary_platform_domain=settings.PRIMARY_PLATFORM_DOMAIN,
-            default_tenant_domain_suffix=settings.DEFAULT_TENANT_DOMAIN_SUFFIX,
+            default_tenant_domain_suffix=tenant_domain_suffix(),
             automatic_ssl_provisioning=settings.ENABLE_AUTOMATIC_SSL_PROVISIONING,
             certbot_enabled=bool(settings.CERTBOT_BIN),
             mandatory_module_keys=sorted(MANDATORY_TENANT_MODULE_KEYS),

@@ -21,6 +21,7 @@ from app.modules.developer_admin.catalog import (
     DEFAULT_PLANS,
 )
 from app.modules.users.catalog import ROLE_DEFINITIONS, ROLE_PERMISSIONS, TENANT_ADMIN_ROLE_NAME
+from app.utils.domains import default_platform_domain, tenant_domain_suffix
 
 logger = logging.getLogger("farmexa.seeder")
 
@@ -165,7 +166,7 @@ async def _seed_system_settings(db: AsyncSession) -> None:
     settings_row = result.scalar_one_or_none()
     if settings_row:
         settings_row.platform_domain = settings.PRIMARY_PLATFORM_DOMAIN
-        settings_row.tenant_domain_suffix = settings.DEFAULT_TENANT_DOMAIN_SUFFIX
+        settings_row.tenant_domain_suffix = tenant_domain_suffix()
         settings_row.sender_email = settings.SMTP_FROM_EMAIL or settings_row.sender_email
         settings_row.sender_name = settings.SMTP_FROM_NAME
         settings_row.support_email = settings.SMTP_FROM_EMAIL or settings_row.support_email
@@ -186,7 +187,7 @@ async def _seed_system_settings(db: AsyncSession) -> None:
             primary_color="#d6a62e",
             secondary_color="#0b1018",
             platform_domain=settings.PRIMARY_PLATFORM_DOMAIN,
-            tenant_domain_suffix=settings.DEFAULT_TENANT_DOMAIN_SUFFIX,
+            tenant_domain_suffix=tenant_domain_suffix(),
             sender_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoft.io",
             sender_name=settings.SMTP_FROM_NAME,
             support_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoft.io",
@@ -211,7 +212,7 @@ async def _repair_legacy_tenant_domain_suffixes(db: AsyncSession) -> None:
     from app.services.cloudflare_service import create_tenant_dns_record
 
     old_suffix = ".farmexa.arosoft.io"
-    new_suffix = f".{settings.DEFAULT_TENANT_DOMAIN_SUFFIX.strip().lower()}"
+    new_suffix = f".{tenant_domain_suffix()}"
     if new_suffix == old_suffix:
         return
 
@@ -451,7 +452,7 @@ async def _seed_demo_tenant_if_enabled(db: AsyncSession) -> None:
     from app.models.user import User
 
     slug = settings.SEED_DEMO_TENANT_SLUG.strip().lower()
-    host = f"{slug}.{settings.DEFAULT_TENANT_DOMAIN_SUFFIX}"
+    host = default_platform_domain(slug)
     today = date.today()
     trial_expiry = today + timedelta(days=14)
 

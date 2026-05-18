@@ -1,5 +1,7 @@
 import { Check, Crown, ShieldCheck } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { RegistrationWizardModal } from '@/features/auth/RegistrationWizardModal'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 
 const plans = [
@@ -11,6 +13,8 @@ const plans = [
 
 export function PricingPage() {
   const { settings } = usePlatformSettings()
+  const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
+
   return (
     <main className="min-h-screen bg-white">
       <section className="bg-ink-950 px-4 py-16 text-white">
@@ -22,7 +26,7 @@ export function PricingPage() {
           <h1 className="mt-6 max-w-3xl text-4xl font-black tracking-tight md:text-6xl">Start with a 14-day trial, then scale by modules.</h1>
           <p className="mt-5 max-w-2xl text-lg text-white/70">Choose the package that matches your poultry operation. Your workspace, records, and tenant domain stay active as you upgrade.</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link className="btn-primary" to="/register">Start free trial</Link>
+            <button type="button" className="btn-primary" onClick={() => setIsRegistrationOpen(true)}>Start free trial</button>
             <Link className="btn-secondary bg-white text-ink-900 hover:bg-brand-50" to="/login">Sign in</Link>
           </div>
         </div>
@@ -50,6 +54,7 @@ export function PricingPage() {
       <footer className="border-t border-neutral-200 px-4 py-8 text-center text-sm text-ink-500">
         {settings.footer_text} · Support: {settings.support_email}
       </footer>
+      <RegistrationWizardModal isOpen={isRegistrationOpen} onClose={() => setIsRegistrationOpen(false)} />
     </main>
   )
 }

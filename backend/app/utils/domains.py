@@ -35,9 +35,17 @@ def is_platform_host(host: str | None) -> bool:
     return clean in platform_hosts
 
 
+def tenant_domain_suffix() -> str:
+    return normalize_host(settings.tenant_domain_suffix) or "arosoft.io"
+
+
+def default_platform_domain(slug: str) -> str:
+    return f"{normalize_host(slug) or slug}.{tenant_domain_suffix()}"
+
+
 def infer_domain_type(host: str | None) -> str:
     clean = normalize_host(host)
-    suffix = normalize_host(settings.DEFAULT_TENANT_DOMAIN_SUFFIX)
+    suffix = tenant_domain_suffix()
     if clean and suffix and (clean == suffix or clean.endswith(f".{suffix}")):
         return "platform_subdomain"
     return "custom"
