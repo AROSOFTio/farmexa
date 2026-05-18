@@ -6,7 +6,7 @@ Seeds roles, permissions, and the initial super manager account if not present.
 import logging
 from datetime import UTC, date, datetime, timedelta
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -316,38 +316,33 @@ async def _seed_admin(db: AsyncSession) -> None:
     from app.models.auth import Role
     from app.models.user import User
 
-    logger.info("Checking for admin user %s.", settings.SEED_ADMIN_EMAIL)
-    result = await db.execute(select(User).where(User.email == settings.SEED_ADMIN_EMAIL))
-    if result.scalar_one_or_none() is not None:
-        logger.info("Admin user already exists.")
-        return
-
     role_result = await db.execute(select(Role).where(Role.name == "super_manager"))
     role = role_result.scalar_one_or_none()
     if not role:
         logger.error("super_manager role was not found during admin seeding.")
         return
 
-    admin = User(
-        email=settings.SEED_ADMIN_EMAIL,
-        full_name=settings.SEED_ADMIN_FULL_NAME,
-        hashed_password=hash_password(settings.SEED_ADMIN_PASSWORD),
-        is_active=True,
-        role_id=role.id,
-    )
-    db.add(admin)
-    logger.info("Super admin user staged for creation: %s", settings.SEED_ADMIN_EMAIL)
+    email = settings.SEED_ADMIN_EMAIL.strip().lower()
+    logger.info("Upserting admin user %s.", email)
+    result = await db.execute(select(User).where(func.lower(User.email) == email))
+    admin = result.scalar_one_or_none()
+    if admin is None:
+        admin = User(email=email)
+        db.add(admin)
+
+    admin.email = email
+    admin.full_name = settings.SEED_ADMIN_FULL_NAME
+    admin.hashed_password = hash_password(settings.SEED_ADMIN_PASSWORD)
+    admin.is_active = True
+    admin.role_id = role.id
+    admin.tenant_id = None
+    admin.deleted_at = None
+    logger.info("Super admin user staged for upsert: %s", email)
 
 
 async def _seed_developer_admin(db: AsyncSession) -> None:
     from app.models.auth import Role
     from app.models.user import User
-
-    logger.info("Checking for developer admin user %s.", settings.SEED_DEV_ADMIN_EMAIL)
-    result = await db.execute(select(User).where(User.email == settings.SEED_DEV_ADMIN_EMAIL))
-    if result.scalar_one_or_none() is not None:
-        logger.info("Developer admin user already exists.")
-        return
 
     role_result = await db.execute(select(Role).where(Role.name == "developer_admin"))
     role = role_result.scalar_one_or_none()
@@ -355,15 +350,22 @@ async def _seed_developer_admin(db: AsyncSession) -> None:
         logger.error("developer_admin role was not found during developer admin seeding.")
         return
 
-    admin = User(
-        email=settings.SEED_DEV_ADMIN_EMAIL,
-        full_name=settings.SEED_DEV_ADMIN_FULL_NAME,
-        hashed_password=hash_password(settings.SEED_DEV_ADMIN_PASSWORD),
-        is_active=True,
-        role_id=role.id,
-    )
-    db.add(admin)
-    logger.info("Developer admin user staged for creation: %s", settings.SEED_DEV_ADMIN_EMAIL)
+    email = settings.SEED_DEV_ADMIN_EMAIL.strip().lower()
+    logger.info("Upserting developer admin user %s.", email)
+    result = await db.execute(select(User).where(func.lower(User.email) == email))
+    admin = result.scalar_one_or_none()
+    if admin is None:
+        admin = User(email=email)
+        db.add(admin)
+
+    admin.email = email
+    admin.full_name = settings.SEED_DEV_ADMIN_FULL_NAME
+    admin.hashed_password = hash_password(settings.SEED_DEV_ADMIN_PASSWORD)
+    admin.is_active = True
+    admin.role_id = role.id
+    admin.tenant_id = None
+    admin.deleted_at = None
+    logger.info("Developer admin user staged for upsert: %s", email)
 
 
 async def _seed_demo_tenant_if_enabled(db: AsyncSession) -> None:

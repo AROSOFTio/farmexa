@@ -4,7 +4,7 @@ Auth repository: database operations for auth flows.
 
 from datetime import datetime, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -36,7 +36,7 @@ class AuthRepository:
     async def get_user_by_email(self, email: str) -> User | None:
         result = await self.db.execute(
             select(User)
-            .where(User.email == email, User.deleted_at.is_(None))
+            .where(func.lower(User.email) == email.strip().lower(), User.deleted_at.is_(None))
             .options(*_user_with_relationships())
         )
         return result.scalar_one_or_none()
