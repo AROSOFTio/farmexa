@@ -800,7 +800,7 @@ export function ProfitDashboard() {
           return (
             <div key={card.title} className="card p-5">
               <div className="flex items-start justify-between gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-700">
+                <div className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-brand-50 text-brand-700">
                   <Icon className="h-5 w-5" />
                 </div>
                 <button type="button" className="btn-ghost btn-sm" onClick={() => downloadCsv(card.filename, card.exportRows)}>

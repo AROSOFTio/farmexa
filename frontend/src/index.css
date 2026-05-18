@@ -201,7 +201,7 @@
     @apply rounded-[10px];
     background: rgba(255, 255, 255, 0.98);
     border: 1px solid var(--border-subtle);
-    box-shadow: var(--shadow-card);
+    box-shadow: 0 10px 28px -26px rgba(15, 23, 42, 0.36);
   }
 
   .card-hover {
@@ -517,7 +517,7 @@
   }
 
   .auth-eyebrow {
-    @apply inline-flex rounded-[6px] px-2.5 py-1 text-[10.5px] font-black uppercase tracking-[0.14em];
+    @apply inline-flex rounded-[6px] px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.08em];
     background: rgba(var(--brand-primary-rgb), 0.08);
     color: var(--brand-primary);
     border: 1px solid rgba(var(--brand-primary-rgb), 0.18);
@@ -531,7 +531,7 @@
   }
 
   .dashboard-hero-chip {
-    @apply inline-flex items-center rounded-[7px] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.08em];
+    @apply inline-flex items-center rounded-[7px] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.06em];
     background: rgba(var(--brand-primary-rgb), 0.08);
     color: var(--brand-accent);
     border: 1px solid rgba(var(--brand-primary-rgb), 0.16);
@@ -543,21 +543,24 @@
   }
 
   .erp-kpi {
-    @apply flex min-h-[118px] items-center gap-4 rounded-[10px] border bg-white px-5 py-4;
-    border-color: #eadcc1;
-    box-shadow: 0 12px 28px -24px rgba(23, 18, 8, 0.42);
+    @apply flex min-h-[96px] items-center gap-3 rounded-[10px] border px-4 py-3;
+    background: var(--surface-card);
+    border-color: var(--border-subtle);
+    box-shadow: var(--shadow-card);
   }
 
   .erp-kpi-icon {
-    @apply flex h-12 w-12 shrink-0 items-center justify-center rounded-[8px] bg-[#fff7e2] text-[#c99316];
+    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px];
+    background: rgba(var(--brand-primary-rgb), 0.10);
+    color: var(--brand-primary);
   }
 
   .erp-kpi-title {
-    @apply text-[11px] font-extrabold uppercase leading-4 text-slate-500;
+    @apply text-[11px] font-semibold uppercase leading-4 tracking-[0.04em] text-slate-500;
   }
 
   .erp-kpi-value {
-    @apply mt-1 text-[24px] font-black leading-7 text-[#111827];
+    @apply mt-1 text-[20px] font-bold leading-6 text-[#111827];
   }
 
   .erp-kpi-note {
@@ -565,25 +568,29 @@
   }
 
   .erp-status-band {
-    @apply grid gap-3 rounded-[10px] border bg-white p-3 sm:grid-cols-2 lg:grid-cols-5;
-    border-color: #eadcc1;
-    box-shadow: 0 10px 24px -24px rgba(23, 18, 8, 0.36);
+    @apply grid gap-3 rounded-[10px] border p-3 sm:grid-cols-2 lg:grid-cols-5;
+    background: var(--surface-card);
+    border-color: var(--border-subtle);
+    box-shadow: var(--shadow-card);
   }
 
   .erp-signal {
-    @apply flex min-h-[64px] items-center gap-3 rounded-[8px] bg-[#fffaf0] px-3 py-2;
-    border: 1px solid #f0e2c7;
+    @apply flex min-h-[58px] items-center gap-3 rounded-[8px] px-3 py-2;
+    background: var(--surface-soft);
+    border: 1px solid var(--border-subtle);
   }
 
   .erp-panel {
-    @apply rounded-[10px] border bg-white p-4;
-    border-color: #eadcc1;
-    box-shadow: 0 12px 28px -24px rgba(23, 18, 8, 0.42);
+    @apply rounded-[10px] border p-4;
+    background: var(--surface-card);
+    border-color: var(--border-subtle);
+    box-shadow: var(--shadow-card);
   }
 
   .erp-mini-stat {
-    @apply flex min-h-[74px] items-center gap-3 rounded-[8px] border bg-white px-3 py-2.5;
-    border-color: #eadcc1;
+    @apply flex min-h-[64px] items-center gap-3 rounded-[8px] border px-3 py-2.5;
+    background: var(--surface-card);
+    border-color: var(--border-subtle);
   }
 
   .erp-table {
@@ -591,18 +598,18 @@
   }
 
   .erp-table th {
-    @apply whitespace-nowrap border-b px-3 py-2.5 text-left text-[10px] font-extrabold uppercase tracking-[0.04em] text-slate-600;
-    background: #f8f2e6;
-    border-color: #eadcc1;
+    @apply whitespace-nowrap border-b px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.04em] text-slate-600;
+    background: var(--surface-soft);
+    border-color: var(--border-subtle);
   }
 
   .erp-table td {
-    @apply whitespace-nowrap border-b px-3 py-2.5 font-semibold text-[#111827];
-    border-color: #f0e6d2;
+    @apply whitespace-nowrap border-b px-3 py-2.5 font-medium text-[#111827];
+    border-color: var(--border-subtle);
   }
 
   .erp-table tbody tr:nth-child(even) {
-    background: #fffdf8;
+    background: rgba(var(--brand-primary-rgb), 0.025);
   }
 
   .erp-actions {
@@ -611,17 +618,18 @@
 
   .erp-action,
   .erp-action-primary {
-    @apply min-h-9 rounded-[7px] border px-4 py-2 text-[11px] font-extrabold transition-colors;
-    border-color: #d6a62e;
+    @apply min-h-9 rounded-[7px] border px-4 py-2 text-[11px] font-semibold transition-colors;
+    border-color: rgba(var(--brand-primary-rgb), 0.42);
   }
 
   .erp-action {
-    @apply bg-white text-[#a56f07] hover:bg-[#fff7e2];
+    @apply bg-white hover:bg-[#fff7e2];
+    color: var(--brand-accent);
   }
 
   .erp-action-primary {
     @apply text-[#111827];
-    background: linear-gradient(90deg, #e1b23b, #c99316);
+    background: var(--brand-primary);
   }
 
   [data-theme='dark'] .card,

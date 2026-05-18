@@ -167,15 +167,15 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
           <div className="mt-4 p-4 rounded-[1rem] bg-amber-50/50 border border-amber-100/50">
             <div className="grid gap-4 sm:grid-cols-3 text-sm">
               <div>
-                <span className="text-amber-900/60 font-medium uppercase tracking-wider text-[10px]">Capacity</span>
+                <span className="text-amber-900/60 font-medium uppercase tracking-[0.06em] text-[10px]">Capacity</span>
                 <div className="font-semibold text-amber-900 mt-0.5">{(selectedSection ? selectedSection.capacity : selectedHouse.capacity).toLocaleString()} birds</div>
               </div>
               <div>
-                <span className="text-amber-900/60 font-medium uppercase tracking-wider text-[10px]">Occupied</span>
+                <span className="text-amber-900/60 font-medium uppercase tracking-[0.06em] text-[10px]">Occupied</span>
                 <div className="font-semibold text-amber-900 mt-0.5">{(selectedSection ? selectedSection.occupied_capacity : selectedHouse.occupied_capacity).toLocaleString()} birds</div>
               </div>
               <div>
-                <span className="text-amber-900/60 font-medium uppercase tracking-wider text-[10px]">Available</span>
+                <span className="text-amber-900/60 font-medium uppercase tracking-[0.06em] text-[10px]">Available</span>
                 <div className="font-semibold text-amber-900 mt-0.5">{availableCapacity.toLocaleString()} birds</div>
               </div>
             </div>

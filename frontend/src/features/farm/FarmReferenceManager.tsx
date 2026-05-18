@@ -149,8 +149,8 @@ export function FarmReferenceManager({ types }: { types: FarmReferenceManagerTyp
             }}
             className={
               entry.type === selectedType
-                ? 'rounded-2xl border border-brand-300 bg-brand-50 px-4 py-3 text-left'
-                : 'rounded-2xl border border-neutral-150 bg-white px-4 py-3 text-left'
+                ? 'rounded-[10px] border border-brand-300 bg-brand-50 px-4 py-3 text-left'
+                : 'rounded-[10px] border border-neutral-150 bg-white px-4 py-3 text-left'
             }
           >
             <div className="text-sm font-semibold text-ink-900">{entry.label}</div>
@@ -212,7 +212,7 @@ export function FarmReferenceManager({ types }: { types: FarmReferenceManagerTyp
             <input type="number" min={0} className="form-input" {...form.register('sort_order')} />
           </div>
 
-          <label className="flex items-center gap-3 rounded-2xl border border-neutral-150 bg-white px-4 py-3 text-sm font-medium text-ink-700">
+          <label className="flex items-center gap-3 rounded-[10px] border border-neutral-150 bg-white px-4 py-3 text-sm font-medium text-ink-700">
             <input type="checkbox" {...form.register('is_active')} />
             Keep this entry active in dropdowns
           </label>

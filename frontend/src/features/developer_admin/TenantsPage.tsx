@@ -694,16 +694,16 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
           return (
             <div
               key={card.title}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
+              className="rounded-[10px] border border-slate-200 bg-white p-5 shadow-card transition hover:shadow-card-hover"
             >
               <div className="flex items-center gap-4">
-                <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${card.tone}`}>
-                  <Icon className="h-7 w-7" />
+                <div className={`flex h-10 w-10 items-center justify-center rounded-[10px] ${card.tone}`}>
+                  <Icon className="h-5 w-5" />
                 </div>
 
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-slate-600 uppercase tracking-wider">{card.title}</p>
-                  <h3 className="mt-1 truncate text-xl font-black text-slate-950">{card.value}</h3>
+                  <p className="truncate text-xs font-semibold text-slate-600 uppercase tracking-[0.06em]">{card.title}</p>
+                  <h3 className="mt-1 truncate text-xl font-bold text-slate-950">{card.value}</h3>
                 </div>
               </div>
 
@@ -742,16 +742,16 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="rounded-[10px] border border-slate-200 bg-white shadow-card overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-200 p-6">
-            <h2 className="text-lg font-black text-slate-950">Recent Tenants</h2>
+            <h2 className="text-lg font-bold text-slate-950">Recent Tenants</h2>
             <button type="button" className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50" onClick={() => setSection('tenants')}>
               View all
             </button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 font-bold">
+              <thead className="bg-slate-50 text-xs uppercase tracking-[0.06em] text-slate-500 font-bold">
                 <tr>
                   <th className="px-6 py-4">Tenant</th>
                   <th className="px-6 py-4">Plan</th>
@@ -769,13 +769,13 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
                       <div className="mt-0.5 text-xs text-slate-500 font-medium">{tenant.domains.find(d => d.is_primary)?.host ?? 'No domain'}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#b88a1d] border border-amber-100">
+                      <span className="rounded-full bg-amber-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--brand-accent)] border border-amber-100">
                         {tenant.plan}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className={clsx(
-                        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider',
+                        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.06em]',
                         tenant.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
                       )}>
                         {tenant.status}
@@ -798,16 +798,16 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden xl:col-span-2">
+        <div className="rounded-[10px] border border-slate-200 bg-white shadow-card overflow-hidden xl:col-span-2">
           <div className="flex items-center justify-between border-b border-slate-200 p-6">
-            <h2 className="text-lg font-black text-slate-950">Plan Overview</h2>
+            <h2 className="text-lg font-bold text-slate-950">Plan Overview</h2>
             <button type="button" className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50" onClick={() => setSection('plans')}>
               View all
             </button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 font-bold">
+              <thead className="bg-slate-50 text-xs uppercase tracking-[0.06em] text-slate-500 font-bold">
                 <tr>
                   <th className="px-6 py-4">Plan</th>
                   <th className="px-6 py-4">Price</th>
@@ -823,7 +823,7 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
                     <td className="px-6 py-4 text-slate-700 font-semibold">{plan.tenant_count}</td>
                     <td className="px-6 py-4">
                       <span className={clsx(
-                        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider',
+                        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.06em]',
                         plan.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'
                       )}>
                         {plan.is_active ? 'Active' : 'Inactive'}
@@ -838,9 +838,9 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden">
+        <div className="rounded-[10px] border border-slate-200 bg-white p-6 shadow-card overflow-hidden">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-black text-slate-950">Revenue Overview</h2>
+            <h2 className="text-lg font-bold text-slate-950">Revenue Overview</h2>
           </div>
           <div className="flex items-center justify-center h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -866,8 +866,8 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden">
-          <h2 className="text-lg font-black text-slate-950 mb-5">Quick Actions</h2>
+        <div className="rounded-[10px] border border-slate-200 bg-white p-6 shadow-card overflow-hidden">
+          <h2 className="text-lg font-bold text-slate-950 mb-5">Quick Actions</h2>
           <div className="grid gap-4">
             {[
               { label: "Add Tenant", note: "Onboard new farm", onClick: () => setIsTenantModalOpen(true) },
@@ -878,9 +878,9 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
               <button
                 key={action.label}
                 onClick={action.onClick}
-                className="rounded-2xl border border-slate-200 bg-white p-5 text-left transition hover:border-[#c79a31] hover:bg-amber-50 group"
+                className="rounded-[10px] border border-slate-200 bg-white p-5 text-left transition hover:border-[var(--brand-primary)] hover:bg-[rgba(var(--brand-primary-rgb),0.08)] group"
               >
-                <p className="font-bold text-slate-900 group-hover:text-[#b88a1d]">{action.label}</p>
+                <p className="font-bold text-slate-900 group-hover:text-[var(--brand-accent)]">{action.label}</p>
                 <p className="mt-1 text-xs text-slate-500">{action.note}</p>
               </button>
             ))}
@@ -1236,22 +1236,22 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
           ["Subscribed Tenants", overview?.total_tenants ?? 0],
           ["Monthly Revenue", formatMoney(overview?.monthly_revenue, 'UGX')],
         ].map(([label, value]) => (
-          <div key={label.toString()} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div key={label.toString()} className="rounded-[10px] border border-slate-200 bg-white p-6 shadow-card">
             <p className="text-sm font-semibold text-slate-500">{label}</p>
-            <h3 className="mt-3 text-3xl font-black text-slate-950">{value}</h3>
+            <h3 className="mt-3 text-2xl font-bold text-slate-950">{value}</h3>
           </div>
         ))}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="rounded-[10px] border border-slate-200 bg-white shadow-card overflow-hidden">
           <div className="border-b border-slate-200 p-6 flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-black text-slate-950">Subscription Plans</h2>
+              <h2 className="text-lg font-bold text-slate-950">Subscription Plans</h2>
               <p className="mt-1 text-sm text-slate-500">Modules and billing are configured inside each plan.</p>
             </div>
             {canManage && (
-              <button type="button" className="flex items-center gap-2 rounded-2xl bg-[#c79a31] px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#b98624]" onClick={() => openPlanEditor()}>
+              <button type="button" className="flex items-center gap-2 rounded-[10px] bg-[var(--brand-primary)] px-5 py-3 text-sm font-bold text-white shadow-card hover:bg-[var(--brand-primary-hover)]" onClick={() => openPlanEditor()}>
                 <Plus className="h-5 w-5" />
                 New Plan
               </button>
@@ -1259,7 +1259,7 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 font-bold">
+              <thead className="bg-slate-50 text-xs uppercase tracking-[0.06em] text-slate-500 font-bold">
                 <tr>
                   <th className="px-6 py-4">Plan</th>
                   <th className="px-6 py-4">Price</th>
@@ -1291,7 +1291,7 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
                     </td>
                     <td className="px-6 py-5">
                       <span className={clsx(
-                        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider',
+                        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.06em]',
                         plan.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'
                       )}>
                         {plan.is_active ? 'Active' : 'Inactive'}
@@ -1320,9 +1320,9 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="rounded-[10px] border border-slate-200 bg-white shadow-card overflow-hidden">
           <div className="border-b border-slate-200 p-6">
-            <h2 className="text-lg font-black text-slate-950">{selectedPlan ? `${selectedPlan.name} Details` : 'Plan Details'}</h2>
+            <h2 className="text-lg font-bold text-slate-950">{selectedPlan ? `${selectedPlan.name} Details` : 'Plan Details'}</h2>
             <p className="mt-1 text-sm text-slate-500">Billing terms and included modules.</p>
           </div>
           {selectedPlan ? (
@@ -1356,7 +1356,7 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
               {selectedPlan.description ? <div className="inline-note">{selectedPlan.description}</div> : null}
 
               <div>
-                <div className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">Included Modules</div>
+                <div className="mb-4 text-xs font-bold uppercase tracking-[0.06em] text-slate-500">Included Modules</div>
                 <div className="space-y-2">
                   {modules.map((module) => {
                     const included = selectedPlan.modules.some((item) => item.module_key === module.key)
@@ -1378,7 +1378,7 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
             </div>
           ) : (
             <div className="px-6 py-20 text-center">
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-slate-400 mb-4">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-[10px] bg-slate-50 text-slate-400 mb-4">
                 <Layers3 className="h-6 w-6" />
               </div>
               <p className="text-sm font-medium text-slate-500">Select a plan to inspect its configuration.</p>
@@ -1387,8 +1387,8 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
         </div>
       </div>
 
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-        <h3 className="font-black text-slate-950">Important Structure</h3>
+      <div className="rounded-[10px] border border-amber-200 bg-amber-50 p-5">
+        <h3 className="font-bold text-slate-950">Important Structure</h3>
         <p className="mt-2 text-sm text-slate-700">
           Modules should not appear as a separate Developer Admin menu. They must be managed only inside
           each plan. Billing should also be configured here through plan prices.
@@ -1526,7 +1526,7 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
   return (
     <div className="animate-fade-in space-y-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-black text-slate-950">{meta.title}</h1>
+        <h1 className="text-2xl font-bold text-slate-950">{meta.title}</h1>
         <p className="mt-1 text-slate-500">{meta.subtitle}</p>
       </div>
 

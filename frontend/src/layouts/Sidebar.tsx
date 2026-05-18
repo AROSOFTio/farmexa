@@ -319,7 +319,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                   <div className="mt-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--brand-primary)]">{tenant?.plan ?? 'Trial'} plan</div>
                 </div>
                 <div className="rounded-[8px] border border-[rgba(var(--brand-primary-rgb),0.35)] bg-[rgba(var(--brand-primary-rgb),0.12)] px-2.5 py-1 text-right">
-                  <div className="text-[17px] font-black leading-none text-white">{trialDays}</div>
+                  <div className="text-[17px] font-bold leading-none text-white">{trialDays}</div>
                   <div className="text-[9px] font-bold uppercase tracking-wide text-white/60">days</div>
                 </div>
               </div>

@@ -21,7 +21,7 @@ export function RolesPage() {
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="card p-6">
           <div className="mb-5 flex items-center gap-3">
-            <div className="rounded-2xl bg-blue-50 p-3 text-blue-600">
+            <div className="rounded-[10px] bg-blue-50 p-3 text-blue-600">
               <Shield className="h-6 w-6" />
             </div>
             <div>
@@ -33,11 +33,11 @@ export function RolesPage() {
           <div className="space-y-3">
             {isLoading ? (
               Array.from({ length: 5 }).map((_, index) => (
-                <div key={index} className="h-16 animate-pulse rounded-2xl bg-[var(--surface-soft)]" />
+                <div key={index} className="h-16 animate-pulse rounded-[10px] bg-[var(--surface-soft)]" />
               ))
             ) : (
               roles.map((role) => (
-                <div key={role.id} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-soft)] p-4">
+                <div key={role.id} className="rounded-[10px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] p-4">
                   <div className="font-semibold text-[var(--text-strong)]">{ROLE_LABELS[role.name] ?? role.name}</div>
                   <div className="mt-1 text-sm text-[var(--text-muted)]">{role.description ?? 'No description provided.'}</div>
                   <div className="mt-3 inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-600">
@@ -51,7 +51,7 @@ export function RolesPage() {
 
         <div className="card p-6">
           <div className="mb-5 flex items-center gap-3">
-            <div className="rounded-2xl bg-info/10 p-3 text-info">
+            <div className="rounded-[10px] bg-info/10 p-3 text-info">
               <ShieldCheck className="h-6 w-6" />
             </div>
             <div>
@@ -62,7 +62,7 @@ export function RolesPage() {
 
           <div className="space-y-4">
             {roles.map((role) => (
-              <div key={role.id} className="rounded-2xl border border-[var(--border-subtle)] p-4">
+              <div key={role.id} className="rounded-[10px] border border-[var(--border-subtle)] p-4">
                 <div className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
                   {ROLE_LABELS[role.name] ?? role.name}
                 </div>

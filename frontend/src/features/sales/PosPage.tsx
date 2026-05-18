@@ -104,7 +104,7 @@ export function PosPage() {
         <aside className="card h-fit p-6">
           <ShoppingCart className="h-8 w-8 text-brand-700" />
           <div className="mt-4 text-sm font-bold uppercase tracking-[0.2em] text-brand-700">Cart total</div>
-          <div className="mt-2 text-4xl font-black text-ink-950">UGX {total.toLocaleString()}</div>
+          <div className="mt-2 text-3xl font-bold text-ink-950">UGX {total.toLocaleString()}</div>
           <button className="btn-secondary mt-6 w-full" type="button" onClick={() => window.print()}><Printer className="h-4 w-4" /> Print screen</button>
         </aside>
       </div>

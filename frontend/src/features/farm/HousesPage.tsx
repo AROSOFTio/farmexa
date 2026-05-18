@@ -153,7 +153,7 @@ export function HousesPage() {
 
               <div className="px-6 py-5">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-neutral-150 bg-neutral-50 px-4 py-4">
+                  <div className="rounded-[10px] border border-neutral-150 bg-neutral-50 px-4 py-4">
                     <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-ink-500">
                       <Bird className="h-4 w-4 text-brand-600" />
                       Active birds
@@ -161,7 +161,7 @@ export function HousesPage() {
                     <div className="mt-2 text-2xl font-semibold text-ink-900">{house.activeBirds.toLocaleString()}</div>
                   </div>
 
-                  <div className="rounded-2xl border border-neutral-150 bg-neutral-50 px-4 py-4">
+                  <div className="rounded-[10px] border border-neutral-150 bg-neutral-50 px-4 py-4">
                     <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-ink-500">
                       <Layers3 className="h-4 w-4 text-brand-600" />
                       Active batches

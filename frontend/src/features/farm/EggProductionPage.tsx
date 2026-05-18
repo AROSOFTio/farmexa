@@ -176,28 +176,28 @@ export function EggProductionPage() {
           <div className="kpi-card">
             <div className="mb-2 flex items-center gap-3 text-blue-600">
               <EggIcon className="h-5 w-5" />
-              <h3 className="font-semibold text-sm uppercase tracking-wider">Total Eggs</h3>
+              <h3 className="font-semibold text-sm uppercase tracking-[0.06em]">Total Eggs</h3>
             </div>
             <p className="text-3xl font-bold">{summary.total_eggs.toLocaleString()}</p>
           </div>
           <div className="kpi-card">
             <div className="mb-2 flex items-center gap-3 text-blue-600">
               <EggIcon className="h-5 w-5" />
-              <h3 className="font-semibold text-sm uppercase tracking-wider">Good Eggs</h3>
+              <h3 className="font-semibold text-sm uppercase tracking-[0.06em]">Good Eggs</h3>
             </div>
             <p className="text-3xl font-bold">{summary.total_good.toLocaleString()}</p>
           </div>
           <div className="kpi-card">
             <div className="flex items-center gap-3 text-warning mb-2">
               <AlertCircle className="h-5 w-5" />
-              <h3 className="font-semibold text-sm uppercase tracking-wider">Cracked/Damaged</h3>
+              <h3 className="font-semibold text-sm uppercase tracking-[0.06em]">Cracked/Damaged</h3>
             </div>
             <p className="text-3xl font-bold">{(summary.total_cracked + summary.total_damaged).toLocaleString()}</p>
           </div>
           <div className="kpi-card">
             <div className="flex items-center gap-3 text-info mb-2">
               <EggIcon className="h-5 w-5" />
-              <h3 className="font-semibold text-sm uppercase tracking-wider">Avg Production Rate</h3>
+              <h3 className="font-semibold text-sm uppercase tracking-[0.06em]">Avg Production Rate</h3>
             </div>
             <p className="text-3xl font-bold">{summary.avg_production_rate ? `${summary.avg_production_rate.toFixed(1)}%` : 'N/A'}</p>
           </div>

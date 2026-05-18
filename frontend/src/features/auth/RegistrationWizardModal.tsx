@@ -153,12 +153,12 @@ export function RegistrationWizardModal({ isOpen, onClose }: RegistrationWizardM
       ) : (
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
           <div>
-            <div className="mb-2 flex items-center justify-between text-[12px] font-bold text-slate-600">
+            <div className="mb-2 flex items-center justify-between text-[12px] font-medium text-slate-600">
               <span>Step {stepIndex + 1} of {steps.length}</span>
               <span>{progress}%</span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full bg-[#d6a62e] transition-all" style={{ width: `${progress}%` }} />
+            <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full bg-[var(--brand-primary)] transition-all" style={{ width: `${progress}%` }} />
             </div>
           </div>
 
@@ -221,7 +221,7 @@ export function RegistrationWizardModal({ isOpen, onClose }: RegistrationWizardM
 
           {stepIndex === 2 ? (
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="md:col-span-2 rounded-[8px] border border-[#ead9ac] bg-[#fffaf0] px-4 py-3 text-[13px] leading-6 text-slate-700">
+              <div className="md:col-span-2 rounded-[8px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3 text-[13px] leading-6 text-slate-700">
                 Your email address will be used as the administrator login. Farmexa generates your tenant subdomain automatically from the farm name.
               </div>
               <div>
@@ -239,10 +239,10 @@ export function RegistrationWizardModal({ isOpen, onClose }: RegistrationWizardM
 
           {stepIndex === 3 ? (
             <div className="space-y-4">
-              <div className="rounded-[8px] border border-[#ead9ac] bg-[#fffaf0] p-4 text-[14px] leading-7 text-slate-700">
+              <div className="rounded-[8px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] p-4 text-[14px] leading-7 text-slate-700">
                 You are starting a 14-day full-feature Farmexa trial. All modules are enabled during the trial and the workspace is locked to the upgrade path after expiry unless a plan is activated.
               </div>
-              <label className="flex items-start gap-3 rounded-[8px] border border-slate-200 p-4 text-sm font-semibold text-slate-700">
+              <label className="flex items-start gap-3 rounded-[8px] border border-slate-200 p-4 text-sm font-medium text-slate-700">
                 <input type="checkbox" className="mt-1" {...form.register('accepted_terms')} />
                 I confirm that I want to create a Farmexa trial workspace and accept the trial terms.
               </label>
@@ -264,7 +264,7 @@ export function RegistrationWizardModal({ isOpen, onClose }: RegistrationWizardM
             )}
           </div>
           <div className="text-center text-[13px] text-slate-500">
-            Already registered? <Link to="/login" className="font-bold text-slate-800">Sign in</Link>
+            Already registered? <Link to="/login" className="font-semibold text-slate-800">Sign in</Link>
           </div>
         </form>
       )}

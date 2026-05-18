@@ -216,7 +216,7 @@ function RegisterStaffModal({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
+          <div className="rounded-[10px] border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
             {roleDescriptionFor(roles, Number(selectedRoleId))}
           </div>
 
@@ -348,7 +348,7 @@ function EditStaffModal({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
+          <div className="rounded-[10px] border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
             {roleDescriptionFor(roles, Number(selectedRoleId))}
           </div>
 
@@ -453,7 +453,7 @@ export function UsersPage() {
             onChange={(event) => handleSearchChange(event.target.value)}
           />
         </div>
-        <div className="ml-auto flex items-center gap-2 rounded-lg bg-neutral-100 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-neutral-500">
+        <div className="ml-auto flex items-center gap-2 rounded-lg bg-neutral-100 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.06em] text-neutral-500">
           <Users className="h-3.5 w-3.5" />
           {headerBadge}
         </div>
@@ -518,7 +518,7 @@ export function UsersPage() {
                           <div className="text-sm font-bold text-neutral-900">{user.full_name}</div>
                           <div className="text-xs font-medium text-neutral-500">{user.email}</div>
                           {user.id === me?.id ? (
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-600">You</span>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-brand-600">You</span>
                           ) : null}
                         </div>
                       </div>
@@ -530,7 +530,7 @@ export function UsersPage() {
                     <td>
                       <div
                         className={clsx(
-                          'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider',
+                          'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.06em]',
                           user.is_active
                             ? 'border-emerald-100 bg-emerald-50 text-emerald-600'
                             : 'border-neutral-150 bg-neutral-50 text-neutral-400'
@@ -555,7 +555,7 @@ export function UsersPage() {
                               <>
                                 <div className="fixed inset-0 z-30" onClick={() => setMenuOpenId(null)} />
                                 <motion.div
-                                  className="absolute right-0 top-full z-40 mt-1.5 w-52 overflow-hidden rounded-2xl border border-neutral-150 bg-white py-2 shadow-modal"
+                                  className="absolute right-0 top-full z-40 mt-1.5 w-52 overflow-hidden rounded-[10px] border border-neutral-150 bg-white py-2 shadow-modal"
                                   initial={{ opacity: 0, scale: 0.95, y: -10 }}
                                   animate={{ opacity: 1, scale: 1, y: 0 }}
                                   exit={{ opacity: 0, scale: 0.95, y: -10 }}
@@ -619,7 +619,7 @@ export function UsersPage() {
 
         {totalPages > 1 ? (
           <div className="flex items-center justify-between border-t border-neutral-100 bg-neutral-50/50 px-6 py-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
+            <span className="text-xs font-bold uppercase tracking-[0.06em] text-neutral-400">
               Page {page} of {totalPages}
             </span>
             <div className="flex items-center gap-2">

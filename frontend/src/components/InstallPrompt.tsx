@@ -47,7 +47,7 @@ export function InstallPrompt() {
           <img src={BRAND_LOGO_ICON} alt="Farmexa" className="h-7 w-7 object-contain" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="font-black text-ink-900">Install Farmexa App</div>
+          <div className="font-semibold text-ink-900">Install Farmexa App</div>
           <p className="mt-1 text-sm leading-6 text-ink-600">
             {isIos ? 'On iPhone or iPad, tap Share, then Add to Home Screen.' : 'Add Farmexa to your device for faster access.'}
           </p>

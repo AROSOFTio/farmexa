@@ -149,7 +149,7 @@ export function AffiliateProgramPage() {
         {successCode ? (
           <div className="space-y-4">
             <div className="rounded-[8px] border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
-              <div className="flex items-center gap-2 font-black">
+              <div className="flex items-center gap-2 font-semibold">
                 <CheckCircle2 className="h-5 w-5" />
                 Application received
               </div>

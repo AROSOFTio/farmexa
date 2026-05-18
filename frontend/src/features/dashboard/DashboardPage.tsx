@@ -122,7 +122,7 @@ function ActionButton({ children, to, primary = false }: { children: string; to:
 function KpiCard({ title, value, note, icon: Icon }: { title: string; value: string; note: string; icon: IconType }) {
   return (
     <div className="erp-kpi">
-      <div className="erp-kpi-icon"><Icon className="h-7 w-7" /></div>
+      <div className="erp-kpi-icon"><Icon className="h-5 w-5" /></div>
       <div>
         <div className="erp-kpi-title">{title}</div>
         <div className="erp-kpi-value">{value}</div>
@@ -135,10 +135,10 @@ function KpiCard({ title, value, note, icon: Icon }: { title: string; value: str
 function SignalCard({ label, value, icon: Icon }: { label: string; value: string; icon: IconType }) {
   return (
     <div className="erp-signal">
-      <Icon className="h-4 w-4 text-[#b98512]" />
+      <Icon className="h-4 w-4 text-[var(--brand-primary)]" />
       <div>
-        <div className="text-[11px] font-bold text-slate-500">{label}</div>
-        <div className="text-[14px] font-extrabold text-[#111827]">{value}</div>
+        <div className="text-[11px] font-medium text-slate-500">{label}</div>
+        <div className="text-[14px] font-semibold text-[#111827]">{value}</div>
       </div>
     </div>
   )
@@ -147,10 +147,10 @@ function SignalCard({ label, value, icon: Icon }: { label: string; value: string
 function MiniStat({ title, value, note, icon: Icon }: { title: string; value: string; note?: string; icon: IconType }) {
   return (
     <div className="erp-mini-stat">
-      <Icon className="h-5 w-5 text-[#c99316]" />
+      <Icon className="h-5 w-5 text-[var(--brand-primary)]" />
       <div>
-        <div className="text-[10px] font-bold text-slate-500">{title}</div>
-        <div className="text-[15px] font-extrabold leading-5 text-[#111827]">{value}</div>
+        <div className="text-[10px] font-medium text-slate-500">{title}</div>
+        <div className="text-[15px] font-semibold leading-5 text-[#111827]">{value}</div>
         {note ? <div className="text-[10px] text-slate-500">{note}</div> : null}
       </div>
     </div>
@@ -163,12 +163,12 @@ function Panel({ title, viewAllTo, children }: { title: string; viewAllTo: strin
     <section className="erp-panel">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-md border border-[#ecd8a9] bg-[#fff7e2] text-[#b98512]">
+          <span className="flex h-6 w-6 items-center justify-center rounded-md border border-[var(--border-subtle)] bg-[rgba(var(--brand-primary-rgb),0.08)] text-[var(--brand-primary)]">
             <ClipboardCheck className="h-4 w-4" />
           </span>
-          <h2 className="text-[14px] font-extrabold text-[#111827]">{title}</h2>
+          <h2 className="text-[14px] font-semibold text-[#111827]">{title}</h2>
         </div>
-        <button type="button" onClick={() => navigate(viewAllTo)} className="text-[11px] font-bold text-[#a56f07]">View all</button>
+        <button type="button" onClick={() => navigate(viewAllTo)} className="text-[11px] font-semibold text-[var(--brand-accent)]">View all</button>
       </div>
       {children}
     </section>
@@ -182,7 +182,7 @@ function Status({ value }: { value: string }) {
       normalized.includes('pending') || normalized.includes('warning') ? 'bg-[#ef9f24]' :
         'bg-[#3f9a35]'
 
-  return <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${tone}`}>{value}</span>
+  return <span className={`inline-flex rounded-[6px] px-2 py-0.5 text-[10px] font-semibold text-white ${tone}`}>{value}</span>
 }
 
 function EmptyRow({ colSpan, label }: { colSpan: number; label: string }) {
@@ -200,12 +200,12 @@ function LoadingState() {
     <div className="erp-dashboard">
       <div className="grid gap-4 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="h-[118px] animate-pulse rounded-[10px] border border-[#ecd8a9] bg-white" />
+          <div key={index} className="h-[96px] animate-pulse rounded-[10px] border border-[var(--border-subtle)] bg-white" />
         ))}
       </div>
       <div className="grid gap-4 xl:grid-cols-12">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="h-[310px] animate-pulse rounded-[10px] border border-[#ecd8a9] bg-white xl:col-span-6" />
+          <div key={index} className="h-[280px] animate-pulse rounded-[10px] border border-[var(--border-subtle)] bg-white xl:col-span-6" />
         ))}
       </div>
     </div>
@@ -225,7 +225,7 @@ export function DashboardPage() {
   if (isError || !data) {
     return (
       <div className="erp-panel">
-        <h1 className="text-[16px] font-extrabold text-[#111827]">Dashboard unavailable</h1>
+        <h1 className="text-[16px] font-semibold text-[#111827]">Dashboard unavailable</h1>
         <p className="mt-2 text-sm text-slate-600">The dashboard could not load tenant data from the server.</p>
         <button type="button" onClick={() => refetch()} className="erp-action-primary mt-4">Retry</button>
       </div>
@@ -271,7 +271,7 @@ export function DashboardPage() {
         <section className="erp-panel">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-[16px] font-extrabold text-[#111827]">Start using Farmexa</h2>
+              <h2 className="text-[16px] font-semibold text-[#111827]">Start using Farmexa</h2>
               <p className="mt-1 text-sm text-slate-600">Finish these simple steps to make your dashboard useful.</p>
             </div>
             <button type="button" className="erp-action" onClick={() => { localStorage.setItem('farmexa_onboarding_dismissed', 'true'); window.location.reload() }}>Hide checklist</button>
@@ -281,8 +281,8 @@ export function DashboardPage() {
           </div>
           <div className="mt-4 grid gap-2 md:grid-cols-3">
             {onboardingItems.map((item) => (
-              <button key={item.label} type="button" onClick={() => navigate(item.to)} className="flex items-center gap-3 rounded-[8px] border border-[#ecd8a9] bg-white px-4 py-3 text-left text-sm font-bold text-[#111827]">
-                <span className={item.done ? 'text-emerald-600' : 'text-[#b98512]'}>{item.done ? '✓' : '○'}</span>
+              <button key={item.label} type="button" onClick={() => navigate(item.to)} className="flex items-center gap-3 rounded-[8px] border border-[var(--border-subtle)] bg-white px-4 py-3 text-left text-sm font-semibold text-[#111827]">
+                <span className={item.done ? 'text-emerald-600' : 'text-[var(--brand-primary)]'}>{item.done ? 'Done' : 'Open'}</span>
                 {item.label}
               </button>
             ))}

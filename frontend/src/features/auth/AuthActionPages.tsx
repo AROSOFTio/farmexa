@@ -16,7 +16,7 @@ function PublicShell({ title, subtitle, children }: { title: string; subtitle: s
         <div className="card w-full p-8">
           <div className="mb-8">
             <div className="text-sm font-bold uppercase tracking-[0.24em] text-brand-700">{settings.system_name}</div>
-            <h1 className="mt-3 text-3xl font-black text-ink-900">{title}</h1>
+            <h1 className="mt-3 text-2xl font-bold text-ink-900">{title}</h1>
             <p className="mt-2 text-base text-ink-500">{subtitle}</p>
           </div>
           {children}
