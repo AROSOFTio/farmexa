@@ -146,6 +146,6 @@ export interface DashboardSummary {
 // ── API Error ─────────────────────────────────────────────────
 
 export interface ApiError {
-  detail: string
+  detail: string | Array<string | { msg?: string; [key: string]: unknown }>
   errors?: { field: string; message: string }[]
 }

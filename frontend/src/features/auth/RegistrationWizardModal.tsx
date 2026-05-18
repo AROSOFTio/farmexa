@@ -52,7 +52,24 @@ const steps = [
 
 function getApiErrorMessage(error: unknown, fallback: string) {
   const axiosError = error as AxiosError<ApiError>
-  return axiosError.response?.data?.detail ?? fallback
+  const detail = axiosError.response?.data?.detail
+  if (typeof detail === 'string' && detail.trim()) return detail
+  if (Array.isArray(detail) && detail.length > 0) {
+    return detail
+      .map((item) => {
+        if (typeof item === 'string') return item
+        if (item && typeof item === 'object' && 'msg' in item) return String(item.msg)
+        return JSON.stringify(item)
+      })
+      .join(' ')
+  }
+  if (axiosError.response?.status) {
+    return `${fallback} Server returned HTTP ${axiosError.response.status}.`
+  }
+  if (axiosError.message) {
+    return `${fallback} ${axiosError.message}`
+  }
+  return fallback
 }
 
 interface RegistrationWizardModalProps {
