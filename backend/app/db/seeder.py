@@ -64,6 +64,7 @@ async def run_seed() -> None:
         try:
             await _seed_roles_and_permissions(db)
             await _seed_system_settings(db)
+            await _repair_legacy_tenant_domain_suffixes(db)
             await _seed_saas_catalog(db)
             await _backfill_tenant_staff_access(db)
             await _seed_admin(db)
@@ -164,8 +165,15 @@ async def _seed_system_settings(db: AsyncSession) -> None:
     settings_row = result.scalar_one_or_none()
     if settings_row:
         settings_row.platform_domain = settings.PRIMARY_PLATFORM_DOMAIN
-        if settings_row.tenant_domain_suffix == "arosoft.io":
-            settings_row.tenant_domain_suffix = settings.DEFAULT_TENANT_DOMAIN_SUFFIX
+        settings_row.tenant_domain_suffix = settings.DEFAULT_TENANT_DOMAIN_SUFFIX
+        settings_row.sender_email = settings.SMTP_FROM_EMAIL or settings_row.sender_email
+        settings_row.sender_name = settings.SMTP_FROM_NAME
+        settings_row.support_email = settings.SMTP_FROM_EMAIL or settings_row.support_email
+        settings_row.smtp_host = settings.SMTP_HOST
+        settings_row.smtp_port = settings.SMTP_PORT
+        settings_row.smtp_username = settings.SMTP_USERNAME
+        settings_row.smtp_password = settings.SMTP_PASSWORD
+        settings_row.smtp_use_tls = settings.SMTP_USE_TLS
         settings_row.cloudflare_api_token = settings.CLOUDFLARE_API_TOKEN
         settings_row.cloudflare_zone_id = settings.CLOUDFLARE_ZONE_ID
         settings_row.tenant_domain_target_ip = settings.TENANT_DNS_TARGET_VALUE or settings.TENANT_DOMAIN_TARGET_IP
@@ -196,6 +204,56 @@ async def _seed_system_settings(db: AsyncSession) -> None:
             enable_automatic_ssl_provisioning=settings.ENABLE_AUTOMATIC_SSL_PROVISIONING,
         )
     )
+
+
+async def _repair_legacy_tenant_domain_suffixes(db: AsyncSession) -> None:
+    from app.models.tenant import DomainStatus, TenantDomain
+    from app.services.cloudflare_service import create_tenant_dns_record
+
+    old_suffix = ".farmexa.arosoft.io"
+    new_suffix = f".{settings.DEFAULT_TENANT_DOMAIN_SUFFIX.strip().lower()}"
+    if new_suffix == old_suffix:
+        return
+
+    result = await db.execute(select(TenantDomain).where(TenantDomain.normalized_host.like(f"%{old_suffix}")))
+    legacy_domains = list(result.scalars().all())
+    if not legacy_domains:
+        return
+
+    existing_hosts_result = await db.execute(select(TenantDomain.normalized_host))
+    existing_hosts = {host for (host,) in existing_hosts_result.all()}
+
+    for domain in legacy_domains:
+        new_host = f"{domain.normalized_host.removesuffix(old_suffix)}{new_suffix}"
+        if new_host in existing_hosts:
+            logger.warning("Skipping legacy tenant domain repair because %s already exists.", new_host)
+            continue
+
+        logger.info("Updating tenant domain %s to %s.", domain.host, new_host)
+        domain.host = new_host
+        domain.normalized_host = new_host
+        domain.cloudflare_record_id = None
+        domain.cloudflare_provision_status = None
+        domain.cloudflare_last_error = None
+        domain.last_error = None
+        domain.last_checked_at = datetime.now(UTC)
+
+        dns_result = await create_tenant_dns_record(new_host)
+        if dns_result.ok:
+            domain.status = DomainStatus.ACTIVE
+            domain.dns_verified_at = datetime.now(UTC)
+            domain.activated_at = datetime.now(UTC)
+            domain.cloudflare_record_id = dns_result.record_id
+            domain.cloudflare_provision_status = dns_result.status
+            domain.cloudflare_provisioned_at = datetime.now(UTC)
+            domain.verification_target = dns_result.target
+        else:
+            domain.status = DomainStatus.FAILED
+            domain.cloudflare_provision_status = dns_result.status
+            domain.cloudflare_last_error = dns_result.message
+            domain.last_error = dns_result.message
+
+        existing_hosts.add(new_host)
 
 
 async def _backfill_tenant_staff_access(db: AsyncSession) -> None:

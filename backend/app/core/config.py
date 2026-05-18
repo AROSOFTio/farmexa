@@ -55,8 +55,8 @@ class Settings(BaseSettings):
 
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost,http://localhost:5173"
     PRIMARY_PLATFORM_DOMAIN: str = "farmexa.arosoft.io"
-    PLATFORM_HOSTS: str = "farmexa.arosoft.io,localhost,127.0.0.1"
-    DEFAULT_TENANT_DOMAIN_SUFFIX: str = "farmexa.arosoft.io"
+    PLATFORM_HOSTS: str = "farmexa.arosoft.io,arosoft.io,localhost,127.0.0.1"
+    DEFAULT_TENANT_DOMAIN_SUFFIX: str = "arosoft.io"
     CLOUDFLARE_ZONE_NAME: str = "arosoft.io"
     TENANT_DNS_TARGET_TYPE: str = "A"
     TENANT_DNS_TARGET_VALUE: str | None = None

@@ -18,7 +18,7 @@ from app.services.erp_rules import (
 def test_slug_generation_uses_clean_farm_name():
     assert DeveloperAdminService._slugify("Ngali Poultry Farm") == "ngali"
     assert DeveloperAdminService._slugify("Golden Farm Ltd") == "golden"
-    assert DeveloperAdminService(None)._default_platform_domain("ngali") == "ngali.farmexa.arosoft.io"
+    assert DeveloperAdminService(None)._default_platform_domain("ngali") == "ngali.arosoft.io"
 
 
 def test_full_trial_plan_includes_every_module():
@@ -104,7 +104,7 @@ async def test_cloudflare_dns_reuses_matching_record(monkeypatch):
 
     monkeypatch.setattr(cloudflare_service.httpx, "AsyncClient", FakeClient)
 
-    result = await create_tenant_dns_record("ngali.farmexa.arosoft.io")
+    result = await create_tenant_dns_record("ngali.arosoft.io")
 
     assert result.ok is True
     assert result.record_id == "record-1"

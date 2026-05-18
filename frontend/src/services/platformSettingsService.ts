@@ -22,7 +22,7 @@ export const defaultPlatformSettings: PublicSystemSettings = {
   primary_color: '#d6a62e',
   secondary_color: '#0b1018',
   platform_domain: 'farmexa.arosoft.io',
-  tenant_domain_suffix: 'farmexa.arosoft.io',
+  tenant_domain_suffix: 'arosoft.io',
   sender_email: 'farmexa@arosoft.io',
   sender_name: 'Farmexa',
   support_email: 'farmexa@arosoft.io',
