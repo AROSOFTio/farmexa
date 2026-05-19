@@ -113,19 +113,6 @@ services:
     networks:
       - perp_net
 
-  nginx:
-    image: nginx:alpine
-    container_name: perp_nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - backend
-      - frontend
-    networks:
-      - perp_net
 
 volumes:
   postgres_data:
