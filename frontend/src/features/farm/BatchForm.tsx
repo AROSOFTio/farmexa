@@ -102,8 +102,8 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
     },
     onSuccess: () => {
       toast.success('Batch created successfully')
-      queryClient.invalidateQueries({ queryKey: ['farm-batches'] })
-      queryClient.invalidateQueries({ queryKey: ['farm-houses'] })
+      queryClient.refetchQueries({ queryKey: ['farm-batches'] })
+      queryClient.refetchQueries({ queryKey: ['farm-houses'] })
       onSuccess?.()
     },
     onError: (error: any) => {

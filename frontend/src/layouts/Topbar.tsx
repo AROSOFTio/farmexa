@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Building2, ChevronDown, CreditCard, HelpCircle, LogOut, Menu, Search, UserRound } from 'lucide-react'
+import { Bell, Bird, Building2, ChevronDown, CreditCard, DollarSign, Drumstick, HelpCircle, LogOut, Menu, Package, Scale, Search, ShoppingCart, Skull, Syringe, UserRound, Wheat } from 'lucide-react'
 import { clsx } from 'clsx'
 import { toast } from 'sonner'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -27,6 +27,16 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   const [profileOpen, setProfileOpen] = useState(false)
   const [farmOpen, setFarmOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [quickOpen, setQuickOpen] = useState(false)
+  const quickTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleQuickEnter = () => {
+    if (quickTimeout.current) clearTimeout(quickTimeout.current)
+    setQuickOpen(true)
+  }
+  const handleQuickLeave = () => {
+    quickTimeout.current = setTimeout(() => setQuickOpen(false), 120)
+  }
   const initials = useMemo(() => {
     const source = user?.full_name || user?.email || 'NF'
     return source.split(/[ @.]/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
@@ -105,6 +115,57 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
           </div>
         ) : null}
       </div>
+
+      {!isDevAdmin ? (
+        <div className="relative hidden md:block" onMouseEnter={handleQuickEnter} onMouseLeave={handleQuickLeave}>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 rounded-[7px] border border-transparent bg-[var(--brand-primary)] px-3 py-1.5 text-[12px] font-extrabold text-[#111827] hover:bg-[#e1b23b] transition-colors"
+          >
+            ⚡ Quick
+            <ChevronDown className={clsx('h-3 w-3 transition-transform', quickOpen && 'rotate-180')} />
+          </button>
+          {quickOpen ? (
+            <div className="absolute left-0 top-full z-40 mt-1.5 w-56 overflow-hidden rounded-[10px] border border-[#e8dcc3] bg-white shadow-xl">
+              <div className="border-b border-[#efe5d2] px-4 py-2">
+                <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Farm Operations</div>
+              </div>
+              {[
+                { label: 'New Batch', path: '/farm/batches', icon: Bird },
+                { label: 'Record Mortality', path: '/farm/mortality', icon: Skull },
+                { label: 'Log Vaccination', path: '/farm/vaccination', icon: Syringe },
+                { label: 'Log Growth / Weight', path: '/farm/growth', icon: Scale },
+                { label: 'Log Feed Usage', path: '/farm/feed-usage', icon: Wheat },
+              ].map((item) => {
+                const Icon = item.icon
+                return (
+                  <button key={item.path} type="button" onClick={() => { setQuickOpen(false); navigate(item.path) }} className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[13px] font-semibold text-[#111827] hover:bg-[#fff7e2]">
+                    <Icon className="h-4 w-4 text-[#b98512] shrink-0" />
+                    {item.label}
+                  </button>
+                )
+              })}
+              <div className="border-t border-[#efe5d2] px-4 py-2">
+                <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Sales & Finance</div>
+              </div>
+              {[
+                { label: 'New Sale / Invoice', path: '/sales/invoices', icon: ShoppingCart },
+                { label: 'New Expense', path: '/finance/expenses', icon: DollarSign },
+                { label: 'Slaughter Record', path: '/slaughter', icon: Drumstick },
+                { label: 'Inventory', path: '/inventory', icon: Package },
+              ].map((item) => {
+                const Icon = item.icon
+                return (
+                  <button key={item.path} type="button" onClick={() => { setQuickOpen(false); navigate(item.path) }} className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[13px] font-semibold text-[#111827] hover:bg-[#fff7e2]">
+                    <Icon className="h-4 w-4 text-[#b98512] shrink-0" />
+                    {item.label}
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="flex-1" />
 

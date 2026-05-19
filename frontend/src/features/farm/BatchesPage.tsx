@@ -41,6 +41,7 @@ export function BatchesPage() {
   const { data: batches = [], isLoading } = useQuery({
     queryKey: ['farm-batches'],
     queryFn: () => api.get<Batch[]>('/farm/batches').then((response) => response.data),
+    refetchOnMount: 'always',
   })
 
   const filteredBatches = useMemo(() => {
