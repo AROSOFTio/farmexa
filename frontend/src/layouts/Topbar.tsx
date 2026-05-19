@@ -132,6 +132,84 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [quickOpen, setQuickOpen] = useState(false)
 
+  // Fetch compliance summary for document expiry alerts
+  const { data: complianceSummary } = useQuery({
+    queryKey: ['compliance-summary'],
+    queryFn: async () => {
+      const response = await api.get<ComplianceSummaryResponse>('/compliance/summary')
+      return response.data
+    },
+    enabled: hasPermission('farm:read'),
+  })
+
+  // Fetch ERP dashboard for aggregated alerts (low stock, slaughter outputs, etc.)
+  const { data: erpDashboard } = useQuery({
+    queryKey: ['erp-dashboard'],
+    queryFn: async () => {
+      const response = await api.get('/analytics/erp-dashboard')
+      return response.data
+    },
+    enabled: hasPermission('dashboard:read'),
+  })
+
+  // Fetch invoices for overdue alerts
+  const { data: invoices } = useQuery({
+    queryKey: ['invoices'],
+    queryFn: async () => {
+      const response = await api.get<InvoiceSummary[]>('/sales/invoices')
+      return response.data
+    },
+    enabled: hasPermission('sales:read'),
+  })
+
+  // Fetch slaughter records for pending output posting alerts
+  const { data: slaughterRecords } = useQuery({
+    queryKey: ['slaughter-records'],
+    queryFn: async () => {
+      const response = await api.get<SlaughterRecordSummary[]>('/slaughter/records')
+      return response.data
+    },
+    enabled: hasPermission('slaughter:read'),
+  })
+
+  // Calculate notification counts
+  const notificationCount = useMemo(() => {
+    let count = 0
+
+    // Compliance alerts
+    if (complianceSummary?.alerts?.length > 0) {
+      count += complianceSummary.alerts.length
+    }
+
+    // Low stock from ERP dashboard
+    if (erpDashboard?.feed_stock?.some((item: any) => item.status === 'Low stock')) {
+      count += erpDashboard.feed_stock.filter((item: any) => item.status === 'Low stock').length
+    }
+    if (erpDashboard?.slaughter_stock?.some((item: any) => item.status === 'Low stock')) {
+      count += erpDashboard.slaughter_stock.filter((item: any) => item.status === 'Low stock').length
+    }
+
+    // Overdue invoices
+    if (invoices?.some((inv) => inv.status === 'overdue')) {
+      count += invoices.filter((inv) => inv.status === 'overdue').length
+    }
+
+    // Slaughter records awaiting output posting
+    if (slaughterRecords?.some((record) => record.status === 'completed' && !record.inventory_posted_at)) {
+      count += slaughterRecords.filter((record) => record.status === 'completed' && !record.inventory_posted_at).length
+    }
+
+    // Trial expiry warning
+    if (tenant?.subscription_status === 'trial' && tenant.subscription_expiry) {
+      const daysRemaining = Math.max(Math.ceil((new Date(tenant.subscription_expiry).getTime() - Date.now()) / 86_400_000), 0)
+      if (daysRemaining <= 7) {
+        count += 1
+      }
+    }
+
+    return count
+  }, [complianceSummary, erpDashboard, invoices, slaughterRecords, tenant])
+
   const searchShortcut = useMemo(() => {
     if (typeof navigator === 'undefined') return 'Ctrl K'
     return /Mac|iPhone|iPad|iPod/i.test(navigator.platform) ? '⌘ K' : 'Ctrl K'
@@ -236,12 +314,12 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
                 <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Farm Operations</div>
               </div>
               {[
-                { label: 'New Batch', path: '/farm/batches', icon: Bird },
-                { label: 'Record Mortality', path: '/farm/mortality', icon: Skull },
-                { label: 'Log Vaccination', path: '/farm/vaccination', icon: Syringe },
-                { label: 'Log Growth / Weight', path: '/farm/growth', icon: Scale },
-                { label: 'Log Feed Usage', path: '/farm/feed-usage', icon: Wheat },
-              ].map((item) => {
+                { label: 'New Batch', path: '/farm/batches', icon: Bird, permission: 'farm:write', module: 'farm' },
+                { label: 'Record Mortality', path: '/farm/mortality', icon: Skull, permission: 'farm:write', module: 'farm' },
+                { label: 'Log Vaccination', path: '/farm/vaccination', icon: Syringe, permission: 'farm:write', module: 'farm' },
+                { label: 'Log Growth / Weight', path: '/farm/growth', icon: Scale, permission: 'farm:write', module: 'farm' },
+                { label: 'Log Feed Usage', path: '/farm/feed-usage', icon: Wheat, permission: 'farm:write', module: 'farm' },
+              ].filter((item) => hasPermission(item.permission) && hasModuleAccess(item.module)).map((item) => {
                 const Icon = item.icon
                 return (
                   <button key={item.path} type="button" onClick={() => { setQuickOpen(false); navigate(item.path) }} className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[13px] font-semibold text-[#111827] hover:bg-[#fff7e2]">
@@ -254,11 +332,11 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
                 <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Sales & Finance</div>
               </div>
               {[
-                { label: 'New Sale / Invoice', path: '/sales/invoices', icon: ShoppingCart },
-                { label: 'New Expense', path: '/finance/expenses', icon: DollarSign },
-                { label: 'Slaughter Record', path: '/slaughter', icon: Drumstick },
-                { label: 'Inventory', path: '/inventory', icon: Package },
-              ].map((item) => {
+                { label: 'New Sale / Invoice', path: '/sales/invoices', icon: ShoppingCart, permission: 'sales:write', module: 'sales' },
+                { label: 'New Expense', path: '/finance/expenses', icon: DollarSign, permission: 'finance:write', module: 'finance' },
+                { label: 'Slaughter Record', path: '/slaughter', icon: Drumstick, permission: 'slaughter:write', module: 'slaughter' },
+                { label: 'Inventory', path: '/inventory', icon: Package, permission: 'inventory:read', module: 'inventory' },
+              ].filter((item) => hasPermission(item.permission) && hasModuleAccess(item.module)).map((item) => {
                 const Icon = item.icon
                 return (
                   <button key={item.path} type="button" onClick={() => { setQuickOpen(false); navigate(item.path) }} className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[13px] font-semibold text-[#111827] hover:bg-[#fff7e2]">
@@ -311,7 +389,9 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
           aria-label="Notifications"
         >
           <Bell className="h-4 w-4" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[var(--brand-primary)]" />
+          {notificationCount > 0 && (
+            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[var(--brand-primary)]" />
+          )}
         </button>
         {notificationsOpen ? (
           <>
@@ -319,16 +399,133 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
             <div className="absolute right-0 top-full z-40 mt-2 w-72 overflow-hidden rounded-[10px] border border-[#e8dcc3] bg-white shadow-xl">
               <div className="border-b border-[#efe5d2] px-4 py-3">
                 <div className="text-[13px] font-extrabold text-[#111827]">Notifications</div>
-                <div className="text-[12px] text-slate-500">Tenant alerts and trial messages.</div>
+                <div className="text-[12px] text-slate-500">{notificationCount > 0 ? `${notificationCount} alert${notificationCount !== 1 ? 's' : ''}` : 'No new alerts'}</div>
               </div>
-              <button type="button" onClick={() => { setNotificationsOpen(false); navigate('/compliance/alerts') }} className="block w-full px-4 py-3 text-left hover:bg-[#fff7e2]">
-                <div className="text-[13px] font-bold text-[#111827]">Compliance alerts</div>
-                <div className="text-[12px] text-slate-500">Review documents due for renewal.</div>
-              </button>
-              <button type="button" onClick={() => { setNotificationsOpen(false); navigate('/subscription/upgrade') }} className="block w-full px-4 py-3 text-left hover:bg-[#fff7e2]">
-                <div className="text-[13px] font-bold text-[#111827]">{trialLabel ?? 'Subscription'}</div>
-                <div className="text-[12px] text-slate-500">Open billing and subscription options.</div>
-              </button>
+              {notificationCount === 0 ? (
+                <div className="px-4 py-8 text-center text-[12px] text-slate-500">
+                  No alerts at this time
+                </div>
+              ) : (
+                <>
+                  {complianceSummary?.alerts?.length > 0 && (
+                    <>
+                      <div className="border-t border-[#efe5d2] px-4 py-2">
+                        <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Compliance</div>
+                      </div>
+                      {complianceSummary.alerts.slice(0, 3).map((alert) => (
+                        <button
+                          key={alert.document_id}
+                          type="button"
+                          onClick={() => { setNotificationsOpen(false); navigate('/compliance') }}
+                          className="block w-full px-4 py-3 text-left hover:bg-[#fff7e2]"
+                        >
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[13px] font-bold text-[#111827] truncate">{alert.title}</div>
+                              <div className="text-[12px] text-slate-500">{alert.days_to_expiry !== null ? `Expires in ${alert.days_to_expiry} days` : 'Expired'}</div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {invoices?.some((inv) => inv.status === 'overdue') && (
+                    <>
+                      <div className="border-t border-[#efe5d2] px-4 py-2">
+                        <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Finance</div>
+                      </div>
+                      {invoices.filter((inv) => inv.status === 'overdue').slice(0, 3).map((inv) => (
+                        <button
+                          key={inv.id}
+                          type="button"
+                          onClick={() => { setNotificationsOpen(false); navigate('/sales/invoices') }}
+                          className="block w-full px-4 py-3 text-left hover:bg-[#fff7e2]"
+                        >
+                          <div className="flex items-start gap-2">
+                            <DollarSign className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[13px] font-bold text-[#111827] truncate">{inv.invoice_number}</div>
+                              <div className="text-[12px] text-slate-500">Overdue • {inv.customer?.name || 'Customer'}</div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {slaughterRecords?.some((record) => record.status === 'completed' && !record.inventory_posted_at) && (
+                    <>
+                      <div className="border-t border-[#efe5d2] px-4 py-2">
+                        <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Slaughter</div>
+                      </div>
+                      {slaughterRecords.filter((record) => record.status === 'completed' && !record.inventory_posted_at).slice(0, 3).map((record) => (
+                        <button
+                          key={record.id}
+                          type="button"
+                          onClick={() => { setNotificationsOpen(false); navigate('/slaughter') }}
+                          className="block w-full px-4 py-3 text-left hover:bg-[#fff7e2]"
+                        >
+                          <div className="flex items-start gap-2">
+                            <Drumstick className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[13px] font-bold text-[#111827] truncate">{record.batch?.batch_number || 'Batch'}</div>
+                              <div className="text-[12px] text-slate-500">Awaiting output posting</div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {(erpDashboard?.feed_stock?.some((item: any) => item.status === 'Low stock') || erpDashboard?.slaughter_stock?.some((item: any) => item.status === 'Low stock')) && (
+                    <>
+                      <div className="border-t border-[#efe5d2] px-4 py-2">
+                        <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Inventory</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setNotificationsOpen(false); navigate('/inventory') }}
+                        className="block w-full px-4 py-3 text-left hover:bg-[#fff7e2]"
+                      >
+                        <div className="flex items-start gap-2">
+                          <Package className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[13px] font-bold text-[#111827]">Low stock items</div>
+                            <div className="text-[12px] text-slate-500">
+                              {[
+                                ...(erpDashboard?.feed_stock?.filter((item: any) => item.status === 'Low stock') || []),
+                                ...(erpDashboard?.slaughter_stock?.filter((item: any) => item.status === 'Low stock') || []),
+                              ].length} item{[
+                                ...(erpDashboard?.feed_stock?.filter((item: any) => item.status === 'Low stock') || []),
+                                ...(erpDashboard?.slaughter_stock?.filter((item: any) => item.status === 'Low stock') || []),
+                              ].length !== 1 ? 's' : ''} below reorder level
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    </>
+                  )}
+                  {tenant?.subscription_status === 'trial' && tenant.subscription_expiry && (
+                    <>
+                      <div className="border-t border-[#efe5d2] px-4 py-2">
+                        <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Subscription</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setNotificationsOpen(false); navigate('/subscription/upgrade') }}
+                        className="block w-full px-4 py-3 text-left hover:bg-[#fff7e2]"
+                      >
+                        <div className="flex items-start gap-2">
+                          <CreditCard className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[13px] font-bold text-[#111827]">{trialLabel}</div>
+                            <div className="text-[12px] text-slate-500">Upgrade to continue using all features</div>
+                          </div>
+                        </div>
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
             </div>
           </>
         ) : null}
