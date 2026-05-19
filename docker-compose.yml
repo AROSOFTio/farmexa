@@ -107,7 +107,7 @@ services:
     container_name: perp_frontend
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "4002:80"
     depends_on:
       - backend
     networks:
