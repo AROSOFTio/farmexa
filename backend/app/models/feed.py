@@ -45,11 +45,17 @@ class FeedItem(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(150), index=True)
     category_id: Mapped[int] = mapped_column(ForeignKey("feed_categories.id"))
+    stock_item_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("stock_items.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     unit: Mapped[str] = mapped_column(String(50), default="kg")
     current_stock: Mapped[float] = mapped_column(Float, default=0.0)
     reorder_threshold: Mapped[float] = mapped_column(Float, default=0.0)
 
     category: Mapped["FeedCategory"] = relationship("FeedCategory", back_populates="items")
+    stock_item: Mapped[Optional["StockItem"]] = relationship("StockItem", foreign_keys=[stock_item_id])
     purchases: Mapped[list["FeedPurchaseItem"]] = relationship("FeedPurchaseItem", back_populates="feed_item")
     consumptions: Mapped[list["FeedConsumption"]] = relationship("FeedConsumption", back_populates="feed_item")
 

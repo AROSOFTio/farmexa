@@ -2,10 +2,12 @@ import logging
 import re
 
 from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.farm import BatchStatus, HouseStatus, PoultryHouse, PoultryHouseSection
+from app.models.inventory import StockCategory, StockItem
 from app.models.settings import ReferenceDataType
 from app.modules.farm.repository import FarmRepository
 from app.modules.farm.schemas import (
@@ -28,6 +30,7 @@ from app.modules.farm.schemas import (
     VaccinationLogOut,
     VaccinationLogUpdate,
 )
+from app.services.inventory_coordinator import InventoryCoordinator, ReferenceType
 
 logger = logging.getLogger("farmexa.farm")
 
@@ -334,7 +337,47 @@ class FarmService:
             quantity=data.initial_quantity,
         )
         try:
-            batch = await self.repo.create_batch(data.model_copy(update={"active_quantity": data.initial_quantity}))
+            # Create or find stock item for live birds
+            stock_item_name = f"Live Birds - {data.breed}"
+            result = await self.db.execute(
+                select(StockItem).where(StockItem.name == stock_item_name, StockItem.category == StockCategory.FINISHED_PRODUCT)
+            )
+            stock_item = result.scalar_one_or_none()
+            
+            if not stock_item:
+                stock_item = StockItem(
+                    name=stock_item_name,
+                    sku=f"BIRDS-{data.breed.upper()}",
+                    category=StockCategory.FINISHED_PRODUCT,
+                    unit_of_measure="birds",
+                    current_quantity=0.0,
+                    reorder_level=0.0,
+                    unit_price=0.0,
+                    average_cost=0.0,
+                    description=f"Live poultry birds - {data.breed}",
+                    is_active=True,
+                )
+                self.db.add(stock_item)
+                await self.db.flush()
+            
+            # Create batch with stock item linkage
+            batch_data = data.model_copy(update={"active_quantity": data.initial_quantity})
+            batch_data_dict = batch_data.model_dump()
+            batch_data_dict["stock_item_id"] = stock_item.id
+            batch = await self.repo.create_batch(batch_data)
+            await self.db.flush()
+            
+            # Record initial stock movement
+            coordinator = InventoryCoordinator(self.db)
+            await coordinator.record_in_async(
+                item_id=stock_item.id,
+                quantity=float(data.initial_quantity),
+                reference_type=ReferenceType.BATCH_ARRIVAL.value,
+                reference_id=batch.id,
+                unit_cost=None,  # Cost can be added later
+                notes=f"Initial batch arrival: {data.batch_number} ({data.breed})",
+            )
+            
             await self.db.commit()
             batch = await self.repo.get_batch(batch.id)
             return self._serialize_batch(batch)

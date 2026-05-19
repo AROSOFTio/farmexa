@@ -72,6 +72,11 @@ class Batch(Base):
         nullable=True,
         index=True,
     )
+    stock_item_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("stock_items.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     breed: Mapped[str] = mapped_column(String(100))
     source: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     arrival_date: Mapped[date] = mapped_column(Date)
@@ -81,6 +86,7 @@ class Batch(Base):
 
     house: Mapped["PoultryHouse"] = relationship("PoultryHouse", back_populates="batches")
     section: Mapped[Optional["PoultryHouseSection"]] = relationship("PoultryHouseSection", back_populates="batches")
+    stock_item: Mapped[Optional["StockItem"]] = relationship("StockItem", foreign_keys=[stock_item_id])
     mortality_logs: Mapped[list["MortalityLog"]] = relationship("MortalityLog", back_populates="batch", cascade="all, delete-orphan")
     vaccinations: Mapped[list["VaccinationLog"]] = relationship("VaccinationLog", back_populates="batch", cascade="all, delete-orphan")
     growth_logs: Mapped[list["GrowthLog"]] = relationship("GrowthLog", back_populates="batch", cascade="all, delete-orphan")

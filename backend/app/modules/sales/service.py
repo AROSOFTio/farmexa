@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.models.inventory import MovementType, StockItem, StockMovement
 from app.models.sales import Customer, Invoice, InvoiceBalanceReminder, InvoiceStatus, Order, OrderItem, Payment
 from app.models.settings import EmailLog
+from app.services.inventory_coordinator import InventoryCoordinator, ReferenceType
 
 from . import schemas
 
@@ -178,21 +179,14 @@ class SalesService:
                 )
             )
 
-            previous_quantity = stock.current_quantity
-            stock.current_quantity = previous_quantity - item.quantity
-
-            db.add(
-                StockMovement(
-                    item_id=stock.id,
-                    movement_type=MovementType.OUT,
-                    quantity=item.quantity,
-                    previous_quantity=previous_quantity,
-                    new_quantity=stock.current_quantity,
-                    reference_type="sale_order",
-                    reference_id=db_order.id,
-                    unit_cost=stock.average_cost,
-                    notes=f"Order {db_order.id}",
-                )
+            # Use InventoryCoordinator for stock movement
+            coordinator = InventoryCoordinator(db)
+            coordinator.record_out(
+                item_id=stock.id,
+                quantity=item.quantity,
+                reference_type=ReferenceType.SALE.value,
+                reference_id=db_order.id,
+                notes=f"Order {db_order.id}",
             )
 
         db_order.total_amount = total_amount

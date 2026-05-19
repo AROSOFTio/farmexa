@@ -15,6 +15,7 @@ from app.models.slaughter import (
     SlaughterRecord,
     SlaughterStatus,
 )
+from app.services.inventory_coordinator import InventoryCoordinator, ReferenceType
 
 from . import schemas
 
@@ -146,6 +147,28 @@ class SlaughterService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Batch active quantity is lower than the slaughtered bird count",
                 )
+            
+            # Use InventoryCoordinator for atomic stock movement
+            coordinator = InventoryCoordinator(db)
+            
+            # Record OUT movement for live birds if batch has stock_item_id
+            if batch.stock_item_id:
+                try:
+                    coordinator.record_out(
+                        item_id=batch.stock_item_id,
+                        quantity=float(db_record.live_birds_count),
+                        reference_type=ReferenceType.SLAUGHTER_INPUT.value,
+                        reference_id=db_record.id,
+                        notes=f"Slaughter input: {db_record.live_birds_count} birds from batch {batch.batch_number}",
+                    )
+                except HTTPException as e:
+                    db.rollback()
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Cannot record stock movement for slaughter: {e.detail}"
+                    )
+            
+            # Reduce batch active quantity
             batch.active_quantity -= db_record.live_birds_count
             if batch.active_quantity == 0:
                 batch.status = BatchStatus.SLAUGHTERED
@@ -184,6 +207,25 @@ class SlaughterService:
         if not item:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock item not found")
 
+        # Use InventoryCoordinator for atomic stock movement
+        coordinator = InventoryCoordinator(db)
+        
+        try:
+            coordinator.record_in(
+                item_id=item.id,
+                quantity=output.quantity,
+                reference_type=ReferenceType.SLAUGHTER_OUTPUT.value,
+                reference_id=record_id,
+                unit_cost=output.unit_cost,
+                notes=f"Slaughter output from record {record_id} ({output.output_type})",
+            )
+        except HTTPException as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot record stock movement for slaughter output: {e.detail}"
+            )
+
         total_cost = output.quantity * output.unit_cost if output.unit_cost is not None else None
         db_output = SlaughterOutput(
             tenant_id=tenant_id,
@@ -195,28 +237,6 @@ class SlaughterService:
             total_cost=total_cost,
         )
         db.add(db_output)
-
-        previous_quantity = item.current_quantity
-        item.current_quantity = previous_quantity + output.quantity
-
-        if output.unit_cost is not None and item.current_quantity > 0:
-            carried_value = previous_quantity * item.average_cost
-            received_value = output.quantity * output.unit_cost
-            item.average_cost = (carried_value + received_value) / item.current_quantity
-
-        db.add(
-            StockMovement(
-                item_id=item.id,
-                movement_type=MovementType.IN,
-                quantity=output.quantity,
-                previous_quantity=previous_quantity,
-                new_quantity=item.current_quantity,
-                reference_type="slaughter_output",
-                reference_id=record_id,
-                unit_cost=output.unit_cost,
-                notes=f"Slaughter output from record {record_id} ({output.output_type})",
-            )
-        )
 
         db_record.inventory_posted_at = datetime.now(timezone.utc)
         self._write_audit(

@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from app.models.feed import FeedCategory, FeedFormulation, FeedFormulationIngredient, FeedItem, FeedProductionBatch
+from app.models.inventory import StockCategory, StockItem
 from app.modules.feed.repository import FeedRepository
 from app.modules.feed.schemas import (
     SupplierCreate, SupplierUpdate, SupplierOut,
@@ -17,6 +18,7 @@ from app.modules.feed.schemas import (
     FeedFormulationCreate, FeedFormulationOut, FeedProductionCreate, FeedProductionOut
 )
 from app.modules.farm.repository import FarmRepository
+from app.services.inventory_coordinator import InventoryCoordinator, ReferenceType
 
 class FeedService:
     def __init__(self, db: AsyncSession):
@@ -90,6 +92,8 @@ class FeedService:
         if not supplier:
             raise HTTPException(status_code=400, detail="Invalid supplier_id")
 
+        coordinator = InventoryCoordinator(self.db)
+        
         purchase_data = data.model_dump(exclude={"items"})
         items_data = []
         for item in data.items:
@@ -132,6 +136,53 @@ class FeedService:
                         )
                     )
                 item_payload["feed_item_id"] = feed_item.id
+            
+            # Link or create StockItem for feed item
+            feed_item = await self.repo.get_item(item_payload["feed_item_id"])
+            if not feed_item.stock_item_id:
+                # Create corresponding StockItem
+                stock_item_name = feed_item.name
+                stock_item_result = await self.db.execute(
+                    select(StockItem).where(StockItem.name == stock_item_name)
+                )
+                stock_item = stock_item_result.scalar_one_or_none()
+                
+                if not stock_item:
+                    stock_item = StockItem(
+                        name=stock_item_name,
+                        sku=f"FEED-{feed_item.name.upper()[:20]}",
+                        category=StockCategory.RAW_MATERIAL,
+                        unit_of_measure=feed_item.unit,
+                        current_quantity=0.0,
+                        reorder_level=feed_item.reorder_threshold,
+                        unit_price=0.0,
+                        average_cost=0.0,
+                        description=f"Feed item: {feed_item.name}",
+                        is_active=True,
+                    )
+                    self.db.add(stock_item)
+                    await self.db.flush()
+                
+                feed_item.stock_item_id = stock_item.id
+                await self.db.flush()
+            
+            # Record stock movement for purchase
+            try:
+                await coordinator.record_in_async(
+                    item_id=feed_item.stock_item_id,
+                    quantity=item.quantity,
+                    reference_type=ReferenceType.FEED_PURCHASE.value,
+                    reference_id=None,  # Will set after purchase creation
+                    unit_cost=item.unit_price,
+                    notes=f"Feed purchase from {supplier.name}",
+                )
+            except HTTPException as e:
+                await self.db.rollback()
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot record stock movement for feed purchase: {e.detail}"
+                )
+            
             items_data.append(item_payload)
 
         purchase = await self.repo.create_purchase(purchase_data, items_data)
@@ -153,8 +204,28 @@ class FeedService:
         if not feed_item:
             raise HTTPException(status_code=400, detail="Invalid feed_item_id")
             
-        if feed_item.current_stock < data.quantity:
-            raise HTTPException(status_code=400, detail="Insufficient feed stock")
+        # Use InventoryCoordinator for stock movement if feed_item has stock_item_id
+        if feed_item.stock_item_id:
+            coordinator = InventoryCoordinator(self.db)
+            try:
+                await coordinator.record_out_async(
+                    item_id=feed_item.stock_item_id,
+                    quantity=data.quantity,
+                    reference_type=ReferenceType.FEED_CONSUMPTION.value,
+                    reference_id=data.batch_id,
+                    notes=f"Feed consumption by batch {batch.batch_number}",
+                )
+            except HTTPException as e:
+                await self.db.rollback()
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot record stock movement for feed consumption: {e.detail}"
+                )
+        else:
+            # Fallback to legacy current_stock check if not yet linked
+            if feed_item.current_stock < data.quantity:
+                raise HTTPException(status_code=400, detail="Insufficient feed stock")
+            feed_item.current_stock -= data.quantity
 
         consumption = await self.repo.create_consumption(data)
         await self.db.commit()
@@ -227,13 +298,23 @@ class FeedService:
         if not formulation:
             raise HTTPException(status_code=404, detail="Feed formulation not found.")
 
+        coordinator = InventoryCoordinator(self.db)
+        
+        # Calculate required ingredients and validate stock
         deductions: list[tuple[FeedItem, float]] = []
         for ingredient in formulation.ingredients:
             required_kg = data.output_quantity_kg * (ingredient.percentage / 100)
             feed_item = ingredient.feed_item
-            if feed_item.current_stock < required_kg:
-                raise HTTPException(status_code=400, detail=f"Insufficient raw material: {feed_item.name}")
-            deductions.append((feed_item, required_kg))
+            
+            # Use InventoryCoordinator if feed_item has stock_item_id
+            if feed_item.stock_item_id:
+                # Stock will be validated during record_out_async
+                deductions.append((feed_item, required_kg))
+            else:
+                # Fallback to legacy current_stock check
+                if feed_item.current_stock < required_kg:
+                    raise HTTPException(status_code=400, detail=f"Insufficient raw material: {feed_item.name}")
+                deductions.append((feed_item, required_kg))
 
         category_result = await self.db.execute(select(FeedCategory).where(FeedCategory.name == "Finished Feed"))
         finished_category = category_result.scalar_one_or_none()
@@ -256,10 +337,28 @@ class FeedService:
             self.db.add(output_item)
             await self.db.flush()
 
+        # Record stock movements for ingredients (OUT movements)
         for feed_item, required_kg in deductions:
-            feed_item.current_stock -= required_kg
-        output_item.current_stock += data.output_quantity_kg
+            if feed_item.stock_item_id:
+                try:
+                    await coordinator.record_out_async(
+                        item_id=feed_item.stock_item_id,
+                        quantity=required_kg,
+                        reference_type=ReferenceType.FEED_PRODUCTION_INPUT.value,
+                        reference_id=None,  # Will set after batch creation
+                        notes=f"Feed production input: {feed_item.name}",
+                    )
+                except HTTPException as e:
+                    await self.db.rollback()
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Cannot record stock movement for production input: {e.detail}"
+                    )
+            else:
+                # Fallback to legacy current_stock update
+                feed_item.current_stock -= required_kg
 
+        # Create production batch
         batch = FeedProductionBatch(
             batch_number=f"FPB-{uuid.uuid4().hex[:10].upper()}",
             formulation_id=formulation.id,
@@ -269,6 +368,29 @@ class FeedService:
             notes=data.notes,
         )
         self.db.add(batch)
+        await self.db.flush()
+
+        # Record stock movement for output (IN movement)
+        if output_item.stock_item_id:
+            try:
+                await coordinator.record_in_async(
+                    item_id=output_item.stock_item_id,
+                    quantity=data.output_quantity_kg,
+                    reference_type=ReferenceType.FEED_PRODUCTION_OUTPUT.value,
+                    reference_id=batch.id,
+                    unit_cost=formulation.cost_per_kg,
+                    notes=f"Feed production output: {output_name}",
+                )
+            except HTTPException as e:
+                await self.db.rollback()
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot record stock movement for production output: {e.detail}"
+                )
+        else:
+            # Fallback to legacy current_stock update
+            output_item.current_stock += data.output_quantity_kg
+
         await self.db.commit()
         await self.db.refresh(batch)
         return FeedProductionOut.model_validate(batch)
