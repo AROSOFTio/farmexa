@@ -270,9 +270,15 @@ def _ensure_schema_ready_sync(database_name: str) -> sessionmaker[Session]:
 
 
 def _apply_runtime_schema_patches(engine: Engine) -> None:
+    Base.metadata.tables["stock_items"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["stock_movements"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["reference_items"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["poultry_houses"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["poultry_house_sections"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["batches"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["mortality_logs"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["vaccination_logs"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["growth_logs"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["feed_formulations"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["feed_formulation_ingredients"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["feed_production_batches"].create(bind=engine, checkfirst=True)
@@ -650,11 +656,13 @@ async def _ensure_operational_database_ready(current_user: User) -> str:
 
         database_name = tenant.operational_db_name or operational_db_name_for_tenant(tenant.id)
         if tenant.operational_db_status == "ready" and _is_user_already_synced(database_name, int(current_user.id)):
+            await run_in_threadpool(_ensure_schema_ready_sync, database_name)
             return database_name
         if tenant.operational_db_status == "provisioning" and tenant.operational_db_name == database_name:
             if await _wait_for_provisioned_database(tenant_id, database_name):
                 await central_db.refresh(tenant)
                 if tenant.operational_db_status == "ready" and _is_user_already_synced(database_name, int(current_user.id)):
+                    await run_in_threadpool(_ensure_schema_ready_sync, database_name)
                     return database_name
         if tenant.operational_db_status != "ready" or tenant.operational_db_name != database_name:
             tenant.operational_db_name = database_name

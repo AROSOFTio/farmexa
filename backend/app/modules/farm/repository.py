@@ -30,7 +30,8 @@ class FarmRepository:
 
     def _batch_query(self):
         return select(Batch).options(
-            selectinload(Batch.house).selectinload(PoultryHouse.sections),
+            selectinload(Batch.house).selectinload(PoultryHouse.batches),
+            selectinload(Batch.house).selectinload(PoultryHouse.sections).selectinload(PoultryHouseSection.batches),
             selectinload(Batch.section),
         )
 

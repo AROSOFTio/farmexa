@@ -329,6 +329,14 @@ def test_backfill_migration_uses_active_quantity_for_batch_opening_balance():
     assert "initial_qty = float(b.get(\"initial_quantity\") or 0)" not in source
 
 
+def test_batch_query_eager_loads_house_metrics_relationships():
+    repository_path = Path(__file__).resolve().parents[1] / "app" / "modules" / "farm" / "repository.py"
+    source = repository_path.read_text()
+
+    assert "selectinload(Batch.house).selectinload(PoultryHouse.batches)" in source
+    assert "selectinload(Batch.house).selectinload(PoultryHouse.sections).selectinload(PoultryHouseSection.batches)" in source
+
+
 def test_slaughter_schema_exposes_completed_awaiting_inventory_posting():
     record = SlaughterRecordOut(
         id=1,
