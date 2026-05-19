@@ -42,74 +42,58 @@ interface NavGroup {
 const FARM_NAV: NavGroup[] = [
   { label: 'Dashboard', path: '/dashboard', permission: 'dashboard:read', moduleKey: 'dashboard', icon: LayoutDashboard },
   {
-    label: 'Farm Setup',
-    icon: Building2,
-    children: [
-      { label: 'Farm Profile', path: '/farm/profile', moduleKey: 'farm_profile' },
-      { label: 'Houses / Pens', path: '/farm/houses', permission: 'farm:read', moduleKey: 'houses' },
-      { label: 'Staff', path: '/farm/staff', permission: 'users:read', moduleKey: 'users' },
-      { label: 'Suppliers', path: '/farm/suppliers', permission: 'feed:read', moduleKey: 'feed_suppliers' },
-    ],
-  },
-  {
-    label: 'Feed Mill',
-    icon: Wheat,
-    children: [
-      { label: 'Raw Materials', path: '/feed-mill/raw-materials', permission: 'feed:read', moduleKey: 'feed_stock' },
-      { label: 'Feed Formulations', path: '/feed-mill/formulations', permission: 'feed:read', moduleKey: 'feed_stock' },
-      { label: 'Feed Production', path: '/feed-mill/production', permission: 'feed:write', moduleKey: 'feed_purchases' },
-      { label: 'Feed Stock', path: '/feed-mill/stock', permission: 'feed:read', moduleKey: 'feed_stock' },
-      { label: 'Feed Transfers', path: '/feed-mill/transfers', permission: 'inventory:read', moduleKey: 'inventory_movements' },
-    ],
-  },
-  {
     label: 'Farm Operations',
     icon: Gauge,
     children: [
+      { label: 'Houses / Pens', path: '/farm/houses', permission: 'farm:read', moduleKey: 'houses' },
       { label: 'Flocks / Batches', path: '/farm/batches', permission: 'farm:read', moduleKey: 'batches' },
       { label: 'Mortality', path: '/farm/mortality', permission: 'farm:read', moduleKey: 'mortality' },
       { label: 'Vaccination', path: '/farm/vaccination', permission: 'farm:read', moduleKey: 'vaccination' },
-      { label: 'Medication', path: '/farm/medication', permission: 'inventory:read', moduleKey: 'medicine_supplies' },
-      { label: 'Feed Usage', path: '/farm/feed-usage', permission: 'feed:read', moduleKey: 'feed_consumption' },
       { label: 'Growth / Weight', path: '/farm/growth', permission: 'farm:read', moduleKey: 'growth_tracking' },
+      { label: 'Egg Production', path: '/farm/eggs', permission: 'farm:read', moduleKey: 'egg_production' },
     ],
   },
   {
-    label: 'Inventory & Transfers',
+    label: 'Feed',
+    icon: Wheat,
+    children: [
+      { label: 'Feed Stock', path: '/feed/stock', permission: 'feed:read', moduleKey: 'feed_stock' },
+      { label: 'Feed Purchases', path: '/feed/purchases', permission: 'feed:read', moduleKey: 'feed_purchases' },
+      { label: 'Feed Consumption', path: '/feed/consumption', permission: 'feed:read', moduleKey: 'feed_consumption' },
+      { label: 'Feed Mill Formulations', path: '/feed/formulations', permission: 'feed:read', moduleKey: 'feed_stock' },
+      { label: 'Feed Mill Production', path: '/feed/production', permission: 'feed:write', moduleKey: 'feed_purchases' },
+      { label: 'Suppliers', path: '/feed/suppliers', permission: 'feed:read', moduleKey: 'feed_suppliers' },
+    ],
+  },
+  {
+    label: 'Inventory',
     icon: PackageCheck,
     children: [
       { label: 'Stock Items', path: '/inventory/items', permission: 'inventory:read', moduleKey: 'inventory_items' },
       { label: 'Stock Movements', path: '/inventory/movements', permission: 'inventory:read', moduleKey: 'inventory_movements' },
-      { label: 'GRN / GIV Transfers', path: '/inventory/transfers', permission: 'inventory:read', moduleKey: 'inventory_movements' },
-      { label: 'Goods Received Notes', path: '/inventory/grn', permission: 'inventory:read', moduleKey: 'inventory_movements' },
-      { label: 'Goods Issued Vouchers', path: '/inventory/giv', permission: 'inventory:read', moduleKey: 'inventory_movements' },
+      { label: 'Transfers', path: '/inventory/transfers', permission: 'inventory:read', moduleKey: 'inventory_movements' },
       { label: 'Low Stock Alerts', path: '/inventory/low-stock', permission: 'inventory:read', moduleKey: 'inventory_items' },
+      { label: 'Medicine Stock', path: '/inventory/medicine', permission: 'inventory:read', moduleKey: 'medicine_supplies' },
     ],
   },
   {
     label: 'Slaughter',
     icon: SlidersHorizontal,
     children: [
-      { label: 'Slaughter Planning', path: '/slaughter/planning', permission: 'slaughter:read', moduleKey: 'slaughter_planning' },
-      { label: 'Slaughter Records', path: '/slaughter/records', permission: 'slaughter:read', moduleKey: 'slaughter_records' },
-      { label: 'Meat Cuts', path: '/slaughter/meat-cuts', permission: 'slaughter:read', moduleKey: 'slaughter_cut_parts' },
-      { label: 'By-products', path: '/slaughter/byproducts', permission: 'slaughter:read', moduleKey: 'slaughter_byproducts' },
-      { label: 'Blast Room', path: '/slaughter/blast-room', permission: 'inventory:read', moduleKey: 'inventory_items' },
-      { label: 'Cold Room', path: '/slaughter/cold-room', permission: 'inventory:read', moduleKey: 'inventory_items' },
+      { label: 'Planning', path: '/slaughter/planning', permission: 'slaughter:read', moduleKey: 'slaughter_planning' },
+      { label: 'Records', path: '/slaughter/records', permission: 'slaughter:read', moduleKey: 'slaughter_records' },
+      { label: 'Outputs & Cuts', path: '/slaughter/outputs', permission: 'slaughter:read', moduleKey: 'slaughter_outputs' },
       { label: 'Yield Analysis', path: '/slaughter/yield', permission: 'slaughter:read', moduleKey: 'yield_analysis' },
     ],
   },
   {
-    label: 'Sales & POS',
+    label: 'Sales',
     icon: ShoppingCart,
     children: [
       { label: 'POS / Cashier', path: '/sales/pos', permission: 'sales:write', moduleKey: 'sales_orders' },
       { label: 'Customers', path: '/sales/customers', permission: 'sales:read', moduleKey: 'customers' },
       { label: 'Orders', path: '/sales/orders', permission: 'sales:read', moduleKey: 'sales_orders' },
-      { label: 'Invoices', path: '/sales/invoices', permission: 'sales:read', moduleKey: 'invoices' },
-      { label: 'Payments', path: '/sales/payments', permission: 'sales:read', moduleKey: 'payments' },
-      { label: 'Receipts', path: '/sales/receipts', permission: 'sales:read', moduleKey: 'payments' },
-      { label: 'Sales Store Stock', path: '/sales/store-stock', permission: 'inventory:read', moduleKey: 'inventory_items' },
+      { label: 'Invoices & Payments', path: '/sales/invoices', permission: 'sales:read', moduleKey: 'invoices' },
     ],
   },
   {
@@ -117,9 +101,8 @@ const FARM_NAV: NavGroup[] = [
     icon: CreditCard,
     children: [
       { label: 'Expenses', path: '/finance/expenses', permission: 'finance:read', moduleKey: 'expenses' },
-      { label: 'Income', path: '/finance/income', permission: 'finance:read', moduleKey: 'income' },
+      { label: 'Income', path: '/finance/incomes', permission: 'finance:read', moduleKey: 'income' },
       { label: 'Profit & Loss', path: '/reports/profit-loss', permission: 'reports:read', moduleKey: 'profit_loss' },
-      { label: 'Cash Flow', path: '/reports/profit-loss', permission: 'reports:read', moduleKey: 'reports' },
     ],
   },
   {
@@ -128,19 +111,17 @@ const FARM_NAV: NavGroup[] = [
     children: [
       { label: 'Documents', path: '/compliance/documents', permission: 'farm:read', moduleKey: 'compliance_documents' },
       { label: 'Expiry Alerts', path: '/compliance/alerts', permission: 'farm:read', moduleKey: 'compliance_alerts' },
-      { label: 'Quality Control', path: '/compliance/quality-control', permission: 'farm:read', moduleKey: 'compliance_documents' },
     ],
   },
   {
     label: 'Reports',
     icon: BarChart3,
     children: [
+      { label: 'Overview', path: '/reports', permission: 'reports:read', moduleKey: 'reports' },
       { label: 'Sales Summary', path: '/reports/sales-summary', permission: 'reports:read', moduleKey: 'reports' },
-      { label: 'Payments', path: '/reports/payments', permission: 'reports:read', moduleKey: 'reports' },
       { label: 'Inventory Stock', path: '/reports/inventory-stock', permission: 'reports:read', moduleKey: 'reports' },
       { label: 'Feed Stock', path: '/reports/feed-stock', permission: 'reports:read', moduleKey: 'reports' },
       { label: 'Feed Consumption', path: '/reports/feed-consumption', permission: 'reports:read', moduleKey: 'reports' },
-      { label: 'Profit & Loss', path: '/reports/profit-loss', permission: 'reports:read', moduleKey: 'reports' },
       { label: 'Compliance Expiry', path: '/reports/compliance-expiring', permission: 'reports:read', moduleKey: 'reports' },
     ],
   },
@@ -148,11 +129,11 @@ const FARM_NAV: NavGroup[] = [
     label: 'Settings',
     icon: Settings,
     children: [
-      { label: 'Profile', path: '/settings/profile', moduleKey: 'farm_profile' },
-      { label: 'Subscription', path: '/settings/subscription' },
-      { label: 'Users & Roles', path: '/settings/users', permission: 'users:read', moduleKey: 'users' },
+      { label: 'Farm Profile', path: '/settings/profile', moduleKey: 'farm_profile' },
+      { label: 'Users', path: '/settings/users', permission: 'users:read', moduleKey: 'users' },
       { label: 'Roles', path: '/settings/roles', permission: 'settings:read', moduleKey: 'settings' },
       { label: 'Company Settings', path: '/settings/company', permission: 'settings:read', moduleKey: 'settings' },
+      { label: 'Subscription', path: '/settings/subscription' },
     ],
   },
 ]
@@ -183,7 +164,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   const { hasPermission, hasModuleAccess, tenant, user } = useAuth()
   const { settings } = usePlatformSettings()
   const isDevAdmin = user?.role?.name === 'developer_admin'
-  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(['Farm Setup', 'Farm Operations']))
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(['Farm Operations', 'Feed']))
 
   const canSee = (item: NavLeaf | NavGroup) => {
     const allowedByPermission = !item.permission || hasPermission(item.permission)

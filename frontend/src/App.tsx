@@ -182,6 +182,26 @@ export default function App() {
               }
             />
             <Route
+              path="formulations"
+              element={
+                <ProtectedRoute permission="feed:read">
+                  <ModuleGuard moduleKey="feed_stock">
+                    <FeedMillProductionPage section="formulations" />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="production"
+              element={
+                <ProtectedRoute permission="feed:write">
+                  <ModuleGuard moduleKey="feed_purchases">
+                    <FeedMillProductionPage section="production" />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="suppliers"
               element={
                 <ProtectedRoute permission="feed:read">
@@ -211,6 +231,46 @@ export default function App() {
                 <ProtectedRoute permission="inventory:read">
                   <ModuleGuard moduleKey="inventory_movements">
                     <InventoryPage section="movements" />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="transfers"
+              element={
+                <ProtectedRoute permission="inventory:read">
+                  <ModuleGuard moduleKey="inventory_movements">
+                    <InventoryTransfersPage view="transfers" />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="grn"
+              element={
+                <ProtectedRoute permission="inventory:read">
+                  <ModuleGuard moduleKey="inventory_movements">
+                    <InventoryTransfersPage view="grn" />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="giv"
+              element={
+                <ProtectedRoute permission="inventory:read">
+                  <ModuleGuard moduleKey="inventory_movements">
+                    <InventoryTransfersPage view="giv" />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="low-stock"
+              element={
+                <ProtectedRoute permission="inventory:read">
+                  <ModuleGuard moduleKey="inventory_items">
+                    <InventoryTransfersPage view="low-stock" />
                   </ModuleGuard>
                 </ProtectedRoute>
               }
@@ -290,12 +350,34 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="blast-room" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_items"><InventoryPage section="items" /></ModuleGuard></ProtectedRoute>} />
-            <Route path="cold-room" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_items"><InventoryPage section="items" /></ModuleGuard></ProtectedRoute>} />
+            <Route path="blast-room" element={<Navigate to="/inventory/items" replace />} />
+            <Route path="cold-room" element={<Navigate to="/inventory/items" replace />} />
           </Route>
 
           <Route path="sales">
             <Route index element={<Navigate to="/sales/orders" replace />} />
+            <Route
+              path="pos"
+              element={
+                <ProtectedRoute permission="sales:write">
+                  <ModuleGuard moduleKey="sales_orders">
+                    <PosPage />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="receipts"
+              element={
+                <Navigate to="/sales/invoices" replace />
+              }
+            />
+            <Route
+              path="store-stock"
+              element={
+                <Navigate to="/inventory/items" replace />
+              }
+            />
             <Route
               path="customers"
               element={
@@ -387,7 +469,17 @@ export default function App() {
           </Route>
 
           <Route path="settings">
-            <Route index element={<Navigate to="/settings/users" replace />} />
+            <Route index element={<Navigate to="/settings/profile" replace />} />
+            <Route
+              path="profile"
+              element={
+                <ProtectedRoute>
+                  <ModuleGuard moduleKey="farm_profile">
+                    <FarmProfilePage />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="users"
               element={
@@ -418,6 +510,24 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="company"
+              element={
+                <ProtectedRoute permission="settings:read">
+                  <ModuleGuard moduleKey="settings">
+                    <SettingsConfigPage />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="subscription"
+              element={
+                <ProtectedRoute>
+                  <SubscriptionPage />
+                </ProtectedRoute>
+              }
+            />
           </Route>
 
           <Route path="reports">
@@ -432,41 +542,19 @@ export default function App() {
           </Route>
 
           <Route path="feed-mill">
-            <Route path="raw-materials" element={<ProtectedRoute permission="feed:read"><ModuleGuard moduleKey="feed_stock"><FeedManagementPage section="stock" /></ModuleGuard></ProtectedRoute>} />
-            <Route path="formulations" element={<ProtectedRoute permission="feed:read"><ModuleGuard moduleKey="feed_stock"><FeedMillProductionPage section="formulations" /></ModuleGuard></ProtectedRoute>} />
-            <Route path="production" element={<ProtectedRoute permission="feed:write"><ModuleGuard moduleKey="feed_purchases"><FeedMillProductionPage section="production" /></ModuleGuard></ProtectedRoute>} />
-            <Route path="stock" element={<ProtectedRoute permission="feed:read"><ModuleGuard moduleKey="feed_stock"><FeedManagementPage section="stock" /></ModuleGuard></ProtectedRoute>} />
-            <Route path="transfers" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_movements"><InventoryTransfersPage view="transfers" /></ModuleGuard></ProtectedRoute>} />
+            <Route index element={<Navigate to="/feed/stock" replace />} />
+            <Route path="raw-materials" element={<Navigate to="/feed/stock" replace />} />
+            <Route path="formulations" element={<Navigate to="/feed/formulations" replace />} />
+            <Route path="production" element={<Navigate to="/feed/production" replace />} />
+            <Route path="stock" element={<Navigate to="/feed/stock" replace />} />
+            <Route path="transfers" element={<Navigate to="/inventory/transfers" replace />} />
           </Route>
 
-          <Route path="inventory">
-            <Route path="transfers" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_movements"><InventoryTransfersPage view="transfers" /></ModuleGuard></ProtectedRoute>} />
-            <Route path="grn" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_movements"><InventoryTransfersPage view="grn" /></ModuleGuard></ProtectedRoute>} />
-            <Route path="giv" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_movements"><InventoryTransfersPage view="giv" /></ModuleGuard></ProtectedRoute>} />
-            <Route path="low-stock" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_items"><InventoryTransfersPage view="low-stock" /></ModuleGuard></ProtectedRoute>} />
-          </Route>
+          <Route path="finance/income" element={<Navigate to="/finance/incomes" replace />} />
+          <Route path="finance/profit-loss" element={<Navigate to="/reports/profit-loss" replace />} />
+          <Route path="finance/cash-flow" element={<Navigate to="/reports/profit-loss" replace />} />
 
-          <Route path="sales">
-            <Route path="pos" element={<ProtectedRoute permission="sales:write"><ModuleGuard moduleKey="sales_orders"><PosPage /></ModuleGuard></ProtectedRoute>} />
-            <Route path="receipts" element={<ProtectedRoute permission="sales:read"><ModuleGuard moduleKey="payments"><InvoicesPage section="payments" /></ModuleGuard></ProtectedRoute>} />
-            <Route path="store-stock" element={<ProtectedRoute permission="inventory:read"><ModuleGuard moduleKey="inventory_items"><InventoryPage section="items" /></ModuleGuard></ProtectedRoute>} />
-          </Route>
-
-          <Route path="finance">
-            <Route path="income" element={<ProtectedRoute permission="finance:read"><ModuleGuard moduleKey="income"><IncomesPage /></ModuleGuard></ProtectedRoute>} />
-            <Route path="profit-loss" element={<Navigate to="/reports/profit-loss" replace />} />
-            <Route path="cash-flow" element={<Navigate to="/reports/profit-loss" replace />} />
-          </Route>
-
-          <Route path="compliance">
-            <Route path="quality-control" element={<ProtectedRoute permission="farm:read"><ModuleGuard moduleKey="compliance_documents"><CompliancePage section="documents" /></ModuleGuard></ProtectedRoute>} />
-          </Route>
-
-          <Route path="settings">
-            <Route path="profile" element={<ProtectedRoute><ModuleGuard moduleKey="farm_profile"><FarmProfilePage /></ModuleGuard></ProtectedRoute>} />
-            <Route path="subscription" element={<ProtectedRoute><SubscriptionPage /></ProtectedRoute>} />
-            <Route path="company" element={<ProtectedRoute permission="settings:read"><ModuleGuard moduleKey="settings"><SettingsConfigPage /></ModuleGuard></ProtectedRoute>} />
-          </Route>
+          <Route path="compliance/quality-control" element={<Navigate to="/compliance/documents" replace />} />
 
           <Route path="subscription" element={<ProtectedRoute><SubscriptionPage /></ProtectedRoute>} />
           <Route path="subscription/upgrade" element={<ProtectedRoute><UpgradeModulesPage /></ProtectedRoute>} />

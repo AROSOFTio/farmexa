@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from '@/layouts/Sidebar'
 import { Topbar } from '@/layouts/Topbar'
+import { CommandPalette } from '@/layouts/CommandPalette'
 
 const SIDEBAR_WIDTH = 232
 const BREAKPOINT_LG = 1024
@@ -14,6 +15,7 @@ export function AppLayout() {
   const [screenWidth, setScreenWidth] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth : 1280
   )
+  const [isCommandPaletteOpen, setCommandPaletteOpen] = useState(false)
 
   useEffect(() => {
     const handleResize = () => {
@@ -23,6 +25,18 @@ export function AppLayout() {
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setCommandPaletteOpen((previous) => !previous)
+      }
+    }
+
+    window.addEventListener('keydown', handleShortcut)
+    return () => window.removeEventListener('keydown', handleShortcut)
   }, [])
 
   const isDesktop = screenWidth >= BREAKPOINT_LG
@@ -40,6 +54,7 @@ export function AppLayout() {
           isSidebarOpen={isSidebarOpen}
           leftOffset={showOffset ? SIDEBAR_WIDTH : 0}
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+          onOpenSearch={() => setCommandPaletteOpen(true)}
         />
 
         <main className="relative flex-1" style={{ paddingTop: '56px', minHeight: '100vh' }}>
@@ -48,6 +63,8 @@ export function AppLayout() {
           </div>
         </main>
       </div>
+
+      <CommandPalette open={isCommandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
     </div>
   )
 }

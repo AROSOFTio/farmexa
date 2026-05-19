@@ -1,10 +1,37 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Bird, Building2, ChevronDown, CreditCard, DollarSign, Drumstick, HelpCircle, LogOut, Menu, Package, PanelLeftClose, Scale, Search, ShoppingCart, Skull, Syringe, UserRound, Wheat } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  Bell,
+  Bird,
+  Building2,
+  ChevronDown,
+  ClipboardCheck,
+  Loader2,
+  CreditCard,
+  DollarSign,
+  Drumstick,
+  HelpCircle,
+  LogOut,
+  Menu,
+  Package,
+  PanelLeftClose,
+  Scale,
+  Search,
+  ShoppingCart,
+  Skull,
+  Syringe,
+  UserRound,
+  Wheat,
+  type LucideIcon,
+} from 'lucide-react'
 import { clsx } from 'clsx'
 import { toast } from 'sonner'
 import { useAuth } from '@/features/auth/AuthContext'
 import { ThemeSelector, ThemeToggle } from '@/components/ThemeControls'
+import api from '@/services/api'
 
 function titleFromPath(pathname: string) {
   if (pathname.startsWith('/dev-admin')) return 'Dev Admin Dashboard'
@@ -20,23 +47,95 @@ function titleFromPath(pathname: string) {
   return 'Dashboard'
 }
 
-export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0 }: { onToggleSidebar: () => void; isSidebarOpen: boolean; leftOffset?: number }) {
-  const { user, tenant, logout } = useAuth()
+interface TopbarProps {
+  onToggleSidebar: () => void
+  isSidebarOpen: boolean
+  leftOffset?: number
+  onOpenSearch: () => void
+}
+
+type NotificationTone = 'info' | 'warning' | 'danger'
+
+interface NotificationItem {
+  id: string
+  title: string
+  description: string
+  icon: LucideIcon
+  tone: NotificationTone
+  href?: string
+}
+
+interface QuickAction {
+  label: string
+  description: string
+  icon: LucideIcon
+  href: string
+  enabled: boolean
+  state?: Record<string, unknown>
+}
+
+interface QuickSection {
+  title: string
+  items: QuickAction[]
+}
+
+interface ComplianceAlertSummary {
+  document_id: number
+  title: string
+  document_type: string
+  status: string
+  expiry_date: string | null
+  days_to_expiry: number | null
+  reminder_offsets: number[]
+}
+
+interface ComplianceSummaryResponse {
+  alerts: ComplianceAlertSummary[]
+}
+
+interface InventoryItemSummary {
+  id: number
+  name: string
+  unit_of_measure: string
+  current_quantity: number
+  reorder_level: number
+}
+
+interface InvoiceCustomerSummary {
+  name?: string | null
+}
+
+interface InvoiceSummary {
+  id: number
+  invoice_number: string
+  status: 'draft' | 'issued' | 'partial' | 'paid' | 'overdue' | 'cancelled'
+  due_date: string
+  total_amount: number
+  paid_amount: number
+  customer?: InvoiceCustomerSummary | null
+}
+
+interface SlaughterRecordSummary {
+  id: number
+  slaughter_date: string
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+  inventory_posted_at?: string | null
+  batch?: { batch_number?: string | null } | null
+}
+
+export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenSearch }: TopbarProps) {
+  const { user, tenant, logout, hasPermission, hasModuleAccess } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const [profileOpen, setProfileOpen] = useState(false)
   const [farmOpen, setFarmOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [quickOpen, setQuickOpen] = useState(false)
-  const quickTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const handleQuickEnter = () => {
-    if (quickTimeout.current) clearTimeout(quickTimeout.current)
-    setQuickOpen(true)
-  }
-  const handleQuickLeave = () => {
-    quickTimeout.current = setTimeout(() => setQuickOpen(false), 120)
-  }
+  const searchShortcut = useMemo(() => {
+    if (typeof navigator === 'undefined') return 'Ctrl K'
+    return /Mac|iPhone|iPad|iPod/i.test(navigator.platform) ? '⌘ K' : 'Ctrl K'
+  }, [])
   const initials = useMemo(() => {
     const source = user?.full_name || user?.email || 'NF'
     return source.split(/[ @.]/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
@@ -120,15 +219,18 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0 }: { onT
       </div>
 
       {!isDevAdmin ? (
-        <div className="relative hidden md:block" onMouseEnter={handleQuickEnter} onMouseLeave={handleQuickLeave}>
+        <div className="relative hidden md:block">
           <button
             type="button"
+            onClick={() => setQuickOpen((open) => !open)}
             className="flex items-center gap-1.5 rounded-[7px] border border-transparent bg-[var(--brand-primary)] px-3 py-1.5 text-[12px] font-extrabold text-[#111827] hover:bg-[#e1b23b] transition-colors"
           >
             ⚡ Quick
             <ChevronDown className={clsx('h-3 w-3 transition-transform', quickOpen && 'rotate-180')} />
           </button>
           {quickOpen ? (
+            <>
+              <button type="button" className="fixed inset-0 z-30" onClick={() => setQuickOpen(false)} />
             <div className="absolute left-0 top-full z-40 mt-1.5 w-56 overflow-hidden rounded-[10px] border border-[#e8dcc3] bg-white shadow-xl">
               <div className="border-b border-[#efe5d2] px-4 py-2">
                 <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Farm Operations</div>
@@ -166,6 +268,7 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0 }: { onT
                 )
               })}
             </div>
+            </>
           ) : null}
         </div>
       ) : null}
@@ -173,13 +276,20 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0 }: { onT
       <div className="flex-1" />
 
       <div className="hidden w-full max-w-[270px] lg:block">
-        <div className="relative">
-          <input
-            className="h-9 w-full rounded-[8px] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 pr-9 text-[12px] text-[var(--text-strong)] outline-none placeholder:text-slate-400 focus:border-[var(--brand-primary)]"
-            placeholder="Search anything..."
-          />
-          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-        </div>
+        <button
+          type="button"
+          onClick={onOpenSearch}
+          className="group flex h-9 w-full items-center justify-between gap-3 rounded-[8px] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 text-[12px] text-[var(--text-muted)] transition-colors hover:border-[var(--brand-primary)] hover:text-[var(--text-strong)]"
+          aria-label="Open global search"
+        >
+          <span className="flex items-center gap-2">
+            <Search className="h-4 w-4 text-slate-500 transition-colors group-hover:text-[var(--brand-primary)]" />
+            <span className="truncate">Search anything…</span>
+          </span>
+          <span className="hidden rounded-[6px] border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)] sm:block">
+            {searchShortcut}
+          </span>
+        </button>
       </div>
 
       {trialLabel ? (
