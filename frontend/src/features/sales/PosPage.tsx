@@ -105,7 +105,7 @@ export function PosPage() {
       payment_reference: values.payment_reference || null,
       credit_due_date: values.credit_due_date || null,
       notes: values.notes || null,
-    }),
+    }, { timeout: 60_000 }),
     onSuccess: (response) => {
       setReceipt(response.data)
       toast.success(`Receipt ${response.data.receipt_number} posted.`)

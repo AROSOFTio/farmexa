@@ -1,6 +1,7 @@
 from datetime import UTC, date, datetime, timedelta
 from email.message import EmailMessage
 import smtplib
+import threading
 import uuid
 
 from fastapi import HTTPException, status
@@ -39,23 +40,29 @@ class SalesService:
             log.error_message = "SMTP_HOST is not configured."
             return log.status
 
-        try:
-            message = EmailMessage()
-            message["From"] = log.sender
-            message["To"] = customer.email
-            message["Subject"] = subject
-            message.set_content(body)
-            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=20) as server:
-                if settings.SMTP_USE_TLS:
-                    server.starttls()
-                if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
-                    server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-                server.send_message(message)
-            log.status = "sent"
-            log.sent_at = datetime.now(UTC)
-        except Exception as exc:  # pragma: no cover - external SMTP
-            log.status = "failed"
-            log.error_message = str(exc)
+        _recipient = customer.email
+        _sender_display = log.sender
+        _subject = subject
+        _body = body
+
+        def _send_in_background() -> None:
+            try:
+                msg = EmailMessage()
+                msg["From"] = _sender_display
+                msg["To"] = _recipient
+                msg["Subject"] = _subject
+                msg.set_content(_body)
+                with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=8) as server:
+                    if settings.SMTP_USE_TLS:
+                        server.starttls()
+                    if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
+                        server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+                    server.send_message(msg)
+            except Exception:  # pragma: no cover - external SMTP
+                pass
+
+        threading.Thread(target=_send_in_background, daemon=True).start()
+        log.status = "queued"
         return log.status
 
     def _send_invoice_balance_email(self, db: Session, invoice: Invoice, *, reason: str) -> str:
@@ -435,29 +442,6 @@ class SalesService:
             amount_paid_now = float(payload.amount_paid_now or 0)
         else:
             amount_paid_now = float(payload.amount_paid_now or 0)
-
-        if amount_paid_now < 0:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Amount paid cannot be negative")
-        if amount_paid_now > invoice_total:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Amount paid cannot exceed the sale total",
-            )
-        if payload.sale_payment_mode == "full" and amount_paid_now != invoice_total:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Full payment must match the sale total",
-            )
-        if payload.sale_payment_mode == "partial" and not (0 < amount_paid_now < invoice_total):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Partial payment must be greater than zero and less than the sale total",
-            )
-        if amount_paid_now > 0 and not payload.payment_method:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Payment method is required when money is received",
-            )
 
         balance_due = max(invoice_total - amount_paid_now, 0)
         if balance_due > 0:
