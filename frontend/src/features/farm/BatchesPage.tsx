@@ -38,7 +38,7 @@ export function BatchesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const canManageFarm = hasPermission('farm:write')
 
-  const { data: batches = [], isLoading } = useQuery({
+  const { data: batches = [], isLoading, isError, error } = useQuery<Batch[], Error>({
     queryKey: ['farm-batches'],
     queryFn: () => api.get<Batch[]>('/farm/batches').then((response) => response.data),
     refetchOnMount: 'always',
@@ -129,6 +129,20 @@ export function BatchesPage() {
                 <tr>
                   <td className="pl-6 py-16 text-center text-sm text-ink-500" colSpan={6}>
                     Loading batch register...
+                  </td>
+                </tr>
+              ) : isError ? (
+                <tr>
+                  <td className="pl-6 py-16 text-center" colSpan={6}>
+                    <div className="mx-auto max-w-sm">
+                      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-50 text-red-500">
+                        <Bird className="h-8 w-8" />
+                      </div>
+                      <h2 className="mt-5 text-lg font-semibold text-ink-900">Could not load batches</h2>
+                      <p className="mt-2 text-sm text-red-600">
+                        {(error as any)?.response?.data?.detail ?? error?.message ?? 'An unexpected error occurred. Check your module access or contact support.'}
+                      </p>
+                    </div>
                   </td>
                 </tr>
               ) : filteredBatches.length === 0 ? (

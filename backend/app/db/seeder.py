@@ -295,8 +295,10 @@ async def _backfill_tenant_staff_access(db: AsyncSession) -> None:
             if not user.job_title:
                 user.job_title = "Tenant Administrator"
 
-    tenants = (await db.execute(select(Tenant.id))).scalars().all()
-    for tenant_id in tenants:
+    tenants = (await db.execute(select(Tenant.id, Tenant.plan))).all()
+    for tenant_id, tenant_plan in tenants:
+        plan_module_keys = set(DEFAULT_PLAN_MODULES.get(tenant_plan or "", []))
+
         for module_key in MANDATORY_TENANT_MODULE_KEYS:
             statement = (
                 insert(TenantModule)
@@ -305,6 +307,14 @@ async def _backfill_tenant_staff_access(db: AsyncSession) -> None:
                     index_elements=["tenant_id", "module_key"],
                     set_={"is_enabled": True},
                 )
+            )
+            await db.execute(statement)
+
+        for module_key in plan_module_keys - set(MANDATORY_TENANT_MODULE_KEYS):
+            statement = (
+                insert(TenantModule)
+                .values(tenant_id=tenant_id, module_key=module_key, is_enabled=True)
+                .on_conflict_do_nothing(index_elements=["tenant_id", "module_key"])
             )
             await db.execute(statement)
 
