@@ -94,6 +94,18 @@ class FeedService:
             await self.db.rollback()
             raise HTTPException(status_code=400, detail="Category name already exists")
 
+    async def update_category(self, id: int, data: FeedCategoryUpdate) -> FeedCategoryOut:
+        item = await self.repo.get_category(id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Category not found")
+        try:
+            item = await self.repo.update_category(item, data)
+            await self.db.commit()
+            return FeedCategoryOut.model_validate(item)
+        except IntegrityError:
+            await self.db.rollback()
+            raise HTTPException(status_code=400, detail="Category name already exists")
+
     # ── Items ────────────────────────────────────────────────────
     async def get_items(self) -> list[FeedItemOut]:
         items = await self.repo.get_items()
@@ -111,6 +123,28 @@ class FeedService:
         await self.db.commit()
         refreshed = await self.repo.get_item(item.id)
         return FeedItemOut.model_validate(refreshed)
+
+    async def update_item(self, id: int, data: FeedItemUpdate) -> FeedItemOut:
+        item = await self.repo.get_item(id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Feed item not found")
+        if data.category_id is not None:
+            cat = await self.repo.get_category(data.category_id)
+            if not cat:
+                raise HTTPException(status_code=400, detail="Invalid category_id")
+        try:
+            item = await self.repo.update_item(item, data)
+            if item.stock_item_id:
+                stock_item = await self._ensure_feed_stock_item(item)
+                stock_item.name = item.name
+                stock_item.unit_of_measure = item.unit
+                stock_item.reorder_level = item.reorder_threshold
+            await self.db.commit()
+            refreshed = await self.repo.get_item(item.id)
+            return FeedItemOut.model_validate(refreshed)
+        except IntegrityError:
+            await self.db.rollback()
+            raise HTTPException(status_code=400, detail="Feed item could not be updated")
 
     # ── Purchases ────────────────────────────────────────────────
     async def get_purchases(self) -> list[FeedPurchaseOut]:

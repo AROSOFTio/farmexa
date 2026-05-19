@@ -479,7 +479,14 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
               <input className="form-input" type="number" min={1} {...mortalityForm.register('quantity')} />
             </div>
             <div>
-              <label className="form-label">Cause</label>
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <label className="form-label !mb-0">Cause</label>
+                {canManageFarm ? (
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => setIsReferenceModalOpen(true)}>
+                    Manage list
+                  </button>
+                ) : null}
+              </div>
               <select className="form-input" {...mortalityForm.register('cause')}>
                 <option value="">Select cause...</option>
                 {mortalityCauseOptions.map((item) => (
@@ -504,7 +511,14 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
         {mode === 'vaccination' && (
           <form className="space-y-4" onSubmit={vaccinationForm.handleSubmit((values) => mutation.mutate(values))}>
             <div>
-              <label className="form-label">Vaccine name</label>
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <label className="form-label !mb-0">Vaccine name</label>
+                {canManageFarm ? (
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => setIsReferenceModalOpen(true)}>
+                    Manage list
+                  </button>
+                ) : null}
+              </div>
               <select className="form-input" {...vaccinationForm.register('vaccine_name')}>
                 <option value="">Select vaccine...</option>
                 {vaccineOptions.map((item) => (

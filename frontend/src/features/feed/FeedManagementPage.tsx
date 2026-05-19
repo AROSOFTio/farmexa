@@ -238,6 +238,9 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
   const qc = useQueryClient()
   const { hasPermission } = useAuth()
   const [activeModal, setActiveModal] = useState<FeedModal>(null)
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
+  const [editingCategory, setEditingCategory] = useState<FeedCategory | null>(null)
+  const [editingItem, setEditingItem] = useState<FeedItem | null>(null)
   const copy = sectionCopy[section]
   const canManageFeed = hasPermission('feed:write')
 
@@ -331,6 +334,37 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
     },
   })
 
+  const updateSupplier = useMutation({
+    mutationFn: (values: SupplierFormValues) => {
+      if (!editingSupplier) throw new Error('No supplier selected')
+      return api.put(`/feed/suppliers/${editingSupplier.id}`, {
+        ...values,
+        lead_time_days: values.lead_time_days === '' ? null : values.lead_time_days,
+        supplier_type: values.supplier_type || null,
+        products_supplied: values.products_supplied || null,
+        contact_person: values.contact_person || null,
+        supplier_officer: values.supplier_officer || null,
+        phone: values.phone || null,
+        alternate_phone: values.alternate_phone || null,
+        email: values.email || null,
+        address: values.address || null,
+        tax_id: values.tax_id || null,
+        payment_terms: values.payment_terms || null,
+        notes: values.notes || null,
+      })
+    },
+    onSuccess: () => {
+      toast.success('Supplier updated.')
+      qc.invalidateQueries({ queryKey: ['feed-suppliers'] })
+      setEditingSupplier(null)
+      supplierForm.reset(emptySupplierValues())
+      setActiveModal(null)
+    },
+    onError: (error: any) => {
+      toast.error(getErrorMessage(error, 'Failed to update supplier.'))
+    },
+  })
+
   const createCategory = useMutation({
     mutationFn: (values: CategoryFormValues) => api.post('/feed/categories', values),
     onSuccess: () => {
@@ -344,6 +378,22 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
     },
   })
 
+  const updateCategory = useMutation({
+    mutationFn: (values: CategoryFormValues) => {
+      if (!editingCategory) throw new Error('No category selected')
+      return api.put(`/feed/categories/${editingCategory.id}`, values)
+    },
+    onSuccess: () => {
+      toast.success('Feed category updated.')
+      qc.invalidateQueries({ queryKey: ['feed-categories'] })
+      setEditingCategory(null)
+      categoryForm.reset(emptyCategoryValues())
+    },
+    onError: (error: any) => {
+      toast.error(getErrorMessage(error, 'Failed to update category.'))
+    },
+  })
+
   const createItem = useMutation({
     mutationFn: (values: ItemFormValues) => api.post('/feed/items', values),
     onSuccess: () => {
@@ -354,6 +404,23 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
     },
     onError: (error: any) => {
       toast.error(getErrorMessage(error, 'Failed to create feed item.'))
+    },
+  })
+
+  const updateItem = useMutation({
+    mutationFn: (values: ItemFormValues) => {
+      if (!editingItem) throw new Error('No feed item selected')
+      return api.put(`/feed/items/${editingItem.id}`, values)
+    },
+    onSuccess: () => {
+      toast.success('Feed item updated.')
+      qc.invalidateQueries({ queryKey: ['feed-items'] })
+      setEditingItem(null)
+      itemForm.reset(emptyItemValues())
+      setActiveModal(null)
+    },
+    onError: (error: any) => {
+      toast.error(getErrorMessage(error, 'Failed to update feed item.'))
     },
   })
 
@@ -417,12 +484,56 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
   )
 
   const openModal = (modal: FeedModal) => {
+    setEditingSupplier(null)
+    setEditingCategory(null)
+    setEditingItem(null)
     if (modal === 'supplier') supplierForm.reset(emptySupplierValues())
     if (modal === 'category') categoryForm.reset(emptyCategoryValues())
     if (modal === 'item') itemForm.reset(emptyItemValues())
     if (modal === 'purchase') purchaseForm.reset(emptyPurchaseValues())
     if (modal === 'consumption') consumptionForm.reset(emptyConsumptionValues())
     setActiveModal(modal)
+  }
+
+  const editSupplier = (supplier: Supplier) => {
+    setEditingSupplier(supplier)
+    supplierForm.reset({
+      name: supplier.name,
+      supplier_type: supplier.supplier_type ?? '',
+      products_supplied: supplier.products_supplied ?? '',
+      contact_person: supplier.contact_person ?? '',
+      supplier_officer: supplier.supplier_officer ?? '',
+      phone: supplier.phone ?? '',
+      alternate_phone: supplier.alternate_phone ?? '',
+      email: supplier.email ?? '',
+      address: supplier.address ?? '',
+      tax_id: supplier.tax_id ?? '',
+      payment_terms: supplier.payment_terms ?? '',
+      lead_time_days: supplier.lead_time_days ?? '',
+      notes: supplier.notes ?? '',
+      is_active: supplier.is_active,
+    })
+    setActiveModal('supplier')
+  }
+
+  const editItem = (item: FeedItem) => {
+    setEditingItem(item)
+    itemForm.reset({
+      name: item.name,
+      category_id: item.category_id,
+      unit: item.unit,
+      reorder_threshold: item.reorder_threshold,
+    })
+    setActiveModal('item')
+  }
+
+  const editCategory = (category: FeedCategory) => {
+    setEditingCategory(category)
+    categoryForm.reset({
+      name: category.name,
+      description: category.description ?? '',
+    })
+    setActiveModal('category')
   }
 
   const actionButtons = (() => {
@@ -567,7 +678,14 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
                         <div>{supplier.supplier_officer || supplier.email || '-'}</div>
                         <div className="text-xs text-ink-500">{supplier.payment_terms || ''}</div>
                       </td>
-                      <td className="pr-6">{supplier.phone || supplier.alternate_phone || '-'}</td>
+                      <td className="pr-6">
+                        <div>{supplier.phone || supplier.alternate_phone || '-'}</div>
+                        {canManageFeed ? (
+                          <button type="button" className="btn-secondary btn-sm mt-2" onClick={() => editSupplier(supplier)}>
+                            Edit
+                          </button>
+                        ) : null}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -615,7 +733,14 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
                             {item.current_stock.toLocaleString()} {item.unit}
                           </span>
                         </td>
-                        <td className="pr-6">{item.reorder_threshold.toLocaleString()} {item.unit}</td>
+                        <td className="pr-6">
+                          <div>{item.reorder_threshold.toLocaleString()} {item.unit}</div>
+                          {canManageFeed ? (
+                            <button type="button" className="btn-secondary btn-sm mt-2" onClick={() => editItem(item)}>
+                              Edit
+                            </button>
+                          ) : null}
+                        </td>
                       </tr>
                     )
                   })
@@ -714,10 +839,10 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
       <Modal
         isOpen={activeModal === 'supplier'}
         onClose={() => setActiveModal(null)}
-        title="Add supplier"
+        title={editingSupplier ? 'Edit supplier' : 'Add supplier'}
         description="Create a supplier profile, products supplied, and procurement contacts."
       >
-        <form className="space-y-4" onSubmit={supplierForm.handleSubmit((values) => (canManageFeed ? createSupplier.mutate(values) : blockWriteAction()))}>
+        <form className="space-y-4" onSubmit={supplierForm.handleSubmit((values) => (canManageFeed ? (editingSupplier ? updateSupplier.mutate(values) : createSupplier.mutate(values)) : blockWriteAction()))}>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="form-label">Supplier name</label>
@@ -795,9 +920,9 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
           </div>
           <div className="flex justify-end gap-3">
             <button type="button" className="btn-secondary" onClick={() => setActiveModal(null)}>Close</button>
-            <button className="btn-primary" disabled={!canManageFeed || createSupplier.isPending} type="submit">
+            <button className="btn-primary" disabled={!canManageFeed || createSupplier.isPending || updateSupplier.isPending} type="submit">
               <Truck className="h-4 w-4" />
-              {createSupplier.isPending ? 'Saving...' : 'Save supplier'}
+              {createSupplier.isPending || updateSupplier.isPending ? 'Saving...' : editingSupplier ? 'Update supplier' : 'Save supplier'}
             </button>
           </div>
         </form>
@@ -806,10 +931,10 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
       <Modal
         isOpen={activeModal === 'category'}
         onClose={() => setActiveModal(null)}
-        title="New feed category"
+        title={editingCategory ? 'Edit feed category' : 'New feed category'}
         description="Group feed items under clean category labels."
       >
-        <form className="space-y-4" onSubmit={categoryForm.handleSubmit((values) => (canManageFeed ? createCategory.mutate(values) : blockWriteAction()))}>
+        <form className="space-y-4" onSubmit={categoryForm.handleSubmit((values) => (canManageFeed ? (editingCategory ? updateCategory.mutate(values) : createCategory.mutate(values)) : blockWriteAction()))}>
           <div>
             <label className="form-label">Category name</label>
             <input className="form-input" {...categoryForm.register('name')} />
@@ -820,27 +945,51 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
           </div>
           <div className="flex justify-end gap-3">
             <button type="button" className="btn-secondary" onClick={() => setActiveModal(null)}>Close</button>
-            <button className="btn-primary" disabled={!canManageFeed || createCategory.isPending} type="submit">
+            <button className="btn-primary" disabled={!canManageFeed || createCategory.isPending || updateCategory.isPending} type="submit">
               <ClipboardPlus className="h-4 w-4" />
-              {createCategory.isPending ? 'Saving...' : 'Save category'}
+              {createCategory.isPending || updateCategory.isPending ? 'Saving...' : editingCategory ? 'Update category' : 'Save category'}
             </button>
           </div>
         </form>
+        {categories.length > 0 ? (
+          <div className="mt-5 rounded-xl border border-neutral-150 bg-neutral-50">
+            {categories.map((category) => (
+              <div key={category.id} className="flex items-center justify-between gap-3 border-b border-neutral-150 px-4 py-3 last:border-b-0">
+                <div>
+                  <div className="font-semibold text-ink-900">{category.name}</div>
+                  {category.description ? <div className="text-sm text-ink-500">{category.description}</div> : null}
+                </div>
+                {canManageFeed ? (
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => editCategory(category)}>
+                    Edit
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
       </Modal>
 
       <Modal
         isOpen={activeModal === 'item'}
         onClose={() => setActiveModal(null)}
-        title="New feed item"
+        title={editingItem ? 'Edit feed item' : 'New feed item'}
         description="Create a feed stock item and set its reorder threshold."
       >
-        <form className="space-y-4" onSubmit={itemForm.handleSubmit((values) => (canManageFeed ? createItem.mutate(values) : blockWriteAction()))}>
+        <form className="space-y-4" onSubmit={itemForm.handleSubmit((values) => (canManageFeed ? (editingItem ? updateItem.mutate(values) : createItem.mutate(values)) : blockWriteAction()))}>
           <div>
             <label className="form-label">Item name</label>
             <input className="form-input" {...itemForm.register('name')} />
           </div>
           <div>
-            <label className="form-label">Category</label>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <label className="form-label !mb-0">Category</label>
+              {canManageFeed ? (
+                <button type="button" className="btn-secondary btn-sm" onClick={() => openModal('category')}>
+                  New category
+                </button>
+              ) : null}
+            </div>
             <select className="form-input" {...itemForm.register('category_id')}>
               <option value={0}>Choose a category</option>
               {categories.map((category) => (
@@ -860,9 +1009,9 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
           </div>
           <div className="flex justify-end gap-3">
             <button type="button" className="btn-secondary" onClick={() => setActiveModal(null)}>Close</button>
-            <button className="btn-primary" disabled={!canManageFeed || createItem.isPending} type="submit">
+            <button className="btn-primary" disabled={!canManageFeed || createItem.isPending || updateItem.isPending} type="submit">
               <PackagePlus className="h-4 w-4" />
-              {createItem.isPending ? 'Saving...' : 'Save feed item'}
+              {createItem.isPending || updateItem.isPending ? 'Saving...' : editingItem ? 'Update feed item' : 'Save feed item'}
             </button>
           </div>
         </form>
@@ -876,7 +1025,14 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
       >
         <form className="space-y-4" onSubmit={purchaseForm.handleSubmit((values) => (canManageFeed ? createPurchase.mutate(values) : blockWriteAction()))}>
           <div>
-            <label className="form-label">Supplier</label>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <label className="form-label !mb-0">Supplier</label>
+              {canManageFeed ? (
+                <button type="button" className="btn-secondary btn-sm" onClick={() => openModal('supplier')}>
+                  Add supplier
+                </button>
+              ) : null}
+            </div>
             <select className="form-input" {...purchaseForm.register('supplier_id')}>
               <option value={0}>Choose supplier</option>
               {suppliers.map((supplier) => (
@@ -885,7 +1041,14 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
             </select>
           </div>
           <div>
-            <label className="form-label">Feed item</label>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <label className="form-label !mb-0">Feed item</label>
+              {canManageFeed ? (
+                <button type="button" className="btn-secondary btn-sm" onClick={() => openModal('item')}>
+                  New feed item
+                </button>
+              ) : null}
+            </div>
             <select className="form-input" {...purchaseForm.register('feed_item_id')}>
               <option value={0}>Other / not listed</option>
               {items.map((item) => (
@@ -901,7 +1064,14 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
                   <input className="form-input bg-white" placeholder="e.g. Cotton seed cake" {...purchaseForm.register('other_feed_item_name')} />
                 </div>
                 <div>
-                  <label className="form-label">Category</label>
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <label className="form-label !mb-0">Category</label>
+                    {canManageFeed ? (
+                      <button type="button" className="btn-secondary btn-sm" onClick={() => openModal('category')}>
+                        New category
+                      </button>
+                    ) : null}
+                  </div>
                   <select className="form-input bg-white" {...purchaseForm.register('other_feed_category_id')}>
                     <option value={0}>Raw Materials</option>
                     {categories.map((category) => (
@@ -973,7 +1143,14 @@ export function FeedManagementPage({ section }: { section: FeedSection }) {
             </select>
           </div>
           <div>
-            <label className="form-label">Feed item</label>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <label className="form-label !mb-0">Feed item</label>
+              {canManageFeed ? (
+                <button type="button" className="btn-secondary btn-sm" onClick={() => openModal('item')}>
+                  New feed item
+                </button>
+              ) : null}
+            </div>
             <select className="form-input" {...consumptionForm.register('feed_item_id')}>
               <option value={0}>Choose item</option>
               {items.map((item) => (

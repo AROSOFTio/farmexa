@@ -6,10 +6,12 @@ from app.db.tenant_db import get_tenant_db
 from app.modules.feed.schemas import (
     FeedCategoryCreate,
     FeedCategoryOut,
+    FeedCategoryUpdate,
     FeedConsumptionCreate,
     FeedConsumptionOut,
     FeedItemCreate,
     FeedItemOut,
+    FeedItemUpdate,
     FeedPurchaseCreate,
     FeedPurchaseOut,
     FeedFormulationCreate,
@@ -18,6 +20,7 @@ from app.modules.feed.schemas import (
     FeedProductionOut,
     SupplierCreate,
     SupplierOut,
+    SupplierUpdate,
 )
 from app.modules.feed.service import FeedService
 
@@ -41,6 +44,16 @@ async def create_supplier(
     return await FeedService(db).create_supplier(data)
 
 
+@router.put("/suppliers/{supplier_id}", response_model=SupplierOut)
+async def update_supplier(
+    supplier_id: int,
+    data: SupplierUpdate,
+    db: AsyncSession = Depends(get_tenant_db),
+    current_user=Depends(require_permission("feed:write")),
+):
+    return await FeedService(db).update_supplier(supplier_id, data)
+
+
 @router.get("/categories", response_model=list[FeedCategoryOut])
 async def list_categories(
     db: AsyncSession = Depends(get_tenant_db),
@@ -58,6 +71,16 @@ async def create_category(
     return await FeedService(db).create_category(data)
 
 
+@router.put("/categories/{category_id}", response_model=FeedCategoryOut)
+async def update_category(
+    category_id: int,
+    data: FeedCategoryUpdate,
+    db: AsyncSession = Depends(get_tenant_db),
+    current_user=Depends(require_permission("feed:write")),
+):
+    return await FeedService(db).update_category(category_id, data)
+
+
 @router.get("/items", response_model=list[FeedItemOut])
 async def list_items(
     db: AsyncSession = Depends(get_tenant_db),
@@ -73,6 +96,16 @@ async def create_item(
     current_user=Depends(require_permission("feed:write")),
 ):
     return await FeedService(db).create_item(data)
+
+
+@router.put("/items/{item_id}", response_model=FeedItemOut)
+async def update_item(
+    item_id: int,
+    data: FeedItemUpdate,
+    db: AsyncSession = Depends(get_tenant_db),
+    current_user=Depends(require_permission("feed:write")),
+):
+    return await FeedService(db).update_item(item_id, data)
 
 
 @router.get("/purchases", response_model=list[FeedPurchaseOut])
