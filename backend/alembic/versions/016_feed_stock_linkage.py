@@ -15,23 +15,37 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add stock_item_id column to feed_items table
-    op.add_column(
-        "feed_items",
-        sa.Column(
-            "stock_item_id",
-            sa.Integer(),
-            sa.ForeignKey("stock_items.id", ondelete="SET NULL"),
-            nullable=True,
-            index=True,
-        ),
-    )
+    # Add stock_item_id column to feed_items table if it doesn't exist
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [col['name'] for col in inspector.get_columns('feed_items')]
     
-    # Create index on stock_item_id
-    op.create_index("ix_feed_items_stock_item_id", "feed_items", ["stock_item_id"])
+    if 'stock_item_id' not in columns:
+        op.add_column(
+            "feed_items",
+            sa.Column(
+                "stock_item_id",
+                sa.Integer(),
+                sa.ForeignKey("stock_items.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+        )
+    
+    # Create index on stock_item_id if it doesn't exist
+    indexes = [idx['name'] for idx in inspector.get_indexes('feed_items')]
+    if 'ix_feed_items_stock_item_id' not in indexes:
+        op.create_index("ix_feed_items_stock_item_id", "feed_items", ["stock_item_id"])
 
 
 def downgrade() -> None:
     # Remove index and column
-    op.drop_index("ix_feed_items_stock_item_id", table_name="feed_items")
-    op.drop_column("feed_items", "stock_item_id")
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    indexes = [idx['name'] for idx in inspector.get_indexes('feed_items')]
+    
+    if 'ix_feed_items_stock_item_id' in indexes:
+        op.drop_index("ix_feed_items_stock_item_id", table_name="feed_items")
+    
+    columns = [col['name'] for col in inspector.get_columns('feed_items')]
+    if 'stock_item_id' in columns:
+        op.drop_column("feed_items", "stock_item_id")

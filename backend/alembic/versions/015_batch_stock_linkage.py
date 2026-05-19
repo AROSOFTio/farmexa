@@ -14,23 +14,37 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add stock_item_id column to batches table
-    op.add_column(
-        "batches",
-        sa.Column(
-            "stock_item_id",
-            sa.Integer(),
-            sa.ForeignKey("stock_items.id", ondelete="SET NULL"),
-            nullable=True,
-            index=True,
-        ),
-    )
+    # Add stock_item_id column to batches table if it doesn't exist
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [col['name'] for col in inspector.get_columns('batches')]
     
-    # Create index on stock_item_id
-    op.create_index("ix_batches_stock_item_id", "batches", ["stock_item_id"])
+    if 'stock_item_id' not in columns:
+        op.add_column(
+            "batches",
+            sa.Column(
+                "stock_item_id",
+                sa.Integer(),
+                sa.ForeignKey("stock_items.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+        )
+    
+    # Create index on stock_item_id if it doesn't exist
+    indexes = [idx['name'] for idx in inspector.get_indexes('batches')]
+    if 'ix_batches_stock_item_id' not in indexes:
+        op.create_index("ix_batches_stock_item_id", "batches", ["stock_item_id"])
 
 
 def downgrade() -> None:
     # Remove index and column
-    op.drop_index("ix_batches_stock_item_id", table_name="batches")
-    op.drop_column("batches", "stock_item_id")
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    indexes = [idx['name'] for idx in inspector.get_indexes('batches')]
+    
+    if 'ix_batches_stock_item_id' in indexes:
+        op.drop_index("ix_batches_stock_item_id", table_name="batches")
+    
+    columns = [col['name'] for col in inspector.get_columns('batches')]
+    if 'stock_item_id' in columns:
+        op.drop_column("batches", "stock_item_id")
