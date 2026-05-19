@@ -138,80 +138,69 @@ export function HousesPage() {
           ) : null}
         </div>
       ) : (
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {portfolio.map((house, index) => (
             <motion.div
               key={house.id}
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay: index * 0.04 }}
+              transition={{ duration: 0.2, delay: index * 0.04 }}
               className="card-hover overflow-hidden"
             >
-              <div className="border-b border-neutral-150 px-6 py-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-2xl font-semibold text-ink-900">{house.name}</h2>
-                  </div>
-                  <span className={house.status === 'active' ? 'badge badge-success' : house.status === 'maintenance' ? 'badge badge-warning' : 'badge badge-neutral'}>
-                    {house.status}
-                  </span>
-                </div>
+              <div className="flex items-center justify-between gap-3 border-b border-neutral-150 px-4 py-3">
+                <h2 className="text-[15px] font-bold text-ink-900 truncate">{house.name}</h2>
+                <span className={house.status === 'active' ? 'badge badge-success' : house.status === 'maintenance' ? 'badge badge-warning' : 'badge badge-neutral'}>
+                  {house.status}
+                </span>
               </div>
 
-              <div className="px-6 py-5">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-[10px] border border-neutral-150 bg-neutral-50 px-4 py-4">
-                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-ink-500">
-                      <Bird className="h-4 w-4 text-brand-600" />
-                      Active birds
+              <div className="px-4 py-3">
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div className="rounded-lg bg-neutral-50 border border-neutral-150 px-3 py-2">
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-400 mb-0.5">
+                      <Bird className="h-3 w-3 text-brand-500" />
+                      Birds
                     </div>
-                    <div className="mt-2 text-2xl font-semibold text-ink-900">{house.activeBirds.toLocaleString()}</div>
+                    <div className="text-lg font-bold text-ink-900 leading-tight">{house.activeBirds.toLocaleString()}</div>
                   </div>
-
-                  <div className="rounded-[10px] border border-neutral-150 bg-neutral-50 px-4 py-4">
-                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-ink-500">
-                      <Layers3 className="h-4 w-4 text-brand-600" />
-                      Active batches
+                  <div className="rounded-lg bg-neutral-50 border border-neutral-150 px-3 py-2">
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-400 mb-0.5">
+                      <Layers3 className="h-3 w-3 text-brand-500" />
+                      Batches
                     </div>
-                    <div className="mt-2 text-2xl font-semibold text-ink-900">{house.activeBatches.toLocaleString()}</div>
+                    <div className="text-lg font-bold text-ink-900 leading-tight">{house.activeBatches.toLocaleString()}</div>
                   </div>
                 </div>
 
-                <div className="mt-5">
-                  <div className="flex items-center justify-between text-sm font-medium text-ink-600">
+                <div className="mb-2.5">
+                  <div className="flex items-center justify-between text-[11px] text-ink-500 mb-1">
                     <span>Occupancy</span>
-                    <span>
-                      {house.activeBirds.toLocaleString()} / {house.capacity.toLocaleString()} birds
-                    </span>
+                    <span className="font-medium text-ink-700">{house.activeBirds.toLocaleString()} / {house.capacity.toLocaleString()}</span>
                   </div>
-                  <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-neutral-100">
-                    <div className="h-full rounded-full bg-brand-600" style={{ width: `${house.occupancy}%` }} />
+                  <div className="h-1.5 overflow-hidden rounded-full bg-neutral-100">
+                    <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${house.occupancy}%` }} />
                   </div>
                 </div>
+
                 {house.sections?.length ? (
-                  <div className="mt-5 rounded-[10px] border border-neutral-150 bg-neutral-50 p-3">
-                    <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500">
-                      {house.sections.length} section{house.sections.length === 1 ? '' : 's'}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {house.sections.slice(0, 4).map((section) => (
-                        <span key={section.id ?? section.name} className="badge badge-neutral">
-                          {section.name} - {section.capacity.toLocaleString()}
-                        </span>
-                      ))}
-                      {house.sections.length > 4 ? <span className="badge badge-neutral">+{house.sections.length - 4} more</span> : null}
-                    </div>
+                  <div className="flex flex-wrap gap-1.5 pt-2 border-t border-neutral-100">
+                    {house.sections.slice(0, 5).map((section) => (
+                      <span key={section.id ?? section.name} className="inline-flex items-center rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-ink-600">
+                        {section.name} · {section.capacity.toLocaleString()}
+                      </span>
+                    ))}
+                    {house.sections.length > 5 ? <span className="inline-flex items-center rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-ink-500">+{house.sections.length - 5}</span> : null}
                   </div>
                 ) : null}
               </div>
 
-              <div className="flex items-center justify-between border-t border-neutral-150 px-6 py-4">
-                <div className="text-sm text-ink-500">
-                  Capacity <span className="font-semibold text-ink-800">{house.capacity.toLocaleString()}</span>
+              <div className="flex items-center justify-between border-t border-neutral-150 px-4 py-2.5">
+                <div className="text-[11px] text-ink-400">
+                  Cap: <span className="font-semibold text-ink-700">{house.capacity.toLocaleString()}</span>
                 </div>
                 {canManageFarm ? (
                   <button type="button" onClick={() => setSelectedHouse(house)} className="btn-secondary btn-sm">
-                    <PencilLine className="h-4 w-4" />
+                    <PencilLine className="h-3.5 w-3.5" />
                     Edit
                   </button>
                 ) : null}

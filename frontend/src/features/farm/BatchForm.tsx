@@ -285,20 +285,6 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
         </div>
       </div>
 
-      {canManageFarm && (
-        <div className="inline-note">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-sm font-semibold text-ink-900">Manage batch dropdowns</div>
-              <div className="mt-1 text-sm text-ink-500">Add breeds and hatchery sources here so operators only select from the list.</div>
-            </div>
-            <button type="button" className="btn-secondary whitespace-nowrap" onClick={() => openReferenceModal('batch_breed')}>
-              Manage lists
-            </button>
-          </div>
-        </div>
-      )}
-
       <div className="flex justify-end gap-3 border-t border-[var(--border-subtle)] pt-5">
         <button
           type="button"
