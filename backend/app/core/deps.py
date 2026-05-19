@@ -138,6 +138,10 @@ async def _ensure_tenant_module_access(user, request: Request, permission_code: 
 
     enabled_modules = {module.module_key for module in tenant.modules if module.is_enabled}
     if enabled_modules.isdisjoint(required_module_keys):
+        from app.modules.developer_admin.catalog import DEFAULT_PLAN_MODULES
+        plan_modules = set(DEFAULT_PLAN_MODULES.get(getattr(tenant, "plan", None) or "", []))
+        if not required_module_keys.isdisjoint(plan_modules):
+            return
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"One of the required modules is not enabled for your tenant: {', '.join(sorted(required_module_keys))}.",

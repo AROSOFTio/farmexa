@@ -173,10 +173,13 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
               <select
                 {...register('section_id')}
                 className={clsx('form-input', errors.section_id && 'border-red-500 focus:ring-red-500/20')}
+                onChange={(e) => setValue('section_id', e.target.value === '' ? null : parseInt(e.target.value, 10))}
               >
                 <option value="">None (Use entire house)</option>
                 {selectedHouse.sections.map((s: any) => (
-                  <option key={s.id} value={s.id}>{s.name} ({s.section_type})</option>
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.section_type}) — {s.available_capacity ?? 0} available
+                  </option>
                 ))}
               </select>
             </div>
