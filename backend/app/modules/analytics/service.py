@@ -21,7 +21,13 @@ class AnalyticsService:
         soon = today + timedelta(days=7)
 
         feed_items = list(
-            (await db.execute(select(FeedItem).options(selectinload(FeedItem.category)).order_by(FeedItem.name)))
+            (
+                await db.execute(
+                    select(FeedItem)
+                    .options(selectinload(FeedItem.category))
+                    .order_by(FeedItem.name)
+                )
+            )
             .scalars()
             .all()
         )
@@ -36,7 +42,15 @@ class AnalyticsService:
 
         total_birds = int(sum(batch.active_quantity or 0 for batch in batches))
         active_houses = sum(1 for house in houses if house.status == HouseStatus.ACTIVE)
-        feed_stock = float(sum(item.current_stock or 0 for item in feed_items))
+        # Map stock item quantities for quick lookup
+        stock_qty_by_id = {item.id: float(item.current_quantity or 0) for item in stock_items}
+        # Feed stock is sourced from central inventory when linked; fallback to legacy field if not linked
+        feed_stock = float(
+            sum(
+                stock_qty_by_id.get(getattr(item, "stock_item_id", None), float(item.current_stock or 0))
+                for item in feed_items
+            )
+        )
         meat_stock = float(
             sum(
                 float(item.current_quantity or 0)
@@ -246,9 +260,16 @@ class AnalyticsService:
                     name=item.name,
                     category=item.category.name if item.category else "-",
                     unit=item.unit,
-                    current_stock=float(item.current_stock or 0),
+                    current_stock=float(
+                        stock_qty_by_id.get(getattr(item, "stock_item_id", None), float(item.current_stock or 0))
+                    ),
                     reorder_threshold=float(item.reorder_threshold or 0),
-                    status="Low stock" if (item.current_stock or 0) <= (item.reorder_threshold or 0) else "Available",
+                    status=(
+                        "Low stock"
+                        if stock_qty_by_id.get(getattr(item, "stock_item_id", None), float(item.current_stock or 0))
+                        <= (item.reorder_threshold or 0)
+                        else "Available"
+                    ),
                 )
                 for item in feed_items[:8]
             ],

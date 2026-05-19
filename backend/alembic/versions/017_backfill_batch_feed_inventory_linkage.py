@@ -34,11 +34,11 @@ def upgrade() -> None:
     batches = sa.Table("batches", meta, autoload_with=bind)
     feed_items = sa.Table("feed_items", meta, autoload_with=bind)
 
-    # Helper to get/create stock item by name & category
-    def get_or_create_stock_item(name: str, category: str, unit: str, reorder: float = 0.0):
-        si = session.execute(select(stock_items).where(stock_items.c.name == name)).first()
+    # Helper to get/create stock item by name & category; returns stock_item_id (int)
+    def get_or_create_stock_item_id(name: str, category: str, unit: str, reorder: float = 0.0) -> int:
+        si = session.execute(select(stock_items.c.id).where(stock_items.c.name == name)).scalar()
         if si:
-            return si[0]
+            return int(si)
         ins = stock_items.insert().values(
             name=name,
             sku=None,
@@ -50,29 +50,26 @@ def upgrade() -> None:
             average_cost=0.0,
             description=f"Auto backfill for {name}",
             is_active=True,
-        ).returning(stock_items)
-        return session.execute(ins).first()[0]
+        ).returning(stock_items.c.id)
+        return int(session.execute(ins).scalar_one())
 
     # Backfill batches
-    for row in session.execute(select(batches)).all():
-        b = row[0]
-        stock_item_id = getattr(b, "stock_item_id", None)
-        breed = getattr(b, "breed", None) or "Birds"
-        active_qty = float(getattr(b, "active_quantity", 0) or 0)
-        initial_qty = float(getattr(b, "initial_quantity", 0) or 0)
+    for b in session.execute(select(batches)).mappings().all():
+        stock_item_id = b.get("stock_item_id")
+        breed = b.get("breed") or "Birds"
+        initial_qty = float(b.get("initial_quantity") or 0)
         if not stock_item_id:
             name = f"Live Birds - {breed}"
-            si = get_or_create_stock_item(name, "finished_product", "birds", 0.0)
+            stock_item_id = get_or_create_stock_item_id(name, "finished_product", "birds", 0.0)
             session.execute(
-                batches.update().where(batches.c.id == b.id).values(stock_item_id=si.id)
+                batches.update().where(batches.c.id == b["id"]).values(stock_item_id=stock_item_id)
             )
-            stock_item_id = si.id
         # Create initial movement only if none exists referencing this batch
         existing = session.execute(
             select(sa.func.count()).select_from(stock_movements).where(
                 (stock_movements.c.item_id == stock_item_id)
                 & (stock_movements.c.reference_type == sa.literal("batch_arrival"))
-                & (stock_movements.c.reference_id == b.id)
+                & (stock_movements.c.reference_id == b["id"]) 
             )
         ).scalar() or 0
         if existing == 0 and initial_qty > 0:
@@ -86,7 +83,7 @@ def upgrade() -> None:
                     previous_quantity=prev,
                     new_quantity=new_qty,
                     reference_type="batch_arrival",
-                    reference_id=b.id,
+                    reference_id=b["id"],
                     unit_cost=None,
                     notes=f"Backfill arrival for batch {getattr(b, 'batch_number', b.id)}",
                 )
@@ -96,24 +93,22 @@ def upgrade() -> None:
             )
 
     # Backfill feed items
-    for row in session.execute(select(feed_items)).all():
-        f = row[0]
-        stock_item_id = getattr(f, "stock_item_id", None)
-        name = getattr(f, "name", None) or "Feed Item"
-        unit = getattr(f, "unit", None) or "kg"
-        current_stock = float(getattr(f, "current_stock", 0) or 0)
-        reorder = float(getattr(f, "reorder_threshold", 0) or 0)
+    for f in session.execute(select(feed_items)).mappings().all():
+        stock_item_id = f.get("stock_item_id")
+        name = f.get("name") or "Feed Item"
+        unit = f.get("unit") or "kg"
+        current_stock = float(f.get("current_stock") or 0)
+        reorder = float(f.get("reorder_threshold") or 0)
         if not stock_item_id:
-            si = get_or_create_stock_item(name, "raw_material", unit, reorder)
+            stock_item_id = get_or_create_stock_item_id(name, "raw_material", unit, reorder)
             session.execute(
-                feed_items.update().where(feed_items.c.id == f.id).values(stock_item_id=si.id)
+                feed_items.update().where(feed_items.c.id == f["id"]).values(stock_item_id=stock_item_id)
             )
-            stock_item_id = si.id
         existing = session.execute(
             select(sa.func.count()).select_from(stock_movements).where(
                 (stock_movements.c.item_id == stock_item_id)
                 & (stock_movements.c.reference_type == sa.literal("initial_stock"))
-                & (stock_movements.c.reference_id == f.id)
+                & (stock_movements.c.reference_id == f["id"]) 
             )
         ).scalar() or 0
         if existing == 0 and current_stock > 0:
@@ -127,7 +122,7 @@ def upgrade() -> None:
                     previous_quantity=prev,
                     new_quantity=new_qty,
                     reference_type="initial_stock",
-                    reference_id=f.id,
+                    reference_id=f["id"],
                     unit_cost=None,
                     notes=f"Backfill feed item stock for {name}",
                 )

@@ -4,7 +4,9 @@ import pytest
 
 from app.modules.farm.repository import FarmRepository
 from app.modules.inventory.service import InventoryService
-from app.models.farm import Batch
+from datetime import date
+
+from app.models.farm import Batch, BatchStatus
 from app.models.inventory import MovementType
 
 
@@ -29,10 +31,10 @@ async def test_farm_repository_accepts_dict_with_stock_item_id():
         "section_id": None,
         "breed": "Broiler",
         "source": None,
-        "arrival_date": __import__("datetime").date.today(),
+        "arrival_date": date.today(),
         "initial_quantity": 1000,
         "active_quantity": 1000,
-        "status": Batch.__table__.c.status.type.enum_class.ACTIVE,  # reuse enum
+        "status": BatchStatus.ACTIVE,
         "stock_item_id": 7,
     }
     batch = await repo.create_batch(payload)
@@ -59,8 +61,8 @@ def test_inventory_service_delegates_to_coordinator(monkeypatch):
             calls["adj"].append(kw)
             return types.SimpleNamespace(id=3)
 
-    from app.modules import inventory as inventory_pkg
-    monkeypatch.setattr(inventory_pkg.service, "InventoryCoordinator", FakeCoord)
+    import app.modules.inventory.service as inventory_service_module
+    monkeypatch.setattr(inventory_service_module, "InventoryCoordinator", FakeCoord)
 
     svc = InventoryService()
     fake_db = object()

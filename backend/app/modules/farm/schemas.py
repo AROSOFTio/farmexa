@@ -93,6 +93,7 @@ class BatchOut(BatchBase):
     id: int
     house: Optional[PoultryHouseOut] = None
     section: Optional[PoultryHouseSectionOut] = None
+    stock_item_id: Optional[int] = None
 
     model_config = {"from_attributes": True}
 

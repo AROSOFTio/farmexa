@@ -90,15 +90,24 @@ class InventoryService:
                 notes=movement.notes,
             )
         else:
-            # Adjustment: treat as signed delta
-            return coordinator.record_adjustment(
-                item_id=movement.item_id,
-                quantity=movement.quantity,
-                reference_type=movement.reference_type,
-                reference_id=movement.reference_id,
-                notes=movement.notes,
-                allow_negative=False,
-            )
+            # Adjustment: treat as signed delta using IN/OUT for compatibility
+            if movement.quantity >= 0:
+                return coordinator.record_in(
+                    item_id=movement.item_id,
+                    quantity=movement.quantity,
+                    reference_type=movement.reference_type,
+                    reference_id=movement.reference_id,
+                    unit_cost=None,
+                    notes=movement.notes,
+                )
+            else:
+                return coordinator.record_out(
+                    item_id=movement.item_id,
+                    quantity=abs(movement.quantity),
+                    reference_type=movement.reference_type,
+                    reference_id=movement.reference_id,
+                    notes=movement.notes,
+                )
 
     def get_transfers(self, db: Session, skip: int = 0, limit: int = 100, status_filter: TransferStatus | None = None):
         query = db.query(StockTransfer)
@@ -185,6 +194,34 @@ class InventoryService:
         db.commit()
         db.refresh(transfer)
         return transfer
+
+    def reconcile_item(self, db: Session, item_id: int) -> dict:
+        from sqlalchemy import func, case
+        item = db.query(StockItem).filter(StockItem.id == item_id).first()
+        if not item:
+            raise HTTPException(status_code=404, detail="Stock item not found")
+
+        net = db.query(
+            func.sum(
+                case(
+                    (StockMovement.movement_type == MovementType.IN, StockMovement.quantity),
+                    (StockMovement.movement_type == MovementType.OUT, -StockMovement.quantity),
+                    (StockMovement.movement_type == MovementType.ADJUSTMENT, StockMovement.quantity),
+                    else_=0,
+                )
+            )
+        ).filter(StockMovement.item_id == item_id).scalar() or 0.0
+
+        calculated = float(net)
+        difference = float(item.current_quantity) - calculated
+        return {
+            "item_id": item.id,
+            "item_name": item.name,
+            "actual_quantity": float(item.current_quantity),
+            "calculated_quantity": calculated,
+            "difference": difference,
+            "is_reconciled": abs(difference) < 0.01,
+        }
 
 
 inventory_service = InventoryService()
