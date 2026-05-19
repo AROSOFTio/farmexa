@@ -92,8 +92,10 @@ class FarmRepository:
         res = await self.db.execute(self._batch_query().where(Batch.id == batch_id))
         return res.scalar_one_or_none()
 
-    async def create_batch(self, data: BatchCreate) -> Batch:
-        batch = Batch(**data.model_dump())
+    async def create_batch(self, data) -> Batch:
+        """Create a batch from a BatchCreate schema or plain dict (allows extra fields like stock_item_id)."""
+        payload = data if isinstance(data, dict) else data.model_dump()
+        batch = Batch(**payload)
         self.db.add(batch)
         await self.db.flush()
         return batch

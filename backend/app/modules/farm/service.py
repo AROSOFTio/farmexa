@@ -360,11 +360,10 @@ class FarmService:
                 self.db.add(stock_item)
                 await self.db.flush()
             
-            # Create batch with stock item linkage
-            batch_data = data.model_copy(update={"active_quantity": data.initial_quantity})
-            batch_data_dict = batch_data.model_dump()
-            batch_data_dict["stock_item_id"] = stock_item.id
-            batch = await self.repo.create_batch(batch_data)
+            # Create batch with stock item linkage (ensure repository receives stock_item_id)
+            batch_payload = data.model_copy(update={"active_quantity": data.initial_quantity}).model_dump()
+            batch_payload["stock_item_id"] = stock_item.id
+            batch = await self.repo.create_batch(batch_payload)
             await self.db.flush()
             
             # Record initial stock movement
@@ -411,6 +410,29 @@ class FarmService:
             raise HTTPException(status_code=400, detail="A batch cannot remain with active birds when marked as depleted, sold, or slaughtered.")
 
         try:
+            # Handle active_quantity adjustments via InventoryCoordinator to avoid desync
+            if "active_quantity" in fields_set and data.active_quantity is not None and data.active_quantity != batch.active_quantity:
+                if not batch.stock_item_id:
+                    raise HTTPException(status_code=400, detail="Batch is not linked to inventory; cannot adjust quantity. Recreate or link batch to stock.")
+                delta = float(data.active_quantity - batch.active_quantity)
+                coordinator = InventoryCoordinator(self.db)
+                if delta > 0:
+                    await coordinator.record_in_async(
+                        item_id=batch.stock_item_id,
+                        quantity=delta,
+                        reference_type=ReferenceType.BATCH_ADJUSTMENT.value,
+                        reference_id=batch.id,
+                        unit_cost=None,
+                        notes=f"Batch {batch.batch_number} manual quantity increase",
+                    )
+                else:
+                    await coordinator.record_out_async(
+                        item_id=batch.stock_item_id,
+                        quantity=abs(delta),
+                        reference_type=ReferenceType.BATCH_ADJUSTMENT.value,
+                        reference_id=batch.id,
+                        notes=f"Batch {batch.batch_number} manual quantity decrease",
+                    )
             batch = await self.repo.update_batch(batch, data)
             if batch.active_quantity == 0 and batch.status == BatchStatus.ACTIVE:
                 batch.status = BatchStatus.DEPLETED
@@ -431,8 +453,19 @@ class FarmService:
             raise HTTPException(status_code=404, detail="Batch not found")
         if batch.active_quantity < data.quantity:
             raise HTTPException(status_code=400, detail="Mortality quantity exceeds active birds")
+        if not batch.stock_item_id:
+            raise HTTPException(status_code=400, detail="Batch has no inventory link; cannot post mortality.")
 
+        # Create mortality log first to get ID, then record stock movement and update batch atomically
         log = await self.repo.create_mortality_log(data)
+        coordinator = InventoryCoordinator(self.db)
+        await coordinator.record_out_async(
+            item_id=batch.stock_item_id,
+            quantity=float(data.quantity),
+            reference_type=ReferenceType.MORTALITY.value,
+            reference_id=log.id,
+            notes=f"Mortality for batch {batch.batch_number}",
+        )
         batch.active_quantity -= data.quantity
         if batch.active_quantity == 0:
             batch.status = BatchStatus.DEPLETED

@@ -120,11 +120,6 @@ class FeedRepository:
         for i_data in items_data:
             item = FeedPurchaseItem(**i_data, purchase_id=purchase.id)
             self.db.add(item)
-            
-            # Update stock
-            feed_item = await self.get_item(item.feed_item_id)
-            if feed_item:
-                feed_item.current_stock += item.quantity
 
         await self.db.flush()
         return purchase
@@ -140,11 +135,6 @@ class FeedRepository:
     async def create_consumption(self, data: FeedConsumptionCreate) -> FeedConsumption:
         consumption = FeedConsumption(**data.model_dump())
         self.db.add(consumption)
-
-        # Update stock
-        feed_item = await self.get_item(consumption.feed_item_id)
-        if feed_item:
-            feed_item.current_stock -= consumption.quantity
 
         await self.db.flush()
         return consumption

@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.inventory import MovementType, StockCategory, StockItem, StockMovement, StockTransfer, TransferStatus
+from app.services.inventory_coordinator import InventoryCoordinator, ReferenceType
 
 from . import schemas
 
@@ -42,16 +43,14 @@ class InventoryService:
         db.flush()
 
         if item.initial_quantity > 0:
-            self.create_movement(
-                db,
-                schemas.StockMovementCreate(
-                    item_id=db_item.id,
-                    movement_type=MovementType.IN,
-                    quantity=item.initial_quantity,
-                    reference_type="initial_stock",
-                    unit_cost=item.initial_unit_cost,
-                    notes="Initial stock entry",
-                ),
+            coordinator = InventoryCoordinator(db)
+            coordinator.record_in(
+                item_id=db_item.id,
+                quantity=item.initial_quantity,
+                reference_type=ReferenceType.INITIAL_STOCK.value,
+                reference_id=db_item.id,
+                unit_cost=item.initial_unit_cost,
+                notes="Initial stock entry",
             )
 
         db.commit()
@@ -72,45 +71,34 @@ class InventoryService:
         return db_item
 
     def create_movement(self, db: Session, movement: schemas.StockMovementCreate):
-        item = db.query(StockItem).filter(StockItem.id == movement.item_id).first()
-        if not item:
-            raise HTTPException(status_code=404, detail="Stock item not found")
-
-        prev_qty = item.current_quantity
-        new_qty = prev_qty
-
+        coordinator = InventoryCoordinator(db)
         if movement.movement_type == MovementType.IN:
-            new_qty += movement.quantity
-            if new_qty > 0 and movement.unit_cost is not None:
-                total_value = (prev_qty * item.average_cost) + (movement.quantity * movement.unit_cost)
-                item.average_cost = total_value / new_qty
+            return coordinator.record_in(
+                item_id=movement.item_id,
+                quantity=movement.quantity,
+                reference_type=movement.reference_type,
+                reference_id=movement.reference_id,
+                unit_cost=movement.unit_cost,
+                notes=movement.notes,
+            )
         elif movement.movement_type == MovementType.OUT:
-            if prev_qty < movement.quantity:
-                raise HTTPException(status_code=400, detail="Insufficient stock")
-            new_qty -= movement.quantity
-        elif movement.movement_type == MovementType.ADJUSTMENT:
-            new_qty += movement.quantity
-            if new_qty < 0:
-                raise HTTPException(status_code=400, detail="Adjustment results in negative stock")
-
-        db_movement = StockMovement(
-            item_id=item.id,
-            movement_type=movement.movement_type,
-            quantity=abs(movement.quantity),
-            previous_quantity=prev_qty,
-            new_quantity=new_qty,
-            reference_type=movement.reference_type,
-            reference_id=movement.reference_id,
-            unit_cost=movement.unit_cost or item.average_cost,
-            notes=movement.notes,
-        )
-
-        item.current_quantity = new_qty
-
-        db.add(db_movement)
-        db.commit()
-        db.refresh(db_movement)
-        return db_movement
+            return coordinator.record_out(
+                item_id=movement.item_id,
+                quantity=movement.quantity,
+                reference_type=movement.reference_type,
+                reference_id=movement.reference_id,
+                notes=movement.notes,
+            )
+        else:
+            # Adjustment: treat as signed delta
+            return coordinator.record_adjustment(
+                item_id=movement.item_id,
+                quantity=movement.quantity,
+                reference_type=movement.reference_type,
+                reference_id=movement.reference_id,
+                notes=movement.notes,
+                allow_negative=False,
+            )
 
     def get_transfers(self, db: Session, skip: int = 0, limit: int = 100, status_filter: TransferStatus | None = None):
         query = db.query(StockTransfer)
@@ -163,34 +151,27 @@ class InventoryService:
         if payload.status == TransferStatus.ISSUED:
             if transfer.status != TransferStatus.DRAFT:
                 raise HTTPException(status_code=409, detail="Only draft transfers can be issued")
-            self.create_movement(
-                db,
-                schemas.StockMovementCreate(
-                    item_id=transfer.item_id,
-                    movement_type=MovementType.OUT,
-                    quantity=transfer.quantity,
-                    reference_type="GIV",
-                    reference_id=transfer.id,
-                    unit_cost=item.average_cost,
-                    notes=f"{transfer.reference_number}: {transfer.from_location} to {transfer.to_location}",
-                ),
+            coordinator = InventoryCoordinator(db)
+            coordinator.record_out(
+                item_id=transfer.item_id,
+                quantity=transfer.quantity,
+                reference_type=ReferenceType.STOCK_TRANSFER.value,
+                reference_id=transfer.id,
+                notes=f"{transfer.reference_number}: {transfer.from_location} to {transfer.to_location}",
             )
             transfer.status = TransferStatus.ISSUED
             transfer.issued_at = now
         elif payload.status == TransferStatus.RECEIVED:
             if transfer.status != TransferStatus.ISSUED:
                 raise HTTPException(status_code=409, detail="Only issued transfers can be received")
-            self.create_movement(
-                db,
-                schemas.StockMovementCreate(
-                    item_id=transfer.item_id,
-                    movement_type=MovementType.IN,
-                    quantity=transfer.quantity,
-                    reference_type="GRN",
-                    reference_id=transfer.id,
-                    unit_cost=item.average_cost,
-                    notes=f"{transfer.reference_number}: received at {transfer.to_location}",
-                ),
+            coordinator = InventoryCoordinator(db)
+            coordinator.record_in(
+                item_id=transfer.item_id,
+                quantity=transfer.quantity,
+                reference_type=ReferenceType.STOCK_TRANSFER.value,
+                reference_id=transfer.id,
+                unit_cost=item.average_cost,
+                notes=f"{transfer.reference_number}: received at {transfer.to_location}",
             )
             transfer.status = TransferStatus.RECEIVED
             transfer.received_at = now

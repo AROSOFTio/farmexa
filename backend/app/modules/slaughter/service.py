@@ -138,40 +138,7 @@ class SlaughterService:
 
         self._apply_metrics(db_record)
 
-        if db_record.status == SlaughterStatus.COMPLETED and previous_status != SlaughterStatus.COMPLETED:
-            batch = db.query(Batch).filter(Batch.id == db_record.batch_id).first()
-            if not batch:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Batch not found")
-            if batch.active_quantity < db_record.live_birds_count:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Batch active quantity is lower than the slaughtered bird count",
-                )
-            
-            # Use InventoryCoordinator for atomic stock movement
-            coordinator = InventoryCoordinator(db)
-            
-            # Record OUT movement for live birds if batch has stock_item_id
-            if batch.stock_item_id:
-                try:
-                    coordinator.record_out(
-                        item_id=batch.stock_item_id,
-                        quantity=float(db_record.live_birds_count),
-                        reference_type=ReferenceType.SLAUGHTER_INPUT.value,
-                        reference_id=db_record.id,
-                        notes=f"Slaughter input: {db_record.live_birds_count} birds from batch {batch.batch_number}",
-                    )
-                except HTTPException as e:
-                    db.rollback()
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Cannot record stock movement for slaughter: {e.detail}"
-                    )
-            
-            # Reduce batch active quantity
-            batch.active_quantity -= db_record.live_birds_count
-            if batch.active_quantity == 0:
-                batch.status = BatchStatus.SLAUGHTERED
+        # Do not post inventory movements here; handled atomically when outputs are posted
 
         self._write_audit(
             db,
@@ -207,7 +174,33 @@ class SlaughterService:
         if not item:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock item not found")
 
-        # Use InventoryCoordinator for atomic stock movement
+        # If this is the first output posting, atomically post input movement and reduce batch
+        batch = db.query(Batch).filter(Batch.id == db_record.batch_id).first()
+        if not batch:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Batch not found")
+        if db_record.inventory_posted_at is None:
+            if not batch.stock_item_id:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Batch not linked to inventory; cannot complete slaughter.")
+            if batch.active_quantity < db_record.live_birds_count:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Batch active quantity is lower than the slaughtered bird count")
+
+            coordinator0 = InventoryCoordinator(db)
+            try:
+                coordinator0.record_out(
+                    item_id=batch.stock_item_id,
+                    quantity=float(db_record.live_birds_count),
+                    reference_type=ReferenceType.SLAUGHTER_INPUT.value,
+                    reference_id=db_record.id,
+                    notes=f"Slaughter input: {db_record.live_birds_count} birds from batch {batch.batch_number}",
+                )
+            except HTTPException as e:
+                db.rollback()
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot record slaughter input: {e.detail}")
+
+            batch.active_quantity -= db_record.live_birds_count
+            if batch.active_quantity == 0:
+                batch.status = BatchStatus.SLAUGHTERED
+
         coordinator = InventoryCoordinator(db)
         
         try:
@@ -238,7 +231,8 @@ class SlaughterService:
         )
         db.add(db_output)
 
-        db_record.inventory_posted_at = datetime.now(timezone.utc)
+        if db_record.inventory_posted_at is None:
+            db_record.inventory_posted_at = datetime.now(timezone.utc)
         self._write_audit(
             db,
             user_id=current_user.id,
