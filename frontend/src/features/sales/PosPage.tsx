@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useFieldArray, useForm } from 'react-hook-form'
+import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Download, ExternalLink, FileText, Plus, Printer, ReceiptText, Send, ShoppingCart } from 'lucide-react'
@@ -87,10 +87,11 @@ export function PosPage() {
   })
   const fields = useFieldArray({ control: form.control, name: 'items' })
   const { errors } = form.formState
-  const lines = form.watch('items')
-  const total = useMemo(() => lines.reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unit_price) || 0), 0), [lines])
-  const paymentMode = form.watch('sale_payment_mode')
-  const paidNow = paymentMode === 'full' ? total : Number(form.watch('amount_paid_now') || 0)
+  const lines = useWatch({ control: form.control, name: 'items' }) ?? []
+  const total = lines.reduce((sum: number, line: any) => sum + (Number(line.quantity) || 0) * (Number(line.unit_price) || 0), 0)
+  const paymentMode = useWatch({ control: form.control, name: 'sale_payment_mode' }) ?? 'full'
+  const amountPaidNow = useWatch({ control: form.control, name: 'amount_paid_now' })
+  const paidNow = paymentMode === 'full' ? total : Number(amountPaidNow || 0)
   const balanceDue = Math.max(total - paidNow, 0)
 
   const checkout = useMutation({
@@ -261,7 +262,17 @@ export function PosPage() {
               </div>
               <div>
                 <label className="form-label">Amount paid now</label>
-                <input className="form-input" type="number" min={0} max={total} step="0.01" disabled={paymentMode === 'full'} {...form.register('amount_paid_now')} />
+                <input
+                  className="form-input"
+                  type="number"
+                  min={0}
+                  max={total}
+                  step="0.01"
+                  disabled={paymentMode === 'full'}
+                  {...form.register('amount_paid_now')}
+                  value={paymentMode === 'full' ? total : undefined}
+                  onChange={paymentMode === 'full' ? undefined : (e) => form.setValue('amount_paid_now', Number(e.target.value))}
+                />
                 {errors.amount_paid_now ? <p className="form-error">{errors.amount_paid_now.message}</p> : null}
               </div>
               <div>
@@ -300,20 +311,30 @@ export function PosPage() {
       <Modal
         isOpen={Boolean(receipt)}
         onClose={() => setReceipt(null)}
-        title="Sale completed"
-        description="Use a generated PDF receipt for viewing, downloading, or thermal printing."
+        title="✅ Sale completed!"
+        description="Choose a receipt format to print or download. You can also skip and start a new sale."
       >
         {receipt ? (
           <div className="space-y-5">
-            <div className="rounded-[10px] border border-[rgba(var(--brand-primary-rgb),0.2)] bg-[rgba(var(--brand-primary-rgb),0.06)] p-4">
-              <div className="text-[13px] font-semibold text-ink-900">{receipt.receipt_number}</div>
-              <div className="mt-1 text-[12.5px] text-ink-500">Invoice {receipt.invoice.invoice_number} | Total UGX {receipt.invoice.total_amount.toLocaleString()} | Paid UGX {receipt.invoice.paid_amount.toLocaleString()} | Balance UGX {receipt.balance_due.toLocaleString()}</div>
-              {receipt.invoice.due_date && receipt.balance_due > 0 ? <div className="mt-1 text-[12.5px] text-ink-500">Balance due {receipt.invoice.due_date}</div> : null}
+            <div className="rounded-[12px] border border-emerald-200 bg-emerald-50 p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                  <ReceiptText className="h-5 w-5 text-emerald-700" />
+                </div>
+                <div>
+                  <div className="font-bold text-ink-900">{receipt.receipt_number} — {receipt.invoice.invoice_number}</div>
+                  <div className="mt-0.5 text-[12.5px] text-ink-500">Total: <strong>UGX {receipt.invoice.total_amount.toLocaleString()}</strong> &nbsp;·&nbsp; Paid: <strong className="text-emerald-700">UGX {receipt.invoice.paid_amount.toLocaleString()}</strong> {receipt.balance_due > 0 ? <>&nbsp;·&nbsp; Balance: <strong className="text-amber-600">UGX {receipt.balance_due.toLocaleString()}</strong></> : null}</div>
+                  {receipt.invoice.due_date && receipt.balance_due > 0 ? <div className="mt-0.5 text-[12px] text-amber-600">Balance due by {receipt.invoice.due_date}</div> : null}
+                </div>
+              </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <button type="button" className="btn-secondary" onClick={() => openReceiptDocument('a4', 'view')}><ExternalLink className="h-4 w-4" /> View A4</button>
-              <button type="button" className="btn-secondary" onClick={() => openReceiptDocument('a4', 'download')}><Download className="h-4 w-4" /> Download PDF</button>
-              <button type="button" className="btn-secondary" onClick={() => openReceiptDocument(paperSize, 'view')}><Printer className="h-4 w-4" /> Print thermal</button>
+            <div>
+              <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-400">Print Receipt</div>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <button type="button" className="btn-primary" onClick={() => openReceiptDocument('a4', 'view')}><Printer className="h-4 w-4" /> Print A4</button>
+                <button type="button" className="btn-secondary" onClick={() => openReceiptDocument(paperSize, 'view')}><Printer className="h-4 w-4" /> Thermal</button>
+                <button type="button" className="btn-secondary" onClick={() => openReceiptDocument('a4', 'download')}><Download className="h-4 w-4" /> Download PDF</button>
+              </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
               <div>
@@ -323,7 +344,7 @@ export function PosPage() {
                   <option value="80mm">80mm thermal paper</option>
                 </select>
               </div>
-              <button type="button" className="btn-primary" onClick={() => setReceipt(null)}><FileText className="h-4 w-4" /> New sale</button>
+              <button type="button" className="btn-secondary" onClick={() => setReceipt(null)}><FileText className="h-4 w-4" /> New sale</button>
             </div>
           </div>
         ) : null}
