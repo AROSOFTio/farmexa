@@ -15,7 +15,8 @@ import sqlalchemy as sa
 from sqlalchemy import orm, select
 
 
-revision = "017_backfill_batch_feed_inventory_linkage"
+# Keep revision identifiers within Alembic's default varchar(32) version column.
+revision = "017_batch_feed_inventory_link"
 down_revision = "016_feed_stock_linkage"
 branch_labels = None
 depends_on = None
@@ -85,7 +86,7 @@ def upgrade() -> None:
                     reference_type="batch_arrival",
                     reference_id=b["id"],
                     unit_cost=None,
-                    notes=f"Backfill arrival for batch {getattr(b, 'batch_number', b.id)}",
+                    notes=f"Backfill arrival for batch {b.get('batch_number') or b['id']}",
                 )
             )
             session.execute(
