@@ -9,6 +9,7 @@ import { clsx } from 'clsx'
 import { Modal } from '@/components/Modal'
 import { useAuth } from '@/features/auth/AuthContext'
 import { FarmReferenceManager, type FarmReferenceManagerType } from '@/features/farm/FarmReferenceManager'
+import { HouseForm } from '@/features/farm/HouseForm'
 
 const batchSchema = z.object({
   batch_number: z.string().min(1, 'Batch number is required'),
@@ -46,6 +47,8 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
   const queryClient = useQueryClient()
   const { hasPermission } = useAuth()
   const [isReferenceModalOpen, setIsReferenceModalOpen] = useState(false)
+  const [isHouseModalOpen, setIsHouseModalOpen] = useState(false)
+  const [referenceModalType, setReferenceModalType] = useState<FarmReferenceManagerType['type']>('batch_breed')
   const canManageFarm = hasPermission('farm:write')
 
   const { data: houses } = useQuery({
@@ -84,8 +87,10 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
   const selectedHouse = useMemo(() => houses?.find((h: any) => h.id === selectedHouseId), [houses, selectedHouseId])
   const selectedSection = useMemo(() => selectedHouse?.sections?.find((s: any) => s.id === selectedSectionId), [selectedHouse, selectedSectionId])
 
-  const availableCapacity = selectedSection ? selectedSection.available_capacity : (selectedHouse?.available_capacity ?? 0)
-  const isCapacityExceeded = (initialQuantity || 0) > availableCapacity
+  const availableCapacity = selectedSection ? selectedSection.available_capacity : selectedHouse?.available_capacity
+  const isCapacityExceeded = availableCapacity !== undefined && (initialQuantity || 0) > availableCapacity
+  const selectedLocationLabel = selectedSection ? selectedSection.name : selectedHouse?.name
+  const hasNoAvailableCapacity = availableCapacity !== undefined && availableCapacity <= 0
 
   const createBatch = useMutation({
     mutationFn: (data: BatchFormValues) => {
@@ -108,10 +113,15 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
 
   const onSubmit = (data: BatchFormValues) => {
     if (isCapacityExceeded) {
-      toast.error('Cannot create batch: initial quantity exceeds available capacity.')
+      toast.error('Cannot create batch: selected house or section has no available capacity.')
       return
     }
     createBatch.mutate(data)
+  }
+
+  const openReferenceModal = (type: FarmReferenceManagerType['type']) => {
+    setReferenceModalType(type)
+    setIsReferenceModalOpen(true)
   }
 
   return (
@@ -130,7 +140,14 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
           </div>
 
           <div>
-            <label className="form-label">Poultry House</label>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <label className="form-label !mb-0">Poultry House</label>
+              {canManageFarm ? (
+                <button type="button" className="btn-secondary btn-sm" onClick={() => setIsHouseModalOpen(true)}>
+                  Add house
+                </button>
+              ) : null}
+            </div>
             <select
               {...register('house_id')}
               className={clsx('form-input', errors.house_id && 'border-red-500 focus:ring-red-500/20')}
@@ -141,10 +158,13 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
             >
               <option value="">Select a house...</option>
               {houses?.map((h: any) => (
-                <option key={h.id} value={h.id}>{h.name}</option>
+                <option key={h.id} value={h.id}>{h.name} ({h.available_capacity ?? 0} available)</option>
               ))}
             </select>
             {errors.house_id && <p className="form-error">{errors.house_id.message}</p>}
+            {houses?.length === 0 && canManageFarm ? (
+              <p className="mt-2 text-xs text-ink-500">No house yet. Add one here, then continue creating this batch.</p>
+            ) : null}
           </div>
 
           {selectedHouse?.sections?.length > 0 && (
@@ -176,9 +196,14 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
               </div>
               <div>
                 <span className="text-amber-900/60 font-medium uppercase tracking-[0.06em] text-[10px]">Available</span>
-                <div className="font-semibold text-amber-900 mt-0.5">{availableCapacity.toLocaleString()} birds</div>
+                <div className="font-semibold text-amber-900 mt-0.5">{(availableCapacity ?? 0).toLocaleString()} birds</div>
               </div>
             </div>
+            {hasNoAvailableCapacity ? (
+              <div className="mt-3 rounded-[10px] border border-amber-200 bg-white/70 px-3 py-2 text-sm text-amber-900">
+                {selectedLocationLabel} has no free capacity. Increase the house capacity, choose another house/section, or close/move existing active batches before adding birds here.
+              </div>
+            ) : null}
           </div>
         )}
       </div>
@@ -187,7 +212,14 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
         <div className="form-section-title">Flock Details</div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="form-label">Breed</label>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <label className="form-label !mb-0">Breed</label>
+              {canManageFarm ? (
+                <button type="button" className="btn-secondary btn-sm" onClick={() => openReferenceModal('batch_breed')}>
+                  Add breed
+                </button>
+              ) : null}
+            </div>
             <select
               {...register('breed')}
               className={clsx('form-input', errors.breed && 'border-red-500 focus:ring-red-500/20')}
@@ -201,7 +233,14 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
           </div>
 
           <div>
-            <label className="form-label">Source (Hatchery/Supplier)</label>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <label className="form-label !mb-0">Source (Hatchery/Supplier)</label>
+              {canManageFarm ? (
+                <button type="button" className="btn-secondary btn-sm" onClick={() => openReferenceModal('batch_source')}>
+                  Add source
+                </button>
+              ) : null}
+            </div>
             <select {...register('source')} className="form-input">
               <option value="">Select source...</option>
               {sourceOptions.map((item) => (
@@ -226,7 +265,7 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
             {errors.initial_quantity && <p className="form-error">{errors.initial_quantity.message}</p>}
             {isCapacityExceeded && (
               <p className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded border border-red-100">
-                Warning: Quantity ({initialQuantity}) exceeds available capacity ({availableCapacity}).
+                Quantity ({initialQuantity}) exceeds available capacity ({availableCapacity ?? 0}). Select a house with space or add capacity first.
               </p>
             )}
           </div>
@@ -250,7 +289,7 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
               <div className="text-sm font-semibold text-ink-900">Manage batch dropdowns</div>
               <div className="mt-1 text-sm text-ink-500">Add breeds and hatchery sources here so operators only select from the list.</div>
             </div>
-            <button type="button" className="btn-secondary whitespace-nowrap" onClick={() => setIsReferenceModalOpen(true)}>
+            <button type="button" className="btn-secondary whitespace-nowrap" onClick={() => openReferenceModal('batch_breed')}>
               Manage lists
             </button>
           </div>
@@ -280,7 +319,15 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
         onClose={() => setIsReferenceModalOpen(false)}
         title="Batch setup lists"
       >
-        <FarmReferenceManager types={batchReferenceTypes} />
+        <FarmReferenceManager types={batchReferenceTypes} initialType={referenceModalType} />
+      </Modal>
+
+      <Modal
+        isOpen={isHouseModalOpen}
+        onClose={() => setIsHouseModalOpen(false)}
+        title="Add poultry house"
+      >
+        <HouseForm onSuccess={() => setIsHouseModalOpen(false)} />
       </Modal>
     </form>
   )

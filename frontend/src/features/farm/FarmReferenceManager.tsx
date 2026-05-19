@@ -44,9 +44,9 @@ function emptyValues(): FormValues {
   }
 }
 
-export function FarmReferenceManager({ types }: { types: FarmReferenceManagerType[] }) {
+export function FarmReferenceManager({ types, initialType }: { types: FarmReferenceManagerType[]; initialType?: ReferenceType }) {
   const qc = useQueryClient()
-  const [selectedType, setSelectedType] = useState<ReferenceType>(types[0]?.type ?? 'batch_breed')
+  const [selectedType, setSelectedType] = useState<ReferenceType>(initialType ?? types[0]?.type ?? 'batch_breed')
   const [editingItem, setEditingItem] = useState<ReferenceItem | null>(null)
 
   const form = useForm<FormValues>({
@@ -59,6 +59,14 @@ export function FarmReferenceManager({ types }: { types: FarmReferenceManagerTyp
       setSelectedType(types[0].type)
     }
   }, [selectedType, types])
+
+  useEffect(() => {
+    if (initialType && types.some((entry) => entry.type === initialType)) {
+      setSelectedType(initialType)
+      setEditingItem(null)
+      form.reset(emptyValues())
+    }
+  }, [form, initialType, types])
 
   const { data: items = [] } = useQuery({
     queryKey: ['farm-reference-items'],
