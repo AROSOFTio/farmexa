@@ -357,22 +357,28 @@ class ReportsService:
         return rows, {"movements": len(rows)}
 
     def _feed_stock(self, db: Session, request: ReportRequest):
-        query = db.query(FeedItem).options(joinedload(FeedItem.category))
+        query = db.query(FeedItem).options(joinedload(FeedItem.category), joinedload(FeedItem.stock_item))
         search_filter = _contains_search(FeedItem.name, search=request.search)
         if search_filter is not None:
             query = query.filter(search_filter)
         items = query.order_by(FeedItem.name.asc()).all()
-        rows = [
-            {
-                "item_name": item.name,
-                "category": item.category.name if item.category else "Uncategorized",
-                "current_stock": float(item.current_stock or 0),
-                "unit": item.unit,
-                "reorder_threshold": float(item.reorder_threshold or 0),
-                "status": "Low stock" if float(item.current_stock or 0) <= float(item.reorder_threshold or 0) else "Active",
-            }
-            for item in items
-        ]
+        rows = []
+        for item in items:
+            linked_stock = item.stock_item
+            quantity = float(linked_stock.current_quantity or 0) if linked_stock else 0.0
+            status = "Unlinked inventory item" if linked_stock is None else (
+                "Low stock" if quantity <= float(item.reorder_threshold or 0) else "Active"
+            )
+            rows.append(
+                {
+                    "item_name": item.name,
+                    "category": item.category.name if item.category else "Uncategorized",
+                    "current_stock": quantity,
+                    "unit": linked_stock.unit_of_measure if linked_stock else item.unit,
+                    "reorder_threshold": float(item.reorder_threshold or 0),
+                    "status": status,
+                }
+            )
         return rows, {"items": len(rows), "low_stock": len([row for row in rows if row["status"] == "Low stock"])}
 
     def _feed_purchases(self, db: Session, request: ReportRequest):

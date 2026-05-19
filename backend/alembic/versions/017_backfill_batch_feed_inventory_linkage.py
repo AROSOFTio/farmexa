@@ -3,7 +3,7 @@ Backfill Batch and FeedItem inventory linkage and initial movements.
 
 Idempotent migration that:
 - Ensures each Batch has a stock_item_id (creates a StockItem per breed 'Live Birds - {breed}')
-- Creates initial IN StockMovement for batches based on initial_quantity if no prior movement exists
+- Creates opening balance IN StockMovement for batches based on active_quantity
 - Ensures each FeedItem has a stock_item_id (creates StockItem per item name)
 - Creates initial IN StockMovement for feed items based on current_stock if not already migrated
 
@@ -58,35 +58,56 @@ def upgrade() -> None:
     for b in session.execute(select(batches)).mappings().all():
         stock_item_id = b.get("stock_item_id")
         breed = b.get("breed") or "Birds"
-        initial_qty = float(b.get("initial_quantity") or 0)
+        active_qty = float(b.get("active_quantity") or 0)
         if not stock_item_id:
             name = f"Live Birds - {breed}"
             stock_item_id = get_or_create_stock_item_id(name, "finished_product", "birds", 0.0)
             session.execute(
                 batches.update().where(batches.c.id == b["id"]).values(stock_item_id=stock_item_id)
             )
-        # Create initial movement only if none exists referencing this batch
-        existing = session.execute(
-            select(sa.func.count()).select_from(stock_movements).where(
+        # Create or correct the migration opening balance only once per batch.
+        existing_movement = session.execute(
+            select(stock_movements).where(
                 (stock_movements.c.item_id == stock_item_id)
                 & (stock_movements.c.reference_type == sa.literal("batch_arrival"))
                 & (stock_movements.c.reference_id == b["id"]) 
             )
-        ).scalar() or 0
-        if existing == 0 and initial_qty > 0:
+        ).mappings().first()
+        if existing_movement:
+            existing_qty = float(existing_movement.get("quantity") or 0)
+            delta = active_qty - existing_qty
+            if abs(delta) > 0.0001:
+                prev_stock = session.execute(
+                    select(stock_items.c.current_quantity).where(stock_items.c.id == stock_item_id)
+                ).scalar() or 0.0
+                session.execute(
+                    stock_items.update()
+                    .where(stock_items.c.id == stock_item_id)
+                    .values(current_quantity=prev_stock + delta)
+                )
+            session.execute(
+                stock_movements.update()
+                .where(stock_movements.c.id == existing_movement["id"])
+                .values(
+                    quantity=active_qty,
+                    new_quantity=(float(existing_movement.get("previous_quantity") or 0) + active_qty),
+                    notes=f"Migration opening balance for active birds in batch {b.get('batch_number') or b['id']}",
+                )
+            )
+        elif active_qty > 0:
             prev = session.execute(select(stock_items.c.current_quantity).where(stock_items.c.id == stock_item_id)).scalar() or 0.0
-            new_qty = prev + initial_qty
+            new_qty = prev + active_qty
             session.execute(
                 stock_movements.insert().values(
                     item_id=stock_item_id,
                     movement_type=sa.text("'in'::movementtype"),
-                    quantity=initial_qty,
+                    quantity=active_qty,
                     previous_quantity=prev,
                     new_quantity=new_qty,
                     reference_type="batch_arrival",
                     reference_id=b["id"],
                     unit_cost=None,
-                    notes=f"Backfill arrival for batch {b.get('batch_number') or b['id']}",
+                    notes=f"Migration opening balance for active birds in batch {b.get('batch_number') or b['id']}",
                 )
             )
             session.execute(

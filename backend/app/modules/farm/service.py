@@ -31,6 +31,7 @@ from app.modules.farm.schemas import (
     VaccinationLogUpdate,
 )
 from app.services.inventory_coordinator import InventoryCoordinator, ReferenceType
+from app.services.stock_sku import generate_unique_sku_async
 
 logger = logging.getLogger("farmexa.farm")
 
@@ -347,7 +348,7 @@ class FarmService:
             if not stock_item:
                 stock_item = StockItem(
                     name=stock_item_name,
-                    sku=f"BIRDS-{data.breed.upper()}",
+                    sku=await generate_unique_sku_async(self.db, "BIRDS", data.breed),
                     category=StockCategory.FINISHED_PRODUCT,
                     unit_of_measure="birds",
                     current_quantity=0.0,

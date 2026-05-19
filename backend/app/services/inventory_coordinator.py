@@ -11,7 +11,7 @@ from typing import Optional
 from enum import Enum
 
 from fastapi import HTTPException
-from sqlalchemy import select, func
+from sqlalchemy import case, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
@@ -111,7 +111,7 @@ class InventoryCoordinator:
         Args:
             item_id: Stock item ID
             movement_type: IN, OUT, or ADJUSTMENT
-            quantity: Quantity to move (positive value)
+            quantity: Quantity to move. IN/OUT require positive values; ADJUSTMENT accepts signed deltas.
             reference_type: Type of transaction causing this movement
             reference_id: ID of the transaction record
             unit_cost: Unit cost for IN movements (for average cost calculation)
@@ -124,8 +124,10 @@ class InventoryCoordinator:
         Raises:
             HTTPException: If stock item not found or insufficient stock for OUT movement
         """
-        if quantity <= 0:
+        if movement_type in {MovementType.IN, MovementType.OUT} and quantity <= 0:
             raise HTTPException(status_code=400, detail="Movement quantity must be positive")
+        if movement_type == MovementType.ADJUSTMENT and quantity == 0:
+            raise HTTPException(status_code=400, detail="Adjustment quantity cannot be zero")
 
         item = await self._get_item_async(item_id)
         if not item:
@@ -142,7 +144,7 @@ class InventoryCoordinator:
                 )
 
         elif movement_type == MovementType.OUT:
-            if previous_quantity < quantity:
+            if previous_quantity < quantity and not allow_negative:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Insufficient stock for item {item.name}. Available: {previous_quantity}, Required: {quantity}"
@@ -161,7 +163,7 @@ class InventoryCoordinator:
         movement = StockMovement(
             item_id=item.id,
             movement_type=movement_type,
-            quantity=abs(quantity),
+            quantity=quantity,
             previous_quantity=previous_quantity,
             new_quantity=new_quantity,
             reference_type=reference_type,
@@ -198,7 +200,7 @@ class InventoryCoordinator:
         Args:
             item_id: Stock item ID
             movement_type: IN, OUT, or ADJUSTMENT
-            quantity: Quantity to move (positive value)
+            quantity: Quantity to move. IN/OUT require positive values; ADJUSTMENT accepts signed deltas.
             reference_type: Type of transaction causing this movement
             reference_id: ID of the transaction record
             unit_cost: Unit cost for IN movements (for average cost calculation)
@@ -211,8 +213,10 @@ class InventoryCoordinator:
         Raises:
             HTTPException: If stock item not found or insufficient stock for OUT movement
         """
-        if quantity <= 0:
+        if movement_type in {MovementType.IN, MovementType.OUT} and quantity <= 0:
             raise HTTPException(status_code=400, detail="Movement quantity must be positive")
+        if movement_type == MovementType.ADJUSTMENT and quantity == 0:
+            raise HTTPException(status_code=400, detail="Adjustment quantity cannot be zero")
 
         item = self._get_item_sync(item_id)
         if not item:
@@ -229,7 +233,7 @@ class InventoryCoordinator:
                 )
 
         elif movement_type == MovementType.OUT:
-            if previous_quantity < quantity:
+            if previous_quantity < quantity and not allow_negative:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Insufficient stock for item {item.name}. Available: {previous_quantity}, Required: {quantity}"
@@ -248,7 +252,7 @@ class InventoryCoordinator:
         movement = StockMovement(
             item_id=item.id,
             movement_type=movement_type,
-            quantity=abs(quantity),
+            quantity=quantity,
             previous_quantity=previous_quantity,
             new_quantity=new_quantity,
             reference_type=reference_type,
@@ -405,17 +409,11 @@ class InventoryCoordinator:
         if not item:
             raise HTTPException(status_code=404, detail=f"Stock item {item_id} not found")
 
-        result = await self.db.execute(
-            select(func.sum(StockMovement.quantity))
-            .where(StockMovement.item_id == item_id)
-        )
-        total_in = result.scalar() or 0
-
         # Calculate net movement (IN adds, OUT subtracts, ADJUSTMENT can be either)
-        result2 = await self.db.execute(
+        result = await self.db.execute(
             select(
                 func.sum(
-                    func.case(
+                    case(
                         (StockMovement.movement_type == MovementType.IN, StockMovement.quantity),
                         (StockMovement.movement_type == MovementType.OUT, -StockMovement.quantity),
                         (StockMovement.movement_type == MovementType.ADJUSTMENT, StockMovement.quantity),
@@ -424,7 +422,7 @@ class InventoryCoordinator:
                 )
             ).where(StockMovement.item_id == item_id)
         )
-        net_movement = result2.scalar() or 0
+        net_movement = result.scalar() or 0
 
         # For reconciliation, we need to account for initial stock properly
         # This is a simplified version - in production you'd track initial stock separately
@@ -448,12 +446,8 @@ class InventoryCoordinator:
         if not item:
             raise HTTPException(status_code=404, detail=f"Stock item {item_id} not found")
 
-        result = self.db.query(func.sum(StockMovement.quantity)).filter(StockMovement.item_id == item_id).first()
-        total_in = result[0] or 0
-
         # Calculate net movement
-        from sqlalchemy import case
-        result2 = self.db.query(
+        result = self.db.query(
             func.sum(
                 case(
                     (StockMovement.movement_type == MovementType.IN, StockMovement.quantity),
@@ -463,7 +457,7 @@ class InventoryCoordinator:
                 )
             )
         ).filter(StockMovement.item_id == item_id).first()
-        net_movement = result2[0] or 0
+        net_movement = result[0] or 0
 
         calculated_quantity = net_movement
         difference = item.current_quantity - calculated_quantity

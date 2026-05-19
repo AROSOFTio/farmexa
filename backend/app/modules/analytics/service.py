@@ -24,7 +24,7 @@ class AnalyticsService:
             (
                 await db.execute(
                     select(FeedItem)
-                    .options(selectinload(FeedItem.category))
+                    .options(selectinload(FeedItem.category), selectinload(FeedItem.stock_item))
                     .order_by(FeedItem.name)
                 )
             )
@@ -42,13 +42,12 @@ class AnalyticsService:
 
         total_birds = int(sum(batch.active_quantity or 0 for batch in batches))
         active_houses = sum(1 for house in houses if house.status == HouseStatus.ACTIVE)
-        # Map stock item quantities for quick lookup
-        stock_qty_by_id = {item.id: float(item.current_quantity or 0) for item in stock_items}
-        # Feed stock is sourced from central inventory when linked; fallback to legacy field if not linked
+        # Feed stock is sourced only from central inventory. Unlinked feed items are treated as integrity issues.
         feed_stock = float(
             sum(
-                stock_qty_by_id.get(getattr(item, "stock_item_id", None), float(item.current_stock or 0))
+                float(item.stock_item.current_quantity or 0)
                 for item in feed_items
+                if item.stock_item is not None
             )
         )
         meat_stock = float(
@@ -259,15 +258,15 @@ class AnalyticsService:
                     id=item.id,
                     name=item.name,
                     category=item.category.name if item.category else "-",
-                    unit=item.unit,
-                    current_stock=float(
-                        stock_qty_by_id.get(getattr(item, "stock_item_id", None), float(item.current_stock or 0))
-                    ),
+                    unit=item.stock_item.unit_of_measure if item.stock_item else item.unit,
+                    current_stock=float(item.stock_item.current_quantity or 0) if item.stock_item else 0.0,
                     reorder_threshold=float(item.reorder_threshold or 0),
                     status=(
+                        "Unlinked"
+                        if item.stock_item is None
+                        else
                         "Low stock"
-                        if stock_qty_by_id.get(getattr(item, "stock_item_id", None), float(item.current_stock or 0))
-                        <= (item.reorder_threshold or 0)
+                        if float(item.stock_item.current_quantity or 0) <= (item.reorder_threshold or 0)
                         else "Available"
                     ),
                 )

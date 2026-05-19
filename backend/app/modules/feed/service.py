@@ -19,12 +19,38 @@ from app.modules.feed.schemas import (
 )
 from app.modules.farm.repository import FarmRepository
 from app.services.inventory_coordinator import InventoryCoordinator, ReferenceType
+from app.services.stock_sku import generate_unique_sku_async
 
 class FeedService:
     def __init__(self, db: AsyncSession):
         self.repo = FeedRepository(db)
         self.farm_repo = FarmRepository(db)
         self.db = db
+
+    async def _ensure_feed_stock_item(self, feed_item: FeedItem, category: StockCategory = StockCategory.RAW_MATERIAL) -> StockItem:
+        if feed_item.stock_item_id:
+            result = await self.db.execute(select(StockItem).where(StockItem.id == feed_item.stock_item_id))
+            existing = result.scalar_one_or_none()
+            if existing:
+                return existing
+
+        stock_item = StockItem(
+            name=feed_item.name,
+            sku=await generate_unique_sku_async(self.db, "FEED", feed_item.name),
+            category=category,
+            unit_of_measure=feed_item.unit,
+            current_quantity=0.0,
+            reorder_level=feed_item.reorder_threshold,
+            unit_price=0.0,
+            average_cost=0.0,
+            description=f"Feed item: {feed_item.name}",
+            is_active=True,
+        )
+        self.db.add(stock_item)
+        await self.db.flush()
+        feed_item.stock_item_id = stock_item.id
+        await self.db.flush()
+        return stock_item
 
     # ── Suppliers ────────────────────────────────────────────────
     async def get_suppliers(self) -> list[SupplierOut]:
@@ -81,28 +107,7 @@ class FeedService:
         item = await self.repo.create_item(data)
         await self.db.flush()
 
-        # Ensure StockItem linkage
-        if not item.stock_item_id:
-            # Safe SKU generation
-            base_sku = f"FEED-{(item.name or '').upper().replace(' ', '-')[:20]}"
-            sku = base_sku
-            # Create StockItem
-            stock_item = StockItem(
-                name=item.name,
-                sku=sku,
-                category=StockCategory.RAW_MATERIAL,
-                unit_of_measure=item.unit,
-                current_quantity=0.0,
-                reorder_level=item.reorder_threshold,
-                unit_price=0.0,
-                average_cost=0.0,
-                description=f"Feed item: {item.name}",
-                is_active=True,
-            )
-            self.db.add(stock_item)
-            await self.db.flush()
-            item.stock_item_id = stock_item.id
-            await self.db.flush()
+        await self._ensure_feed_stock_item(item)
         await self.db.commit()
         refreshed = await self.repo.get_item(item.id)
         return FeedItemOut.model_validate(refreshed)
@@ -166,23 +171,7 @@ class FeedService:
             
             # Link or create StockItem for feed item
             feed_item = await self.repo.get_item(item_payload["feed_item_id"])
-            if not feed_item.stock_item_id:
-                stock_item = StockItem(
-                    name=feed_item.name,
-                    sku=f"FEED-{feed_item.name.upper()[:20]}",
-                    category=StockCategory.RAW_MATERIAL,
-                    unit_of_measure=feed_item.unit,
-                    current_quantity=0.0,
-                    reorder_level=feed_item.reorder_threshold,
-                    unit_price=0.0,
-                    average_cost=0.0,
-                    description=f"Feed item: {feed_item.name}",
-                    is_active=True,
-                )
-                self.db.add(stock_item)
-                await self.db.flush()
-                feed_item.stock_item_id = stock_item.id
-                await self.db.flush()
+            await self._ensure_feed_stock_item(feed_item)
 
             items_data.append(item_payload)
             prepared_items.append((feed_item.stock_item_id, item.quantity, item.unit_price))
@@ -225,23 +214,7 @@ class FeedService:
             raise HTTPException(status_code=400, detail="Invalid feed_item_id")
 
         # Ensure stock linkage exists
-        if not feed_item.stock_item_id:
-            stock_item = StockItem(
-                name=feed_item.name,
-                sku=f"FEED-{feed_item.name.upper()[:20]}",
-                category=StockCategory.RAW_MATERIAL,
-                unit_of_measure=feed_item.unit,
-                current_quantity=0.0,
-                reorder_level=feed_item.reorder_threshold,
-                unit_price=0.0,
-                average_cost=0.0,
-                description=f"Feed item: {feed_item.name}",
-                is_active=True,
-            )
-            self.db.add(stock_item)
-            await self.db.flush()
-            feed_item.stock_item_id = stock_item.id
-            await self.db.flush()
+        await self._ensure_feed_stock_item(feed_item)
 
         # Create consumption row first to get ID, then record movement atomically
         consumption = await self.repo.create_consumption(data)
@@ -335,23 +308,7 @@ class FeedService:
         for ingredient in formulation.ingredients:
             required_kg = data.output_quantity_kg * (ingredient.percentage / 100)
             feed_item = ingredient.feed_item
-            if not feed_item.stock_item_id:
-                stock_item = StockItem(
-                    name=feed_item.name,
-                    sku=f"FEED-{feed_item.name.upper()[:20]}",
-                    category=StockCategory.RAW_MATERIAL,
-                    unit_of_measure=feed_item.unit,
-                    current_quantity=0.0,
-                    reorder_level=feed_item.reorder_threshold,
-                    unit_price=0.0,
-                    average_cost=0.0,
-                    description=f"Feed item: {feed_item.name}",
-                    is_active=True,
-                )
-                self.db.add(stock_item)
-                await self.db.flush()
-                feed_item.stock_item_id = stock_item.id
-                await self.db.flush()
+            await self._ensure_feed_stock_item(feed_item)
             deductions.append((feed_item, required_kg))
 
         category_result = await self.db.execute(select(FeedCategory).where(FeedCategory.name == "Finished Feed"))
@@ -375,23 +332,7 @@ class FeedService:
             self.db.add(output_item)
             await self.db.flush()
         # Ensure output item has stock linkage
-        if not output_item.stock_item_id:
-            stock_item = StockItem(
-                name=output_item.name,
-                sku=f"FEED-{output_item.name.upper()[:20]}",
-                category=StockCategory.FINISHED_PRODUCT,
-                unit_of_measure=output_item.unit,
-                current_quantity=0.0,
-                reorder_level=output_item.reorder_threshold,
-                unit_price=0.0,
-                average_cost=0.0,
-                description=f"Feed item: {output_item.name}",
-                is_active=True,
-            )
-            self.db.add(stock_item)
-            await self.db.flush()
-            output_item.stock_item_id = stock_item.id
-            await self.db.flush()
+        await self._ensure_feed_stock_item(output_item, StockCategory.FINISHED_PRODUCT)
 
         # Create production batch first to obtain ID
         batch = FeedProductionBatch(

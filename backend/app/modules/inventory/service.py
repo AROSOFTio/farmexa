@@ -72,42 +72,41 @@ class InventoryService:
 
     def create_movement(self, db: Session, movement: schemas.StockMovementCreate):
         coordinator = InventoryCoordinator(db)
-        if movement.movement_type == MovementType.IN:
-            return coordinator.record_in(
-                item_id=movement.item_id,
-                quantity=movement.quantity,
-                reference_type=movement.reference_type,
-                reference_id=movement.reference_id,
-                unit_cost=movement.unit_cost,
-                notes=movement.notes,
-            )
-        elif movement.movement_type == MovementType.OUT:
-            return coordinator.record_out(
-                item_id=movement.item_id,
-                quantity=movement.quantity,
-                reference_type=movement.reference_type,
-                reference_id=movement.reference_id,
-                notes=movement.notes,
-            )
-        else:
-            # Adjustment: treat as signed delta using IN/OUT for compatibility
-            if movement.quantity >= 0:
-                return coordinator.record_in(
+        try:
+            if movement.movement_type == MovementType.IN:
+                db_movement = coordinator.record_in(
                     item_id=movement.item_id,
                     quantity=movement.quantity,
                     reference_type=movement.reference_type,
                     reference_id=movement.reference_id,
-                    unit_cost=None,
+                    unit_cost=movement.unit_cost,
                     notes=movement.notes,
                 )
-            else:
-                return coordinator.record_out(
+            elif movement.movement_type == MovementType.OUT:
+                db_movement = coordinator.record_out(
                     item_id=movement.item_id,
-                    quantity=abs(movement.quantity),
+                    quantity=movement.quantity,
                     reference_type=movement.reference_type,
                     reference_id=movement.reference_id,
                     notes=movement.notes,
                 )
+            else:
+                db_movement = coordinator.record_adjustment(
+                    item_id=movement.item_id,
+                    quantity=movement.quantity,
+                    reference_type=movement.reference_type,
+                    reference_id=movement.reference_id,
+                    notes=movement.notes,
+                )
+            db.commit()
+            db.refresh(db_movement)
+            return db_movement
+        except HTTPException:
+            db.rollback()
+            raise
+        except Exception:
+            db.rollback()
+            raise
 
     def get_transfers(self, db: Session, skip: int = 0, limit: int = 100, status_filter: TransferStatus | None = None):
         query = db.query(StockTransfer)

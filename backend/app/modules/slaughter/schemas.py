@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 from typing import Literal, Optional, List
 from datetime import date, datetime
 from app.models.slaughter import SlaughterStatus
@@ -96,6 +96,20 @@ class SlaughterRecordOut(SlaughterRecordBase):
     inventory_posted_at: Optional[datetime] = None
     created_at: datetime
     outputs: List[SlaughterOutputOut] = []
+
+    @computed_field
+    @property
+    def inventory_posted(self) -> bool:
+        return self.inventory_posted_at is not None
+
+    @computed_field
+    @property
+    def workflow_state(self) -> str:
+        if self.status == SlaughterStatus.COMPLETED and self.inventory_posted_at is None:
+            return "completed_awaiting_output_posting"
+        if self.status == SlaughterStatus.COMPLETED:
+            return "completed_inventory_posted"
+        return self.status.value
 
     class Config:
         from_attributes = True

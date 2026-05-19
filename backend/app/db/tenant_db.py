@@ -24,9 +24,11 @@ from app.db.session import AsyncSessionLocal, SyncSessionLocal
 from app.models.auth import Role
 from app.models.feed import FeedCategory, FeedItem
 from app.models.farm import PoultryHouse, PoultryHouseSection  # noqa: F401
-from app.models.inventory import StockCategory, StockItem
+from app.models.inventory import MovementType, StockCategory, StockItem, StockMovement
 from app.models.tenant import Tenant
 from app.models.user import User
+from app.services.inventory_coordinator import ReferenceType
+from app.services.stock_sku import generate_unique_sku
 
 PLATFORM_ADMIN_ROLES = {"super_manager", "developer_admin"}
 
@@ -335,8 +337,12 @@ def _apply_runtime_schema_patches(engine: Engine) -> None:
         connection.execute(text("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS notes TEXT"))
         connection.execute(text("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true"))
         connection.execute(text("ALTER TABLE batches ADD COLUMN IF NOT EXISTS section_id INTEGER"))
+        connection.execute(text("ALTER TABLE batches ADD COLUMN IF NOT EXISTS stock_item_id INTEGER"))
+        connection.execute(text("ALTER TABLE feed_items ADD COLUMN IF NOT EXISTS stock_item_id INTEGER"))
         connection.execute(text("ALTER TABLE tenant_modules ADD COLUMN IF NOT EXISTS is_manual_override BOOLEAN NOT NULL DEFAULT false"))
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_batches_section_id ON batches (section_id)"))
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_batches_stock_item_id ON batches (stock_item_id)"))
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_feed_items_stock_item_id ON feed_items (stock_item_id)"))
         connection.execute(
             text(
                 """
@@ -350,6 +356,33 @@ def _apply_runtime_schema_patches(engine: Engine) -> None:
                         ALTER TABLE batches
                         ADD CONSTRAINT fk_batches_section_id
                         FOREIGN KEY (section_id) REFERENCES poultry_house_sections(id) ON DELETE SET NULL;
+                    END IF;
+                END $$;
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conname = 'fk_batches_stock_item_id'
+                    ) THEN
+                        ALTER TABLE batches
+                        ADD CONSTRAINT fk_batches_stock_item_id
+                        FOREIGN KEY (stock_item_id) REFERENCES stock_items(id) ON DELETE SET NULL;
+                    END IF;
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conname = 'fk_feed_items_stock_item_id'
+                    ) THEN
+                        ALTER TABLE feed_items
+                        ADD CONSTRAINT fk_feed_items_stock_item_id
+                        FOREIGN KEY (stock_item_id) REFERENCES stock_items(id) ON DELETE SET NULL;
                     END IF;
                 END $$;
                 """
@@ -489,17 +522,60 @@ def _seed_default_inventory_items(session: Session) -> None:
 
     for name, opening_stock in DEFAULT_FEED_RAW_MATERIALS:
         existing_feed = session.query(FeedItem).filter(FeedItem.name == name).first()
-        if existing_feed is not None:
+        existing_stock = (
+            session.get(StockItem, existing_feed.stock_item_id)
+            if existing_feed is not None and existing_feed.stock_item_id is not None
+            else None
+        )
+        if existing_feed is not None and existing_stock is not None:
             continue
-        session.add(
-            FeedItem(
+
+        stock_item = StockItem(
+            sku=generate_unique_sku(session, "FEED", name),
+            name=name,
+            category=StockCategory.RAW_MATERIAL,
+            unit_of_measure="kg",
+            current_quantity=0.0,
+            reorder_level=500.0,
+            unit_price=0.0,
+            average_cost=0.0,
+            description=f"Default feed raw material: {name}",
+            is_active=True,
+        )
+        session.add(stock_item)
+        session.flush()
+
+        if existing_feed is None:
+            existing_feed = FeedItem(
                 name=name,
                 category_id=raw_category.id,
                 unit="kg",
-                current_stock=opening_stock,
+                current_stock=0.0,
                 reorder_threshold=500.0,
             )
-        )
+            session.add(existing_feed)
+            session.flush()
+        else:
+            existing_feed.category_id = raw_category.id
+            existing_feed.unit = existing_feed.unit or "kg"
+            existing_feed.reorder_threshold = existing_feed.reorder_threshold or 500.0
+        existing_feed.stock_item_id = stock_item.id
+
+        if opening_stock > 0:
+            session.add(
+                StockMovement(
+                    item_id=stock_item.id,
+                    movement_type=MovementType.IN,
+                    quantity=opening_stock,
+                    previous_quantity=0.0,
+                    new_quantity=opening_stock,
+                    reference_type=ReferenceType.INITIAL_STOCK.value,
+                    reference_id=existing_feed.id,
+                    unit_cost=0.0,
+                    notes=f"Tenant seed opening stock for {name}",
+                )
+            )
+            stock_item.current_quantity = opening_stock
 
 
 def _mark_user_synced(database_name: str, user_snapshot: dict[str, Any] | None) -> None:
