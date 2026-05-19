@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Bird, Building2, ChevronDown, CreditCard, DollarSign, Drumstick, HelpCircle, LogOut, Menu, Package, Scale, Search, ShoppingCart, Skull, Syringe, UserRound, Wheat } from 'lucide-react'
+import { Bell, Bird, Building2, ChevronDown, CreditCard, DollarSign, Drumstick, HelpCircle, LogOut, Menu, Package, PanelLeftClose, Scale, Search, ShoppingCart, Skull, Syringe, UserRound, Wheat } from 'lucide-react'
 import { clsx } from 'clsx'
 import { toast } from 'sonner'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -20,7 +20,7 @@ function titleFromPath(pathname: string) {
   return 'Dashboard'
 }
 
-export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
+export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0 }: { onToggleSidebar: () => void; isSidebarOpen: boolean; leftOffset?: number }) {
   const { user, tenant, logout } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
@@ -63,9 +63,12 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   }
 
   return (
-    <header className={clsx('topbar fixed right-0 top-0 z-30 flex h-[56px] items-center gap-4 border-b px-4 lg:px-5', isDevAdmin && 'bg-[var(--brand-secondary)] text-white')}>
-      <button type="button" onClick={onOpenSidebar} className={clsx('flex h-8 w-8 items-center justify-center rounded-md', isDevAdmin ? 'text-white hover:bg-white/10' : 'text-[#111827] hover:bg-slate-100')} aria-label="Open navigation">
-        <Menu className="h-5 w-5" />
+    <header
+      className={clsx('topbar fixed right-0 top-0 z-30 flex h-[56px] items-center gap-4 border-b px-4 lg:px-5', isDevAdmin && 'bg-[var(--brand-secondary)] text-white')}
+      style={{ left: leftOffset, transition: 'left 300ms cubic-bezier(0.4,0,0.2,1)' }}
+    >
+      <button type="button" onClick={onToggleSidebar} className={clsx('flex h-8 w-8 items-center justify-center rounded-md transition-colors', isDevAdmin ? 'text-white hover:bg-white/10' : 'text-[#111827] hover:bg-slate-100')} aria-label="Toggle navigation">
+        {isSidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
 
       <div className="flex min-w-0 items-center gap-7">

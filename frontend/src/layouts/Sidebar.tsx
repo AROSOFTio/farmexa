@@ -234,7 +234,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
       {isOpen ? <button type="button" className="fixed inset-0 z-40 bg-black/45 lg:hidden" onClick={onClose} /> : null}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-50 flex w-[232px] flex-col sidebar text-white shadow-[18px_0_38px_-30px_rgba(0,0,0,.7)] transition-transform duration-300 lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-[232px] flex-col sidebar text-white shadow-[18px_0_38px_-30px_rgba(0,0,0,.7)] transition-transform duration-300',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >

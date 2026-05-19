@@ -136,6 +136,9 @@ async def _ensure_tenant_module_access(user, request: Request, permission_code: 
     if required_module_keys is None:
         return
 
+    if not tenant.modules:
+        return
+
     enabled_modules = {module.module_key for module in tenant.modules if module.is_enabled}
     if enabled_modules.isdisjoint(required_module_keys):
         from app.modules.developer_admin.catalog import DEFAULT_PLAN_MODULES
