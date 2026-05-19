@@ -13,13 +13,47 @@ from app.modules.feed.schemas import (
     SupplierCreate, SupplierUpdate, SupplierOut,
     FeedCategoryCreate, FeedCategoryUpdate, FeedCategoryOut,
     FeedItemCreate, FeedItemUpdate, FeedItemOut,
+    FeedIngredientItemOut,
     FeedPurchaseCreate, FeedPurchaseOut,
     FeedConsumptionCreate, FeedConsumptionOut,
-    FeedFormulationCreate, FeedFormulationOut, FeedProductionCreate, FeedProductionOut
+    FeedFormulationCreate, FeedFormulationOut, FeedFormulationIngredientOut,
+    FeedProductionCreate, FeedProductionOut,
 )
 from app.modules.farm.repository import FarmRepository
 from app.services.inventory_coordinator import InventoryCoordinator, ReferenceType
 from app.services.stock_sku import generate_unique_sku_async
+
+
+def _feed_item_current_stock(item: FeedItem) -> float:
+    stock = getattr(item, "stock_item", None)
+    if stock and getattr(stock, "current_quantity", None) is not None:
+        return float(stock.current_quantity or 0.0)
+    return 0.0
+
+
+def _to_feed_item_out(item: FeedItem) -> FeedItemOut:
+    base = FeedItemOut.model_validate(item)
+    return base.model_copy(update={"current_stock": _feed_item_current_stock(item)})
+
+
+def _to_feed_ingredient_item_out(item: FeedItem) -> FeedIngredientItemOut:
+    base = FeedIngredientItemOut.model_validate(item)
+    return base.model_copy(update={"current_stock": _feed_item_current_stock(item)})
+
+
+def _to_formulation_out(formulation: FeedFormulation) -> FeedFormulationOut:
+    base = FeedFormulationOut.model_validate(formulation)
+    ingredients_out: list[FeedFormulationIngredientOut] = []
+    for ingredient in getattr(formulation, "ingredients", []) or []:
+        ingredient_out = FeedFormulationIngredientOut.model_validate(ingredient)
+        feed_item = getattr(ingredient, "feed_item", None)
+        if feed_item:
+            ingredient_out = ingredient_out.model_copy(
+                update={"feed_item": _to_feed_ingredient_item_out(feed_item)}
+            )
+        ingredients_out.append(ingredient_out)
+    return base.model_copy(update={"ingredients": ingredients_out})
+
 
 class FeedService:
     def __init__(self, db: AsyncSession):
@@ -109,7 +143,7 @@ class FeedService:
     # ── Items ────────────────────────────────────────────────────
     async def get_items(self) -> list[FeedItemOut]:
         items = await self.repo.get_items()
-        return [FeedItemOut.model_validate(i) for i in items]
+        return [_to_feed_item_out(i) for i in items]
 
     async def create_item(self, data: FeedItemCreate) -> FeedItemOut:
         cat = await self.repo.get_category(data.category_id)
@@ -122,7 +156,7 @@ class FeedService:
         await self._ensure_feed_stock_item(item)
         await self.db.commit()
         refreshed = await self.repo.get_item(item.id)
-        return FeedItemOut.model_validate(refreshed)
+        return _to_feed_item_out(refreshed)
 
     async def update_item(self, id: int, data: FeedItemUpdate) -> FeedItemOut:
         item = await self.repo.get_item(id)
@@ -141,7 +175,7 @@ class FeedService:
                 stock_item.reorder_level = item.reorder_threshold
             await self.db.commit()
             refreshed = await self.repo.get_item(item.id)
-            return FeedItemOut.model_validate(refreshed)
+            return _to_feed_item_out(refreshed)
         except IntegrityError:
             await self.db.rollback()
             raise HTTPException(status_code=400, detail="Feed item could not be updated")
@@ -272,11 +306,13 @@ class FeedService:
         result = await self.db.execute(
             select(FeedFormulation)
             .options(
-                selectinload(FeedFormulation.ingredients).selectinload(FeedFormulationIngredient.feed_item),
+                selectinload(FeedFormulation.ingredients)
+                .selectinload(FeedFormulationIngredient.feed_item)
+                .selectinload(FeedItem.stock_item),
             )
             .order_by(FeedFormulation.stage, FeedFormulation.name)
         )
-        return [FeedFormulationOut.model_validate(item) for item in result.scalars().all()]
+        return [_to_formulation_out(item) for item in result.scalars().unique().all()]
 
     async def create_formulation(self, data: FeedFormulationCreate) -> FeedFormulationOut:
         total_percentage = round(sum(item.percentage for item in data.ingredients), 4)
@@ -317,9 +353,13 @@ class FeedService:
         refreshed = await self.db.execute(
             select(FeedFormulation)
             .where(FeedFormulation.id == formulation.id)
-            .options(selectinload(FeedFormulation.ingredients).selectinload(FeedFormulationIngredient.feed_item))
+            .options(
+                selectinload(FeedFormulation.ingredients)
+                .selectinload(FeedFormulationIngredient.feed_item)
+                .selectinload(FeedItem.stock_item)
+            )
         )
-        return FeedFormulationOut.model_validate(refreshed.scalar_one())
+        return _to_formulation_out(refreshed.scalar_one())
 
     async def get_productions(self) -> list[FeedProductionOut]:
         result = await self.db.execute(select(FeedProductionBatch).order_by(FeedProductionBatch.produced_at.desc()))
@@ -329,7 +369,11 @@ class FeedService:
         result = await self.db.execute(
             select(FeedFormulation)
             .where(FeedFormulation.id == data.formulation_id)
-            .options(selectinload(FeedFormulation.ingredients).selectinload(FeedFormulationIngredient.feed_item))
+            .options(
+                selectinload(FeedFormulation.ingredients)
+                .selectinload(FeedFormulationIngredient.feed_item)
+                .selectinload(FeedItem.stock_item)
+            )
         )
         formulation = result.scalar_one_or_none()
         if not formulation:

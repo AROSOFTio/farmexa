@@ -66,19 +66,25 @@ class FeedRepository:
     # ── Items ────────────────────────────────────────────────────
     async def get_items(self) -> Sequence[FeedItem]:
         res = await self.db.execute(
-            select(FeedItem).options(selectinload(FeedItem.category)).order_by(FeedItem.name)
+            select(FeedItem)
+            .options(selectinload(FeedItem.category), selectinload(FeedItem.stock_item))
+            .order_by(FeedItem.name)
         )
         return res.scalars().all()
 
     async def get_item(self, item_id: int) -> FeedItem | None:
         res = await self.db.execute(
-            select(FeedItem).where(FeedItem.id == item_id).options(selectinload(FeedItem.category))
+            select(FeedItem)
+            .where(FeedItem.id == item_id)
+            .options(selectinload(FeedItem.category), selectinload(FeedItem.stock_item))
         )
         return res.scalar_one_or_none()
 
     async def get_item_by_name(self, name: str) -> FeedItem | None:
         res = await self.db.execute(
-            select(FeedItem).where(FeedItem.name == name.strip()).options(selectinload(FeedItem.category))
+            select(FeedItem)
+            .where(FeedItem.name == name.strip())
+            .options(selectinload(FeedItem.category), selectinload(FeedItem.stock_item))
         )
         return res.scalar_one_or_none()
 

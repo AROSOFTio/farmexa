@@ -51,6 +51,7 @@ class FeedItem(Base):
         index=True,
     )
     unit: Mapped[str] = mapped_column(String(50), default="kg")
+    # Legacy shadow column – inventory truth now lives on StockItem.current_quantity.
     current_stock: Mapped[float] = mapped_column(Float, default=0.0)
     reorder_threshold: Mapped[float] = mapped_column(Float, default=0.0)
 
