@@ -16,6 +16,7 @@ from app.core.security import (
 from app.core.config import settings
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.schemas import MeResponse, TenantSessionOut, TokenPair, UserOut
+from app.permissions.checker import get_user_permissions
 
 
 class AuthService:
@@ -106,9 +107,7 @@ class AuthService:
             await self.db.commit()
 
     async def get_me(self, user) -> MeResponse:
-        permissions = []
-        if user.role and user.role.role_permissions:
-            permissions = [rp.permission.code for rp in user.role.role_permissions if rp.permission]
+        permissions = await get_user_permissions(user)
         enabled_modules: list[str] = []
         tenant = None
         if user.tenant:

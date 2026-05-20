@@ -40,4 +40,14 @@ export const usersService = {
   async changePassword(payload: { current_password: string; new_password: string }): Promise<void> {
     await api.post('/users/me/change-password', payload)
   },
+
+  async getUserPermissions(userId: number): Promise<string[]> {
+    const { data } = await api.get<string[]>(`/users/${userId}/permissions`)
+    return data
+  },
+
+  async updateUserPermissions(userId: number, permissionCodes: string[]): Promise<string[]> {
+    const { data } = await api.put<string[]>(`/users/${userId}/permissions`, permissionCodes)
+    return data
+  },
 }

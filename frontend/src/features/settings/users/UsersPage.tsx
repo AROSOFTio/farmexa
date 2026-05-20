@@ -121,6 +121,15 @@ function RegisterStaffModal({
   roles: Role[]
 }) {
   const qc = useQueryClient()
+  const [roleSearch, setRoleSearch] = useState('')
+  const filteredRoles = useMemo(
+    () =>
+      roles.filter((role) => {
+        const label = ROLE_LABELS[role.name] ?? role.name
+        return label.toLowerCase().includes(roleSearch.toLowerCase()) || role.name.toLowerCase().includes(roleSearch.toLowerCase())
+      }),
+    [roles, roleSearch]
+  )
   const {
     register,
     watch,
@@ -152,79 +161,89 @@ function RegisterStaffModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-ink-950/35" onClick={onClose} />
       <motion.div
-        className="relative w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-modal"
+        className="relative w-full max-w-xl overflow-hidden rounded-3xl bg-white shadow-modal"
+        style={{ maxHeight: 'calc(100vh - 96px)' }}
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 10, scale: 0.98 }}
         transition={{ duration: 0.28, ease: [0.23, 1, 0.32, 1] }}
       >
-        <div className="flex items-start justify-between border-b border-neutral-100 bg-neutral-50 px-8 py-6">
+        <div className="flex items-start justify-between border-b border-neutral-100 bg-neutral-50 px-8 py-5">
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-neutral-900">Register staff member</h2>
-            <p className="mt-1 text-sm text-neutral-500">Create the login, assign the access role, and capture the office title.</p>
+            <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Register staff member</h2>
+            <p className="mt-1 text-sm text-neutral-500">Create the staff login and assign the access role.</p>
           </div>
-          <button onClick={onClose} className="rounded-xl p-2.5 text-neutral-400 transition-all hover:bg-white hover:shadow-sm">
+          <button onClick={onClose} className="rounded-xl p-2 text-neutral-400 transition-all hover:bg-white hover:shadow-sm">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex flex-col gap-5 px-8 py-7">
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex max-h-[calc(100vh-192px)] flex-col gap-4 overflow-y-auto px-8 py-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="form-label flex items-center gap-2"><UserIcon className="h-3.5 w-3.5 opacity-50" /> Full name</label>
+              <label className="form-label">Full name</label>
               <input className="form-input" {...register('full_name')} />
               {errors.full_name ? <p className="form-error">{errors.full_name.message}</p> : null}
             </div>
             <div>
-              <label className="form-label flex items-center gap-2"><Mail className="h-3.5 w-3.5 opacity-50" /> Email</label>
+              <label className="form-label">Email</label>
               <input className="form-input" type="email" {...register('email')} />
               {errors.email ? <p className="form-error">{errors.email.message}</p> : null}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="form-label flex items-center gap-2"><Lock className="h-3.5 w-3.5 opacity-50" /> Password</label>
+              <label className="form-label">Password</label>
               <input className="form-input" type="password" {...register('password')} />
               {errors.password ? <p className="form-error">{errors.password.message}</p> : null}
             </div>
             <div>
-              <label className="form-label flex items-center gap-2"><Phone className="h-3.5 w-3.5 opacity-50" /> Phone</label>
+              <label className="form-label">Phone</label>
               <input className="form-input" {...register('phone')} />
               {errors.phone ? <p className="form-error">{errors.phone.message}</p> : null}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="form-label flex items-center gap-2"><Briefcase className="h-3.5 w-3.5 opacity-50" /> Job title</label>
-              <input className="form-input" placeholder="Director, Farm Manager, Cashier..." {...register('job_title')} />
-              <p className="mt-1 text-xs text-neutral-400">Optional custom office title shown in the staff directory.</p>
+              <label className="form-label">Job title</label>
+              <input className="form-input" placeholder="Farm Manager, Cashier, etc." {...register('job_title')} />
               {errors.job_title ? <p className="form-error">{errors.job_title.message}</p> : null}
             </div>
             <div>
-              <label className="form-label flex items-center gap-2"><Briefcase className="h-3.5 w-3.5 opacity-50" /> Access role</label>
+              <label className="form-label">Access role</label>
+              <input
+                type="search"
+                value={roleSearch}
+                onChange={(event) => setRoleSearch(event.target.value)}
+                placeholder="Search roles..."
+                className="form-input mb-2"
+              />
               <select className="form-input" {...register('role_id')}>
-                <option value="">Select an access role...</option>
-                {roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {ROLE_LABELS[role.name] ?? role.name}
-                  </option>
-                ))}
+                <option value="">Select a role</option>
+                {filteredRoles.length > 0 ? (
+                  filteredRoles.map((role) => (
+                    <option key={role.id} value={role.id}>{ROLE_LABELS[role.name] ?? role.name}</option>
+                  ))
+                ) : (
+                  <option value="" disabled>No matching roles</option>
+                )}
               </select>
+              <p className="mt-2 text-sm text-neutral-500">Start typing to filter role names and pick the best match.</p>
               {errors.role_id ? <p className="form-error">{errors.role_id.message}</p> : null}
             </div>
           </div>
 
-          <div className="rounded-[10px] border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
+          <div className="rounded-2xl border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
             {roleDescriptionFor(roles, Number(selectedRoleId))}
           </div>
 
-          <div className="flex gap-4 pt-2">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1 rounded-xl py-3 font-bold">
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+            <button type="button" onClick={onClose} className="btn-secondary w-full rounded-xl py-3 font-bold">
               Cancel
             </button>
-            <button type="submit" disabled={mutation.isPending} className="btn-primary flex-1 rounded-xl py-3 font-bold shadow-glow">
+            <button type="submit" disabled={mutation.isPending} className="btn-primary w-full rounded-xl py-3 font-bold shadow-glow">
               {mutation.isPending ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>
               ) : (
@@ -250,6 +269,19 @@ function EditStaffModal({
   user: User | null
 }) {
   const qc = useQueryClient()
+  const { user: me, refetchMe } = useAuth()
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
+  const [manageTasksOpen, setManageTasksOpen] = useState(false)
+  const [roleSearch, setRoleSearch] = useState('')
+  const filteredRoles = useMemo(
+    () =>
+      roles.filter((role) => {
+        const label = ROLE_LABELS[role.name] ?? role.name
+        return label.toLowerCase().includes(roleSearch.toLowerCase()) || role.name.toLowerCase().includes(roleSearch.toLowerCase())
+      }),
+    [roles, roleSearch]
+  )
+  
   const {
     register,
     watch,
@@ -265,6 +297,13 @@ function EditStaffModal({
       role_id: user?.role?.id ?? undefined,
     },
   })
+
+  // Load user's task permissions when modal opens
+  useEffect(() => {
+    if (open && user) {
+      usersService.getUserPermissions(user.id).then(setSelectedPermissions)
+    }
+  }, [open, user])
 
   useEffect(() => {
     reset({
@@ -285,6 +324,9 @@ function EditStaffModal({
     onSuccess: () => {
       toast.success('Staff profile updated.')
       qc.invalidateQueries({ queryKey: ['users'] })
+      if (user?.id === me?.id) {
+        void refetchMe()
+      }
       onClose()
     },
     onError: (error: AxiosError<ApiError>) => {
@@ -299,64 +341,83 @@ function EditStaffModal({
       <div className="absolute inset-0 bg-ink-950/35" onClick={onClose} />
       <motion.div
         className="relative w-full max-w-xl overflow-hidden rounded-3xl bg-white shadow-modal"
+        style={{ maxHeight: 'calc(100vh - 96px)' }}
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 10, scale: 0.98 }}
         transition={{ duration: 0.28, ease: [0.23, 1, 0.32, 1] }}
       >
-        <div className="flex items-start justify-between border-b border-neutral-100 bg-neutral-50 px-8 py-6">
+        <div className="flex items-start justify-between border-b border-neutral-100 bg-neutral-50 px-8 py-5">
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-neutral-900">Edit staff profile</h2>
+            <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Edit staff profile</h2>
             <p className="mt-1 text-sm text-neutral-500">Update the staff title, contact details, or assigned access role.</p>
           </div>
-          <button onClick={onClose} className="rounded-xl p-2.5 text-neutral-400 transition-all hover:bg-white hover:shadow-sm">
+          <button onClick={onClose} className="rounded-xl p-2 text-neutral-400 transition-all hover:bg-white hover:shadow-sm">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex flex-col gap-5 px-8 py-7">
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex max-h-[calc(100vh-192px)] flex-col gap-4 overflow-y-auto px-8 py-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="form-label flex items-center gap-2"><UserIcon className="h-3.5 w-3.5 opacity-50" /> Full name</label>
+              <label className="form-label">Full name</label>
               <input className="form-input" {...register('full_name')} />
               {errors.full_name ? <p className="form-error">{errors.full_name.message}</p> : null}
             </div>
             <div>
-              <label className="form-label flex items-center gap-2"><Phone className="h-3.5 w-3.5 opacity-50" /> Phone</label>
+              <label className="form-label">Phone</label>
               <input className="form-input" {...register('phone')} />
               {errors.phone ? <p className="form-error">{errors.phone.message}</p> : null}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="form-label flex items-center gap-2"><Briefcase className="h-3.5 w-3.5 opacity-50" /> Job title</label>
-              <input className="form-input" placeholder="Director, Farm Manager, Cashier..." {...register('job_title')} />
+              <label className="form-label">Job title</label>
+              <input className="form-input" placeholder="Farm Manager, Cashier, etc." {...register('job_title')} />
               {errors.job_title ? <p className="form-error">{errors.job_title.message}</p> : null}
             </div>
             <div>
-              <label className="form-label flex items-center gap-2"><Briefcase className="h-3.5 w-3.5 opacity-50" /> Access role</label>
+              <label className="form-label">Access role</label>
+              <input
+                type="search"
+                value={roleSearch}
+                onChange={(event) => setRoleSearch(event.target.value)}
+                placeholder="Search roles..."
+                className="form-input mb-2"
+              />
               <select className="form-input" {...register('role_id')}>
-                <option value="">Select an access role...</option>
-                {roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {ROLE_LABELS[role.name] ?? role.name}
-                  </option>
-                ))}
+                <option value="">Select a role</option>
+                {filteredRoles.length > 0 ? (
+                  filteredRoles.map((role) => (
+                    <option key={role.id} value={role.id}>{ROLE_LABELS[role.name] ?? role.name}</option>
+                  ))
+                ) : (
+                  <option value="" disabled>No matching roles</option>
+                )}
               </select>
+              <p className="mt-2 text-sm text-neutral-500">Search to quickly find the role that matches this staff member’s responsibilities.</p>
               {errors.role_id ? <p className="form-error">{errors.role_id.message}</p> : null}
             </div>
           </div>
 
-          <div className="rounded-[10px] border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
+          <div className="rounded-2xl border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
             {roleDescriptionFor(roles, Number(selectedRoleId))}
           </div>
 
-          <div className="flex gap-4 pt-2">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1 rounded-xl py-3 font-bold">
+          <button
+            type="button"
+            onClick={() => setManageTasksOpen(true)}
+            className="rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-700 transition-colors hover:border-brand-300 hover:bg-brand-50"
+          >
+            Assign specific tasks
+          </button>
+
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+            <button type="button" onClick={onClose} className="btn-secondary w-full rounded-xl py-3 font-bold">
               Cancel
             </button>
-            <button type="submit" disabled={mutation.isPending} className="btn-primary flex-1 rounded-xl py-3 font-bold shadow-glow">
+            <button type="submit" disabled={mutation.isPending} className="btn-primary w-full rounded-xl py-3 font-bold shadow-glow">
               {mutation.isPending ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>
               ) : (
@@ -366,12 +427,147 @@ function EditStaffModal({
           </div>
         </form>
       </motion.div>
+      <AssignTaskPermissionsModal
+        open={manageTasksOpen}
+        onClose={() => setManageTasksOpen(false)}
+        roles={roles}
+        user={user}
+        selectedPermissions={selectedPermissions}
+        setSelectedPermissions={setSelectedPermissions}
+      />
+    </div>
+  )
+}
+
+function AssignTaskPermissionsModal({
+  open,
+  onClose,
+  roles,
+  user,
+  selectedPermissions,
+  setSelectedPermissions,
+}: {
+  open: boolean
+  onClose: () => void
+  roles: Role[]
+  user: User | null
+  selectedPermissions: string[]
+  setSelectedPermissions: (permissions: string[]) => void
+}) {
+  const qc = useQueryClient()
+  const { user: currentUser, refetchMe } = useAuth()
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('No user selected.')
+      return usersService.updateUserPermissions(user.id, selectedPermissions)
+    },
+    onSuccess: () => {
+      toast.success('Task permissions assigned.')
+      qc.invalidateQueries({ queryKey: ['users'] })
+      if (user?.id === currentUser?.id) {
+        void refetchMe()
+      }
+      onClose()
+    },
+    onError: (error: AxiosError<ApiError>) => {
+      toast.error(getErrorMessage(error, 'Failed to assign task permissions.'))
+    },
+  })
+
+  if (!open || !user) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-ink-950/35" onClick={onClose} />
+      <motion.div
+        className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-modal"
+        style={{ maxHeight: 'calc(100vh - 96px)' }}
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.24, ease: [0.23, 1, 0.32, 1] }}
+      >
+        <div className="flex items-start justify-between border-b border-neutral-100 bg-neutral-50 px-8 py-5">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Assign specific tasks</h2>
+            <p className="mt-1 text-sm text-neutral-500">Grant or revoke task permissions separately from the user role.</p>
+          </div>
+          <button onClick={onClose} className="rounded-xl p-2 text-neutral-400 transition-all hover:bg-white hover:shadow-sm">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex max-h-[calc(100vh-216px)] flex-col gap-4 overflow-y-auto px-8 py-6">
+          <div className="rounded-2xl border border-neutral-100 bg-neutral-50 px-4 py-4 text-sm text-neutral-600">
+            Select individual permissions to add on top of the user&apos;s current role.
+          </div>
+
+          <div className="space-y-4">
+            {roles.map((role) => {
+              const rolePermissions = role.permissions || []
+              if (rolePermissions.length === 0) return null
+              return (
+                <div key={role.id} className="rounded-2xl border border-neutral-200 bg-white p-4">
+                  <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-neutral-900">
+                    <div className="flex h-6 w-6 items-center justify-center rounded bg-neutral-100 text-xs font-bold text-neutral-600">
+                      {(ROLE_LABELS[role.name] ?? role.name).charAt(0)}
+                    </div>
+                    {ROLE_LABELS[role.name] ?? role.name}
+                  </div>
+                  <div className="grid gap-3">
+                    {rolePermissions.map((permission) => (
+                      <label key={permission.code} className="flex cursor-pointer items-start gap-3 rounded-xl border border-neutral-200 px-3 py-3 transition-colors hover:border-brand-300">
+                        <input
+                          type="checkbox"
+                          className="mt-1 h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-500"
+                          value={permission.code}
+                          checked={selectedPermissions.includes(permission.code)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedPermissions([...selectedPermissions, permission.code])
+                            } else {
+                              setSelectedPermissions(selectedPermissions.filter((p) => p !== permission.code))
+                            }
+                          }}
+                        />
+                        <div>
+                          <div className="font-medium text-neutral-800">{permission.code}</div>
+                          <div className="text-xs leading-relaxed text-neutral-500">{permission.description}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+            <button type="button" onClick={onClose} className="btn-secondary w-full rounded-xl py-3 font-bold">
+              Close
+            </button>
+            <button
+              type="button"
+              disabled={mutation.isPending}
+              onClick={() => mutation.mutate()}
+              className="btn-primary w-full rounded-xl py-3 font-bold shadow-glow"
+            >
+              {mutation.isPending ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>
+              ) : (
+                <><CheckCircle className="h-4 w-4" /> Save task permissions</>
+              )}
+            </button>
+          </div>
+        </div>
+      </motion.div>
     </div>
   )
 }
 
 export function UsersPage() {
-  const { hasPermission, user: me } = useAuth()
+  const { hasPermission, user: me, refetchMe } = useAuth()
   const qc = useQueryClient()
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')

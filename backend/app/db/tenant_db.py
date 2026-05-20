@@ -32,71 +32,9 @@ from app.services.stock_sku import generate_unique_sku
 
 PLATFORM_ADMIN_ROLES = {"super_manager", "developer_admin"}
 
-DEFAULT_PRODUCTION_STOCK_ITEMS = [
-    {
-        "name": "Dressed chicken",
-        "sku": "PRD-DRESSED-CHICKEN",
-        "description": "Whole dressed chicken produced from slaughter for sale and distribution.",
-    },
-    {
-        "name": "Chicken breast",
-        "sku": "PRD-CHICKEN-BREAST",
-        "description": "Processed boneless or portioned chicken breast cuts.",
-    },
-    {
-        "name": "Chicken thighs",
-        "sku": "PRD-CHICKEN-THIGHS",
-        "description": "Processed chicken thigh cuts ready for sale.",
-    },
-    {
-        "name": "Chicken wings",
-        "sku": "PRD-CHICKEN-WINGS",
-        "description": "Processed chicken wing portions ready for sale.",
-    },
-    {
-        "name": "Chicken drumsticks",
-        "sku": "PRD-CHICKEN-DRUMSTICKS",
-        "description": "Processed chicken drumstick portions ready for sale.",
-    },
-    {
-        "name": "Gizzards",
-        "sku": "PRD-GIZZARDS",
-        "description": "Processed poultry gizzards handled as saleable byproducts.",
-    },
-    {
-        "name": "Liver",
-        "sku": "PRD-LIVER",
-        "description": "Processed poultry liver handled as a saleable output.",
-    },
-    {
-        "name": "Neck/backs",
-        "sku": "PRD-NECK-BACKS",
-        "description": "Processed neck and back portions tracked in inventory for sale.",
-    },
-    {
-        "name": "Poultry manure",
-        "sku": "PRD-POULTRY-MANURE",
-        "description": "Collected poultry manure tracked as a byproduct in kilograms.",
-    },
-    {
-        "name": "Feet",
-        "sku": "PRD-FEET",
-        "description": "Processed feet handled as a reusable poultry byproduct.",
-    },
-    {
-        "name": "Head",
-        "sku": "PRD-HEAD",
-        "description": "Processed head handled as a reusable poultry byproduct.",
-    },
-]
+DEFAULT_PRODUCTION_STOCK_ITEMS: list[dict[str, str]] = []
 
-DEFAULT_FEED_RAW_MATERIALS = [
-    ("Maize", 18750.0),
-    ("Concentrate", 4200.0),
-    ("Soya Cake", 3600.0),
-    ("Sunflower", 2400.0),
-    ("Limestone", 1200.0),
-]
+DEFAULT_FEED_RAW_MATERIALS: list[tuple[str, float]] = []
 
 _cache_lock = RLock()
 _tenant_async_engines: dict[str, AsyncEngine] = {}

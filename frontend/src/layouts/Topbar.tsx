@@ -30,7 +30,7 @@ import {
 import { clsx } from 'clsx'
 import { toast } from 'sonner'
 import { useAuth } from '@/features/auth/AuthContext'
-import { ThemeSelector, ThemeToggle } from '@/components/ThemeControls'
+import { ThemeSelector } from '@/components/ThemeControls'
 import api from '@/services/api'
 
 function titleFromPath(pathname: string) {
@@ -78,6 +78,8 @@ interface QuickSection {
   title: string
   items: QuickAction[]
 }
+
+const PLATFORM_ADMIN_ROLES = new Set(['super_manager', 'developer_admin'])
 
 interface ComplianceAlertSummary {
   document_id: number
@@ -131,6 +133,7 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
   const [farmOpen, setFarmOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [quickOpen, setQuickOpen] = useState(false)
+  const isDevAdmin = PLATFORM_ADMIN_ROLES.has(user?.role?.name ?? '')
 
   // Fetch compliance summary for document expiry alerts
   const { data: complianceSummary } = useQuery({
@@ -139,7 +142,7 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
       const response = await api.get<ComplianceSummaryResponse>('/compliance/summary')
       return response.data
     },
-    enabled: hasPermission('farm:read'),
+    enabled: !isDevAdmin && hasPermission('farm:read'),
   })
 
   // Fetch ERP dashboard for aggregated alerts (low stock, slaughter outputs, etc.)
@@ -149,7 +152,7 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
       const response = await api.get('/analytics/erp-dashboard')
       return response.data
     },
-    enabled: hasPermission('dashboard:read'),
+    enabled: !isDevAdmin && hasPermission('dashboard:read'),
   })
 
   // Fetch invoices for overdue alerts
@@ -159,7 +162,7 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
       const response = await api.get<InvoiceSummary[]>('/sales/invoices')
       return response.data
     },
-    enabled: hasPermission('sales:read'),
+    enabled: !isDevAdmin && hasPermission('sales:read'),
   })
 
   // Fetch slaughter records for pending output posting alerts
@@ -169,7 +172,7 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
       const response = await api.get<SlaughterRecordSummary[]>('/slaughter/records')
       return response.data
     },
-    enabled: hasPermission('slaughter:read'),
+    enabled: !isDevAdmin && hasPermission('slaughter:read'),
   })
 
   // Calculate notification counts
@@ -177,8 +180,8 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
     let count = 0
 
     // Compliance alerts
-    if (complianceSummary?.alerts?.length > 0) {
-      count += complianceSummary.alerts.length
+    if ((complianceSummary?.alerts?.length ?? 0) > 0) {
+      count += complianceSummary?.alerts?.length ?? 0
     }
 
     // Low stock from ERP dashboard
@@ -219,7 +222,6 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
     return source.split(/[ @.]/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
   }, [user])
 
-  const isDevAdmin = user?.role?.name === 'developer_admin'
   const title = titleFromPath(location.pathname)
   const trialLabel = useMemo(() => {
     if (!tenant) return null
@@ -249,7 +251,7 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
       </button>
 
       <div className="flex min-w-0 items-center gap-7">
-        <h1 className={clsx('text-[18px] font-extrabold', isDevAdmin ? 'text-white' : 'text-[#111827]')}>{title}</h1>
+        {title !== 'Dashboard' && <h1 className={clsx('text-[18px] font-extrabold', isDevAdmin ? 'text-white' : 'text-[#111827]')}>{title}</h1>}
         {!isDevAdmin ? (
           <div className="relative hidden md:block">
             <button
@@ -257,7 +259,7 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
               onClick={() => setFarmOpen((open) => !open)}
               className="flex items-center gap-2 rounded-[7px] border border-transparent px-2 py-1.5 text-[13px] font-semibold text-[#111827] hover:border-[#e6ddc8] hover:bg-[#fffaf0]"
             >
-              Farm: {tenant?.name ?? 'Tenant Workspace'}
+              {tenant?.name ?? 'Tenant Workspace'}
               <ChevronDown className={clsx('h-3.5 w-3.5 transition-transform', farmOpen && 'rotate-180')} />
             </button>
             {farmOpen ? (
@@ -353,44 +355,30 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
 
       <div className="flex-1" />
 
-      <div className="hidden w-full max-w-[270px] lg:block">
+      <div className="hidden w-full max-w-[200px] lg:block">
         <button
           type="button"
           onClick={onOpenSearch}
-          className="group flex h-9 w-full items-center justify-between gap-3 rounded-[8px] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 text-[12px] text-[var(--text-muted)] transition-colors hover:border-[var(--brand-primary)] hover:text-[var(--text-strong)]"
+          className="group flex h-8 w-full items-center justify-between gap-2 rounded-[8px] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 text-[11px] text-[var(--text-muted)] transition-colors hover:border-[var(--brand-primary)] hover:text-[var(--text-strong)]"
           aria-label="Open global search"
         >
           <span className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-slate-500 transition-colors group-hover:text-[var(--brand-primary)]" />
-            <span className="truncate">Search anything…</span>
-          </span>
-          <span className="hidden rounded-[6px] border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)] sm:block">
-            {searchShortcut}
+            <Search className="h-3.5 w-3.5 text-slate-500 transition-colors group-hover:text-[var(--brand-primary)]" />
+            <span className="truncate">Search</span>
           </span>
         </button>
-      </div>
-
-      {trialLabel ? (
-        <button type="button" onClick={() => navigate('/subscription')} className="hidden h-9 rounded-[9px] bg-gradient-to-r from-[#e1b23b] to-[#c99316] px-4 text-[12px] font-extrabold text-[#111827] md:inline-flex md:items-center">
-          {trialLabel}
-        </button>
-      ) : null}
-
-      <div className="hidden items-center gap-2 md:flex">
-        <ThemeSelector compact />
-        <ThemeToggle />
       </div>
 
       <div className="relative">
         <button
           type="button"
           onClick={() => setNotificationsOpen((open) => !open)}
-          className={clsx('relative flex h-9 w-9 items-center justify-center rounded-full border', isDevAdmin ? 'border-white/20 text-white' : 'border-[#e6ddc8] text-[#111827]')}
+          className={clsx('relative flex h-8 w-8 items-center justify-center rounded-full border', isDevAdmin ? 'border-white/20 text-white' : 'border-[#e6ddc8] text-[#111827]')}
           aria-label="Notifications"
         >
-          <Bell className="h-4 w-4" />
+          <Bell className="h-3.5 w-3.5" />
           {notificationCount > 0 && (
-            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[var(--brand-primary)]" />
+            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[var(--brand-primary)]" />
           )}
         </button>
         {notificationsOpen ? (
@@ -407,12 +395,12 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
                 </div>
               ) : (
                 <>
-                  {complianceSummary?.alerts?.length > 0 && (
+                  {(complianceSummary?.alerts?.length ?? 0) > 0 && (
                     <>
                       <div className="border-t border-[#efe5d2] px-4 py-2">
                         <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Compliance</div>
                       </div>
-                      {complianceSummary.alerts.slice(0, 3).map((alert) => (
+                      {complianceSummary?.alerts?.slice(0, 3).map((alert) => (
                         <button
                           key={alert.document_id}
                           type="button"

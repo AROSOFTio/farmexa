@@ -30,6 +30,8 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+const PLATFORM_ADMIN_ROLES = new Set(['super_manager', 'developer_admin'])
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const [state, setState] = useState<AuthState>({
@@ -73,6 +75,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!session) {
         throw new Error('Unable to load the authenticated session.')
       }
+      if (PLATFORM_ADMIN_ROLES.has(session.user.role?.name ?? '')) {
+        navigate('/dev-admin/dashboard', { replace: true })
+        return
+      }
       if (session.tenant?.is_profile_only || ['expired', 'cancelled', 'suspended'].includes(session.tenant?.subscription_status ?? '')) {
         navigate('/subscription/expired', { replace: true })
         return
@@ -106,11 +112,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasModuleAccess = useCallback(
     (moduleKey: string) => {
       const roleName = state.user?.role?.name
-      if (roleName === 'super_manager' || roleName === 'developer_admin') return true
+      if (PLATFORM_ADMIN_ROLES.has(roleName ?? '')) return true
       if (!state.tenant) return true
       if (state.tenant.is_suspended) return false
       if (state.tenant.is_profile_only || (state.tenant.subscription_status && ['expired', 'cancelled', 'suspended'].includes(state.tenant.subscription_status))) {
-        return ['farm_profile', 'settings'].includes(moduleKey)
+        return ['dashboard', 'farm_profile', 'settings'].includes(moduleKey)
       }
       return state.enabledModules.includes(moduleKey)
     },

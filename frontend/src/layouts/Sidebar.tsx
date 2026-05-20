@@ -40,7 +40,7 @@ interface NavGroup {
 }
 
 const FARM_NAV: NavGroup[] = [
-  { label: 'Dashboard', path: '/dashboard', permission: 'dashboard:read', moduleKey: 'dashboard', icon: LayoutDashboard },
+  { label: 'Dashboard', path: '/dashboard', moduleKey: 'dashboard', icon: LayoutDashboard },
   {
     label: 'Farm Operations',
     icon: Gauge,
@@ -154,6 +154,8 @@ const DEV_NAV: NavGroup[] = [
   { label: 'Settings', path: '/dev-admin/settings', permission: 'dev_admin:read', icon: Settings },
 ]
 
+const PLATFORM_ADMIN_ROLES = new Set(['super_manager', 'developer_admin'])
+
 function isActivePath(currentPath: string, targetPath: string) {
   return currentPath === targetPath || currentPath.startsWith(`${targetPath}/`)
 }
@@ -163,7 +165,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   const navigate = useNavigate()
   const { hasPermission, hasModuleAccess, tenant, user } = useAuth()
   const { settings } = usePlatformSettings()
-  const isDevAdmin = user?.role?.name === 'developer_admin'
+  const isDevAdmin = PLATFORM_ADMIN_ROLES.has(user?.role?.name ?? '')
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(['Farm Operations', 'Feed']))
 
   const canSee = (item: NavLeaf | NavGroup) => {

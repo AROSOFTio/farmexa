@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { AuthProvider } from '@/features/auth/AuthContext'
+import { AuthProvider, useAuth } from '@/features/auth/AuthContext'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterModalPage } from '@/features/auth/RegisterModalPage'
 import { RegistrationSuccessPage } from '@/features/auth/RegistrationSuccessPage'
@@ -43,6 +43,8 @@ import { UpgradeModulesPage } from '@/features/subscriptions/UpgradeModulesPage'
 import { SubscriptionExpiredPage } from '@/features/subscriptions/SubscriptionExpiredPage'
 import { BillingPage, SubscriptionPage, SupportPage } from '@/features/subscriptions/AccountPages'
 
+const PLATFORM_ADMIN_ROLES = new Set(['super_manager', 'developer_admin'])
+
 export default function App() {
   return (
     <HostValidationGate>
@@ -57,7 +59,6 @@ export default function App() {
         <Route path="/forgot-password" element={<><SEO title="Forgot Farmexa Password" description="Request a Farmexa password reset." canonicalPath="/forgot-password" robots="noindex,nofollow" /><ForgotPasswordPage /></>} />
         <Route path="/reset-password" element={<><SEO title="Reset Farmexa Password" description="Reset your Farmexa password." canonicalPath="/reset-password" robots="noindex,nofollow" /><ResetPasswordPage /></>} />
         <Route path="/verify-email" element={<><SEO title="Verify Farmexa Email" description="Verify your Farmexa account email." canonicalPath="/verify-email" robots="noindex,nofollow" /><VerifyEmailPage /></>} />
-        <Route path="/pricing" element={<PricingPage />} />
         <Route path="/affiliates" element={<AffiliateProgramPage />} />
         <Route path="/affiliate-program" element={<AffiliateProgramPage />} />
         <Route path="/features" element={<PublicHomePage />} />
@@ -74,7 +75,7 @@ export default function App() {
             element={
               <ProtectedRoute permission="dashboard:read">
                 <ModuleGuard moduleKey="dashboard">
-                  <DashboardPage />
+                  <TenantDashboardRoute />
                 </ModuleGuard>
               </ProtectedRoute>
             }
@@ -611,6 +612,14 @@ export default function App() {
               }
             />
             <Route
+              path="pricing"
+              element={
+                <ProtectedRoute permission="dev_admin:read">
+                  <PricingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="activity"
               element={
                 <ProtectedRoute permission="dev_admin:read">
@@ -666,6 +675,14 @@ export default function App() {
   )
 }
 
+function TenantDashboardRoute() {
+  const { user } = useAuth()
+  if (PLATFORM_ADMIN_ROLES.has(user?.role?.name ?? '')) {
+    return <Navigate to="/dev-admin/dashboard" replace />
+  }
+  return <DashboardPage />
+}
+
 function HostValidationGate({ children }: { children: ReactNode }) {
   const { isLoading, isWorkspaceUnknown } = usePlatformSettings()
 
@@ -674,7 +691,14 @@ function HostValidationGate({ children }: { children: ReactNode }) {
   }
 
   if (isLoading) {
-    return <div className="min-h-screen bg-[var(--app-bg)]" />
+    return (
+      <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-[var(--text-strong)]">Loading…</h2>
+          <p className="text-sm text-[var(--text-muted)] mt-2">Fetching platform settings</p>
+        </div>
+      </div>
+    )
   }
 
   return <>{children}</>

@@ -90,6 +90,25 @@ class RefreshToken(Base, TimestampMixin):
         )
 
 
+class UserPermission(Base):
+    """Individual task permissions assigned to a user, supplementing role-based permissions."""
+    __tablename__ = "user_permissions"
+    __table_args__ = (
+        UniqueConstraint("user_id", "permission_id", name="uq_user_permission"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    permission_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("permissions.id", ondelete="CASCADE"), nullable=False
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="user_permissions")
+    permission: Mapped["Permission"] = relationship("Permission")
+
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
     __table_args__ = (

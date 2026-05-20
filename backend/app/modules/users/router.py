@@ -54,8 +54,6 @@ async def get_roles(
         .order_by(Role.name)
     )
     roles = list(result.scalars().all())
-    if current_user.role and current_user.role.name not in PLATFORM_ROLE_NAMES:
-        roles = [role for role in roles if role.name not in PLATFORM_ROLE_NAMES]
     roles.sort(key=lambda role: role_sort_key(role.name))
     return [
         RoleOut(
@@ -111,3 +109,61 @@ async def change_password(
     db: AsyncSession = Depends(get_db),
 ):
     await UserService(db).change_password(current_user.id, payload)
+
+
+@router.get("/{user_id}/permissions", response_model=list[str], summary="Get user-specific permissions")
+async def get_user_permissions(
+    user_id: int,
+    current_user=Depends(require_permission("users:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get list of individual task permissions assigned to a user."""
+    from sqlalchemy import select
+    from app.models.auth import Permission, UserPermission
+    
+    result = await db.execute(
+        select(Permission.code)
+        .join(UserPermission, UserPermission.permission_id == Permission.id)
+        .where(UserPermission.user_id == user_id)
+    )
+    return list(result.scalars().all())
+
+
+@router.put("/{user_id}/permissions", response_model=list[str], summary="Update user-specific permissions")
+async def update_user_permissions(
+    user_id: int,
+    permission_codes: list[str],
+    current_user=Depends(require_permission("users:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set the individual task permissions for a user (replaces all existing user permissions)."""
+    from sqlalchemy import delete, select
+    from app.models.auth import Permission, UserPermission
+    
+    # Get user
+    from app.models.user import User
+    user_result = await db.execute(select(User).where(User.id == user_id))
+    user = user_result.scalar_one_or_none()
+    if not user:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Delete existing user permissions
+    await db.execute(delete(UserPermission).where(UserPermission.user_id == user_id))
+    
+    # Add new user permissions
+    for code in permission_codes:
+        perm_result = await db.execute(select(Permission).where(Permission.code == code))
+        permission = perm_result.scalar_one_or_none()
+        if permission:
+            db.add(UserPermission(user_id=user_id, permission_id=permission.id))
+    
+    await db.commit()
+    
+    # Return updated permissions
+    result = await db.execute(
+        select(Permission.code)
+        .join(UserPermission, UserPermission.permission_id == Permission.id)
+        .where(UserPermission.user_id == user_id)
+    )
+    return list(result.scalars().all())

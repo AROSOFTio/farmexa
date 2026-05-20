@@ -103,6 +103,10 @@ async def _ensure_tenant_module_access(user, request: Request, permission_code: 
             detail="Developer admin access is restricted to platform administrators.",
         )
 
+    required_module_keys = _module_keys_from_request(request)
+    if required_module_keys == {"dashboard"}:
+        return
+
     tenant = user.tenant
     if tenant is None:
         raise HTTPException(
@@ -132,7 +136,6 @@ async def _ensure_tenant_module_access(user, request: Request, permission_code: 
                 detail="Your subscription has expired.",
             )
 
-    required_module_keys = _module_keys_from_request(request)
     if required_module_keys is None:
         return
 

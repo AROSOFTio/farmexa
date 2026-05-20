@@ -6,7 +6,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.auth import Permission, Role, RolePermission
+from app.models.auth import Permission, Role, RolePermission, UserPermission
 from app.models.tenant import Subscription, Tenant, TenantDomain, TenantModule
 from app.models.user import User
 
@@ -22,6 +22,7 @@ def _user_with_role():
 def _user_with_relationships():
     return (
         _user_with_role(),
+        selectinload(User.user_permissions).selectinload(UserPermission.permission),
         selectinload(User.tenant).selectinload(Tenant.modules).selectinload(TenantModule.module),
         selectinload(User.tenant).selectinload(Tenant.domains),
         selectinload(User.tenant).selectinload(Tenant.subscriptions).selectinload(Subscription.plan),
