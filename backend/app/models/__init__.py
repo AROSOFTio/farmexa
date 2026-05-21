@@ -6,7 +6,15 @@ from app.db.base import Base  # noqa: F401
 from app.models.auth import Role, Permission, RolePermission, RefreshToken, AuditLog  # noqa: F401
 from app.models.compliance import ComplianceDocument, DocumentReminder  # noqa: F401
 from app.models.user import User  # noqa: F401
-from app.models.farm import PoultryHouse, PoultryHouseSection, Batch, MortalityLog, VaccinationLog, GrowthLog  # noqa: F401
+from app.models.farm import (  # noqa: F401
+    PoultryHouse,
+    PoultryHouseSection,
+    Batch,
+    MortalityLog,
+    VaccinationLog,
+    GrowthLog,
+    MedicationAdministration,
+)
 from app.models.feed import (  # noqa: F401
     Supplier,
     FeedCategory,
@@ -18,10 +26,19 @@ from app.models.feed import (  # noqa: F401
     FeedFormulationIngredient,
     FeedProductionBatch,
 )
-from app.models.inventory import StockItem, StockMovement, StockTransfer  # noqa: F401
-from app.models.slaughter import SlaughterRecord, SlaughterOutput  # noqa: F401
+from app.models.inventory import (  # noqa: F401
+    StockItem,
+    StockMovement,
+    StockTransfer,
+    StoreLocation,
+    GoodsIssueVoucher,
+    GoodsReceivedNote,
+)
+from app.models.slaughter import SlaughterRecord, SlaughterOutput, SlaughterByProduct  # noqa: F401
 from app.models.sales import Customer, Invoice, InvoiceBalanceReminder, Order, OrderItem, Payment  # noqa: F401
 from app.models.finance import ExpenseCategory, Expense, IncomeCategory, Income  # noqa: F401
+from app.models.finance_coa import Account, JournalEntry, JournalLine  # noqa: F401
+from app.models.safety import IncidentReport, SafetyInspection, SafetyInspectionItem, CorrectiveAction  # noqa: F401
 from app.models.settings import EmailLog, MasterDataRequest, ProductCatalog, ReferenceItem, SystemConfig, SystemSettings  # noqa: F401
 from app.models.egg_production import EggProductionLog  # noqa: F401
 from app.models.affiliate import (  # noqa: F401
@@ -78,6 +95,7 @@ __all__ = [
     "StockTransfer",
     "SlaughterRecord",
     "SlaughterOutput",
+    "SlaughterByProduct",
     "Customer",
     "Order",
     "OrderItem",
@@ -88,6 +106,13 @@ __all__ = [
     "Expense",
     "IncomeCategory",
     "Income",
+    "Account",
+    "JournalEntry",
+    "JournalLine",
+    "IncidentReport",
+    "SafetyInspection",
+    "SafetyInspectionItem",
+    "CorrectiveAction",
     "ProductCatalog",
     "ReferenceItem",
     "SystemConfig",
@@ -114,4 +139,8 @@ __all__ = [
     "Subscription",
     "ModulePrice",
     "PaymentCallbackLog",
+    "StoreLocation",
+    "GoodsIssueVoucher",
+    "GoodsReceivedNote",
+    "MedicationAdministration",
 ]

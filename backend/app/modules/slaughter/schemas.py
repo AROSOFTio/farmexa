@@ -41,6 +41,43 @@ class SlaughterOutputOut(SlaughterOutputBase):
     class Config:
         from_attributes = True
 
+
+class SlaughterByProductBase(BaseModel):
+    stock_item_id: Optional[int] = None
+    store_location_id: Optional[int] = None
+    byproduct_name: str
+    quantity_weight: float
+    unit: str = "kg"
+    value: Optional[float] = 0.0
+    unit_cost: Optional[float] = None
+    total_value: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class SlaughterByProductCreate(SlaughterByProductBase):
+    pass
+
+
+class SlaughterByProductUpdate(BaseModel):
+    stock_item_id: Optional[int] = None
+    store_location_id: Optional[int] = None
+    byproduct_name: Optional[str] = None
+    quantity_weight: Optional[float] = None
+    unit: Optional[str] = None
+    value: Optional[float] = None
+    unit_cost: Optional[float] = None
+    total_value: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class SlaughterByProductOut(SlaughterByProductBase):
+    id: int
+    slaughter_record_id: int
+
+    class Config:
+        from_attributes = True
+
+
 class SlaughterRecordBase(BaseModel):
     batch_id: int
     slaughter_date: date
@@ -96,6 +133,7 @@ class SlaughterRecordOut(SlaughterRecordBase):
     inventory_posted_at: Optional[datetime] = None
     created_at: datetime
     outputs: List[SlaughterOutputOut] = []
+    byproducts: List[SlaughterByProductOut] = []
 
     @computed_field
     @property
@@ -113,3 +151,4 @@ class SlaughterRecordOut(SlaughterRecordBase):
 
     class Config:
         from_attributes = True
+

@@ -9,7 +9,17 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
 from app.models.inventory import MovementType, StockItem, StockMovement
-from app.models.sales import Customer, Invoice, InvoiceBalanceReminder, InvoiceStatus, Order, OrderItem, Payment
+from app.models.sales import (
+    Customer,
+    DeliveryNote,
+    DeliveryStatus,
+    Invoice,
+    InvoiceBalanceReminder,
+    InvoiceStatus,
+    Order,
+    OrderItem,
+    Payment,
+)
 from app.models.settings import EmailLog
 from app.services.inventory_coordinator import InventoryCoordinator, ReferenceType
 
@@ -486,6 +496,87 @@ class SalesService:
             "balance_due": final_balance,
             "email_status": email_status if final_balance > 0 else "sent_or_logged",
         }
+
+    def update_customer(self, db: Session, customer_id: int, customer: schemas.CustomerUpdate):
+        db_customer = db.query(Customer).filter(Customer.id == customer_id).first()
+        if not db_customer:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+
+        update_data = customer.model_dump(exclude_unset=True, exclude_none=True)
+        for key, value in update_data.items():
+            setattr(db_customer, key, value)
+
+        db.commit()
+        db.refresh(db_customer)
+        return db_customer
+
+    def get_delivery_notes(self, db: Session, skip: int = 0, limit: int = 100):
+        return (
+            db.query(DeliveryNote)
+            .options(joinedload(DeliveryNote.customer), joinedload(DeliveryNote.order))
+            .order_by(DeliveryNote.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def get_delivery_note(self, db: Session, note_id: int):
+        note = (
+            db.query(DeliveryNote)
+            .options(joinedload(DeliveryNote.customer), joinedload(DeliveryNote.order))
+            .filter(DeliveryNote.id == note_id)
+            .first()
+        )
+        if not note:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Delivery note not found")
+        return note
+
+    def create_delivery_note(self, db: Session, delivery_note: schemas.DeliveryNoteCreate):
+        customer = db.query(Customer).filter(Customer.id == delivery_note.customer_id, Customer.is_active.is_(True)).first()
+        if not customer:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Customer not found or inactive")
+
+        if delivery_note.order_id:
+            order = db.query(Order).filter(Order.id == delivery_note.order_id).first()
+            if not order:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order not found")
+            if order.customer_id != delivery_note.customer_id:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order belongs to a different customer")
+
+        db_note = DeliveryNote(
+            delivery_number=f"DEL-{uuid.uuid4().hex[:8].upper()}",
+            **delivery_note.model_dump(exclude_none=True),
+        )
+        db.add(db_note)
+        db.commit()
+        db.refresh(db_note)
+        return db_note
+
+    def update_delivery_note(self, db: Session, note_id: int, updates: schemas.DeliveryNoteUpdate):
+        note = db.query(DeliveryNote).filter(DeliveryNote.id == note_id).first()
+        if not note:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Delivery note not found")
+
+        update_data = updates.model_dump(exclude_unset=True, exclude_none=True)
+        for key, value in update_data.items():
+            setattr(note, key, value)
+
+        # Set delivered_at when status changes to delivered
+        if updates.status == DeliveryStatus.DELIVERED and note.delivered_at is None:
+            note.delivered_at = datetime.now(UTC)
+
+        db.commit()
+        db.refresh(note)
+        return note
+
+    def delete_delivery_note(self, db: Session, note_id: int):
+        note = db.query(DeliveryNote).filter(DeliveryNote.id == note_id).first()
+        if not note:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Delivery note not found")
+
+        db.delete(note)
+        db.commit()
+        return {"message": "Delivery note deleted successfully"}
 
 
 sales_service = SalesService()

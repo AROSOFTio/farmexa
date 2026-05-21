@@ -96,7 +96,6 @@ export function AffiliateProgramPage() {
           <Link to="/" aria-label="Farmexa home"><BrandMark /></Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Link to="/pricing" className="btn-secondary">Pricing</Link>
             <button type="button" className="btn-primary" onClick={() => setIsOpen(true)}>Become an Affiliate</button>
           </div>
         </div>

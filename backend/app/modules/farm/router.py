@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, status
+from app.core.deps import get_current_user
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import require_permission
@@ -10,6 +11,9 @@ from app.modules.farm.schemas import (
     BatchUpdate,
     GrowthLogCreate,
     GrowthLogOut,
+    MedicationAdministrationCreate,
+    MedicationAdministrationOut,
+    MedicationAdministrationUpdate,
     MortalityLogCreate,
     MortalityLogOut,
     ReferenceItemCreate,
@@ -162,10 +166,10 @@ async def create_vaccination(
     batch_id: int,
     data: VaccinationLogCreate,
     db: AsyncSession = Depends(get_tenant_db),
-    current_user=Depends(require_permission("farm:write")),
+    current_user=Depends(get_current_user),
 ):
     data.batch_id = batch_id
-    return await FarmService(db).create_vaccination_log(data)
+    return await FarmService(db).create_vaccination_log(data, current_user.id)
 
 
 @router.put("/vaccinations/{log_id}", response_model=VaccinationLogOut)
@@ -173,9 +177,9 @@ async def update_vaccination(
     log_id: int,
     data: VaccinationLogUpdate,
     db: AsyncSession = Depends(get_tenant_db),
-    current_user=Depends(require_permission("farm:write")),
+    current_user=Depends(get_current_user),
 ):
-    return await FarmService(db).update_vaccination_log(log_id, data)
+    return await FarmService(db).update_vaccination_log(log_id, data, current_user.id)
 
 
 @router.get("/batches/{batch_id}/growth", response_model=list[GrowthLogOut])
@@ -196,3 +200,42 @@ async def create_growth(
 ):
     data.batch_id = batch_id
     return await FarmService(db).create_growth_log(data)
+
+
+@router.get("/batches/{batch_id}/medications", response_model=list[MedicationAdministrationOut])
+async def list_medications(
+    batch_id: int,
+    db: AsyncSession = Depends(get_tenant_db),
+    current_user=Depends(require_permission("farm:read")),
+):
+    return await FarmService(db).get_medication_administrations(batch_id)
+
+
+@router.post("/batches/{batch_id}/medications", response_model=MedicationAdministrationOut, status_code=status.HTTP_201_CREATED)
+async def create_medication(
+    batch_id: int,
+    data: MedicationAdministrationCreate,
+    db: AsyncSession = Depends(get_tenant_db),
+    current_user=Depends(get_current_user),
+):
+    data.batch_id = batch_id
+    return await FarmService(db).create_medication_administration(data, current_user.id)
+
+
+@router.put("/medications/{admin_id}", response_model=MedicationAdministrationOut)
+async def update_medication(
+    admin_id: int,
+    data: MedicationAdministrationUpdate,
+    db: AsyncSession = Depends(get_tenant_db),
+    current_user=Depends(require_permission("farm:write")),
+):
+    return await FarmService(db).update_medication_administration(admin_id, data)
+
+
+@router.delete("/medications/{admin_id}")
+async def delete_medication(
+    admin_id: int,
+    db: AsyncSession = Depends(get_tenant_db),
+    current_user=Depends(require_permission("farm:write")),
+):
+    return await FarmService(db).delete_medication_administration(admin_id)

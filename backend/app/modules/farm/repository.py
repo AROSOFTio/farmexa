@@ -4,7 +4,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.farm import Batch, BatchStatus, GrowthLog, MortalityLog, PoultryHouse, PoultryHouseSection, VaccinationLog
+from app.models.farm import Batch, BatchStatus, GrowthLog, MedicationAdministration, MortalityLog, PoultryHouse, PoultryHouseSection, VaccinationLog
 from app.models.settings import ReferenceDataType, ReferenceItem
 from app.modules.farm.schemas import (
     BatchCreate,
@@ -251,3 +251,35 @@ class FarmRepository:
             .order_by(VaccinationLog.vaccine_name)
         )
         return [value for value in res.scalars().all() if value]
+
+    async def get_medication_administrations(self, batch_id: int) -> Sequence[MedicationAdministration]:
+        res = await self.db.execute(
+            select(MedicationAdministration)
+            .where(MedicationAdministration.batch_id == batch_id)
+            .order_by(MedicationAdministration.treatment_date.desc())
+        )
+        return res.scalars().all()
+
+    async def get_medication_administration(self, admin_id: int) -> MedicationAdministration | None:
+        res = await self.db.execute(
+            select(MedicationAdministration).where(MedicationAdministration.id == admin_id)
+        )
+        return res.scalar_one_or_none()
+
+    async def create_medication_administration(self, payload: dict) -> MedicationAdministration:
+        admin = MedicationAdministration(**payload)
+        self.db.add(admin)
+        await self.db.flush()
+        return admin
+
+    async def update_medication_administration(self, admin: MedicationAdministration, payload: dict) -> MedicationAdministration:
+        for key, value in payload.items():
+            setattr(admin, key, value)
+        await self.db.flush()
+        return admin
+
+    async def delete_medication_administration(self, admin_id: int) -> None:
+        res = await self.db.execute(
+            delete(MedicationAdministration).where(MedicationAdministration.id == admin_id)
+        )
+        await self.db.flush()

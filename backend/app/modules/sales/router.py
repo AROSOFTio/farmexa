@@ -31,6 +31,16 @@ def create_customer(
     return service.sales_service.create_customer(db, customer)
 
 
+@router.patch("/customers/{customer_id}", response_model=schemas.CustomerOut)
+def update_customer(
+    customer_id: int,
+    customer: schemas.CustomerUpdate,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("sales:write")),
+):
+    return service.sales_service.update_customer(db, customer_id, customer)
+
+
 @router.get("/orders", response_model=List[schemas.OrderOut])
 def list_orders(
     skip: int = 0,
@@ -123,3 +133,50 @@ def checkout_pos(
     current_user=Depends(require_permission("sales:write")),
 ):
     return service.sales_service.checkout_pos(db, payload)
+
+
+@router.get("/delivery-notes", response_model=List[schemas.DeliveryNoteOut])
+def list_delivery_notes(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("sales:read")),
+):
+    return service.sales_service.get_delivery_notes(db, skip, limit)
+
+
+@router.get("/delivery-notes/{note_id}", response_model=schemas.DeliveryNoteOut)
+def get_delivery_note(
+    note_id: int,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("sales:read")),
+):
+    return service.sales_service.get_delivery_note(db, note_id)
+
+
+@router.post("/delivery-notes", response_model=schemas.DeliveryNoteOut)
+def create_delivery_note(
+    delivery_note: schemas.DeliveryNoteCreate,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("sales:write")),
+):
+    return service.sales_service.create_delivery_note(db, delivery_note)
+
+
+@router.patch("/delivery-notes/{note_id}", response_model=schemas.DeliveryNoteOut)
+def update_delivery_note(
+    note_id: int,
+    updates: schemas.DeliveryNoteUpdate,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("sales:write")),
+):
+    return service.sales_service.update_delivery_note(db, note_id, updates)
+
+
+@router.delete("/delivery-notes/{note_id}")
+def delete_delivery_note(
+    note_id: int,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("sales:write")),
+):
+    return service.sales_service.delete_delivery_note(db, note_id)

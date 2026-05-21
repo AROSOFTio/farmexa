@@ -74,6 +74,7 @@ class SlaughterRecord(Base):
 
     batch = relationship("Batch")
     outputs = relationship("SlaughterOutput", back_populates="slaughter_record", cascade="all, delete-orphan")
+    byproducts = relationship("SlaughterByProduct", back_populates="slaughter_record", cascade="all, delete-orphan")
 
 
 class SlaughterOutput(Base):
@@ -90,3 +91,24 @@ class SlaughterOutput(Base):
 
     slaughter_record = relationship("SlaughterRecord", back_populates="outputs")
     stock_item = relationship("StockItem")
+
+
+class SlaughterByProduct(Base):
+    __tablename__ = "slaughter_byproducts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    slaughter_record_id = Column(Integer, ForeignKey("slaughter_records.id"), nullable=False)
+    stock_item_id = Column(Integer, ForeignKey("stock_items.id"), nullable=True)
+    store_location_id = Column(Integer, ForeignKey("store_locations.id"), nullable=True)
+    byproduct_name = Column(String(100), nullable=False)
+    quantity_weight = Column(Float, nullable=False)
+    unit = Column(String(20), nullable=False, default="kg")
+    value = Column(Float, nullable=True, default=0.0)
+    unit_cost = Column(Float, nullable=True)
+    total_value = Column(Float, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    slaughter_record = relationship("SlaughterRecord", back_populates="byproducts")
+    stock_item = relationship("StockItem")
+    store_location = relationship("StoreLocation")
+

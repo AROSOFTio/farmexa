@@ -25,6 +25,8 @@ class ReferenceType(str, Enum):
     MORTALITY = "mortality"
     SLAUGHTER_INPUT = "slaughter_input"
     SLAUGHTER_OUTPUT = "slaughter_output"
+    SLAUGHTER_BYPRODUCT = "slaughter_byproduct"
+    SLAUGHTER_BYPRODUCT_ADJUSTMENT = "slaughter_byproduct_adjustment"
     FEED_PURCHASE = "feed_purchase"
     FEED_PRODUCTION_INPUT = "feed_production_input"
     FEED_PRODUCTION_OUTPUT = "feed_production_output"
@@ -34,6 +36,10 @@ class ReferenceType(str, Enum):
     STOCK_TRANSFER = "stock_transfer"
     MANUAL_ADJUSTMENT = "manual_adjustment"
     INITIAL_STOCK = "initial_stock"
+    GIV_ISSUE = "giv_issue"
+    GRN_RECEIPT = "grn_receipt"
+    VACCINATION = "vaccination"
+    MEDICATION = "medication"
 
 
 class InventoryCoordinator:

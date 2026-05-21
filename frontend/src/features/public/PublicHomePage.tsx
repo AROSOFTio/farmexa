@@ -116,7 +116,6 @@ export function PublicHomePage() {
             <a href="#home">Home</a>
             <a href="#features">Features</a>
             <a href="#modules">Modules</a>
-            <Link to="/pricing">Pricing</Link>
             <Link to="/affiliate-program">Affiliates</Link>
             <a href="#why">Why {settings.system_name}</a>
             <a href="#contact">Contact</a>

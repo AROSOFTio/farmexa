@@ -3,7 +3,7 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from app.models.sales import CustomerType, InvoiceStatus, OrderStatus, PaymentMethod
+from app.models.sales import CustomerType, DeliveryStatus, InvoiceStatus, OrderStatus, PaymentMethod
 
 
 class CustomerBase(BaseModel):
@@ -12,6 +12,12 @@ class CustomerBase(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
+    credit_limit: float = Field(default=0.0, ge=0)
+    payment_terms_days: int = Field(default=30, ge=0)
+    tax_id: Optional[str] = None
+    contact_person: Optional[str] = None
+    contact_phone: Optional[str] = None
+    notes: Optional[str] = None
     is_active: bool = True
 
 
@@ -26,6 +32,21 @@ class CustomerOut(CustomerBase):
 
     class Config:
         from_attributes = True
+
+
+class CustomerUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=2, max_length=150)
+    customer_type: Optional[CustomerType] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    credit_limit: Optional[float] = Field(default=None, ge=0)
+    payment_terms_days: Optional[int] = Field(default=None, ge=0)
+    tax_id: Optional[str] = None
+    contact_person: Optional[str] = None
+    contact_phone: Optional[str] = None
+    notes: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 class OrderItemBase(BaseModel):
@@ -93,6 +114,7 @@ class InvoiceBase(BaseModel):
     issue_date: date
     due_date: date
     total_amount: float = Field(ge=0)
+    notes: Optional[str] = None
 
 
 class InvoiceCreate(InvoiceBase):
@@ -103,6 +125,8 @@ class InvoiceOut(InvoiceBase):
     id: int
     invoice_number: str
     paid_amount: float
+    pdf_generated_at: Optional[datetime] = None
+    pdf_file_path: Optional[str] = None
     created_at: datetime
     customer: Optional[CustomerOut] = None
     payments: List[PaymentOut] = []
@@ -138,3 +162,39 @@ class PosCheckoutOut(BaseModel):
     payment: Optional[PaymentOut] = None
     balance_due: float = 0.0
     email_status: Optional[str] = None
+
+
+class DeliveryNoteBase(BaseModel):
+    order_id: Optional[int] = None
+    customer_id: int
+    status: DeliveryStatus = DeliveryStatus.PENDING
+    delivery_date: date
+    delivery_address: Optional[str] = None
+    contact_person: Optional[str] = None
+    contact_phone: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class DeliveryNoteCreate(DeliveryNoteBase):
+    pass
+
+
+class DeliveryNoteUpdate(BaseModel):
+    status: Optional[DeliveryStatus] = None
+    delivery_address: Optional[str] = None
+    contact_person: Optional[str] = None
+    contact_phone: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class DeliveryNoteOut(DeliveryNoteBase):
+    id: int
+    delivery_number: str
+    pdf_generated_at: Optional[datetime] = None
+    pdf_file_path: Optional[str] = None
+    created_at: datetime
+    delivered_at: Optional[datetime] = None
+    customer: Optional[CustomerOut] = None
+
+    class Config:
+        from_attributes = True

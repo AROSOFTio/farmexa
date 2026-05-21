@@ -123,6 +123,12 @@ class VaccinationLogBase(BaseModel):
     administered_date: Optional[date] = None
     status: VaccinationStatus = VaccinationStatus.PENDING
     notes: Optional[str] = None
+    vaccine_item_id: Optional[int] = None
+    dosage_per_bird: Optional[float] = Field(default=None, ge=0)
+    total_dosage: Optional[float] = Field(default=None, ge=0)
+    quantity_used: Optional[float] = Field(default=None, ge=0)
+    unit: Optional[str] = None
+    birds_vaccinated: Optional[int] = Field(default=None, ge=0)
 
 
 class VaccinationLogCreate(VaccinationLogBase):
@@ -133,10 +139,17 @@ class VaccinationLogUpdate(BaseModel):
     administered_date: Optional[date] = None
     status: Optional[VaccinationStatus] = None
     notes: Optional[str] = None
+    vaccine_item_id: Optional[int] = None
+    dosage_per_bird: Optional[float] = Field(default=None, ge=0)
+    total_dosage: Optional[float] = Field(default=None, ge=0)
+    quantity_used: Optional[float] = Field(default=None, ge=0)
+    unit: Optional[str] = None
+    birds_vaccinated: Optional[int] = Field(default=None, ge=0)
 
 
 class VaccinationLogOut(VaccinationLogBase):
     id: int
+    administered_by_id: Optional[int] = None
 
     model_config = {"from_attributes": True}
 
@@ -154,6 +167,42 @@ class GrowthLogCreate(GrowthLogBase):
 
 class GrowthLogOut(GrowthLogBase):
     id: int
+
+    model_config = {"from_attributes": True}
+
+
+class MedicationAdministrationBase(BaseModel):
+    batch_id: int
+    medicine_item_id: int
+    treatment_date: date
+    reason: Optional[str] = None
+    administration_method: str = Field(..., min_length=1, max_length=50)
+    dosage_per_bird: Optional[float] = Field(default=None, ge=0)
+    total_quantity_used: float = Field(..., gt=0)
+    unit: str = Field(default="ml", min_length=1, max_length=20)
+    birds_treated: int = Field(..., gt=0)
+    notes: Optional[str] = None
+
+
+class MedicationAdministrationCreate(MedicationAdministrationBase):
+    pass
+
+
+class MedicationAdministrationUpdate(BaseModel):
+    treatment_date: Optional[date] = None
+    reason: Optional[str] = None
+    administration_method: Optional[str] = Field(default=None, min_length=1, max_length=50)
+    dosage_per_bird: Optional[float] = Field(default=None, ge=0)
+    total_quantity_used: Optional[float] = Field(default=None, gt=0)
+    unit: Optional[str] = Field(default=None, min_length=1, max_length=20)
+    birds_treated: Optional[int] = Field(default=None, gt=0)
+    notes: Optional[str] = None
+
+
+class MedicationAdministrationOut(MedicationAdministrationBase):
+    id: int
+    administered_by_id: int
+    created_at: date
 
     model_config = {"from_attributes": True}
 

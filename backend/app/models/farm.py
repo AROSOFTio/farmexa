@@ -1,8 +1,8 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Optional
 import enum
 
-from sqlalchemy import Date, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -119,7 +119,17 @@ class VaccinationLog(Base):
     )
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    vaccine_item_id: Mapped[Optional[int]] = mapped_column(ForeignKey("stock_items.id"), nullable=True)
+    dosage_per_bird: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    total_dosage: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    quantity_used: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    unit: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    birds_vaccinated: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    administered_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+
     batch: Mapped["Batch"] = relationship("Batch", back_populates="vaccinations")
+    vaccine_item: Mapped[Optional["StockItem"]] = relationship("StockItem")
+    administered_by: Mapped[Optional["User"]] = relationship("User")
 
 
 class GrowthLog(Base):
@@ -132,3 +142,26 @@ class GrowthLog(Base):
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     batch: Mapped["Batch"] = relationship("Batch", back_populates="growth_logs")
+
+
+class MedicationAdministration(Base):
+    __tablename__ = "medication_administrations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    batch_id: Mapped[int] = mapped_column(ForeignKey("batches.id"), index=True)
+    medicine_item_id: Mapped[int] = mapped_column(ForeignKey("stock_items.id"), index=True)
+    treatment_date: Mapped[date] = mapped_column(Date, nullable=False)
+    reason: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    administration_method: Mapped[str] = mapped_column(String(50), nullable=False)  # oral, drinking_water, injection, feed_mix, spray, other
+    dosage_per_bird: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    total_quantity_used: Mapped[float] = mapped_column(Float, nullable=False)
+    unit: Mapped[str] = mapped_column(String(20), nullable=False, default="ml")
+    birds_treated: Mapped[int] = mapped_column(Integer, nullable=False)
+    administered_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    batch: Mapped["Batch"] = relationship("Batch")
+    medicine_item: Mapped["StockItem"] = relationship("StockItem")
+    administered_by: Mapped["User"] = relationship("User")
+

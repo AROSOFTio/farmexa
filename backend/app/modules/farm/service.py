@@ -6,7 +6,13 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.farm import BatchStatus, HouseStatus, PoultryHouse, PoultryHouseSection
+from app.models.farm import (
+    BatchStatus,
+    HouseStatus,
+    MedicationAdministration,
+    PoultryHouse,
+    PoultryHouseSection,
+)
 from app.models.inventory import StockCategory, StockItem
 from app.models.settings import ReferenceDataType
 from app.modules.farm.repository import FarmRepository
@@ -16,6 +22,9 @@ from app.modules.farm.schemas import (
     BatchUpdate,
     GrowthLogCreate,
     GrowthLogOut,
+    MedicationAdministrationCreate,
+    MedicationAdministrationOut,
+    MedicationAdministrationUpdate,
     MortalityLogCreate,
     MortalityLogOut,
     PoultryHouseCreate,
@@ -30,6 +39,7 @@ from app.modules.farm.schemas import (
     VaccinationLogOut,
     VaccinationLogUpdate,
 )
+from app.services.farm_validation import FarmValidationService
 from app.services.inventory_coordinator import InventoryCoordinator, ReferenceType
 from app.services.stock_sku import generate_unique_sku_async
 
@@ -449,11 +459,9 @@ class FarmService:
         return [MortalityLogOut.model_validate(log) for log in logs]
 
     async def create_mortality_log(self, data: MortalityLogCreate) -> MortalityLogOut:
-        batch = await self.repo.get_batch(data.batch_id)
-        if not batch:
-            raise HTTPException(status_code=404, detail="Batch not found")
-        if batch.active_quantity < data.quantity:
-            raise HTTPException(status_code=400, detail="Mortality quantity exceeds active birds")
+        validator = FarmValidationService(self.db)
+        batch = await validator.validate_mortality_quantity(data.batch_id, data.quantity)
+        
         if not batch.stock_item_id:
             raise HTTPException(status_code=400, detail="Batch has no inventory link; cannot post mortality.")
 
@@ -477,19 +485,70 @@ class FarmService:
         logs = await self.repo.get_vaccination_logs(batch_id)
         return [VaccinationLogOut.model_validate(log) for log in logs]
 
-    async def create_vaccination_log(self, data: VaccinationLogCreate) -> VaccinationLogOut:
-        batch = await self.repo.get_batch(data.batch_id)
-        if not batch:
-            raise HTTPException(status_code=404, detail="Batch not found")
-        log = await self.repo.create_vaccination_log(data)
+    async def create_vaccination_log(self, data: VaccinationLogCreate, user_id: int) -> VaccinationLogOut:
+        validator = FarmValidationService(self.db)
+        
+        # Validate vaccination workflow if vaccine item is specified
+        if data.vaccine_item_id:
+            birds_to_vaccinate = data.birds_vaccinated if data.birds_vaccinated else 0
+            await validator.validate_vaccination_workflow(
+                batch_id=data.batch_id,
+                vaccine_item_id=data.vaccine_item_id,
+                dosage_per_bird=data.dosage_per_bird,
+                birds_to_vaccinate=birds_to_vaccinate,
+            )
+        
+        # Create vaccination log
+        log_data = data.model_dump()
+        log_data["administered_by_id"] = user_id
+        log = await self.repo.create_vaccination_log(log_data)
+        
+        # If status is completed and vaccine item is specified, record stock movement
+        if data.status == "completed" and data.vaccine_item_id and data.quantity_used:
+            await validator.record_vaccination_stock_movement(
+                vaccine_item_id=data.vaccine_item_id,
+                quantity_used=data.quantity_used,
+                batch_id=data.batch_id,
+                notes=data.notes or f"Vaccination: {data.vaccine_name}",
+            )
+        
         await self.db.commit()
         return VaccinationLogOut.model_validate(log)
 
-    async def update_vaccination_log(self, log_id: int, data: VaccinationLogUpdate) -> VaccinationLogOut:
+    async def update_vaccination_log(self, log_id: int, data: VaccinationLogUpdate, user_id: int) -> VaccinationLogOut:
         log = await self.repo.get_vaccination_log(log_id)
         if not log:
             raise HTTPException(status_code=404, detail="Vaccination log not found")
-        log = await self.repo.update_vaccination_log(log, data)
+        
+        validator = FarmValidationService(self.db)
+        
+        # If transitioning to completed status with vaccine item, validate and record stock movement
+        if data.status == "completed" and log.status != "completed":
+            if data.vaccine_item_id:
+                birds_to_vaccinate = data.birds_vaccinated if data.birds_vaccinated else (log.birds_vaccinated or 0)
+                dosage_per_bird = data.dosage_per_bird if data.dosage_per_bird is not None else log.dosage_per_bird
+                await validator.validate_vaccination_workflow(
+                    batch_id=log.batch_id,
+                    vaccine_item_id=data.vaccine_item_id,
+                    dosage_per_bird=dosage_per_bird,
+                    birds_to_vaccinate=birds_to_vaccinate,
+                )
+            
+            quantity_used = data.quantity_used if data.quantity_used is not None else log.quantity_used
+            if data.vaccine_item_id and quantity_used:
+                await validator.record_vaccination_stock_movement(
+                    vaccine_item_id=data.vaccine_item_id,
+                    quantity_used=quantity_used,
+                    batch_id=log.batch_id,
+                    notes=data.notes or log.notes or f"Vaccination: {log.vaccine_name}",
+                )
+            
+            if data.administered_date is None:
+                data = data.model_copy(update={"administered_date": log.scheduled_date})
+        
+        log = await self.repo.update_vaccination_log(log, data.model_dump(exclude_none=True))
+        if data.status == "completed" and not log.administered_by_id:
+            log.administered_by_id = user_id
         await self.db.commit()
         return VaccinationLogOut.model_validate(log)
 
@@ -504,6 +563,65 @@ class FarmService:
         log = await self.repo.create_growth_log(data)
         await self.db.commit()
         return GrowthLogOut.model_validate(log)
+
+    async def get_medication_administrations(self, batch_id: int) -> list[MedicationAdministrationOut]:
+        logs = await self.repo.get_medication_administrations(batch_id)
+        return [MedicationAdministrationOut.model_validate(log) for log in logs]
+
+    async def create_medication_administration(self, data: MedicationAdministrationCreate, user_id: int) -> MedicationAdministrationOut:
+        validator = FarmValidationService(self.db)
+        
+        # Validate medication workflow
+        await validator.validate_medication_workflow(
+            batch_id=data.batch_id,
+            medicine_item_id=data.medicine_item_id,
+            total_quantity_used=data.total_quantity_used,
+            birds_treated=data.birds_treated,
+        )
+        
+        # Create medication administration record
+        admin_data = data.model_dump()
+        admin_data["administered_by_id"] = user_id
+        admin = await self.repo.create_medication_administration(admin_data)
+        
+        # Record stock movement for medicine
+        await validator.record_medication_stock_movement(
+            medicine_item_id=data.medicine_item_id,
+            quantity_used=data.total_quantity_used,
+            batch_id=data.batch_id,
+            notes=data.notes or f"Medication administration for batch #{data.batch_id}",
+        )
+        
+        await self.db.commit()
+        return MedicationAdministrationOut.model_validate(admin)
+
+    async def update_medication_administration(self, admin_id: int, data: MedicationAdministrationUpdate) -> MedicationAdministrationOut:
+        admin = await self.repo.get_medication_administration(admin_id)
+        if not admin:
+            raise HTTPException(status_code=404, detail="Medication administration not found")
+        
+        # For now, only allow updating notes and reason - quantity changes would require complex stock adjustment logic
+        # If quantity changes are needed, the record should be cancelled and a new one created
+        if data.total_quantity_used is not None and data.total_quantity_used != admin.total_quantity_used:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot change quantity after administration. Cancel and create a new record instead."
+            )
+        
+        admin = await self.repo.update_medication_administration(admin, data.model_dump(exclude_none=True))
+        await self.db.commit()
+        return MedicationAdministrationOut.model_validate(admin)
+
+    async def delete_medication_administration(self, admin_id: int) -> dict:
+        admin = await self.repo.get_medication_administration(admin_id)
+        if not admin:
+            raise HTTPException(status_code=404, detail="Medication administration not found")
+        
+        # Note: We don't reverse the stock movement on deletion for audit trail purposes
+        # Stock adjustments should be done via manual adjustment if needed
+        await self.repo.delete_medication_administration(admin_id)
+        await self.db.commit()
+        return {"message": "Medication administration deleted successfully"}
 
     async def list_reference_items(
         self,

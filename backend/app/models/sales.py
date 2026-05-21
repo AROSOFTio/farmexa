@@ -45,6 +45,12 @@ class Customer(Base):
     phone = Column(String, nullable=True)
     address = Column(Text, nullable=True)
     balance = Column(Float, default=0.0, nullable=False)
+    credit_limit = Column(Float, default=0.0, nullable=False)
+    payment_terms_days = Column(Integer, default=30, nullable=False)
+    tax_id = Column(String, nullable=True)
+    contact_person = Column(String, nullable=True)
+    contact_phone = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     is_active = Column(Boolean, default=True)
 
@@ -92,6 +98,9 @@ class Invoice(Base):
     due_date = Column(Date, nullable=False)
     total_amount = Column(Float, nullable=False)
     paid_amount = Column(Float, default=0.0, nullable=False)
+    pdf_generated_at = Column(DateTime(timezone=True), nullable=True)
+    pdf_file_path = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     order = relationship("Order", back_populates="invoices")
@@ -127,4 +136,33 @@ class InvoiceBalanceReminder(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     invoice = relationship("Invoice")
+    customer = relationship("Customer")
+
+
+class DeliveryStatus(str, enum.Enum):
+    PENDING = "pending"
+    IN_TRANSIT = "in_transit"
+    DELIVERED = "delivered"
+    CANCELLED = "cancelled"
+
+
+class DeliveryNote(Base):
+    __tablename__ = "delivery_notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    delivery_number = Column(String, unique=True, index=True, nullable=False)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=True)
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
+    status = Column(db_enum(DeliveryStatus, name="deliverystatus"), default=DeliveryStatus.PENDING, nullable=False)
+    delivery_date = Column(Date, nullable=False)
+    delivery_address = Column(Text, nullable=True)
+    contact_person = Column(String, nullable=True)
+    contact_phone = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    pdf_generated_at = Column(DateTime(timezone=True), nullable=True)
+    pdf_file_path = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    delivered_at = Column(DateTime(timezone=True), nullable=True)
+
+    order = relationship("Order")
     customer = relationship("Customer")

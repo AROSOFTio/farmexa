@@ -27,6 +27,7 @@ import { PosPage } from '@/features/sales/PosPage'
 import { SettingsConfigPage } from '@/features/settings/SettingsConfigPage'
 import { UsersPage } from '@/features/settings/users/UsersPage'
 import { RolesPage } from '@/features/settings/users/RolesPage'
+import { StoreLocationsPage } from '@/features/settings/StoreLocationsPage'
 import { SlaughterPage } from '@/features/slaughter/SlaughterPage'
 import { AppLayout } from '@/layouts/AppLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
@@ -249,7 +250,7 @@ export default function App() {
             <Route
               path="grn"
               element={
-                <ProtectedRoute permission="inventory:read">
+                <ProtectedRoute permission="grn:read">
                   <ModuleGuard moduleKey="inventory_movements">
                     <InventoryTransfersPage view="grn" />
                   </ModuleGuard>
@@ -259,9 +260,19 @@ export default function App() {
             <Route
               path="giv"
               element={
-                <ProtectedRoute permission="inventory:read">
+                <ProtectedRoute permission="giv:read">
                   <ModuleGuard moduleKey="inventory_movements">
                     <InventoryTransfersPage view="giv" />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="store-locations"
+              element={
+                <ProtectedRoute permission="inventory:read">
+                  <ModuleGuard moduleKey="inventory_items">
+                    <StoreLocationsPage />
                   </ModuleGuard>
                 </ProtectedRoute>
               }

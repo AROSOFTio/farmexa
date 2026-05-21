@@ -71,7 +71,9 @@ const FARM_NAV: NavGroup[] = [
     children: [
       { label: 'Stock Items', path: '/inventory/items', permission: 'inventory:read', moduleKey: 'inventory_items' },
       { label: 'Stock Movements', path: '/inventory/movements', permission: 'inventory:read', moduleKey: 'inventory_movements' },
-      { label: 'Transfers', path: '/inventory/transfers', permission: 'inventory:read', moduleKey: 'inventory_movements' },
+      { label: 'Goods Issue (GIV)', path: '/inventory/giv', permission: 'giv:read', moduleKey: 'inventory_movements' },
+      { label: 'Goods Received (GRN)', path: '/inventory/grn', permission: 'grn:read', moduleKey: 'inventory_movements' },
+      { label: 'Store Locations', path: '/inventory/store-locations', permission: 'inventory:read', moduleKey: 'inventory_items' },
       { label: 'Low Stock Alerts', path: '/inventory/low-stock', permission: 'inventory:read', moduleKey: 'inventory_items' },
       { label: 'Medicine Stock', path: '/inventory/medicine', permission: 'inventory:read', moduleKey: 'medicine_supplies' },
     ],

@@ -11,6 +11,7 @@ from app.models.inventory import MovementType, StockItem, StockMovement
 from app.models.slaughter import (
     QualityInspectionStatus,
     SlaughterApprovalStatus,
+    SlaughterByProduct,
     SlaughterOutput,
     SlaughterRecord,
     SlaughterStatus,
@@ -63,7 +64,7 @@ class SlaughterService:
         tenant_id = self._tenant_id_for(current_user)
         query = (
             db.query(SlaughterRecord)
-            .options(joinedload(SlaughterRecord.outputs), joinedload(SlaughterRecord.batch))
+            .options(joinedload(SlaughterRecord.outputs), joinedload(SlaughterRecord.byproducts), joinedload(SlaughterRecord.batch))
             .order_by(SlaughterRecord.slaughter_date.desc(), SlaughterRecord.created_at.desc())
         )
         if tenant_id is not None:
@@ -101,7 +102,7 @@ class SlaughterService:
         db.commit()
         return (
             db.query(SlaughterRecord)
-            .options(joinedload(SlaughterRecord.outputs), joinedload(SlaughterRecord.batch))
+            .options(joinedload(SlaughterRecord.outputs), joinedload(SlaughterRecord.byproducts), joinedload(SlaughterRecord.batch))
             .filter(SlaughterRecord.id == db_record.id)
             .first()
         )
@@ -150,7 +151,7 @@ class SlaughterService:
         db.commit()
         return (
             db.query(SlaughterRecord)
-            .options(joinedload(SlaughterRecord.outputs), joinedload(SlaughterRecord.batch))
+            .options(joinedload(SlaughterRecord.outputs), joinedload(SlaughterRecord.byproducts), joinedload(SlaughterRecord.batch))
             .filter(SlaughterRecord.id == db_record.id)
             .first()
         )
@@ -243,6 +244,159 @@ class SlaughterService:
         db.commit()
         db.refresh(db_output)
         return db_output
+
+    def get_byproducts(self, db: Session, record_id: int, current_user):
+        tenant_id = self._tenant_id_for(current_user)
+        query = db.query(SlaughterByProduct).filter(SlaughterByProduct.slaughter_record_id == record_id)
+        return query.all()
+
+    def add_byproduct(self, db: Session, record_id: int, byproduct: schemas.SlaughterByProductCreate, current_user):
+        tenant_id = self._tenant_id_for(current_user)
+        query = db.query(SlaughterRecord).filter(SlaughterRecord.id == record_id)
+        if tenant_id is not None:
+            query = query.filter(SlaughterRecord.tenant_id == tenant_id)
+        db_record = query.first()
+        if not db_record:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Slaughter record not found")
+        if db_record.status != SlaughterStatus.COMPLETED:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Byproducts can only be added after the record is completed.")
+        if db_record.approval_status != SlaughterApprovalStatus.APPROVED:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Byproducts can only be added after processing is approved.")
+
+        # If stock_item_id is provided, validate and record stock movement
+        if byproduct.stock_item_id:
+            item = db.query(StockItem).filter(StockItem.id == byproduct.stock_item_id).first()
+            if not item:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock item not found")
+
+            coordinator = InventoryCoordinator(db)
+            try:
+                coordinator.record_in(
+                    item_id=item.id,
+                    quantity=byproduct.quantity_weight,
+                    reference_type=ReferenceType.SLAUGHTER_BYPRODUCT.value,
+                    reference_id=record_id,
+                    unit_cost=byproduct.unit_cost,
+                    notes=f"Slaughter byproduct: {byproduct.byproduct_name} from record {record_id}",
+                )
+            except HTTPException as e:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Cannot record stock movement for byproduct: {e.detail}"
+                )
+
+        total_value = byproduct.quantity_weight * byproduct.unit_cost if byproduct.unit_cost is not None else byproduct.value
+        db_byproduct = SlaughterByProduct(
+            slaughter_record_id=record_id,
+            stock_item_id=byproduct.stock_item_id,
+            store_location_id=byproduct.store_location_id,
+            byproduct_name=byproduct.byproduct_name,
+            quantity_weight=byproduct.quantity_weight,
+            unit=byproduct.unit,
+            value=byproduct.value,
+            unit_cost=byproduct.unit_cost,
+            total_value=total_value,
+            notes=byproduct.notes,
+        )
+        db.add(db_byproduct)
+        self._write_audit(
+            db,
+            user_id=current_user.id,
+            action="UPDATE",
+            entity_id=record_id,
+            meta=f"Added slaughter byproduct {byproduct.byproduct_name} quantity={byproduct.quantity_weight}",
+        )
+        db.commit()
+        db.refresh(db_byproduct)
+        return db_byproduct
+
+    def update_byproduct(self, db: Session, byproduct_id: int, updates: schemas.SlaughterByProductUpdate, current_user):
+        db_byproduct = db.query(SlaughterByProduct).filter(SlaughterByProduct.id == byproduct_id).first()
+        if not db_byproduct:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Byproduct not found")
+
+        # Check if stock_item_id is being changed - this would require complex stock adjustment
+        # For now, only allow updating quantity if no stock movement has been recorded
+        if updates.stock_item_id is not None and updates.stock_item_id != db_byproduct.stock_item_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot change stock item after creation. Create a new byproduct record instead."
+            )
+
+        update_values = updates.model_dump(exclude_unset=True, exclude_none=True)
+
+        # If quantity is being updated and stock_item_id exists, handle stock adjustment
+        if "quantity_weight" in update_values and db_byproduct.stock_item_id:
+            old_quantity = db_byproduct.quantity_weight
+            new_quantity = update_values["quantity_weight"]
+            delta = new_quantity - old_quantity
+
+            if delta != 0:
+                item = db.query(StockItem).filter(StockItem.id == db_byproduct.stock_item_id).first()
+                if not item:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock item not found")
+
+                coordinator = InventoryCoordinator(db)
+                try:
+                    if delta > 0:
+                        coordinator.record_in(
+                            item_id=item.id,
+                            quantity=delta,
+                            reference_type=ReferenceType.SLAUGHTER_BYPRODUCT_ADJUSTMENT.value,
+                            reference_id=db_byproduct.id,
+                            unit_cost=updates.unit_cost,
+                            notes=f"Byproduct quantity adjustment: {db_byproduct.byproduct_name}",
+                        )
+                    else:
+                        coordinator.record_out(
+                            item_id=item.id,
+                            quantity=abs(delta),
+                            reference_type=ReferenceType.SLAUGHTER_BYPRODUCT_ADJUSTMENT.value,
+                            reference_id=db_byproduct.id,
+                            notes=f"Byproduct quantity reduction: {db_byproduct.byproduct_name}",
+                        )
+                except HTTPException as e:
+                    db.rollback()
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Cannot adjust stock for byproduct: {e.detail}"
+                    )
+
+        if "unit_cost" in update_values:
+            update_values["total_value"] = update_values["quantity_weight"] * update_values["unit_cost"] if "quantity_weight" in update_values else db_byproduct.quantity_weight * update_values["unit_cost"]
+
+        for key, value in update_values.items():
+            setattr(db_byproduct, key, value)
+
+        self._write_audit(
+            db,
+            user_id=current_user.id,
+            action="UPDATE",
+            entity_id=db_byproduct.id,
+            meta=f"Updated slaughter byproduct {db_byproduct.byproduct_name}",
+        )
+        db.commit()
+        db.refresh(db_byproduct)
+        return db_byproduct
+
+    def delete_byproduct(self, db: Session, byproduct_id: int, current_user):
+        db_byproduct = db.query(SlaughterByProduct).filter(SlaughterByProduct.id == byproduct_id).first()
+        if not db_byproduct:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Byproduct not found")
+
+        # Note: We don't reverse stock movement on deletion for audit trail purposes
+        # Stock adjustments should be done via manual adjustment if needed
+        db.delete(db_byproduct)
+        self._write_audit(
+            db,
+            user_id=current_user.id,
+            action="DELETE",
+            entity_id=byproduct_id,
+            meta=f"Deleted slaughter byproduct {db_byproduct.byproduct_name}",
+        )
+        db.commit()
+        return {"message": "Byproduct deleted successfully"}
 
 
 slaughter_service = SlaughterService()
