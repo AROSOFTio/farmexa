@@ -2,9 +2,29 @@
 Application configuration loaded from environment variables.
 """
 
+import os
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _pg_url_to_asyncpg(url: str) -> str:
+    """Convert postgresql:// URL to postgresql+asyncpg:// and strip unsupported params."""
+    if url.startswith("postgresql+asyncpg://"):
+        return url.split("?")[0]
+    if url.startswith("postgresql://"):
+        return "postgresql+asyncpg://" + url[len("postgresql://"):].split("?")[0]
+    if url.startswith("postgres://"):
+        return "postgresql+asyncpg://" + url[len("postgres://"):].split("?")[0]
+    return url
+
+
+def _pg_url_to_sync(url: str) -> str:
+    """Convert any postgres URL to plain postgresql:// and strip unsupported params."""
+    for prefix in ("postgresql+asyncpg://", "postgresql://", "postgres://"):
+        if url.startswith(prefix):
+            return "postgresql://" + url[len(prefix):].split("?")[0]
+    return url
 
 
 class Settings(BaseSettings):
@@ -27,8 +47,15 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "farmexa_db"
     POSTGRES_PORT: str = "5432"
 
+    # Replit provides DATABASE_URL as a secret; if present we use it directly.
+    DATABASE_URL: str | None = None
+    DATABASE_URL_SYNC: str | None = None
+
     @property
     def ASYNC_DATABASE_URL(self) -> str:
+        raw = self.DATABASE_URL or os.environ.get("DATABASE_URL")
+        if raw:
+            return _pg_url_to_asyncpg(raw)
         return (
             f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
@@ -36,24 +63,24 @@ class Settings(BaseSettings):
 
     @property
     def SYNC_DATABASE_URL(self) -> str:
+        raw = self.DATABASE_URL_SYNC or self.DATABASE_URL or os.environ.get("DATABASE_URL")
+        if raw:
+            return _pg_url_to_sync(raw)
         return (
             f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 
-    DATABASE_URL: str | None = None
-    DATABASE_URL_SYNC: str | None = None
+    REDIS_URL: str = "redis://localhost:6379/0"
+    CELERY_BROKER_URL: str = "redis://localhost:6379/0"
+    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
 
-    REDIS_URL: str
-    CELERY_BROKER_URL: str
-    CELERY_RESULT_BACKEND: str
-
-    JWT_SECRET_KEY: str
+    JWT_SECRET_KEY: str = "change-me-in-production"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost,http://localhost:5173"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost,http://localhost:5173,http://localhost:5000"
     PRIMARY_PLATFORM_DOMAIN: str = "farmexa.arosoft.io"
     PLATFORM_HOSTS: str = "farmexa.arosoft.io,arosoft.io,localhost,127.0.0.1"
     DEFAULT_TENANT_DOMAIN_SUFFIX: str = "arosoft.io"
@@ -66,7 +93,7 @@ class Settings(BaseSettings):
     CLOUDFLARE_API_TOKEN: str | None = None
     CLOUDFLARE_ZONE_ID: str | None = None
     CLOUDFLARE_DNS_RECORD_TYPE: str = "A"
-    ENABLE_CLOUDFLARE_DNS_AUTOMATION: bool = True
+    ENABLE_CLOUDFLARE_DNS_AUTOMATION: bool = False
     DOMAIN_VERIFY_TIMEOUT_SECONDS: int = 5
     CERTBOT_BIN: str = "/usr/bin/certbot"
     CERTBOT_WEBROOT: str = "/var/www/certbot"
@@ -87,7 +114,7 @@ class Settings(BaseSettings):
     SEED_DEMO_TENANT_ADMIN_PASSWORD: str = "TenantAdmin@2026!"
     SEED_DEMO_TENANT_ADMIN_FULL_NAME: str = "Farmexa Tenant Administrator"
 
-    UPLOAD_DIR: str = "/app/uploads"
+    UPLOAD_DIR: str = "/home/runner/workspace/uploads"
     SMTP_HOST: str | None = None
     SMTP_PORT: int = 587
     SMTP_USERNAME: str | None = None

@@ -7,34 +7,44 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 
-revision = "019_inventory_grn_giv_store_locations"
+revision = "019_grn_giv_stores"
 down_revision = "018_user_permissions"
 branch_labels = None
 depends_on = None
 
 
 def upgrade() -> None:
-    # Create store_location_type enum
-    store_location_type_enum = postgresql.ENUM(
+    # Create enums explicitly (checkfirst avoids duplicate error)
+    postgresql.ENUM(
         'main_store', 'feed_store', 'medicine_store', 'poultry_house',
         'slaughter_area', 'cold_room', 'sales_store', 'other',
         name='storelocationtype'
-    )
-    store_location_type_enum.create(op.get_bind())
+    ).create(op.get_bind(), checkfirst=True)
 
-    # Create giv_status enum
-    giv_status_enum = postgresql.ENUM(
+    postgresql.ENUM(
         'draft', 'approved', 'issued', 'cancelled',
         name='givstatus'
-    )
-    giv_status_enum.create(op.get_bind())
+    ).create(op.get_bind(), checkfirst=True)
 
-    # Create grn_status enum
-    grn_status_enum = postgresql.ENUM(
+    postgresql.ENUM(
         'draft', 'approved', 'received', 'cancelled',
         name='grnstatus'
+    ).create(op.get_bind(), checkfirst=True)
+
+    # Use create_type=False so create_table does NOT try to CREATE TYPE again
+    store_location_type_col = postgresql.ENUM(
+        'main_store', 'feed_store', 'medicine_store', 'poultry_house',
+        'slaughter_area', 'cold_room', 'sales_store', 'other',
+        name='storelocationtype', create_type=False
     )
-    grn_status_enum.create(op.get_bind())
+    giv_status_col = postgresql.ENUM(
+        'draft', 'approved', 'issued', 'cancelled',
+        name='givstatus', create_type=False
+    )
+    grn_status_col = postgresql.ENUM(
+        'draft', 'approved', 'received', 'cancelled',
+        name='grnstatus', create_type=False
+    )
 
     # Create store_locations table
     op.create_table(
@@ -42,7 +52,7 @@ def upgrade() -> None:
         sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("code", sa.String(), nullable=False),
-        sa.Column("type", store_location_type_enum, nullable=False),
+        sa.Column("type", store_location_type_col, nullable=False),
         sa.Column("description", sa.Text(), nullable=True),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default='true'),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text('now()')),
@@ -66,7 +76,7 @@ def upgrade() -> None:
         sa.Column("destination", sa.String(), nullable=True),
         sa.Column("purpose", sa.String(), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
-        sa.Column("status", giv_status_enum, nullable=False, server_default='draft'),
+        sa.Column("status", giv_status_col, nullable=False, server_default='draft'),
         sa.Column("issued_by_id", sa.BigInteger(), nullable=False),
         sa.Column("approved_by_id", sa.BigInteger(), nullable=True),
         sa.Column("issued_at", sa.DateTime(timezone=True), nullable=True),
@@ -92,9 +102,9 @@ def upgrade() -> None:
         sa.Column("received_into_store_location_id", sa.BigInteger(), nullable=False),
         sa.Column("source_type", sa.String(), nullable=False, server_default='supplier'),
         sa.Column("supplier_reference", sa.String(), nullable=True),
-        sa.Column("unit_cost", sa.Float(), nullable=True, server_default=0.0),
+        sa.Column("unit_cost", sa.Float(), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
-        sa.Column("status", grn_status_enum, nullable=False, server_default='draft'),
+        sa.Column("status", grn_status_col, nullable=False, server_default='draft'),
         sa.Column("received_by_id", sa.BigInteger(), nullable=False),
         sa.Column("approved_by_id", sa.BigInteger(), nullable=True),
         sa.Column("received_at", sa.DateTime(timezone=True), nullable=True),

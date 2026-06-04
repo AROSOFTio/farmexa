@@ -1,0 +1,80 @@
+modules = ["python-3.12", "nodejs-20", "web", "bash", "postgresql-16"]
+[agent]
+expertMode = true
+stack = "BEST_EFFORT_FALLBACK"
+
+[nix]
+channel = "stable-25_05"
+packages = ["cargo", "freetype", "glibcLocales", "libiconv", "libxcrypt", "postgresql", "rustc"]
+
+[userenv]
+
+[userenv.shared]
+APP_ENV = "development"
+DEBUG = "true"
+POSTGRES_SERVER = "helium"
+POSTGRES_PORT = "5432"
+REDIS_URL = "redis://localhost:6379/0"
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+UPLOAD_DIR = "/home/runner/workspace/uploads"
+ALLOWED_ORIGINS = "http://localhost:5000,http://localhost:5173,http://0.0.0.0:5000"
+PLATFORM_HOSTS = "localhost,127.0.0.1,0.0.0.0"
+VITE_API_URL = "/api/v1"
+POSTGRES_USER = "postgres"
+POSTGRES_DB = "heliumdb"
+
+[userenv.development]
+JWT_SECRET_KEY = "farmexa-dev-secret-key-please-change-in-production-2026"
+
+[[ports]]
+localPort = 5000
+externalPort = 5000
+
+[[ports]]
+localPort = 6379
+externalPort = 80
+
+[[ports]]
+localPort = 8000
+externalPort = 8000
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Backend API"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Backend API"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "redis-server --daemonize yes --logfile /tmp/redis.log 2>/dev/null; cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+waitForPort = 8000
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd frontend && npm run dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
