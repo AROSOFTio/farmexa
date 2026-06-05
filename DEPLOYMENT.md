@@ -29,7 +29,7 @@ Farmexa still stores each tenant domain in the database and can create explicit 
 
 ## 4. aaPanel Reverse Proxy
 
-Point `farmexa.arosoft.io` and `*.arosoft.io` to the VPS. In aaPanel, proxy HTTP/HTTPS traffic to the Docker Nginx service. Enable SSL for the platform domain and wildcard/domain certificates according to your aaPanel setup.
+Point `farmexa.arosoft.io` and `*.arosoft.io` to the VPS. In aaPanel, proxy HTTP/HTTPS traffic to the Docker Nginx service at `http://127.0.0.1:4021`. Enable SSL for the platform domain and wildcard/domain certificates according to your aaPanel setup.
 
 ## 5. Docker Compose Deployment
 

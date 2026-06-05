@@ -1,6 +1,6 @@
 # ==============================================================================
 # Production Compose stack for Farmexa ERP.
-# Exposes the internal app gateway on port 4002 for the host Nginx reverse proxy.
+# Exposes the internal app gateway on port 4021 for the host Nginx reverse proxy.
 # ==============================================================================
 
 services:
@@ -107,7 +107,7 @@ services:
     container_name: farmexa_nginx
     restart: unless-stopped
     ports:
-      - "4002:80"
+      - "4021:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
