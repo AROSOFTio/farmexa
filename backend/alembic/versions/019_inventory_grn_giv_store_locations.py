@@ -7,7 +7,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 
-revision = "019_inventory_grn_giv_store_locations"
+revision = "019_inventory_grn_giv_stores"
 down_revision = "018_user_permissions"
 branch_labels = None
 depends_on = None
@@ -18,23 +18,26 @@ def upgrade() -> None:
     store_location_type_enum = postgresql.ENUM(
         'main_store', 'feed_store', 'medicine_store', 'poultry_house',
         'slaughter_area', 'cold_room', 'sales_store', 'other',
-        name='storelocationtype'
+        name='storelocationtype',
+        create_type=False,
     )
-    store_location_type_enum.create(op.get_bind())
+    store_location_type_enum.create(op.get_bind(), checkfirst=True)
 
     # Create giv_status enum
     giv_status_enum = postgresql.ENUM(
         'draft', 'approved', 'issued', 'cancelled',
-        name='givstatus'
+        name='givstatus',
+        create_type=False,
     )
-    giv_status_enum.create(op.get_bind())
+    giv_status_enum.create(op.get_bind(), checkfirst=True)
 
     # Create grn_status enum
     grn_status_enum = postgresql.ENUM(
         'draft', 'approved', 'received', 'cancelled',
-        name='grnstatus'
+        name='grnstatus',
+        create_type=False,
     )
-    grn_status_enum.create(op.get_bind())
+    grn_status_enum.create(op.get_bind(), checkfirst=True)
 
     # Create store_locations table
     op.create_table(
@@ -92,7 +95,7 @@ def upgrade() -> None:
         sa.Column("received_into_store_location_id", sa.BigInteger(), nullable=False),
         sa.Column("source_type", sa.String(), nullable=False, server_default='supplier'),
         sa.Column("supplier_reference", sa.String(), nullable=True),
-        sa.Column("unit_cost", sa.Float(), nullable=True, server_default=0.0),
+        sa.Column("unit_cost", sa.Float(), nullable=True, server_default="0.0"),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("status", grn_status_enum, nullable=False, server_default='draft'),
         sa.Column("received_by_id", sa.BigInteger(), nullable=False),
