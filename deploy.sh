@@ -2,14 +2,16 @@
 # ==============================================================================
 # Farmexa - Production Deployment Script
 # Repo:    https://github.com/AROSOFTio/farmexa.git
-# Deploy:  /www/wwwroot/farmexa.arosoft.io
-# Port:    4002 (internal nginx -> reverse-proxied by host Nginx)
+# Deploy:  /www/wwwroot/myfarm.arosoftlabs.com
+# Port:    4021 (Docker gateway -> reverse-proxied by aaPanel)
 # ==============================================================================
 set -euo pipefail
 
 # -- Config --------------------------------------------------------------------
 APP_NAME="farmexa"
-DEPLOY_DIR="/www/wwwroot/farmexa.arosoft.io"
+DEPLOY_DIR="${DEPLOY_DIR:-/www/wwwroot/myfarm.arosoftlabs.com}"
+PUBLIC_DOMAIN="${PUBLIC_DOMAIN:-myfarm.arosoftlabs.com}"
+APP_PORT="${APP_PORT:-4021}"
 REPO_URL="https://github.com/AROSOFTio/farmexa.git"
 BRANCH="${BRANCH:-main}"
 COMPOSE_FILE="docker-compose.prod.yml"
@@ -257,10 +259,10 @@ success "Services started."
 # -- Health check ---------------------------------------------------------------
 wait_for_container_health "farmexa_backend" 24 5
 
-log "Waiting for frontend login page through nginx..."
+log "Waiting for frontend login page through Docker gateway..."
 RETRIES=0
 MAX_RETRIES=18
-until curl -sf "http://localhost:4002/login" >/dev/null 2>&1; do
+until curl -sf "http://localhost:${APP_PORT}/login" >/dev/null 2>&1; do
   RETRIES=$((RETRIES + 1))
   if [ "$RETRIES" -ge "$MAX_RETRIES" ]; then
     error "Frontend did not become reachable through nginx within 90s. Check: $DC -f ${COMPOSE_FILE} logs frontend nginx"
@@ -269,12 +271,12 @@ until curl -sf "http://localhost:4002/login" >/dev/null 2>&1; do
   sleep 5
 done
 echo ""
-success "Frontend reachable at http://localhost:4002/login"
+success "Frontend reachable at http://localhost:${APP_PORT}/login"
 
-log "Waiting for API health check through nginx..."
+log "Waiting for API health check through Docker gateway..."
 RETRIES=0
 MAX_RETRIES=18
-until curl -sf "http://localhost:4002/api/v1/openapi.json" >/dev/null 2>&1; do
+until curl -sf "http://localhost:${APP_PORT}/api/v1/openapi.json" >/dev/null 2>&1; do
   RETRIES=$((RETRIES + 1))
   if [ "$RETRIES" -ge "$MAX_RETRIES" ]; then
     error "API did not become reachable through nginx within 90s. Check: $DC -f ${COMPOSE_FILE} logs"
@@ -283,7 +285,7 @@ until curl -sf "http://localhost:4002/api/v1/openapi.json" >/dev/null 2>&1; do
   sleep 5
 done
 echo ""
-success "API healthy at http://localhost:4002/api/v1/openapi.json"
+success "API healthy at http://localhost:${APP_PORT}/api/v1/openapi.json"
 
 # -- Show running containers ----------------------------------------------------
 log "Running containers:"
@@ -291,8 +293,9 @@ $DC -f "$COMPOSE_FILE" ps
 
 success "================================================================"
 success " ${APP_NAME} deployed successfully!"
-success " Internal URL : http://localhost:4002"
-success " Public URL   : https://farmexa.arosoft.io"
-success " API Docs     : https://farmexa.arosoft.io/docs"
+success " Internal URL : http://localhost:${APP_PORT}"
+success " Public URL   : https://${PUBLIC_DOMAIN}"
+success " API Docs     : https://${PUBLIC_DOMAIN}/docs"
+success " SSL/Proxy    : Managed in aaPanel/Cloudflare, not by this script"
 success " Admin Login  : Set in .env -> SEED_ADMIN_EMAIL"
 success "================================================================"

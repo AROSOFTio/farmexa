@@ -32,7 +32,7 @@ class SalesService:
         if not customer or not customer.email:
             return "skipped_no_customer_email"
 
-        sender_email = settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME or "farmexa@arosoft.io"
+        sender_email = settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME or "farmexa@arosoftlabs.com"
         sender_name = settings.SMTP_FROM_NAME or "Farmexa"
         log = EmailLog(
             tenant_id=None,

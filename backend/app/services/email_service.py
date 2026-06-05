@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.settings import EmailLog, SystemSettings
 
-DEFAULT_LOGO_URL = "https://farmexa.arosoft.io/brand/farmexa-logo-full.png"
+DEFAULT_LOGO_URL = "https://myfarm.arosoftlabs.com/brand/farmexa-logo-full.png"
 BRAND_TAGLINE = "Manage Smart. Grow Better."
 
 
@@ -20,7 +20,7 @@ def _sender(system_settings: SystemSettings | None = None) -> str:
         if system_settings and system_settings.sender_email
         else settings.SMTP_FROM_EMAIL
         or settings.SMTP_USERNAME
-        or "farmexa@arosoft.io"
+        or "farmexa@arosoftlabs.com"
     )
     return f"{sender_name} <{sender_email}>"
 
@@ -97,8 +97,8 @@ def branded_email_html(
     system_name = system_settings.system_name if system_settings else "Farmexa"
     logo_url = (system_settings.system_logo_url if system_settings else None) or DEFAULT_LOGO_URL
     if logo_url.startswith("/"):
-        logo_url = f"https://farmexa.arosoft.io{logo_url}"
-    support_email = (system_settings.support_email if system_settings else None) or "farmexa@arosoft.io"
+        logo_url = f"https://myfarm.arosoftlabs.com{logo_url}"
+    support_email = (system_settings.support_email if system_settings else None) or "farmexa@arosoftlabs.com"
     action = ""
     if action_url and action_label:
         action = (
@@ -155,7 +155,7 @@ async def send_welcome_email(
     system_settings: SystemSettings | None = None,
 ) -> EmailLog:
     system_name = system_settings.system_name if system_settings else "Farmexa"
-    support_email = system_settings.support_email if system_settings else "farmexa@arosoft.io"
+    support_email = system_settings.support_email if system_settings else "farmexa@arosoftlabs.com"
     name = contact_name or farm_name
     body = (
         f"Hello {name},\n\n"

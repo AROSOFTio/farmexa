@@ -34,7 +34,11 @@ async def create_tenant_dns_record(host: str) -> CloudflareResult:
         record_type = "A"
         target = settings.TENANT_DNS_TARGET_VALUE or settings.TENANT_DOMAIN_TARGET_IP
         if not target:
-            return CloudflareResult(ok=False, status="failed", message="TENANT_DNS_TARGET_VALUE is not configured.")
+            return CloudflareResult(
+                ok=False,
+                status="failed",
+                message="TENANT_DOMAIN_TARGET_IP or TENANT_DNS_TARGET_VALUE is not configured.",
+            )
 
     payload = {
         "type": record_type,

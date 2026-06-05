@@ -54,10 +54,10 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost,http://localhost:5173"
-    PRIMARY_PLATFORM_DOMAIN: str = "farmexa.arosoft.io"
-    PLATFORM_HOSTS: str = "farmexa.arosoft.io,arosoft.io,localhost,127.0.0.1"
-    DEFAULT_TENANT_DOMAIN_SUFFIX: str = "arosoft.io"
-    CLOUDFLARE_ZONE_NAME: str = "arosoft.io"
+    PRIMARY_PLATFORM_DOMAIN: str = "myfarm.arosoftlabs.com"
+    PLATFORM_HOSTS: str = "myfarm.arosoftlabs.com,farm.arosoftlabs.com,arosoftlabs.com,localhost,127.0.0.1"
+    DEFAULT_TENANT_DOMAIN_SUFFIX: str = "arosoftlabs.com"
+    CLOUDFLARE_ZONE_NAME: str = "arosoftlabs.com"
     TENANT_DNS_TARGET_TYPE: str = "A"
     TENANT_DNS_TARGET_VALUE: str | None = None
     TENANT_DNS_PROXIED: bool = True
@@ -68,8 +68,8 @@ class Settings(BaseSettings):
     CLOUDFLARE_DNS_RECORD_TYPE: str = "A"
     ENABLE_CLOUDFLARE_DNS_AUTOMATION: bool = True
     DOMAIN_VERIFY_TIMEOUT_SECONDS: int = 5
-    CERTBOT_BIN: str = "/usr/bin/certbot"
-    CERTBOT_WEBROOT: str = "/var/www/certbot"
+    CERTBOT_BIN: str = ""
+    CERTBOT_WEBROOT: str = ""
     CERTBOT_EMAIL: str | None = None
     ENABLE_AUTOMATIC_SSL_PROVISIONING: bool = False
     PAYMENT_CALLBACK_SECRET: str | None = None
@@ -117,7 +117,7 @@ class Settings(BaseSettings):
             return zone_name
         if zone_name and suffix.endswith(f".{zone_name}") and suffix.count(".") > zone_name.count("."):
             return zone_name
-        return suffix or "arosoft.io"
+        return suffix or "arosoftlabs.com"
 
     @property
     def trusted_hosts(self) -> list[str]:

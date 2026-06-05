@@ -1481,7 +1481,7 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
               </div>
             </div>
             <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
-              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Certbot Runtime</div>
+              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">App SSL Runtime</div>
               <div className="mt-2 text-sm font-semibold text-slate-900">{settingsSummary?.certbot_enabled ? 'Configured' : 'Not configured'}</div>
             </div>
           </div>

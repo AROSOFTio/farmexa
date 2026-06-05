@@ -162,9 +162,9 @@ class DeveloperAdminService:
         settings_row = SystemSettings(
             platform_domain=settings.PRIMARY_PLATFORM_DOMAIN,
             tenant_domain_suffix=tenant_domain_suffix(),
-            sender_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoft.io",
+            sender_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoftlabs.com",
             sender_name=settings.SMTP_FROM_NAME,
-            support_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoft.io",
+            support_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoftlabs.com",
             smtp_host=settings.SMTP_HOST,
             smtp_port=settings.SMTP_PORT,
             smtp_username=settings.SMTP_USERNAME,
@@ -692,6 +692,8 @@ class DeveloperAdminService:
         return f"{scheme}://{host}/login"
 
     async def _certbot_command(self, host: str) -> list[str]:
+        if not settings.CERTBOT_BIN:
+            return []
         command = [
             settings.CERTBOT_BIN,
             "certonly",
@@ -720,7 +722,15 @@ class DeveloperAdminService:
         await self.db.flush()
 
         if not settings.ENABLE_AUTOMATIC_SSL_PROVISIONING:
-            domain.last_error = f"Pending manual SSL provisioning. Run: {' '.join(command)}"
+            if command:
+                domain.last_error = f"Pending manual SSL provisioning. Run: {' '.join(command)}"
+            else:
+                domain.last_error = "Pending manual SSL provisioning in aaPanel/Cloudflare."
+            await self.db.flush()
+            return
+
+        if not command:
+            domain.last_error = "Automatic SSL provisioning is enabled, but CERTBOT_BIN is not configured."
             await self.db.flush()
             return
 

@@ -36,7 +36,7 @@ def is_platform_host(host: str | None) -> bool:
 
 
 def tenant_domain_suffix() -> str:
-    return normalize_host(settings.tenant_domain_suffix) or "arosoft.io"
+    return normalize_host(settings.tenant_domain_suffix) or "arosoftlabs.com"
 
 
 def default_platform_domain(slug: str) -> str:

@@ -1,4 +1,4 @@
-const PLATFORM_HOSTS = new Set(['farmexa.arosoft.io', 'arosoft.io', 'localhost', '127.0.0.1'])
+const PLATFORM_HOSTS = new Set(['myfarm.arosoftlabs.com', 'farm.arosoftlabs.com', 'arosoftlabs.com', 'localhost', '127.0.0.1'])
 
 export function isPlatformRegistrationHost(hostname = window.location.hostname) {
   const host = hostname.toLowerCase()

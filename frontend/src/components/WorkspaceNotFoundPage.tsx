@@ -16,11 +16,11 @@ export function WorkspaceNotFoundPage() {
           This Farmexa workspace does not exist, is not active, or has not been mapped.
         </p>
         <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-          <a href="https://farmexa.arosoft.io" className="btn-primary btn-lg">
+          <a href="https://myfarm.arosoftlabs.com" className="btn-primary btn-lg">
             <Home className="h-4 w-4" />
             Go to Farmexa Home
           </a>
-          <a href="mailto:farmexa@arosoft.io" className="btn-secondary btn-lg">
+          <a href="mailto:farmexa@arosoftlabs.com" className="btn-secondary btn-lg">
             <Mail className="h-4 w-4" />
             Contact support
           </a>
