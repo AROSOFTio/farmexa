@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     nginx \
     && rm -rf /var/lib/apt/lists/*
+RUN rm -f /etc/nginx/sites-enabled/default /etc/nginx/conf.d/default.conf
 
 COPY backend/requirements.txt ./
 RUN pip install --upgrade pip && pip install -r requirements.txt
