@@ -66,6 +66,7 @@ if settings.is_production:
 
 register_exception_handlers(app)
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+Path(settings.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 
