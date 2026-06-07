@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -65,8 +66,7 @@ if settings.is_production:
 
 register_exception_handlers(app)
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
-if not settings.is_production:
-    app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 
 @app.get("/health", tags=["health"])
@@ -76,3 +76,18 @@ async def health_check():
         "version": settings.APP_VERSION,
         "service": settings.APP_NAME,
     }
+
+
+frontend_dist = Path(__file__).resolve().parents[2] / "frontend_dist"
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def serve_frontend(full_path: str):
+    if not frontend_dist.exists():
+        return {"status": "ok", "service": settings.APP_NAME}
+
+    requested_file = frontend_dist / full_path
+    if requested_file.is_file():
+        return FileResponse(requested_file)
+
+    return FileResponse(frontend_dist / "index.html")
