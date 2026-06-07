@@ -452,25 +452,41 @@ class DeveloperAdminService:
         for domain in domains:
             if self._enum_value(domain.domain_type) != DomainType.PLATFORM_SUBDOMAIN.value:
                 continue
-            result = await create_tenant_dns_record(domain.host, system_settings=system_settings)
-            domain.last_checked_at = datetime.now(UTC)
-            if result.ok:
-                domain.status = DomainStatus.ACTIVE
-                domain.dns_verified_at = datetime.now(UTC)
-                domain.activated_at = datetime.now(UTC)
-                domain.verification_target = result.target or settings.PRIMARY_PLATFORM_DOMAIN
-                domain.cloudflare_record_id = result.record_id
-                domain.cloudflare_provision_status = result.status
-                domain.cloudflare_provisioned_at = datetime.now(UTC)
-                domain.cloudflare_last_error = None
-                domain.last_error = result.message
-            else:
-                domain.status = DomainStatus.FAILED
-                domain.cloudflare_provision_status = result.status
-                domain.cloudflare_last_error = result.message
-                domain.last_error = result.message
-                raise HTTPException(status_code=503, detail=f"Tenant DNS provisioning failed for {domain.host}: {result.message}")
+            await self._provision_platform_subdomain_record(
+                domain,
+                system_settings=system_settings,
+                raise_on_failure=True,
+            )
         await self.db.flush()
+
+    async def _provision_platform_subdomain_record(
+        self,
+        domain: TenantDomain,
+        *,
+        system_settings: SystemSettings | None = None,
+        raise_on_failure: bool = False,
+    ) -> None:
+        system_settings = system_settings or await self._get_system_settings()
+        result = await create_tenant_dns_record(domain.host, system_settings=system_settings)
+        domain.last_checked_at = datetime.now(UTC)
+        if result.ok:
+            domain.status = DomainStatus.ACTIVE
+            domain.dns_verified_at = datetime.now(UTC)
+            domain.activated_at = datetime.now(UTC)
+            domain.verification_target = result.target or settings.PRIMARY_PLATFORM_DOMAIN
+            domain.cloudflare_record_id = result.record_id
+            domain.cloudflare_provision_status = result.status
+            domain.cloudflare_provisioned_at = datetime.now(UTC)
+            domain.cloudflare_last_error = None
+            domain.last_error = result.message
+            return
+
+        domain.status = DomainStatus.FAILED
+        domain.cloudflare_provision_status = result.status
+        domain.cloudflare_last_error = result.message
+        domain.last_error = result.message
+        if raise_on_failure:
+            raise HTTPException(status_code=503, detail=f"Tenant DNS provisioning failed for {domain.host}: {result.message}")
 
     async def _create_subscription(
         self,
@@ -1259,8 +1275,7 @@ class DeveloperAdminService:
         domain.last_error = None
 
         if domain.domain_type == DomainType.PLATFORM_SUBDOMAIN:
-            domain.status = DomainStatus.ACTIVE
-            domain.activated_at = datetime.now(UTC)
+            await self._provision_platform_subdomain_record(domain)
         else:
             verification = await verify_domain_points_to_target(domain.host)
             domain.verification_target = verification.target_ip
@@ -1362,6 +1377,21 @@ class DeveloperAdminService:
         return await self._get_tenant_model(tenant_id)
 
     async def retry_domain_setup(self, tenant_id: int, domain_id: int, actor: User) -> Tenant:
+        domain = await self._load_domain(tenant_id, domain_id)
+        if domain.domain_type == DomainType.PLATFORM_SUBDOMAIN:
+            domain.last_error = None
+            await self._provision_platform_subdomain_record(domain)
+            await write_audit_log(
+                self.db,
+                user_id=actor.id,
+                action="UPDATE",
+                entity="tenant_domain_retry",
+                entity_id=domain.id,
+                meta={"tenant_id": tenant_id, "status": self._enum_value(domain.status), "host": domain.host},
+            )
+            await self.db.commit()
+            return await self._get_tenant_model(tenant_id)
+
         await self.verify_domain(tenant_id, domain_id, actor)
         domain = await self._load_domain(tenant_id, domain_id)
         if domain.domain_type == DomainType.CUSTOM and domain.status == DomainStatus.DNS_VERIFIED:
