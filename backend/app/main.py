@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 import json
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -79,13 +79,13 @@ async def health_check():
     }
 
 
-frontend_dist = Path(__file__).resolve().parents[2] / "frontend_dist"
+frontend_dist = Path(__file__).resolve().parents[1] / "frontend_dist"
 
 
 @app.get("/{full_path:path}", include_in_schema=False)
 async def serve_frontend(full_path: str):
     if not frontend_dist.exists():
-        return {"status": "ok", "service": settings.APP_NAME}
+        raise HTTPException(status_code=503, detail="Frontend assets are not available.")
 
     requested_file = frontend_dist / full_path
     if requested_file.is_file():
