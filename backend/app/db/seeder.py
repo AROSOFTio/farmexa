@@ -163,6 +163,12 @@ async def _seed_roles_and_permissions(db: AsyncSession) -> None:
 async def _seed_system_settings(db: AsyncSession) -> None:
     from app.models.settings import SystemSettings
 
+    def non_empty(value, fallback):
+        if isinstance(value, str):
+            clean = value.strip()
+            return clean if clean else fallback
+        return fallback if value is None else value
+
     result = await db.execute(select(SystemSettings).order_by(SystemSettings.id).limit(1))
     settings_row = result.scalar_one_or_none()
     if settings_row:
@@ -175,14 +181,17 @@ async def _seed_system_settings(db: AsyncSession) -> None:
         settings_row.sender_email = settings.SMTP_FROM_EMAIL or settings_row.sender_email
         settings_row.sender_name = settings.SMTP_FROM_NAME
         settings_row.support_email = settings.SMTP_FROM_EMAIL or settings_row.support_email
-        settings_row.smtp_host = settings.SMTP_HOST
-        settings_row.smtp_port = settings.SMTP_PORT
-        settings_row.smtp_username = settings.SMTP_USERNAME
-        settings_row.smtp_password = settings.SMTP_PASSWORD
+        settings_row.smtp_host = non_empty(settings.SMTP_HOST, settings_row.smtp_host)
+        settings_row.smtp_port = settings.SMTP_PORT or settings_row.smtp_port
+        settings_row.smtp_username = non_empty(settings.SMTP_USERNAME, settings_row.smtp_username)
+        settings_row.smtp_password = non_empty(settings.SMTP_PASSWORD, settings_row.smtp_password)
         settings_row.smtp_use_tls = settings.SMTP_USE_TLS
-        settings_row.cloudflare_api_token = settings.CLOUDFLARE_API_TOKEN
-        settings_row.cloudflare_zone_id = settings.CLOUDFLARE_ZONE_ID
-        settings_row.tenant_domain_target_ip = settings.TENANT_DNS_TARGET_VALUE or settings.TENANT_DOMAIN_TARGET_IP
+        settings_row.cloudflare_api_token = non_empty(settings.CLOUDFLARE_API_TOKEN, settings_row.cloudflare_api_token)
+        settings_row.cloudflare_zone_id = non_empty(settings.CLOUDFLARE_ZONE_ID, settings_row.cloudflare_zone_id)
+        settings_row.tenant_domain_target_ip = non_empty(
+            settings.TENANT_DNS_TARGET_VALUE or settings.TENANT_DOMAIN_TARGET_IP,
+            settings_row.tenant_domain_target_ip,
+        )
         settings_row.enable_cloudflare_dns_automation = settings.ENABLE_CLOUDFLARE_DNS_AUTOMATION
         return
 

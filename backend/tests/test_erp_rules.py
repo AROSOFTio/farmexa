@@ -247,3 +247,82 @@ async def test_cloudflare_dns_reuses_matching_record(monkeypatch):
     assert result.record_id == "record-1"
     assert result.record_type == "CNAME"
     assert result.target == "myfarm.arosoftlabs.com"
+
+
+@pytest.mark.asyncio
+async def test_cloudflare_dns_uses_system_settings_when_env_credentials_are_blank(monkeypatch):
+    monkeypatch.setattr(settings, "ENABLE_CLOUDFLARE_DNS_AUTOMATION", False)
+    monkeypatch.setattr(settings, "CLOUDFLARE_API_TOKEN", "")
+    monkeypatch.setattr(settings, "CLOUDFLARE_ZONE_ID", "")
+    monkeypatch.setattr(settings, "TENANT_DNS_TARGET_TYPE", "A")
+    monkeypatch.setattr(settings, "TENANT_DNS_TARGET_VALUE", "")
+    monkeypatch.setattr(settings, "TENANT_DOMAIN_TARGET_IP", "")
+    monkeypatch.setattr(settings, "TENANT_DNS_PROXIED", True)
+    monkeypatch.setattr(settings, "TENANT_DNS_TTL", 1)
+
+    captured = {}
+
+    class FakeListResponse:
+        is_success = True
+        status_code = 200
+        text = ""
+
+        def json(self):
+            return {"success": True, "result": []}
+
+    class FakeCreateResponse:
+        status_code = 201
+        text = ""
+
+        def json(self):
+            return {"success": True, "result": {"id": "record-2"}}
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def get(self, url, **kwargs):
+            captured["list_url"] = url
+            captured["headers"] = kwargs["headers"]
+            return FakeListResponse()
+
+        async def post(self, url, **kwargs):
+            captured["post_url"] = url
+            captured["payload"] = kwargs["json"]
+            return FakeCreateResponse()
+
+        async def put(self, *args, **kwargs):
+            raise AssertionError("No record should be updated when none exists.")
+
+    monkeypatch.setattr(cloudflare_service.httpx, "AsyncClient", FakeClient)
+
+    result = await create_tenant_dns_record(
+        "benjamin.arosoftlabs.com",
+        system_settings=SimpleNamespace(
+            enable_cloudflare_dns_automation=True,
+            cloudflare_api_token="settings-token",
+            cloudflare_zone_id="settings-zone",
+            tenant_domain_target_ip="167.233.68.36",
+            platform_domain="myfarm.arosoftlabs.com",
+        ),
+    )
+
+    assert result.ok is True
+    assert result.record_id == "record-2"
+    assert result.record_type == "A"
+    assert result.target == "167.233.68.36"
+    assert captured["list_url"].endswith("/zones/settings-zone/dns_records")
+    assert captured["headers"]["Authorization"] == "Bearer settings-token"
+    assert captured["payload"] == {
+        "type": "A",
+        "name": "benjamin.arosoftlabs.com",
+        "content": "167.233.68.36",
+        "ttl": 1,
+        "proxied": True,
+    }

@@ -9,14 +9,17 @@ aaPanel and Cloudflare manage public HTTPS. The Docker stack only exposes the in
 Copy `.env.example` to `.env` and set strong passwords and secrets. Required production values include:
 
 - `PRIMARY_PLATFORM_DOMAIN=myfarm.arosoftlabs.com`
+- `PLATFORM_HOSTS=myfarm.arosoftlabs.com,farm.arosoftlabs.com,arosoftlabs.com,localhost,127.0.0.1`
 - `DEFAULT_TENANT_DOMAIN_SUFFIX=arosoftlabs.com`
-- `TENANT_DOMAIN_TARGET_IP=95.111.234.34`
+- `TENANT_DOMAIN_TARGET_IP=<coolify-server-public-ip>`
 - `CLOUDFLARE_API_TOKEN=<zone dns edit token>`
 - `CLOUDFLARE_ZONE_ID=<cloudflare zone id>`
 - `ENABLE_CLOUDFLARE_DNS_AUTOMATION=true`
 - `TENANT_DNS_TARGET_TYPE=A`
 - `TENANT_DNS_PROXIED=true`
+- `SMTP_HOST=<smtp host>`
 - `SMTP_USERNAME=farmexa@arosoftlabs.com`
+- `SMTP_PASSWORD=<smtp password or app password>`
 - `SMTP_FROM_EMAIL=farmexa@arosoftlabs.com`
 - `SMTP_FROM_NAME=Farmexa`
 
@@ -42,14 +45,23 @@ Farmexa still stores each tenant domain in the database and creates explicit Clo
 
 Point the site domain to the VPS. For the current deployment, use:
 
-- `myfarm.arosoftlabs.com -> 95.111.234.34`
-- `*.arosoftlabs.com -> 95.111.234.34`
+- `myfarm.arosoftlabs.com -> <coolify-server-public-ip>`
+- `*.arosoftlabs.com -> <coolify-server-public-ip>`
 
 In aaPanel, create the site, apply SSL using aaPanel, then configure reverse proxy traffic to the Docker gateway:
 
 `http://127.0.0.1:4021`
 
 Do not paste certificate blocks into nginx manually. Do not run certbot from this repository.
+
+## 5A. Coolify Domains
+
+For the single-container Coolify deployment, add both the platform domain and the wildcard tenant domain to the application domains:
+
+- `https://myfarm.arosoftlabs.com`
+- `https://*.arosoftlabs.com`
+
+Keep direction set to allow non-www. If tenant URLs such as `https://benjamin.arosoftlabs.com/login` show `no available server`, DNS may already point to the server, but Coolify has not routed the wildcard host to this application yet.
 
 ## 6. Docker Compose Deployment
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import httpx
 
@@ -17,10 +18,26 @@ class CloudflareResult:
     target: str | None = None
 
 
-async def create_tenant_dns_record(host: str) -> CloudflareResult:
-    if not settings.ENABLE_CLOUDFLARE_DNS_AUTOMATION:
+def _setting_value(system_settings: Any | None, name: str, fallback):
+    value = getattr(system_settings, name, None) if system_settings is not None else None
+    if isinstance(value, str):
+        value = value.strip()
+        return value or fallback
+    return fallback if value is None else value
+
+
+async def create_tenant_dns_record(host: str, system_settings: Any | None = None) -> CloudflareResult:
+    automation_enabled = _setting_value(
+        system_settings,
+        "enable_cloudflare_dns_automation",
+        settings.ENABLE_CLOUDFLARE_DNS_AUTOMATION,
+    )
+    if not automation_enabled:
         return CloudflareResult(ok=True, status="skipped", message="Cloudflare automation is disabled.")
-    if not settings.CLOUDFLARE_API_TOKEN or not settings.CLOUDFLARE_ZONE_ID:
+
+    api_token = _setting_value(system_settings, "cloudflare_api_token", settings.CLOUDFLARE_API_TOKEN)
+    zone_id = _setting_value(system_settings, "cloudflare_zone_id", settings.CLOUDFLARE_ZONE_ID)
+    if not api_token or not zone_id:
         return CloudflareResult(
             ok=False,
             status="failed",
@@ -29,10 +46,18 @@ async def create_tenant_dns_record(host: str) -> CloudflareResult:
 
     record_type = (settings.TENANT_DNS_TARGET_TYPE or settings.CLOUDFLARE_DNS_RECORD_TYPE).upper()
     if record_type == "CNAME":
-        target = settings.TENANT_DNS_TARGET_VALUE or settings.PRIMARY_PLATFORM_DOMAIN
+        target = settings.TENANT_DNS_TARGET_VALUE or _setting_value(
+            system_settings,
+            "platform_domain",
+            settings.PRIMARY_PLATFORM_DOMAIN,
+        )
     else:
         record_type = "A"
-        target = settings.TENANT_DNS_TARGET_VALUE or settings.TENANT_DOMAIN_TARGET_IP
+        target = settings.TENANT_DNS_TARGET_VALUE or _setting_value(
+            system_settings,
+            "tenant_domain_target_ip",
+            settings.TENANT_DOMAIN_TARGET_IP,
+        )
         if not target:
             return CloudflareResult(
                 ok=False,
@@ -47,8 +72,8 @@ async def create_tenant_dns_record(host: str) -> CloudflareResult:
         "ttl": settings.TENANT_DNS_TTL,
         "proxied": settings.TENANT_DNS_PROXIED,
     }
-    base_url = f"https://api.cloudflare.com/client/v4/zones/{settings.CLOUDFLARE_ZONE_ID}/dns_records"
-    headers = {"Authorization": f"Bearer {settings.CLOUDFLARE_API_TOKEN}", "Content-Type": "application/json"}
+    base_url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records"
+    headers = {"Authorization": f"Bearer {api_token}", "Content-Type": "application/json"}
 
     try:
         async with httpx.AsyncClient(timeout=20) as client:

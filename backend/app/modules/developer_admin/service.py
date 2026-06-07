@@ -447,11 +447,12 @@ class DeveloperAdminService:
 
     async def _provision_platform_subdomain_records(self, tenant: Tenant) -> None:
         """Create Cloudflare DNS records for the tenant platform subdomain when enabled."""
+        system_settings = await self._get_system_settings()
         domains = await self._get_tenant_domains(tenant.id)
         for domain in domains:
             if self._enum_value(domain.domain_type) != DomainType.PLATFORM_SUBDOMAIN.value:
                 continue
-            result = await create_tenant_dns_record(domain.host)
+            result = await create_tenant_dns_record(domain.host, system_settings=system_settings)
             domain.last_checked_at = datetime.now(UTC)
             if result.ok:
                 domain.status = DomainStatus.ACTIVE
