@@ -48,7 +48,7 @@ class AuthService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(
                     "Tenant accounts must sign in through their provisioned workspace domain. "
-                    "Please navigate to your workspace URL (e.g. yourfarm.farm.arosoftlabs.com) to sign in."
+                    "Please navigate to your workspace URL (e.g. yourfarm.arosoftlabs.com) to sign in."
                 ),
             )
 
