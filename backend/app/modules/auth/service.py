@@ -37,9 +37,23 @@ class AuthService:
                 detail="Your account has been deactivated. Contact an administrator.",
             )
         resolved_tenant_id = getattr(request.state, "tenant_id", None)
+        is_platform_host = getattr(request.state, "is_platform_host", False)
         role_name = user.role.name if user.role else None
+        is_platform_admin = role_name in {"super_manager", "developer_admin"}
+
+        # Tenant users must sign in through their provisioned workspace domain,
+        # not the main platform host (e.g. myfarm.arosoftlabs.com).
+        if is_platform_host and user.tenant_id is not None and not is_platform_admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    "Tenant accounts must sign in through their provisioned workspace domain. "
+                    "Please navigate to your workspace URL (e.g. yourfarm.arosoftlabs.com) to sign in."
+                ),
+            )
+
         if resolved_tenant_id is not None:
-            if role_name in {"super_manager", "developer_admin"}:
+            if is_platform_admin:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Platform administrator accounts must use the platform domain.",

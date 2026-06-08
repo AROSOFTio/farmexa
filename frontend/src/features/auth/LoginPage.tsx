@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, Eye, EyeOff, LogIn, UserPlus } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Eye, EyeOff, LogIn, UserPlus } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -28,7 +28,8 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
-  const showRegisterAction = isPlatformRegistrationHost()
+  const isPlatformHost = isPlatformRegistrationHost()
+  const showRegisterAction = isPlatformHost
 
   const {
     register,
@@ -80,6 +81,16 @@ export function LoginPage() {
           <h1 className="mt-3 text-[1.65rem] font-bold leading-tight text-ink-900">Sign in to {settings.system_name}</h1>
           <p className="mt-2 text-[13.5px] leading-6 text-ink-500">Use your farm workspace account to continue.</p>
         </div>
+
+        {isPlatformHost ? (
+          <div className="mt-5 flex items-start gap-3 rounded-xl border border-amber-300/60 bg-amber-50/80 px-4 py-3 text-[13px] leading-relaxed text-amber-900 dark:border-amber-500/30 dark:bg-amber-900/20 dark:text-amber-300">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+            <span>
+              <strong>Platform administrator access only.</strong> If you are a tenant user, please sign in through your provisioned workspace domain (e.g.{' '}
+              <em>yourfarm.arosoftlabs.com</em>).
+            </span>
+          </div>
+        ) : null}
 
             <form onSubmit={handleSubmit(onSubmit)} className="mt-7 space-y-5">
               <div>

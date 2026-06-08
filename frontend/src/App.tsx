@@ -34,6 +34,7 @@ import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { NotFoundPage } from '@/components/NotFoundPage'
 import { WorkspaceNotFoundPage } from '@/components/WorkspaceNotFoundPage'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
+import { isTenantHost } from '@/lib/platform'
 import { EggProductionPage } from '@/features/farm/EggProductionPage'
 import { TenantsPage } from '@/features/developer_admin/TenantsPage'
 import { AffiliatesPage } from '@/features/developer_admin/AffiliatesPage'
@@ -51,18 +52,23 @@ export default function App() {
     <HostValidationGate>
       <AuthProvider>
       <Routes>
+        {/* Login — available on every domain */}
         <Route path="/login" element={<><SEO title="Sign in to Farmexa" description="Sign in to your Farmexa workspace." canonicalPath="/login" robots="noindex,nofollow" /><LoginPage /></>} />
-        <Route path="/" element={<PublicHomePage />} />
-        <Route path="/register" element={<><SEO title="Register Farmexa" description="Create a Farmexa trial workspace." canonicalPath="/register" robots="noindex,nofollow" /><RegisterModalPage /></>} />
-        <Route path="/register-tenant" element={<><SEO title="Register Farmexa Tenant" description="Create a Farmexa trial workspace." canonicalPath="/register-tenant" robots="noindex,nofollow" /><RegisterModalPage /></>} />
-        <Route path="/register-vendor" element={<><SEO title="Register Farmexa Tenant" description="Create a Farmexa trial workspace." canonicalPath="/register-vendor" robots="noindex,nofollow" /><RegisterModalPage /></>} />
-        <Route path="/registration-success" element={<><SEO title="Farmexa Registration Success" description="Farmexa registration confirmation." canonicalPath="/registration-success" robots="noindex,nofollow" /><RegistrationSuccessPage /></>} />
+
+        {/* Platform-only public routes — tenant domains redirect straight to /login */}
+        <Route path="/" element={<PlatformOnlyRoute element={<PublicHomePage />} />} />
+        <Route path="/register" element={<PlatformOnlyRoute element={<><SEO title="Register Farmexa" description="Create a Farmexa trial workspace." canonicalPath="/register" robots="noindex,nofollow" /><RegisterModalPage /></>} />} />
+        <Route path="/register-tenant" element={<PlatformOnlyRoute element={<><SEO title="Register Farmexa Tenant" description="Create a Farmexa trial workspace." canonicalPath="/register-tenant" robots="noindex,nofollow" /><RegisterModalPage /></>} />} />
+        <Route path="/register-vendor" element={<PlatformOnlyRoute element={<><SEO title="Register Farmexa Tenant" description="Create a Farmexa trial workspace." canonicalPath="/register-vendor" robots="noindex,nofollow" /><RegisterModalPage /></>} />} />
+        <Route path="/registration-success" element={<PlatformOnlyRoute element={<><SEO title="Farmexa Registration Success" description="Farmexa registration confirmation." canonicalPath="/registration-success" robots="noindex,nofollow" /><RegistrationSuccessPage /></>} />} />
+        <Route path="/affiliates" element={<PlatformOnlyRoute element={<AffiliateProgramPage />} />} />
+        <Route path="/affiliate-program" element={<PlatformOnlyRoute element={<AffiliateProgramPage />} />} />
+        <Route path="/features" element={<PlatformOnlyRoute element={<PublicHomePage />} />} />
+
+        {/* Password / email — available on every domain so tenants can recover accounts */}
         <Route path="/forgot-password" element={<><SEO title="Forgot Farmexa Password" description="Request a Farmexa password reset." canonicalPath="/forgot-password" robots="noindex,nofollow" /><ForgotPasswordPage /></>} />
         <Route path="/reset-password" element={<><SEO title="Reset Farmexa Password" description="Reset your Farmexa password." canonicalPath="/reset-password" robots="noindex,nofollow" /><ResetPasswordPage /></>} />
         <Route path="/verify-email" element={<><SEO title="Verify Farmexa Email" description="Verify your Farmexa account email." canonicalPath="/verify-email" robots="noindex,nofollow" /><VerifyEmailPage /></>} />
-        <Route path="/affiliates" element={<AffiliateProgramPage />} />
-        <Route path="/affiliate-program" element={<AffiliateProgramPage />} />
-        <Route path="/features" element={<PublicHomePage />} />
 
         <Route
           element={
@@ -692,6 +698,16 @@ function TenantDashboardRoute() {
     return <Navigate to="/dev-admin/dashboard" replace />
   }
   return <DashboardPage />
+}
+
+/**
+ * Renders `element` only on the central platform host.
+ * On a tenant workspace domain, redirects immediately to /login so tenants
+ * never see public marketing pages (home, registration, affiliates, etc.).
+ */
+function PlatformOnlyRoute({ element }: { element: ReactNode }) {
+  if (isTenantHost()) return <Navigate to="/login" replace />
+  return <>{element}</>
 }
 
 function HostValidationGate({ children }: { children: ReactNode }) {
