@@ -13,6 +13,7 @@ import { RegistrationWizardModal } from '@/features/auth/RegistrationWizardModal
 import { useAuth } from '@/features/auth/AuthContext'
 import { useHostResolution } from '@/hooks/useHostResolution'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
+import { currentPlatformHost } from '@/lib/platform'
 import { getErrorMessage } from '@/lib/errors'
 
 const loginSchema = z.object({
@@ -31,6 +32,9 @@ export function LoginPage() {
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
   const isPlatformHost = hostResolution?.is_platform_host ?? false
   const showRegisterAction = isPlatformHost
+  const currentHost = hostResolution?.is_platform_host
+    ? currentPlatformHost(hostResolution.hostname) ?? hostResolution.hostname
+    : currentPlatformHost() ?? settings.platform_domain
 
   const {
     register,
@@ -114,7 +118,7 @@ export function LoginPage() {
                     Password
                   </label>
                   <a
-                    href={settings?.platform_domain ? `https://${settings.platform_domain}/forgot-password` : '/forgot-password'}
+                    href={`https://${currentHost}/forgot-password`}
                     className="text-[12px] font-bold text-[var(--brand-primary)]"
                   >
                     Forgot password?
@@ -160,9 +164,9 @@ export function LoginPage() {
                   Start Free Trial
                 </button>
               ) : null}
-              <Link to="/" className="btn-ghost w-full">
+              <a href={`https://${currentHost}`} className="btn-ghost w-full">
                 Back to home
-              </Link>
+              </a>
             </form>
       </motion.div>
       <RegistrationWizardModal isOpen={isRegistrationOpen} onClose={() => setIsRegistrationOpen(false)} />

@@ -1,9 +1,16 @@
 import { AlertCircle, Home, Mail } from 'lucide-react'
 import { BrandMark } from '@/components/BrandMark'
+import { useHostResolution } from '@/hooks/useHostResolution'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
+import { currentPlatformHost } from '@/lib/platform'
 
 export function WorkspaceNotFoundPage() {
   const { settings } = usePlatformSettings()
+  const { hostResolution } = useHostResolution()
+  const homeHost = hostResolution?.is_platform_host
+    ? currentPlatformHost(hostResolution.hostname) ?? hostResolution.hostname
+    : currentPlatformHost() ?? settings?.platform_domain
+  const homeUrl = homeHost ? `https://${homeHost}` : window.location.origin
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] px-4 py-10">
@@ -19,7 +26,7 @@ export function WorkspaceNotFoundPage() {
           This Farmexa workspace does not exist, is not active, or has not been mapped.
         </p>
         <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-          <a href={settings?.platform_domain ? `https://${settings.platform_domain}` : 'https://farm.arosoftlabs.com'} className="btn-primary btn-lg">
+          <a href={homeUrl} className="btn-primary btn-lg">
             <Home className="h-4 w-4" />
             Go to Farmexa Home
           </a>

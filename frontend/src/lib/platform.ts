@@ -15,9 +15,13 @@ const PLATFORM_HOSTS = new Set([
   '127.0.0.1',
 ])
 
+export function currentPlatformHost(hostname = window.location.hostname) {
+  const host = hostname.toLowerCase()
+  return PLATFORM_HOSTS.has(host) ? host : undefined
+}
+
 /** Returns true when the current host is a known central platform host. */
 export function isPlatformRegistrationHost(hostname = window.location.hostname) {
-  const host = hostname.toLowerCase()
-  return PLATFORM_HOSTS.has(host)
+  return Boolean(currentPlatformHost(hostname))
 }
 

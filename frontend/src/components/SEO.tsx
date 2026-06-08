@@ -12,8 +12,9 @@ interface SEOProps {
 }
 
 function originFromSettings(platformDomain?: string) {
-  if (!platformDomain) return 'https://farm.arosoftlabs.com'
-  return platformDomain.startsWith('http') ? platformDomain : `https://${platformDomain}`
+  if (platformDomain) return platformDomain.startsWith('http') ? platformDomain : `https://${platformDomain}`
+  if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin
+  return 'https://farm.arosoftlabs.com'
 }
 
 function setMeta(selector: string, attr: 'name' | 'property', key: string, content: string) {
