@@ -13,6 +13,15 @@ class ModuleUpgradeRequestCreate(BaseModel):
     notes: str | None = None
 
 
+class CustomDomainRequestCreate(BaseModel):
+    host: str = Field(min_length=3, max_length=255)
+    is_primary: bool = True
+
+
+class DomainRequestMessageCreate(BaseModel):
+    message: str = Field(min_length=2, max_length=4000)
+
+
 class ModuleCatalogItemOut(BaseModel):
     key: str
     name: str
@@ -63,6 +72,44 @@ class ModuleUpgradeRequestOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CustomDomainRequestOut(BaseModel):
+    id: int
+    host: str
+    normalized_host: str
+    status: str
+    price_amount: Decimal
+    currency: str
+    billing_period: str
+    dns_record_type: Optional[str] = None
+    dns_record_name: Optional[str] = None
+    dns_record_value: Optional[str] = None
+    wants_primary: bool
+    admin_notes: Optional[str] = None
+    last_error: Optional[str] = None
+    paid_at: Optional[datetime] = None
+    approved_at: Optional[datetime] = None
+    activated_at: Optional[datetime] = None
+    rejected_at: Optional[datetime] = None
+    created_at: datetime
+    invoice: BillingInvoiceOut | None = None
+    messages: list["DomainRequestMessageOut"] = Field(default_factory=list)
+
+    model_config = {"from_attributes": True}
+
+
+class DomainRequestMessageOut(BaseModel):
+    id: int
+    sender_role: str
+    message: str
+    email_sent_at: Optional[datetime] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+CustomDomainRequestOut.model_rebuild()
+
+
 class TenantUpgradeOverviewOut(BaseModel):
     tenant_id: int
     tenant_name: str
@@ -71,6 +118,19 @@ class TenantUpgradeOverviewOut(BaseModel):
     enabled_modules: list[str]
     catalog: list[ModuleCatalogItemOut]
     requests: list[ModuleUpgradeRequestOut]
+    domain_requests: list[CustomDomainRequestOut] = Field(default_factory=list)
+    custom_domain_price: Decimal
+    custom_domain_currency: str
+    custom_domain_allowed_tlds: list[str]
+    platform_domain: str
+
+
+class CheckoutStartOut(BaseModel):
+    invoice_id: int
+    invoice_number: str
+    redirect_url: str
+    order_tracking_id: Optional[str] = None
+    merchant_reference: str
 
 
 class PaymentCallbackIn(BaseModel):

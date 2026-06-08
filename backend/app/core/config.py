@@ -73,6 +73,15 @@ class Settings(BaseSettings):
     CERTBOT_EMAIL: str | None = None
     ENABLE_AUTOMATIC_SSL_PROVISIONING: bool = False
     PAYMENT_CALLBACK_SECRET: str | None = None
+    PESAPAL_CONSUMER_KEY: str | None = None
+    PESAPAL_CONSUMER_SECRET: str | None = None
+    PESAPAL_ENVIRONMENT: str = "production"
+    PESAPAL_IPN_ID: str | None = None
+    PESAPAL_IPN_URL: str | None = None
+    PESAPAL_CALLBACK_URL: str | None = None
+    PESAPAL_CANCELLATION_URL: str | None = None
+    CUSTOM_DOMAIN_ANNUAL_PRICE: float = 25.0
+    CUSTOM_DOMAIN_CURRENCY: str = "USD"
 
     SEED_ADMIN_EMAIL: str = "admin@farmexa.local"
     SEED_ADMIN_PASSWORD: str = "Admin@2026!"

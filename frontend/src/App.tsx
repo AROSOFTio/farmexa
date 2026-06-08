@@ -43,7 +43,7 @@ import { SEO } from '@/components/SEO'
 import { CompliancePage } from '@/features/compliance/CompliancePage'
 import { UpgradeModulesPage } from '@/features/subscriptions/UpgradeModulesPage'
 import { SubscriptionExpiredPage } from '@/features/subscriptions/SubscriptionExpiredPage'
-import { BillingPage, SubscriptionPage, SupportPage } from '@/features/subscriptions/AccountPages'
+import { BillingPage, DomainsPage, SubscriptionPage, SupportPage } from '@/features/subscriptions/AccountPages'
 
 const PLATFORM_ADMIN_ROLES = new Set(['super_manager', 'developer_admin'])
 
@@ -578,6 +578,8 @@ export default function App() {
           <Route path="subscription/upgrade" element={<ProtectedRoute><UpgradeModulesPage /></ProtectedRoute>} />
           <Route path="subscription/expired" element={<ProtectedRoute><SubscriptionExpiredPage /></ProtectedRoute>} />
           <Route path="billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
+          <Route path="account/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
+          <Route path="account/domains" element={<ProtectedRoute><DomainsPage /></ProtectedRoute>} />
           <Route path="support" element={<ProtectedRoute><SupportPage /></ProtectedRoute>} />
           
           <Route path="dev-admin">
@@ -620,6 +622,7 @@ export default function App() {
             <Route path="affiliates" element={<ProtectedRoute permission="dev_admin:read"><AffiliatesPage /></ProtectedRoute>} />
             <Route path="system-health" element={<ProtectedRoute permission="dev_admin:read"><TenantsPage section="settings" /></ProtectedRoute>} />
             <Route path="audit-logs" element={<ProtectedRoute permission="dev_admin:read"><TenantsPage section="activity" /></ProtectedRoute>} />
+            <Route path="settings" element={<ProtectedRoute permission="dev_admin:read"><TenantsPage section="settings" /></ProtectedRoute>} />
             <Route
               path="plans"
               element={

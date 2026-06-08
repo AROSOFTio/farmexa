@@ -68,6 +68,47 @@ interface TenantDomain {
   created_at: string
 }
 
+interface BillingInvoice {
+  id: number
+  invoice_number: string
+  invoice_type: string
+  amount: string
+  currency: string
+  status: string
+  due_date: string | null
+  payment_reference?: string | null
+  paid_at?: string | null
+}
+
+interface TenantDomainRequestMessage {
+  id: number
+  sender_role: string
+  message: string
+  email_sent_at: string | null
+  created_at: string
+}
+
+interface TenantDomainRequest {
+  id: number
+  host: string
+  normalized_host: string
+  status: string
+  price_amount: string
+  currency: string
+  billing_period: string
+  dns_record_type?: string | null
+  dns_record_name?: string | null
+  dns_record_value?: string | null
+  wants_primary: boolean
+  admin_notes?: string | null
+  last_error?: string | null
+  paid_at?: string | null
+  activated_at?: string | null
+  created_at: string
+  invoice?: BillingInvoice | null
+  messages: TenantDomainRequestMessage[]
+}
+
 interface Subscription {
   id: number
   plan_code: string
@@ -102,6 +143,7 @@ interface Tenant {
   operational_db_last_error: string | null
   modules: TenantModule[]
   domains: TenantDomain[]
+  domain_requests: TenantDomainRequest[]
   subscriptions: Subscription[]
   onboarding_admin?: {
     email: string
@@ -162,6 +204,11 @@ interface DeveloperAdminSettings {
   default_tenant_domain_suffix: string
   automatic_ssl_provisioning: boolean
   certbot_enabled: boolean
+  pesapal_configured: boolean
+  pesapal_environment: string
+  pesapal_ipn_configured: boolean
+  custom_domain_annual_price: string
+  custom_domain_currency: string
   mandatory_module_keys: string[]
   total_modules: number
   total_plans: number
@@ -204,9 +251,20 @@ const planSchema = z.object({
   modules: z.array(z.string()).default([]),
 })
 
+const settingsSchema = z.object({
+  pesapal_consumer_key: z.string().optional(),
+  pesapal_consumer_secret: z.string().optional(),
+  pesapal_environment: z.enum(['production', 'sandbox']),
+  pesapal_ipn_id: z.string().optional(),
+  pesapal_ipn_url: z.string().optional(),
+  custom_domain_annual_price: z.coerce.number().min(0),
+  custom_domain_currency: z.string().min(3).max(10),
+})
+
 type TenantFormValues = z.infer<typeof tenantSchema>
 type DomainFormValues = z.infer<typeof domainSchema>
 type PlanFormValues = z.infer<typeof planSchema>
+type SettingsFormValues = z.infer<typeof settingsSchema>
 
 function getApiErrorMessage(error: any, fallback: string) {
   const detail = error?.response?.data?.detail
@@ -264,15 +322,6 @@ function sectionMeta(section: AdminSection) {
   }
 }
 
-const MOCK_REVENUE_DATA = [
-  { month: 'Jan', tenants: 12, revenue: 1500000 },
-  { month: 'Feb', tenants: 18, revenue: 2200000 },
-  { month: 'Mar', tenants: 24, revenue: 3100000 },
-  { month: 'Apr', tenants: 35, revenue: 4500000 },
-  { month: 'May', tenants: 42, revenue: 5800000 },
-  { month: 'Jun', tenants: 50, revenue: 7200000 },
-]
-
 export function TenantsPage({ section: initialSection = 'tenants' }: { section?: AdminSection }) {
   const [section, setSection] = useState<AdminSection>(initialSection)
 
@@ -288,6 +337,7 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
   const [isEditTenantModalOpen, setIsEditTenantModalOpen] = useState(false)
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false)
   const [isDomainModalOpen, setIsDomainModalOpen] = useState(false)
+  const [replyByRequest, setReplyByRequest] = useState<Record<number, string>>({})
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null)
   const [createdTenant, setCreatedTenant] = useState<Tenant | null>(null)
   const [pendingDeleteDomain, setPendingDeleteDomain] = useState<{ tenantId: number; domain: TenantDomain } | null>(null)
@@ -357,6 +407,19 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
     },
   })
 
+  const settingsForm = useForm<SettingsFormValues>({
+    resolver: zodResolver(settingsSchema),
+    defaultValues: {
+      pesapal_consumer_key: '',
+      pesapal_consumer_secret: '',
+      pesapal_environment: 'production',
+      pesapal_ipn_id: '',
+      pesapal_ipn_url: '',
+      custom_domain_annual_price: 25,
+      custom_domain_currency: 'USD',
+    },
+  })
+
   const selectedTenant = useMemo(
     () => tenants.find((tenant) => tenant.id === selectedTenantId) ?? null,
     [selectedTenantId, tenants]
@@ -391,6 +454,34 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
     [tenants]
   )
 
+  const domainRequestRows = useMemo(
+    () =>
+      tenants.flatMap((tenant) =>
+        (tenant.domain_requests ?? []).map((request) => ({
+          ...request,
+          tenant_id: tenant.id,
+          tenant_name: tenant.name,
+          tenant_email: tenant.email,
+          tenant_db_status: tenant.operational_db_status,
+        }))
+      ),
+    [tenants]
+  )
+
+  const revenueData = useMemo(() => {
+    const byMonth = new Map<string, { month: string; tenants: number; revenue: number }>()
+    tenants.forEach((tenant) => {
+      const date = tenant.created_at ? new Date(tenant.created_at) : new Date()
+      const month = date.toLocaleDateString('en-UG', { month: 'short' })
+      const current = byMonth.get(month) ?? { month, tenants: 0, revenue: 0 }
+      current.tenants += 1
+      const plan = plans.find((item) => item.code === tenant.plan)
+      current.revenue += Number(plan?.monthly_price ?? 0)
+      byMonth.set(month, current)
+    })
+    return Array.from(byMonth.values()).slice(-6)
+  }, [plans, tenants])
+
   const plansSummary = useMemo(() => {
     const subscribedTenants = plans.reduce((sum, plan) => sum + plan.tenant_count, 0)
     const activePlans = plans.filter((plan) => plan.is_active).length
@@ -419,6 +510,19 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
       tenantForm.setValue('billing_cycle', plans[0].billing_cycle)
     }
   }, [plans, tenantForm])
+
+  useEffect(() => {
+    if (!settingsSummary) return
+    settingsForm.reset({
+      pesapal_consumer_key: '',
+      pesapal_consumer_secret: '',
+      pesapal_environment: settingsSummary.pesapal_environment === 'sandbox' ? 'sandbox' : 'production',
+      pesapal_ipn_id: '',
+      pesapal_ipn_url: '',
+      custom_domain_annual_price: Number(settingsSummary.custom_domain_annual_price ?? 25),
+      custom_domain_currency: settingsSummary.custom_domain_currency ?? 'USD',
+    })
+  }, [settingsForm, settingsSummary])
 
   const refreshAdminData = async () => {
     await Promise.all([
@@ -524,6 +628,45 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
       toast.success('Domain action completed.')
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to complete the domain action.')),
+  })
+
+  const domainRequestActionMutation = useMutation({
+    mutationFn: (payload: { requestId: number; action: 'verify' | 'activate' | 'reject' }) =>
+      api.post(`/subscriptions/admin/domain-requests/${payload.requestId}/${payload.action}`),
+    onSuccess: async () => {
+      await refreshAdminData()
+      toast.success('Domain request updated.')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to update domain request.')),
+  })
+
+  const domainRequestReplyMutation = useMutation({
+    mutationFn: (payload: { requestId: number; message: string }) =>
+      api.post(`/subscriptions/admin/domain-requests/${payload.requestId}/messages`, { message: payload.message }),
+    onSuccess: async (_, variables) => {
+      await refreshAdminData()
+      setReplyByRequest((current) => ({ ...current, [variables.requestId]: '' }))
+      toast.success('Reply sent to tenant.')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to send reply.')),
+  })
+
+  const updateSettingsMutation = useMutation({
+    mutationFn: (values: SettingsFormValues) =>
+      api.put('/dev-admin/settings', {
+        ...values,
+        pesapal_consumer_key: values.pesapal_consumer_key || undefined,
+        pesapal_consumer_secret: values.pesapal_consumer_secret || undefined,
+        pesapal_ipn_id: values.pesapal_ipn_id || undefined,
+        pesapal_ipn_url: values.pesapal_ipn_url || undefined,
+        custom_domain_currency: values.custom_domain_currency.toUpperCase(),
+      }),
+    onSuccess: async () => {
+      await refreshAdminData()
+      toast.success('Payment settings saved.')
+      settingsForm.setValue('pesapal_consumer_secret', '')
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to save settings.')),
   })
 
   const deleteDomainMutation = useMutation({
@@ -726,7 +869,7 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
           </div>
           <div className="px-5 py-5 h-[320px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={MOCK_REVENUE_DATA} margin={{ top: 10, right: 30, left: 20, bottom: 0 }}>
+              <LineChart data={revenueData} margin={{ top: 10, right: 30, left: 20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
                 <XAxis dataKey="month" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis yAxisId="left" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
@@ -1070,6 +1213,71 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
               <div className="card overflow-hidden">
                 <div className="surface-header">
                   <div>
+                    <h2 className="surface-title">Custom Domain Requests</h2>
+                    <p className="surface-subtitle">Paid tenant requests, DNS verification, activation, and tenant communication.</p>
+                  </div>
+                </div>
+                <div className="divide-y divide-[var(--border-subtle)]">
+                  {(selectedTenant.domain_requests ?? []).length ? selectedTenant.domain_requests.map((request) => (
+                    <div key={request.id} className="space-y-4 px-5 py-4">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-sm font-semibold text-slate-900">{request.host}</div>
+                            <span className={statusBadge(request.status)}>{request.status.replace(/_/g, ' ')}</span>
+                            {request.invoice ? <span className={statusBadge(request.invoice.status)}>invoice {request.invoice.status.replace(/_/g, ' ')}</span> : null}
+                          </div>
+                          <div className="mt-2 grid gap-2 text-xs text-slate-500 sm:grid-cols-3">
+                            <div>DNS: {request.dns_record_type ?? '-'}</div>
+                            <div className="break-all">Name: {request.dns_record_name ?? '-'}</div>
+                            <div className="break-all">Value: {request.dns_record_value ?? '-'}</div>
+                          </div>
+                          {request.last_error ? <div className="mt-2 text-xs text-red-600">{request.last_error}</div> : null}
+                        </div>
+                        {canManage ? (
+                          <div className="flex flex-wrap gap-2">
+                            <button type="button" className="btn-secondary btn-sm" onClick={() => domainRequestActionMutation.mutate({ requestId: request.id, action: 'verify' })}>Verify DNS</button>
+                            <button type="button" className="btn-secondary btn-sm" onClick={() => domainRequestActionMutation.mutate({ requestId: request.id, action: 'activate' })}>Activate</button>
+                            <button type="button" className="btn-secondary btn-sm" onClick={() => domainRequestActionMutation.mutate({ requestId: request.id, action: 'reject' })}>Reject</button>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="space-y-2">
+                        {request.messages?.length ? request.messages.map((message) => (
+                          <div key={message.id} className="rounded-[12px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+                            <div className="text-xs font-bold uppercase text-slate-500">{message.sender_role} | {formatDate(message.created_at)}</div>
+                            <div className="mt-1 text-sm text-slate-800">{message.message}</div>
+                          </div>
+                        )) : <div className="text-xs text-slate-500">No messages yet.</div>}
+                      </div>
+                      {canManage ? (
+                        <div className="flex gap-2">
+                          <input
+                            className="form-input"
+                            value={replyByRequest[request.id] ?? ''}
+                            onChange={(event) => setReplyByRequest((current) => ({ ...current, [request.id]: event.target.value }))}
+                            placeholder="Reply by email and in-app thread"
+                          />
+                          <button
+                            type="button"
+                            className="btn-primary"
+                            disabled={domainRequestReplyMutation.isPending || !(replyByRequest[request.id] ?? '').trim()}
+                            onClick={() => domainRequestReplyMutation.mutate({ requestId: request.id, message: replyByRequest[request.id] ?? '' })}
+                          >
+                            Send
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  )) : (
+                    <div className="px-5 py-8 text-sm text-slate-500">No custom domain requests yet.</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="card overflow-hidden">
+                <div className="surface-header">
+                  <div>
                     <h2 className="surface-title">Tenant Domains</h2>
                     <p className="surface-subtitle">Primary domain, verification status, SSL actions, and safe deletion rules.</p>
                   </div>
@@ -1153,13 +1361,74 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
   )
 
   const renderDomains = () => (
-    <div className="card overflow-hidden">
-      <div className="surface-header">
-        <div>
-          <h2 className="surface-title">All Tenant Domains</h2>
-          <p className="surface-subtitle">Use this global view to verify, activate, disable, or delete domains across every tenant.</p>
+    <div className="space-y-6">
+      <div className="card overflow-hidden">
+        <div className="surface-header">
+          <div>
+            <h2 className="surface-title">Custom Domain Requests</h2>
+            <p className="surface-subtitle">Paid add-on requests awaiting DNS verification, activation, or tenant communication.</p>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Tenant</th>
+                <th>Requested domain</th>
+                <th>Payment</th>
+                <th>DNS</th>
+                <th>Status</th>
+                <th className="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {domainRequestRows.length ? domainRequestRows.map((row) => (
+                <tr key={row.id}>
+                  <td>
+                    <div className="font-semibold text-slate-900">{row.tenant_name}</div>
+                    <div className="text-xs text-slate-500">{row.tenant_email}</div>
+                  </td>
+                  <td>
+                    <div className="font-semibold text-slate-900">{row.host}</div>
+                    {row.last_error ? <div className="mt-1 text-xs text-red-600">{row.last_error}</div> : null}
+                  </td>
+                  <td>
+                    <span className={statusBadge(row.invoice?.status ?? 'pending')}>{row.invoice?.status?.replace(/_/g, ' ') ?? 'pending'}</span>
+                    <div className="mt-1 text-xs text-slate-500">{formatMoney(row.price_amount, row.currency)} / {row.billing_period}</div>
+                  </td>
+                  <td>
+                    <div className="text-xs text-slate-600">{row.dns_record_type ?? '-'}</div>
+                    <div className="max-w-[220px] break-all text-xs text-slate-500">{row.dns_record_name ?? '-'}</div>
+                    <div className="max-w-[220px] break-all text-xs text-slate-500">{row.dns_record_value ?? '-'}</div>
+                  </td>
+                  <td><span className={statusBadge(row.status)}>{row.status.replace(/_/g, ' ')}</span></td>
+                  <td className="text-right">
+                    {canManage ? (
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <button type="button" className="btn-secondary btn-sm" onClick={() => domainRequestActionMutation.mutate({ requestId: row.id, action: 'verify' })}>Verify</button>
+                        <button type="button" className="btn-secondary btn-sm" onClick={() => domainRequestActionMutation.mutate({ requestId: row.id, action: 'activate' })}>Activate</button>
+                        <button type="button" className="btn-secondary btn-sm" onClick={() => domainRequestActionMutation.mutate({ requestId: row.id, action: 'reject' })}>Reject</button>
+                      </div>
+                    ) : null}
+                  </td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan={6} className="py-10 text-center text-slate-500">No custom domain requests found.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
+
+      <div className="card overflow-hidden">
+        <div className="surface-header">
+          <div>
+            <h2 className="surface-title">All Tenant Domains</h2>
+            <p className="surface-subtitle">Use this global view to verify, activate, disable, or delete domains across every tenant.</p>
+          </div>
+        </div>
       <div className="overflow-x-auto">
         <table className="data-table">
           <thead>
@@ -1201,6 +1470,7 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
           </tbody>
         </table>
       </div>
+    </div>
     </div>
   )
 
@@ -1484,8 +1754,62 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
               <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">App SSL Runtime</div>
               <div className="mt-2 text-sm font-semibold text-slate-900">{settingsSummary?.certbot_enabled ? 'Configured' : 'Not configured'}</div>
             </div>
+            <div className="rounded-[1rem] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Pesapal Live Payments</div>
+              <div className="mt-2 text-sm font-semibold text-slate-900">{settingsSummary?.pesapal_configured ? 'Configured' : 'Not configured'}</div>
+              <div className="mt-1 text-xs text-slate-500">{settingsSummary?.pesapal_environment ?? 'production'} | IPN {settingsSummary?.pesapal_ipn_configured ? 'configured' : 'auto-register'}</div>
+            </div>
           </div>
         </div>
+
+        <form className="card overflow-hidden" onSubmit={settingsForm.handleSubmit((values) => updateSettingsMutation.mutate(values))}>
+          <div className="surface-header">
+            <div>
+              <h2 className="surface-title">Pesapal Payment Settings</h2>
+              <p className="surface-subtitle">Live checkout credentials and custom domain annual pricing.</p>
+            </div>
+          </div>
+          <div className="grid gap-4 px-5 py-5 md:grid-cols-2">
+            <div>
+              <label className="form-label">Consumer key</label>
+              <input className="form-input" autoComplete="off" {...settingsForm.register('pesapal_consumer_key')} />
+            </div>
+            <div>
+              <label className="form-label">Consumer secret</label>
+              <input type="password" className="form-input" autoComplete="new-password" {...settingsForm.register('pesapal_consumer_secret')} />
+            </div>
+            <div>
+              <label className="form-label">Environment</label>
+              <select className="form-input" {...settingsForm.register('pesapal_environment')}>
+                <option value="production">Production</option>
+                <option value="sandbox">Sandbox</option>
+              </select>
+            </div>
+            <div>
+              <label className="form-label">IPN ID</label>
+              <input className="form-input" placeholder="Optional; auto-registers when blank" {...settingsForm.register('pesapal_ipn_id')} />
+            </div>
+            <div>
+              <label className="form-label">IPN URL</label>
+              <input className="form-input" placeholder="https://myfarm.arosoftlabs.com/api/v1/subscriptions/payments/pesapal/ipn" {...settingsForm.register('pesapal_ipn_url')} />
+            </div>
+            <div className="grid grid-cols-[1fr_110px] gap-3">
+              <div>
+                <label className="form-label">Custom domain price</label>
+                <input type="number" min="0" step="0.01" className="form-input" {...settingsForm.register('custom_domain_annual_price')} />
+              </div>
+              <div>
+                <label className="form-label">Currency</label>
+                <input className="form-input uppercase" {...settingsForm.register('custom_domain_currency')} />
+              </div>
+            </div>
+            <div className="md:col-span-2 flex justify-end">
+              <button type="submit" className="btn-primary" disabled={!canManage || updateSettingsMutation.isPending}>
+                Save payment settings
+              </button>
+            </div>
+          </div>
+        </form>
 
         <div className="card overflow-hidden">
           <div className="surface-header">

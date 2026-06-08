@@ -121,6 +121,17 @@ export function UpgradeModulesPage() {
     },
   })
 
+  const checkout = useMutation({
+    mutationFn: (invoiceId: number) =>
+      api.post(`/subscriptions/payments/invoices/${invoiceId}/checkout`).then((response) => response.data as { redirect_url: string }),
+    onSuccess: (data) => {
+      window.location.assign(data.redirect_url)
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.detail ?? 'Could not start Pesapal checkout.')
+    },
+  })
+
   const pendingRequest = useMemo(
     () => (data?.requests ?? []).find((request) => ['pending_payment', 'paid'].includes(request.status)),
     [data?.requests]
@@ -174,6 +185,12 @@ export function UpgradeModulesPage() {
                 Payment ref: {pendingRequest.invoice?.payment_reference ?? 'Will be assigned by the payment gateway'}
               </div>
             </div>
+            {pendingRequest.invoice?.status === 'pending' ? (
+              <button type="button" className="btn-primary" disabled={checkout.isPending} onClick={() => checkout.mutate(pendingRequest.invoice!.id)}>
+                <CreditCard className="h-4 w-4" />
+                Pay with Pesapal
+              </button>
+            ) : null}
           </div>
         </div>
       ) : null}

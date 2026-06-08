@@ -36,6 +36,7 @@ from app.models.tenant import (
     SubscriptionStatus,
     Tenant,
     TenantDomain,
+    TenantDomainRequest,
     TenantModule,
     TenantStatus,
 )
@@ -46,6 +47,7 @@ from app.modules.developer_admin.catalog import MANDATORY_TENANT_MODULE_KEYS
 from app.modules.developer_admin.schemas import (
     ActivityLogOut,
     DeveloperAdminSettingsOut,
+    DeveloperAdminSettingsUpdate,
     DomainAssignRequest,
     ModulePriceUpdate,
     ModuleToggle,
@@ -78,6 +80,8 @@ class DeveloperAdminService:
         return select(Tenant).options(
             selectinload(Tenant.modules).selectinload(TenantModule.module),
             selectinload(Tenant.domains),
+            selectinload(Tenant.domain_requests).selectinload(TenantDomainRequest.invoice),
+            selectinload(Tenant.domain_requests).selectinload(TenantDomainRequest.messages),
             selectinload(Tenant.subscriptions),
         )
 
@@ -175,6 +179,13 @@ class DeveloperAdminService:
             tenant_domain_target_ip=settings.TENANT_DNS_TARGET_VALUE or settings.TENANT_DOMAIN_TARGET_IP,
             enable_cloudflare_dns_automation=settings.ENABLE_CLOUDFLARE_DNS_AUTOMATION,
             enable_automatic_ssl_provisioning=settings.ENABLE_AUTOMATIC_SSL_PROVISIONING,
+            pesapal_consumer_key=settings.PESAPAL_CONSUMER_KEY,
+            pesapal_consumer_secret=settings.PESAPAL_CONSUMER_SECRET,
+            pesapal_environment=settings.PESAPAL_ENVIRONMENT,
+            pesapal_ipn_id=settings.PESAPAL_IPN_ID,
+            pesapal_ipn_url=settings.PESAPAL_IPN_URL,
+            custom_domain_annual_price=settings.CUSTOM_DOMAIN_ANNUAL_PRICE,
+            custom_domain_currency=settings.CUSTOM_DOMAIN_CURRENCY,
         )
         self.db.add(settings_row)
         await self.db.flush()
@@ -1611,12 +1622,46 @@ class DeveloperAdminService:
     async def get_settings_summary(self) -> DeveloperAdminSettingsOut:
         total_modules = (await self.db.execute(select(func.count()).select_from(PlatformModule))).scalar_one()
         total_plans = (await self.db.execute(select(func.count()).select_from(PlanDefinition))).scalar_one()
+        system_settings = await self._get_system_settings()
         return DeveloperAdminSettingsOut(
             primary_platform_domain=settings.PRIMARY_PLATFORM_DOMAIN,
             default_tenant_domain_suffix=tenant_domain_suffix(),
             automatic_ssl_provisioning=settings.ENABLE_AUTOMATIC_SSL_PROVISIONING,
             certbot_enabled=bool(settings.CERTBOT_BIN),
+            pesapal_configured=bool(
+                (system_settings.pesapal_consumer_key or settings.PESAPAL_CONSUMER_KEY)
+                and (system_settings.pesapal_consumer_secret or settings.PESAPAL_CONSUMER_SECRET)
+            ),
+            pesapal_environment=system_settings.pesapal_environment or settings.PESAPAL_ENVIRONMENT,
+            pesapal_ipn_configured=bool(system_settings.pesapal_ipn_id or settings.PESAPAL_IPN_ID),
+            custom_domain_annual_price=Decimal(str(system_settings.custom_domain_annual_price or settings.CUSTOM_DOMAIN_ANNUAL_PRICE)),
+            custom_domain_currency=system_settings.custom_domain_currency or settings.CUSTOM_DOMAIN_CURRENCY,
             mandatory_module_keys=sorted(MANDATORY_TENANT_MODULE_KEYS),
             total_modules=total_modules,
             total_plans=total_plans,
         )
+
+    async def update_settings(self, data: DeveloperAdminSettingsUpdate, actor: User) -> DeveloperAdminSettingsOut:
+        system_settings = await self._get_system_settings()
+        updates = data.model_dump(exclude_unset=True)
+        if "pesapal_environment" in updates and updates["pesapal_environment"]:
+            environment = updates["pesapal_environment"].lower()
+            if environment not in {"production", "sandbox"}:
+                raise HTTPException(status_code=422, detail="Pesapal environment must be production or sandbox.")
+            updates["pesapal_environment"] = environment
+        if "custom_domain_currency" in updates and updates["custom_domain_currency"]:
+            updates["custom_domain_currency"] = updates["custom_domain_currency"].upper()
+        for key, value in updates.items():
+            if isinstance(value, str):
+                value = value.strip() or None
+            setattr(system_settings, key, value)
+        await write_audit_log(
+            self.db,
+            user_id=actor.id,
+            action="UPDATE",
+            entity="developer_admin_settings",
+            entity_id=system_settings.id,
+            meta={"updated_fields": sorted(updates.keys())},
+        )
+        await self.db.commit()
+        return await self.get_settings_summary()

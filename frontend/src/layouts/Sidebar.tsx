@@ -136,6 +136,7 @@ const FARM_NAV: NavGroup[] = [
       { label: 'Roles', path: '/settings/roles', permission: 'settings:read', moduleKey: 'settings' },
       { label: 'Company Settings', path: '/settings/company', permission: 'settings:read', moduleKey: 'settings' },
       { label: 'Subscription', path: '/settings/subscription' },
+      { label: 'Custom Domains', path: '/account/domains' },
     ],
   },
 ]

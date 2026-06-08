@@ -141,6 +141,54 @@ class TenantDomainOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class BillingInvoiceOut(BaseModel):
+    id: int
+    invoice_number: str
+    invoice_type: str
+    amount: Decimal
+    currency: str
+    status: str
+    due_date: Optional[date] = None
+    payment_reference: Optional[str] = None
+    payment_url: Optional[str] = None
+    paid_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class TenantDomainRequestMessageOut(BaseModel):
+    id: int
+    sender_role: str
+    message: str
+    email_sent_at: Optional[datetime] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class TenantDomainRequestOut(BaseModel):
+    id: int
+    host: str
+    normalized_host: str
+    status: str
+    price_amount: Decimal
+    currency: str
+    billing_period: str
+    dns_record_type: Optional[str] = None
+    dns_record_name: Optional[str] = None
+    dns_record_value: Optional[str] = None
+    wants_primary: bool
+    admin_notes: Optional[str] = None
+    last_error: Optional[str] = None
+    paid_at: Optional[datetime] = None
+    activated_at: Optional[datetime] = None
+    created_at: datetime
+    invoice: Optional[BillingInvoiceOut] = None
+    messages: List[TenantDomainRequestMessageOut] = Field(default_factory=list)
+
+    model_config = {"from_attributes": True}
+
+
 class TenantAdminCredentialOut(BaseModel):
     email: str
     full_name: str
@@ -186,6 +234,7 @@ class TenantOut(BaseModel):
     created_at: datetime
     modules: List[TenantModuleOut] = Field(default_factory=list)
     domains: List[TenantDomainOut] = Field(default_factory=list)
+    domain_requests: List[TenantDomainRequestOut] = Field(default_factory=list)
     subscriptions: List[SubscriptionOut] = Field(default_factory=list)
     onboarding_admin: TenantAdminCredentialOut | None = None
 
@@ -303,6 +352,21 @@ class DeveloperAdminSettingsOut(BaseModel):
     default_tenant_domain_suffix: str
     automatic_ssl_provisioning: bool
     certbot_enabled: bool
+    pesapal_configured: bool
+    pesapal_environment: str
+    pesapal_ipn_configured: bool
+    custom_domain_annual_price: Decimal
+    custom_domain_currency: str
     mandatory_module_keys: list[str]
     total_modules: int
     total_plans: int
+
+
+class DeveloperAdminSettingsUpdate(BaseModel):
+    pesapal_consumer_key: Optional[str] = None
+    pesapal_consumer_secret: Optional[str] = None
+    pesapal_environment: Optional[str] = None
+    pesapal_ipn_id: Optional[str] = None
+    pesapal_ipn_url: Optional[str] = None
+    custom_domain_annual_price: Optional[Decimal] = None
+    custom_domain_currency: Optional[str] = None

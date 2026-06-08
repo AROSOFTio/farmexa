@@ -13,6 +13,7 @@ from app.modules.developer_admin.schemas import (
     BillingOverviewOut,
     DeveloperAdminOverviewOut,
     DeveloperAdminSettingsOut,
+    DeveloperAdminSettingsUpdate,
     DomainAssignRequest,
     ModulePriceOut,
     ModulePriceUpdate,
@@ -58,6 +59,15 @@ async def get_settings_summary(
     current_user=Depends(require_permission("dev_admin:read")),
 ):
     return await DeveloperAdminService(db).get_settings_summary()
+
+
+@router.put("/settings", response_model=DeveloperAdminSettingsOut)
+async def update_settings(
+    data: DeveloperAdminSettingsUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("dev_admin:write")),
+):
+    return await DeveloperAdminService(db).update_settings(data, current_user)
 
 
 @router.get("/tenants", response_model=List[TenantOut])

@@ -56,6 +56,13 @@ class SystemSettings(Base):
     tenant_domain_target_ip = Column(String(100), nullable=True)
     enable_cloudflare_dns_automation = Column(Boolean, nullable=False, default=True)
     enable_automatic_ssl_provisioning = Column(Boolean, nullable=False, default=False)
+    pesapal_consumer_key = Column(String(255), nullable=True)
+    pesapal_consumer_secret = Column(Text, nullable=True)
+    pesapal_environment = Column(String(20), nullable=False, default="production")
+    pesapal_ipn_id = Column(String(120), nullable=True)
+    pesapal_ipn_url = Column(String(500), nullable=True)
+    custom_domain_annual_price = Column(Float, nullable=False, default=25.0)
+    custom_domain_currency = Column(String(10), nullable=False, default="USD")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
