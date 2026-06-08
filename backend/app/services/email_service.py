@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.settings import EmailLog, SystemSettings
 
-DEFAULT_LOGO_URL = "https://myfarm.arosoftlabs.com/brand/farmexa-logo-full.png"
+DEFAULT_LOGO_URL = "https://farm.arosoftlabs.com/brand/farmexa-logo-full.png"
 BRAND_TAGLINE = "Manage Smart. Grow Better."
 
 
@@ -97,7 +97,7 @@ def branded_email_html(
     system_name = system_settings.system_name if system_settings else "Farmexa"
     logo_url = (system_settings.system_logo_url if system_settings else None) or DEFAULT_LOGO_URL
     if logo_url.startswith("/"):
-        logo_url = f"https://myfarm.arosoftlabs.com{logo_url}"
+        logo_url = f"https://farm.arosoftlabs.com{logo_url}"
     support_email = (system_settings.support_email if system_settings else None) or "farmexa@arosoftlabs.com"
     action = ""
     if action_url and action_label:
@@ -191,3 +191,4 @@ async def send_welcome_email(
         email_type="Welcome Email",
         system_settings=system_settings,
     )
+

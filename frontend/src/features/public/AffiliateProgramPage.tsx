@@ -63,7 +63,7 @@ export function AffiliateProgramPage() {
       '@context': 'https://schema.org',
       '@type': 'Organization',
       name: 'Farmexa',
-      url: 'https://myfarm.arosoftlabs.com',
+      url: 'https://farm.arosoftlabs.com',
     },
     {
       '@context': 'https://schema.org',
@@ -199,3 +199,4 @@ export function AffiliateProgramPage() {
     </main>
   )
 }
+

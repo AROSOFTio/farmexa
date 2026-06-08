@@ -34,8 +34,8 @@ def upgrade() -> None:
         sa.Column("system_favicon_url", sa.String(length=500), nullable=True),
         sa.Column("primary_color", sa.String(length=40), nullable=False, server_default="#d6a62e"),
         sa.Column("secondary_color", sa.String(length=40), nullable=False, server_default="#0b1018"),
-        sa.Column("platform_domain", sa.String(length=255), nullable=False, server_default="myfarm.arosoftlabs.com"),
-        sa.Column("tenant_domain_suffix", sa.String(length=255), nullable=False, server_default="arosoftlabs.com"),
+        sa.Column("platform_domain", sa.String(length=255), nullable=False, server_default="farm.arosoftlabs.com"),
+        sa.Column("tenant_domain_suffix", sa.String(length=255), nullable=False, server_default="farm.arosoftlabs.com"),
         sa.Column("sender_email", sa.String(length=255), nullable=False, server_default="farmexa@arosoftlabs.com"),
         sa.Column("sender_name", sa.String(length=120), nullable=False, server_default="Farmexa"),
         sa.Column("support_email", sa.String(length=255), nullable=False, server_default="farmexa@arosoftlabs.com"),
@@ -128,3 +128,4 @@ def downgrade() -> None:
     op.drop_table("email_logs")
     op.drop_index("ix_system_settings_id", table_name="system_settings")
     op.drop_table("system_settings")
+

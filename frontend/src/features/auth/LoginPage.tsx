@@ -87,7 +87,7 @@ export function LoginPage() {
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
             <span>
               <strong>Platform administrator access only.</strong> If you are a tenant user, please sign in through your provisioned workspace domain (e.g.{' '}
-              <em>yourfarm.arosoftlabs.com</em>).
+              <em>yourfarm.farm.arosoftlabs.com</em>).
             </span>
           </div>
         ) : null}
@@ -165,3 +165,4 @@ export function LoginPage() {
     </div>
   )
 }
+

@@ -1791,7 +1791,7 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
             </div>
             <div>
               <label className="form-label">IPN URL</label>
-              <input className="form-input" placeholder="https://myfarm.arosoftlabs.com/api/v1/subscriptions/payments/pesapal/ipn" {...settingsForm.register('pesapal_ipn_url')} />
+              <input className="form-input" placeholder="https://farm.arosoftlabs.com/api/v1/subscriptions/payments/pesapal/ipn" {...settingsForm.register('pesapal_ipn_url')} />
             </div>
             <div className="grid grid-cols-[1fr_110px] gap-3">
               <div>
@@ -2208,3 +2208,4 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
     </div>
   )
 }
+

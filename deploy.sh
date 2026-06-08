@@ -2,15 +2,15 @@
 # ==============================================================================
 # Farmexa - Production Deployment Script
 # Repo:    https://github.com/AROSOFTio/farmexa.git
-# Deploy:  /www/wwwroot/myfarm.arosoftlabs.com
+# Deploy:  /www/wwwroot/farm.arosoftlabs.com
 # Port:    4021 (Docker gateway -> reverse-proxied by aaPanel)
 # ==============================================================================
 set -euo pipefail
 
 # -- Config --------------------------------------------------------------------
 APP_NAME="farmexa"
-DEPLOY_DIR="${DEPLOY_DIR:-/www/wwwroot/myfarm.arosoftlabs.com}"
-PUBLIC_DOMAIN="${PUBLIC_DOMAIN:-myfarm.arosoftlabs.com}"
+DEPLOY_DIR="${DEPLOY_DIR:-/www/wwwroot/farm.arosoftlabs.com}"
+PUBLIC_DOMAIN="${PUBLIC_DOMAIN:-farm.arosoftlabs.com}"
 APP_PORT="${APP_PORT:-4021}"
 REPO_URL="https://github.com/AROSOFTio/farmexa.git"
 BRANCH="${BRANCH:-main}"
@@ -299,3 +299,4 @@ success " API Docs     : https://${PUBLIC_DOMAIN}/docs"
 success " SSL/Proxy    : Managed in aaPanel/Cloudflare, not by this script"
 success " Admin Login  : Set in .env -> SEED_ADMIN_EMAIL"
 success "================================================================"
+

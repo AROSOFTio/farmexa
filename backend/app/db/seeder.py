@@ -627,3 +627,4 @@ async def _seed_demo_tenant_if_enabled(db: AsyncSession) -> None:
         user.is_active = True
 
     logger.info("Demo tenant/admin seed staged for %s at %s.", settings.SEED_DEMO_TENANT_ADMIN_EMAIL, host)
+

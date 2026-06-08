@@ -24,4 +24,5 @@ Disallow: /dev-admin
 Disallow: /subscription
 Disallow: /billing
 
-Sitemap: https://myfarm.arosoftlabs.com/sitemap.xml
+Sitemap: https://farm.arosoftlabs.com/sitemap.xml
+

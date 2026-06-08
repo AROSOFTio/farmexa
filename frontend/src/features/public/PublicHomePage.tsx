@@ -96,8 +96,8 @@ export function PublicHomePage() {
         description="Farmexa is a cloud poultry ERP for feed mill, flocks, inventory, slaughter, sales, finance, compliance, reports, and secure tenant workspaces."
         canonicalPath="/"
         jsonLd={[
-          { '@context': 'https://schema.org', '@type': 'Organization', name: 'Farmexa', url: 'https://myfarm.arosoftlabs.com' },
-          { '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Farmexa', applicationCategory: 'BusinessApplication', operatingSystem: 'Web', url: 'https://myfarm.arosoftlabs.com' },
+          { '@context': 'https://schema.org', '@type': 'Organization', name: 'Farmexa', url: 'https://farm.arosoftlabs.com' },
+          { '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Farmexa', applicationCategory: 'BusinessApplication', operatingSystem: 'Web', url: 'https://farm.arosoftlabs.com' },
           {
             '@context': 'https://schema.org',
             '@type': 'FAQPage',
@@ -319,3 +319,4 @@ export function PublicHomePage() {
     </div>
   )
 }
+

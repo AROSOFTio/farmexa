@@ -82,3 +82,4 @@ async def verify_domain_points_to_target(host: str) -> DnsVerificationResult:
         target_ip=target_ip,
         error=None if resolved else "No A records were returned.",
     )
+

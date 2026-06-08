@@ -1665,3 +1665,4 @@ class DeveloperAdminService:
         )
         await self.db.commit()
         return await self.get_settings_summary()
+

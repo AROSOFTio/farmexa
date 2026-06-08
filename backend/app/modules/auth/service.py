@@ -42,13 +42,13 @@ class AuthService:
         is_platform_admin = role_name in {"super_manager", "developer_admin"}
 
         # Tenant users must sign in through their provisioned workspace domain,
-        # not the main platform host (e.g. myfarm.arosoftlabs.com).
+        # not the main platform host (e.g. farm.arosoftlabs.com).
         if is_platform_host and user.tenant_id is not None and not is_platform_admin:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(
                     "Tenant accounts must sign in through their provisioned workspace domain. "
-                    "Please navigate to your workspace URL (e.g. yourfarm.arosoftlabs.com) to sign in."
+                    "Please navigate to your workspace URL (e.g. yourfarm.farm.arosoftlabs.com) to sign in."
                 ),
             )
 
@@ -157,3 +157,4 @@ class AuthService:
             enabled_modules=enabled_modules,
             tenant=tenant,
         )
+

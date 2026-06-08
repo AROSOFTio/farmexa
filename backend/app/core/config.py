@@ -54,9 +54,9 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost,http://localhost:5173"
-    PRIMARY_PLATFORM_DOMAIN: str = "myfarm.arosoftlabs.com"
-    PLATFORM_HOSTS: str = "myfarm.arosoftlabs.com,farm.arosoftlabs.com,arosoftlabs.com,localhost,127.0.0.1"
-    DEFAULT_TENANT_DOMAIN_SUFFIX: str = "arosoftlabs.com"
+    PRIMARY_PLATFORM_DOMAIN: str = "farm.arosoftlabs.com"
+    PLATFORM_HOSTS: str = "farm.arosoftlabs.com,farm.arosoftlabs.com,arosoftlabs.com,localhost,127.0.0.1"
+    DEFAULT_TENANT_DOMAIN_SUFFIX: str = "farm.arosoftlabs.com"
     CLOUDFLARE_ZONE_NAME: str = "arosoftlabs.com"
     TENANT_DNS_TARGET_TYPE: str = "A"
     TENANT_DNS_TARGET_VALUE: str | None = None
@@ -126,7 +126,7 @@ class Settings(BaseSettings):
             return zone_name
         if zone_name and suffix.endswith(f".{zone_name}") and suffix.count(".") > zone_name.count("."):
             return zone_name
-        return suffix or "arosoftlabs.com"
+        return suffix or "farm.arosoftlabs.com"
 
     @property
     def trusted_hosts(self) -> list[str]:
@@ -145,3 +145,4 @@ def get_settings() -> Settings:
 
 
 settings: Settings = get_settings()
+

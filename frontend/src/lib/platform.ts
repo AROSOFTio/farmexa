@@ -1,4 +1,4 @@
-const PLATFORM_HOSTS = new Set(['myfarm.arosoftlabs.com', 'farm.arosoftlabs.com', 'arosoftlabs.com', 'localhost', '127.0.0.1'])
+const PLATFORM_HOSTS = new Set(['farm.arosoftlabs.com', 'farm.arosoftlabs.com', 'arosoftlabs.com', 'localhost', '127.0.0.1'])
 
 /** Returns true when the current host is a known platform/registration host. */
 export function isPlatformRegistrationHost(hostname = window.location.hostname) {
@@ -15,3 +15,4 @@ export function isPlatformRegistrationHost(hostname = window.location.hostname) 
 export function isTenantHost(hostname = window.location.hostname) {
   return !isPlatformRegistrationHost(hostname)
 }
+

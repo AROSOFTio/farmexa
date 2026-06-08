@@ -21,7 +21,7 @@ export const defaultPlatformSettings: PublicSystemSettings = {
   system_favicon_url: '/favicon.svg',
   primary_color: '#d6a62e',
   secondary_color: '#202020',
-  platform_domain: 'myfarm.arosoftlabs.com',
+  platform_domain: 'farm.arosoftlabs.com',
   tenant_domain_suffix: 'arosoftlabs.com',
   sender_email: 'farmexa@arosoftlabs.com',
   sender_name: 'Farmexa',
@@ -34,3 +34,4 @@ export async function getPublicSystemSettings() {
   const { data } = await api.get<PublicSystemSettings>('/settings/public')
   return data
 }
+

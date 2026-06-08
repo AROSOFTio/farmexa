@@ -29,22 +29,22 @@ from app.utils.domains import default_platform_domain, tenant_domain_suffix
 def test_slug_generation_uses_clean_farm_name():
     assert DeveloperAdminService._slugify("Ngali Poultry Farm") == "ngali"
     assert DeveloperAdminService._slugify("Golden Farm Ltd") == "golden"
-    assert DeveloperAdminService(None)._default_platform_domain("ngali") == "ngali.arosoftlabs.com"
+    assert DeveloperAdminService(None)._default_platform_domain("ngali") == "ngali.farm.arosoftlabs.com"
 
 
 def test_tenant_domain_suffix_uses_cloudflare_zone_when_env_is_nested(monkeypatch):
-    monkeypatch.setattr(settings, "DEFAULT_TENANT_DOMAIN_SUFFIX", "myfarm.arosoftlabs.com")
+    monkeypatch.setattr(settings, "DEFAULT_TENANT_DOMAIN_SUFFIX", "farm.arosoftlabs.com")
     monkeypatch.setattr(settings, "CLOUDFLARE_ZONE_NAME", "arosoftlabs.com")
-    monkeypatch.setattr(settings, "PRIMARY_PLATFORM_DOMAIN", "myfarm.arosoftlabs.com")
+    monkeypatch.setattr(settings, "PRIMARY_PLATFORM_DOMAIN", "farm.arosoftlabs.com")
 
     assert tenant_domain_suffix() == "arosoftlabs.com"
-    assert default_platform_domain("arofa") == "arofa.arosoftlabs.com"
-    assert DeveloperAdminService(None)._default_platform_domain("arofa") == "arofa.arosoftlabs.com"
+    assert default_platform_domain("arofa") == "arofa.farm.arosoftlabs.com"
+    assert DeveloperAdminService(None)._default_platform_domain("arofa") == "arofa.farm.arosoftlabs.com"
 
 
 @pytest.mark.asyncio
 async def test_unknown_tenant_host_returns_workspace_not_found(monkeypatch):
-    monkeypatch.setattr(settings, "PLATFORM_HOSTS", "myfarm.arosoftlabs.com,localhost,127.0.0.1")
+    monkeypatch.setattr(settings, "PLATFORM_HOSTS", "farm.arosoftlabs.com,localhost,127.0.0.1")
 
     class FakeResult:
         def scalar_one_or_none(self):
@@ -74,7 +74,7 @@ async def test_unknown_tenant_host_returns_workspace_not_found(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_valid_active_tenant_host_resolves(monkeypatch):
-    monkeypatch.setattr(settings, "PLATFORM_HOSTS", "myfarm.arosoftlabs.com,localhost,127.0.0.1")
+    monkeypatch.setattr(settings, "PLATFORM_HOSTS", "farm.arosoftlabs.com,localhost,127.0.0.1")
     domain = SimpleNamespace(
         id=7,
         tenant_id=12,
@@ -98,7 +98,7 @@ async def test_valid_active_tenant_host_resolves(monkeypatch):
 
     monkeypatch.setattr(tenant_domain_middleware, "AsyncSessionLocal", FakeSession)
     middleware = TenantDomainResolverMiddleware(app=None)
-    request = Request({"type": "http", "method": "GET", "path": "/api/v1/settings/public", "headers": [(b"host", b"ngali.arosoftlabs.com")]})
+    request = Request({"type": "http", "method": "GET", "path": "/api/v1/settings/public", "headers": [(b"host", b"ngali.farm.arosoftlabs.com")]})
 
     async def call_next(resolved_request):
         assert resolved_request.state.tenant_id == 12
@@ -135,7 +135,7 @@ async def test_suspended_tenant_host_does_not_resolve(monkeypatch):
 
     monkeypatch.setattr(tenant_domain_middleware, "AsyncSessionLocal", FakeSession)
     middleware = TenantDomainResolverMiddleware(app=None)
-    request = Request({"type": "http", "method": "GET", "path": "/api/v1/auth/login", "headers": [(b"host", b"ngali.arosoftlabs.com")]})
+    request = Request({"type": "http", "method": "GET", "path": "/api/v1/auth/login", "headers": [(b"host", b"ngali.farm.arosoftlabs.com")]})
 
     async def call_next(_request):
         raise AssertionError("Suspended tenant hosts must not reach app routes.")
@@ -206,7 +206,7 @@ async def test_cloudflare_dns_reuses_matching_record(monkeypatch):
     monkeypatch.setattr(settings, "CLOUDFLARE_API_TOKEN", "token")
     monkeypatch.setattr(settings, "CLOUDFLARE_ZONE_ID", "zone")
     monkeypatch.setattr(settings, "TENANT_DNS_TARGET_TYPE", "CNAME")
-    monkeypatch.setattr(settings, "TENANT_DNS_TARGET_VALUE", "myfarm.arosoftlabs.com")
+    monkeypatch.setattr(settings, "TENANT_DNS_TARGET_VALUE", "farm.arosoftlabs.com")
     monkeypatch.setattr(settings, "TENANT_DNS_PROXIED", True)
     monkeypatch.setattr(settings, "TENANT_DNS_TTL", 1)
 
@@ -221,7 +221,7 @@ async def test_cloudflare_dns_reuses_matching_record(monkeypatch):
                 "result": [
                     {
                         "id": "record-1",
-                        "content": "myfarm.arosoftlabs.com",
+                        "content": "farm.arosoftlabs.com",
                         "proxied": True,
                         "ttl": 1,
                     }
@@ -252,12 +252,12 @@ async def test_cloudflare_dns_reuses_matching_record(monkeypatch):
 
     monkeypatch.setattr(cloudflare_service.httpx, "AsyncClient", FakeClient)
 
-    result = await create_tenant_dns_record("ngali.arosoftlabs.com")
+    result = await create_tenant_dns_record("ngali.farm.arosoftlabs.com")
 
     assert result.ok is True
     assert result.record_id == "record-1"
     assert result.record_type == "CNAME"
-    assert result.target == "myfarm.arosoftlabs.com"
+    assert result.target == "farm.arosoftlabs.com"
 
 
 @pytest.mark.asyncio
@@ -314,13 +314,13 @@ async def test_cloudflare_dns_uses_system_settings_when_env_credentials_are_blan
     monkeypatch.setattr(cloudflare_service.httpx, "AsyncClient", FakeClient)
 
     result = await create_tenant_dns_record(
-        "benjamin.arosoftlabs.com",
+        "benjamin.farm.arosoftlabs.com",
         system_settings=SimpleNamespace(
             enable_cloudflare_dns_automation=True,
             cloudflare_api_token="settings-token",
             cloudflare_zone_id="settings-zone",
             tenant_domain_target_ip="167.233.68.36",
-            platform_domain="myfarm.arosoftlabs.com",
+            platform_domain="farm.arosoftlabs.com",
         ),
     )
 
@@ -332,8 +332,9 @@ async def test_cloudflare_dns_uses_system_settings_when_env_credentials_are_blan
     assert captured["headers"]["Authorization"] == "Bearer settings-token"
     assert captured["payload"] == {
         "type": "A",
-        "name": "benjamin.arosoftlabs.com",
+        "name": "benjamin.farm.arosoftlabs.com",
         "content": "167.233.68.36",
         "ttl": 1,
         "proxied": True,
     }
+

@@ -10,7 +10,7 @@ interface SEOProps {
   jsonLd?: Record<string, unknown> | Record<string, unknown>[]
 }
 
-const ORIGIN = 'https://myfarm.arosoftlabs.com'
+const ORIGIN = 'https://farm.arosoftlabs.com'
 
 function setMeta(selector: string, attr: 'name' | 'property', key: string, content: string) {
   let element = document.head.querySelector<HTMLMetaElement>(selector)
@@ -59,3 +59,4 @@ export function SEO({ title, description, canonicalPath = '/', robots = 'index,f
 
   return null
 }
+

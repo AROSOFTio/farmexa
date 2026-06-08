@@ -39,8 +39,8 @@ class SystemSettings(Base):
     system_favicon_url = Column(String(500), nullable=True)
     primary_color = Column(String(40), nullable=False, default="#d6a62e")
     secondary_color = Column(String(40), nullable=False, default="#202020")
-    platform_domain = Column(String(255), nullable=False, default="myfarm.arosoftlabs.com")
-    tenant_domain_suffix = Column(String(255), nullable=False, default="arosoftlabs.com")
+    platform_domain = Column(String(255), nullable=False, default="farm.arosoftlabs.com")
+    tenant_domain_suffix = Column(String(255), nullable=False, default="farm.arosoftlabs.com")
     sender_email = Column(String(255), nullable=False, default="farmexa@arosoftlabs.com")
     sender_name = Column(String(120), nullable=False, default="Farmexa")
     support_email = Column(String(255), nullable=False, default="farmexa@arosoftlabs.com")
@@ -141,3 +141,4 @@ class ReferenceItem(Base):
     sort_order = Column(Integer, default=0, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
