@@ -64,7 +64,7 @@ from app.modules.developer_admin.schemas import (
 )
 from app.modules.users.catalog import TENANT_ADMIN_ROLE_NAME
 from app.utils.audit import write_audit_log
-from app.utils.domains import default_platform_domain, infer_domain_type, normalize_host, strip_port, tenant_domain_suffix, verify_domain_points_to_target
+from app.utils.domains import default_platform_domain, infer_domain_type, normalize_host, strip_port, tenant_domain_suffix, verify_domain_points_to_target, is_reserved_slug
 from app.services.cloudflare_service import create_tenant_dns_record
 from app.services.email_service import send_welcome_email
 
@@ -590,6 +590,8 @@ class DeveloperAdminService:
         slug = self._slugify(data.slug or data.name)
         if not slug:
             raise HTTPException(status_code=422, detail="Tenant name or slug is invalid.")
+        if is_reserved_slug(slug):
+            raise HTTPException(status_code=422, detail="Requested tenant slug is reserved. Choose a different slug.")
         if data.subscription_start and data.subscription_expiry and data.subscription_expiry < data.subscription_start:
             raise HTTPException(status_code=422, detail="Subscription expiry cannot be earlier than the subscription start date.")
 
@@ -1039,6 +1041,8 @@ class DeveloperAdminService:
 
         if "slug" in updates:
             updates["slug"] = self._slugify(updates["slug"])
+            if is_reserved_slug(updates["slug"]):
+                raise HTTPException(status_code=422, detail="Requested tenant slug is reserved. Choose a different slug.")
         if "billing_cycle" in updates:
             updates["billing_cycle"] = self._parse_billing_cycle(updates["billing_cycle"])
 

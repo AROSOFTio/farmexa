@@ -6,6 +6,7 @@ from typing import Any
 import httpx
 
 from app.core.config import settings
+from app.utils.domains import normalize_host, is_platform_host
 
 
 @dataclass
@@ -37,6 +38,10 @@ async def create_tenant_dns_record(host: str, system_settings: Any | None = None
 
     api_token = _setting_value(system_settings, "cloudflare_api_token", settings.CLOUDFLARE_API_TOKEN)
     zone_id = _setting_value(system_settings, "cloudflare_zone_id", settings.CLOUDFLARE_ZONE_ID)
+
+    normalized = normalize_host(host)
+    if is_platform_host(normalized):
+        return CloudflareResult(ok=False, status="failed", message="Host is a reserved platform host and cannot be auto-provisioned.")
     if not api_token or not zone_id:
         return CloudflareResult(
             ok=False,

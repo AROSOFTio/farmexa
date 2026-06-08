@@ -1,8 +1,13 @@
 const PLATFORM_HOSTS = new Set([
-  'farm.arosoftlabs.com',
-  'cp.arosoftlabs.com',
-  'www.arosoftlabs.com',
   'arosoftlabs.com',
+  'www.arosoftlabs.com',
+  'cp.arosoftlabs.com',
+  'farm.arosoftlabs.com',
+  'mail.arosoftlabs.com',
+  'courses.arosoftlabs.com',
+  'demo.arosoftlabs.com',
+  'my.arosoftlabs.com',
+  'arofi.arosoftlabs.com',
   'localhost',
   '127.0.0.1',
 ])

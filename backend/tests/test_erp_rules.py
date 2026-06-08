@@ -29,7 +29,7 @@ from app.utils.domains import default_platform_domain, is_platform_host, tenant_
 def test_slug_generation_uses_clean_farm_name():
     assert DeveloperAdminService._slugify("Ngali Poultry Farm") == "ngali"
     assert DeveloperAdminService._slugify("Golden Farm Ltd") == "golden"
-    assert DeveloperAdminService(None)._default_platform_domain("ngali") == "ngali.farm.arosoftlabs.com"
+    assert DeveloperAdminService(None)._default_platform_domain("ngali") == "ngali.arosoftlabs.com"
 
 
 def test_tenant_domain_suffix_preserves_default_suffix(monkeypatch):
@@ -44,7 +44,7 @@ def test_tenant_domain_suffix_preserves_default_suffix(monkeypatch):
 
 def test_tenant_domain_suffix_defaults_to_farm_subdomain():
     monkeypatch.setattr(settings, "DEFAULT_TENANT_DOMAIN_SUFFIX", "")
-    assert tenant_domain_suffix() == "farm.arosoftlabs.com"
+    assert tenant_domain_suffix() == "arosoftlabs.com"
 
 
 def test_platform_hosts_include_control_panel_and_www():

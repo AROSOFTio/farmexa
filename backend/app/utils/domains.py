@@ -35,8 +35,30 @@ def is_platform_host(host: str | None) -> bool:
     return clean in platform_hosts
 
 
+# Reserved slugs that must not be used for tenant workspaces or customer slugs.
+RESERVED_SLUGS = {
+    "cp",
+    "farm",
+    "mail",
+    "www",
+    "courses",
+    "demo",
+    "my",
+    "arofi",
+    "api",
+    "admin",
+    "support",
+}
+
+
+def is_reserved_slug(slug: str | None) -> bool:
+    if not slug:
+        return False
+    return (slug.strip().lower() in RESERVED_SLUGS)
+
+
 def tenant_domain_suffix() -> str:
-    return normalize_host(settings.tenant_domain_suffix) or "farm.arosoftlabs.com"
+    return normalize_host(settings.tenant_domain_suffix) or "arosoftlabs.com"
 
 
 def default_platform_domain(slug: str) -> str:
@@ -46,8 +68,11 @@ def default_platform_domain(slug: str) -> str:
 def infer_domain_type(host: str | None) -> str:
     clean = normalize_host(host)
     suffix = tenant_domain_suffix()
+    # Hosts under the tenant suffix (eg: slug.arosoftlabs.com) are treated as platform subdomains
+    # unless they match a reserved/platform host (like cp.arosoftlabs.com, www.arosoftlabs.com)
     if clean and suffix and (clean == suffix or clean.endswith(f".{suffix}")):
-        return "platform_subdomain"
+        if not is_platform_host(clean):
+            return "platform_subdomain"
     return "custom"
 
 
