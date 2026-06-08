@@ -28,7 +28,13 @@ def upgrade() -> None:
         "cancelled",
         name="domainrequeststatus",
     )
-    domain_request_status.create(op.get_bind(), checkfirst=True)
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        res = bind.execute(sa.text("SELECT 1 FROM pg_type WHERE typname = 'domainrequeststatus'")).scalar()
+        if not res:
+            domain_request_status.create(bind)
+    else:
+        domain_request_status.create(bind, checkfirst=True)
 
     op.add_column("system_settings", sa.Column("pesapal_consumer_key", sa.String(length=255), nullable=True))
     op.add_column("system_settings", sa.Column("pesapal_consumer_secret", sa.Text(), nullable=True))
