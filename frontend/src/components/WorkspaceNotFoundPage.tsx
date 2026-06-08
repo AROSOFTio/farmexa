@@ -1,7 +1,10 @@
 import { AlertCircle, Home, Mail } from 'lucide-react'
 import { BrandMark } from '@/components/BrandMark'
+import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 
 export function WorkspaceNotFoundPage() {
+  const { settings } = usePlatformSettings()
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] px-4 py-10">
       <section className="auth-panel w-full max-w-[520px] p-6 text-center sm:p-8">
@@ -16,7 +19,7 @@ export function WorkspaceNotFoundPage() {
           This Farmexa workspace does not exist, is not active, or has not been mapped.
         </p>
         <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-          <a href="https://farm.arosoftlabs.com" className="btn-primary btn-lg">
+          <a href={settings?.platform_domain ? `https://${settings.platform_domain}` : 'https://farm.arosoftlabs.com'} className="btn-primary btn-lg">
             <Home className="h-4 w-4" />
             Go to Farmexa Home
           </a>

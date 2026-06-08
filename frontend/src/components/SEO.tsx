@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { BRAND_SOCIAL_IMAGE } from '@/lib/branding'
 
 interface SEOProps {
@@ -10,7 +11,10 @@ interface SEOProps {
   jsonLd?: Record<string, unknown> | Record<string, unknown>[]
 }
 
-const ORIGIN = 'https://farm.arosoftlabs.com'
+function originFromSettings(platformDomain?: string) {
+  if (!platformDomain) return 'https://farm.arosoftlabs.com'
+  return platformDomain.startsWith('http') ? platformDomain : `https://${platformDomain}`
+}
 
 function setMeta(selector: string, attr: 'name' | 'property', key: string, content: string) {
   let element = document.head.querySelector<HTMLMetaElement>(selector)
@@ -23,7 +27,9 @@ function setMeta(selector: string, attr: 'name' | 'property', key: string, conte
 }
 
 export function SEO({ title, description, canonicalPath = '/', robots = 'index,follow', image = BRAND_SOCIAL_IMAGE, jsonLd }: SEOProps) {
+  const { settings } = usePlatformSettings()
   useEffect(() => {
+    const ORIGIN = originFromSettings(settings?.platform_domain)
     const url = `${ORIGIN}${canonicalPath}`
     const imageUrl = image.startsWith('http') ? image : `${ORIGIN}${image}`
     document.title = title
