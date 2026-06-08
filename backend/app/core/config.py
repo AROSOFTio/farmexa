@@ -80,11 +80,16 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost,http://localhost:5173,http://localhost:5000"
-    PRIMARY_PLATFORM_DOMAIN: str = "farmexa.arosoft.io"
-    PLATFORM_HOSTS: str = "farmexa.arosoft.io,arosoft.io,localhost,127.0.0.1"
-    DEFAULT_TENANT_DOMAIN_SUFFIX: str = "arosoft.io"
-    CLOUDFLARE_ZONE_NAME: str = "arosoft.io"
+    ALLOWED_ORIGINS: str = "https://farm.arosoftlabs.com,https://arosoftlabs.com,http://localhost:3000,http://localhost,http://localhost:5173,http://localhost:5000"
+    # PRIMARY_PLATFORM_DOMAIN is the canonical hostname of the Farmexa SaaS app.
+    # Only this host (plus whatever is listed in PLATFORM_HOSTS) is treated as a
+    # "platform" request that bypasses tenant lookup. Do NOT add infrastructure
+    # sub‑domains (cp.*, mail.*, courses.*, etc.) here — those are separate
+    # services and must never be served by Farmexa.
+    PRIMARY_PLATFORM_DOMAIN: str = "farm.arosoftlabs.com"
+    PLATFORM_HOSTS: str = "farm.arosoftlabs.com,arosoftlabs.com,www.arosoftlabs.com,localhost,127.0.0.1"
+    DEFAULT_TENANT_DOMAIN_SUFFIX: str = "arosoftlabs.com"
+    CLOUDFLARE_ZONE_NAME: str = "arosoftlabs.com"
     TENANT_DNS_TARGET_TYPE: str = "A"
     TENANT_DNS_TARGET_VALUE: str | None = None
     TENANT_DNS_PROXIED: bool = True
@@ -93,23 +98,13 @@ class Settings(BaseSettings):
     CLOUDFLARE_API_TOKEN: str | None = None
     CLOUDFLARE_ZONE_ID: str | None = None
     CLOUDFLARE_DNS_RECORD_TYPE: str = "A"
-    ENABLE_CLOUDFLARE_DNS_AUTOMATION: bool = False
+    ENABLE_CLOUDFLARE_DNS_AUTOMATION: bool = True
     DOMAIN_VERIFY_TIMEOUT_SECONDS: int = 5
     CERTBOT_BIN: str = "/usr/bin/certbot"
     CERTBOT_WEBROOT: str = "/var/www/certbot"
     CERTBOT_EMAIL: str | None = None
     ENABLE_AUTOMATIC_SSL_PROVISIONING: bool = False
     PAYMENT_CALLBACK_SECRET: str | None = None
-
-    PESAPAL_CONSUMER_KEY: str | None = None
-    PESAPAL_CONSUMER_SECRET: str | None = None
-    PESAPAL_ENVIRONMENT: str = "production"
-    PESAPAL_IPN_ID: str | None = None
-    PESAPAL_IPN_URL: str | None = None
-    PESAPAL_CALLBACK_URL: str | None = None
-    PESAPAL_CANCELLATION_URL: str | None = None
-    CUSTOM_DOMAIN_ANNUAL_PRICE: float = 25.0
-    CUSTOM_DOMAIN_CURRENCY: str = "USD"
 
     SEED_ADMIN_EMAIL: str = "admin@farmexa.local"
     SEED_ADMIN_PASSWORD: str = "Admin@2026!"
@@ -143,7 +138,17 @@ class Settings(BaseSettings):
 
     @property
     def platform_hosts(self) -> list[str]:
-        return [host.strip().lower() for host in self.PLATFORM_HOSTS.split(",") if host.strip()]
+        """
+        The exhaustive list of hostnames that Farmexa itself serves as the
+        platform (i.e. NOT tenant sub‑domains).  Only add hosts here that
+        should load the Farmexa app.  Infrastructure sub‑domains such as
+        cp.*, mail.*, courses.* must NOT appear in this list — the
+        TenantDomainResolverMiddleware will return 404 for any unknown host.
+        """
+        raw = [h.strip().lower() for h in self.PLATFORM_HOSTS.split(",") if h.strip()]
+        # Always include localhost variants so dev/health‑checks work.
+        raw.extend(["localhost", "127.0.0.1"])
+        return sorted(set(raw))
 
     @property
     def tenant_domain_suffix(self) -> str:
@@ -154,7 +159,7 @@ class Settings(BaseSettings):
             return zone_name
         if zone_name and suffix.endswith(f".{zone_name}") and suffix.count(".") > zone_name.count("."):
             return zone_name
-        return suffix or "arosoft.io"
+        return suffix or "arosoftlabs.com"
 
     @property
     def trusted_hosts(self) -> list[str]:
