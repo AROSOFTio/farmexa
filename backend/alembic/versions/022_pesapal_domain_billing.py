@@ -27,6 +27,11 @@ def _foreign_key_exists(bind, table_name: str, fk_name: str) -> bool:
     return any(fk["name"] == fk_name for fk in inspector.get_foreign_keys(table_name))
 
 
+def _index_exists(bind, table_name: str, index_name: str) -> bool:
+    inspector = inspect(bind)
+    return any(index["name"] == index_name for index in inspector.get_indexes(table_name))
+
+
 def _ensure_enum_type(enum_type: postgresql.ENUM, bind) -> None:
     enum_type.create(bind, checkfirst=True)
 
@@ -64,6 +69,13 @@ def _create_foreign_key_if_missing(
         remote_cols,
         ondelete=ondelete,
     )
+
+
+def _create_index_if_missing(index_name: str, table_name: str, columns: list[str], unique: bool = False) -> None:
+    bind = op.get_bind()
+    if _index_exists(bind, table_name, index_name):
+        return
+    op.create_index(index_name, table_name, columns, unique=unique)
 
 
 def upgrade() -> None:
@@ -127,10 +139,10 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.UniqueConstraint("normalized_host", name="uq_tenant_domain_request_normalized_host"),
     )
-    op.create_index("ix_tenant_domain_requests_tenant_id", "tenant_domain_requests", ["tenant_id"], checkfirst=True)
-    op.create_index("ix_tenant_domain_requests_host", "tenant_domain_requests", ["host"], checkfirst=True)
-    op.create_index("ix_tenant_domain_requests_normalized_host", "tenant_domain_requests", ["normalized_host"], unique=True, checkfirst=True)
-    op.create_index("ix_tenant_domain_requests_status", "tenant_domain_requests", ["status"], checkfirst=True)
+    _create_index_if_missing("ix_tenant_domain_requests_tenant_id", "tenant_domain_requests", ["tenant_id"])
+    _create_index_if_missing("ix_tenant_domain_requests_host", "tenant_domain_requests", ["host"])
+    _create_index_if_missing("ix_tenant_domain_requests_normalized_host", "tenant_domain_requests", ["normalized_host"], unique=True)
+    _create_index_if_missing("ix_tenant_domain_requests_status", "tenant_domain_requests", ["status"])
 
     _create_table_if_missing(
         "tenant_domain_request_messages",
@@ -143,15 +155,15 @@ def upgrade() -> None:
         sa.Column("email_sent_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
     )
-    op.create_index("ix_tenant_domain_request_messages_request_id", "tenant_domain_request_messages", ["request_id"], checkfirst=True)
-    op.create_index("ix_tenant_domain_request_messages_tenant_id", "tenant_domain_request_messages", ["tenant_id"], checkfirst=True)
+    _create_index_if_missing("ix_tenant_domain_request_messages_request_id", "tenant_domain_request_messages", ["request_id"])
+    _create_index_if_missing("ix_tenant_domain_request_messages_tenant_id", "tenant_domain_request_messages", ["tenant_id"])
 
     _add_column_if_missing("billing_invoices", sa.Column("domain_request_id", sa.Integer(), nullable=True))
     _add_column_if_missing(
         "billing_invoices",
         sa.Column("invoice_type", sa.String(length=40), nullable=False, server_default="module_upgrade"),
     )
-    op.create_index("ix_billing_invoices_domain_request_id", "billing_invoices", ["domain_request_id"], unique=True, checkfirst=True)
+    _create_index_if_missing("ix_billing_invoices_domain_request_id", "billing_invoices", ["domain_request_id"], unique=True)
     _create_foreign_key_if_missing(
         "fk_billing_invoices_domain_request_id",
         "billing_invoices",
