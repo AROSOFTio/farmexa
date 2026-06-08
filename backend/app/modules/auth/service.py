@@ -52,6 +52,15 @@ class AuthService:
                 ),
             )
 
+        if resolved_tenant_id is None and not is_platform_host:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    "This hostname is not a recognized platform host or an active tenant workspace. "
+                    "Use the central platform domain or your provisioned workspace URL."
+                ),
+            )
+
         if resolved_tenant_id is not None:
             if is_platform_admin:
                 raise HTTPException(

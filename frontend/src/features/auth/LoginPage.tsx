@@ -11,9 +11,9 @@ import { BrandMark } from '@/components/BrandMark'
 import { ThemeToggle } from '@/components/ThemeControls'
 import { RegistrationWizardModal } from '@/features/auth/RegistrationWizardModal'
 import { useAuth } from '@/features/auth/AuthContext'
+import { useHostResolution } from '@/hooks/useHostResolution'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { getErrorMessage } from '@/lib/errors'
-import { isPlatformRegistrationHost } from '@/lib/platform'
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email address'),
@@ -25,10 +25,11 @@ type LoginFormValues = z.infer<typeof loginSchema>
 export function LoginPage() {
   const { login } = useAuth()
   const { settings } = usePlatformSettings()
+  const { hostResolution } = useHostResolution()
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
-  const isPlatformHost = isPlatformRegistrationHost()
+  const isPlatformHost = hostResolution?.is_platform_host ?? false
   const showRegisterAction = isPlatformHost
 
   const {

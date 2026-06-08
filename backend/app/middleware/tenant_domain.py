@@ -52,6 +52,8 @@ class TenantDomainResolverMiddleware(BaseHTTPMiddleware):
                 ):
                     request.state.tenant_id = domain.tenant_id
                     request.state.tenant_domain_id = domain.id
+                    request.state.tenant_slug = tenant.slug
+                    request.state.tenant_domain = domain.host
                     return await call_next(request)
 
-        return JSONResponse(WORKSPACE_NOT_FOUND, status_code=404)
+        return await call_next(request)

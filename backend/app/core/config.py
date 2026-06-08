@@ -55,7 +55,7 @@ class Settings(BaseSettings):
 
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost,http://localhost:5173"
     PRIMARY_PLATFORM_DOMAIN: str = "farm.arosoftlabs.com"
-    PLATFORM_HOSTS: str = "arosoftlabs.com,www.arosoftlabs.com,cp.arosoftlabs.com,farm.arosoftlabs.com,mail.arosoftlabs.com,courses.arosoftlabs.com,demo.arosoftlabs.com,my.arosoftlabs.com,arofi.arosoftlabs.com,localhost,127.0.0.1"
+    PLATFORM_HOSTS: str = "arosoftlabs.com,www.arosoftlabs.com,cp.arosoftlabs.com,farm.arosoftlabs.com,mail.arosoftlabs.com,courses.arosoftlabs.com,demo.arosoftlabs.com,my.arosoftlabs.com,arofi.arosoftlabs.com,api.arosoftlabs.com,admin.arosoftlabs.com,support.arosoftlabs.com,localhost,127.0.0.1"
     DEFAULT_TENANT_DOMAIN_SUFFIX: str = "arosoftlabs.com"
     CLOUDFLARE_ZONE_NAME: str = "arosoftlabs.com"
     TENANT_DNS_TARGET_TYPE: str = "A"
@@ -115,7 +115,9 @@ class Settings(BaseSettings):
 
     @property
     def platform_hosts(self) -> list[str]:
-        return [host.strip().lower() for host in self.PLATFORM_HOSTS.split(",") if host.strip()]
+        hosts = [host.strip().lower() for host in self.PLATFORM_HOSTS.split(",") if host.strip()]
+        hosts.extend(["localhost", "127.0.0.1"])
+        return sorted(set(hosts))
 
     @property
     def tenant_domain_suffix(self) -> str:

@@ -58,7 +58,7 @@ def test_platform_hosts_include_control_panel_and_www():
 
 
 @pytest.mark.asyncio
-async def test_unknown_tenant_host_returns_workspace_not_found(monkeypatch):
+async def test_unknown_tenant_host_does_not_activate_tenant_mode(monkeypatch):
     monkeypatch.setattr(settings, "PLATFORM_HOSTS", "farm.arosoftlabs.com,localhost,127.0.0.1")
 
     class FakeResult:
@@ -79,12 +79,14 @@ async def test_unknown_tenant_host_returns_workspace_not_found(monkeypatch):
     middleware = TenantDomainResolverMiddleware(app=None)
     request = Request({"type": "http", "method": "GET", "path": "/api/v1/settings/public", "headers": [(b"host", b"randomunknown.arosoftlabs.com")]})
 
-    async def call_next(_request):
-        raise AssertionError("Unknown tenant hosts must not fall through to the app.")
+    async def call_next(resolved_request):
+        assert getattr(resolved_request.state, "tenant_id", None) is None
+        assert getattr(resolved_request.state, "tenant_domain_id", None) is None
+        return Response("ok")
 
     response = await middleware.dispatch(request, call_next)
 
-    assert response.status_code == 404
+    assert response.status_code == 200
 
 
 @pytest.mark.asyncio
@@ -126,7 +128,7 @@ async def test_valid_active_tenant_host_resolves(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_suspended_tenant_host_does_not_resolve(monkeypatch):
+async def test_suspended_tenant_host_does_not_activate_tenant_mode(monkeypatch):
     domain = SimpleNamespace(
         id=7,
         tenant_id=12,
@@ -152,12 +154,14 @@ async def test_suspended_tenant_host_does_not_resolve(monkeypatch):
     middleware = TenantDomainResolverMiddleware(app=None)
     request = Request({"type": "http", "method": "GET", "path": "/api/v1/auth/login", "headers": [(b"host", b"ngali.farm.arosoftlabs.com")]})
 
-    async def call_next(_request):
-        raise AssertionError("Suspended tenant hosts must not reach app routes.")
+    async def call_next(resolved_request):
+        assert getattr(resolved_request.state, "tenant_id", None) is None
+        assert getattr(resolved_request.state, "tenant_domain_id", None) is None
+        return Response("ok")
 
     response = await middleware.dispatch(request, call_next)
 
-    assert response.status_code == 404
+    assert response.status_code == 200
 
 
 def test_full_trial_plan_includes_every_module():

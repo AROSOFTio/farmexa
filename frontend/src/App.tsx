@@ -34,7 +34,7 @@ import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { NotFoundPage } from '@/components/NotFoundPage'
 import { WorkspaceNotFoundPage } from '@/components/WorkspaceNotFoundPage'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
-import { isTenantHost } from '@/lib/platform'
+import { useHostResolution } from '@/hooks/useHostResolution'
 import { EggProductionPage } from '@/features/farm/EggProductionPage'
 import { TenantsPage } from '@/features/developer_admin/TenantsPage'
 import { AffiliatesPage } from '@/features/developer_admin/AffiliatesPage'
@@ -709,15 +709,27 @@ function TenantDashboardRoute() {
  * never see public marketing pages (home, registration, affiliates, etc.).
  */
 function PlatformOnlyRoute({ element }: { element: ReactNode }) {
-  if (isTenantHost()) return <Navigate to="/login" replace />
+  const { hostResolution } = useHostResolution()
+  if (hostResolution && !hostResolution.is_platform_host) return <Navigate to="/login" replace />
   return <>{element}</>
 }
 
 function HostValidationGate({ children }: { children: ReactNode }) {
-  const { isLoading, isWorkspaceUnknown } = usePlatformSettings()
+  const { hostResolution, isLoading, error } = useHostResolution()
 
-  if (isWorkspaceUnknown) {
+  if (error || (hostResolution && !hostResolution.is_platform_host && !hostResolution.tenant_exists)) {
     return <WorkspaceNotFoundPage />
+  }
+
+  if (isLoading || !hostResolution) {
+    return (
+      <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-[var(--text-strong)]">Loading…</h2>
+          <p className="text-sm text-[var(--text-muted)] mt-2">Fetching platform and workspace status</p>
+        </div>
+      </div>
+    )
   }
 
   if (isLoading) {
