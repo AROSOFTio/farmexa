@@ -58,6 +58,15 @@ PERMISSIONS = [
     ("dev_admin:write", "Manage tenants, plans, and modules", "developer_admin"),
 ]
 
+
+def _password_hash_from_seed(value: str) -> str:
+    """Accept either a raw seed password or an existing bcrypt hash."""
+    clean = value.strip()
+    if clean.startswith(("$2a$", "$2b$", "$2y$")) and len(clean) == 60:
+        return clean
+    return hash_password(clean)
+
+
 async def run_seed() -> None:
     """Idempotent seeder that is safe to run on every startup."""
     logger.info("Starting database seed process.")
@@ -163,6 +172,12 @@ async def _seed_roles_and_permissions(db: AsyncSession) -> None:
 async def _seed_system_settings(db: AsyncSession) -> None:
     from app.models.settings import SystemSettings
 
+    def non_empty(value, fallback):
+        if isinstance(value, str):
+            clean = value.strip()
+            return clean if clean else fallback
+        return fallback if value is None else value
+
     result = await db.execute(select(SystemSettings).order_by(SystemSettings.id).limit(1))
     settings_row = result.scalar_one_or_none()
     if settings_row:
@@ -175,14 +190,17 @@ async def _seed_system_settings(db: AsyncSession) -> None:
         settings_row.sender_email = settings.SMTP_FROM_EMAIL or settings_row.sender_email
         settings_row.sender_name = settings.SMTP_FROM_NAME
         settings_row.support_email = settings.SMTP_FROM_EMAIL or settings_row.support_email
-        settings_row.smtp_host = settings.SMTP_HOST
-        settings_row.smtp_port = settings.SMTP_PORT
-        settings_row.smtp_username = settings.SMTP_USERNAME
-        settings_row.smtp_password = settings.SMTP_PASSWORD
+        settings_row.smtp_host = non_empty(settings.SMTP_HOST, settings_row.smtp_host)
+        settings_row.smtp_port = settings.SMTP_PORT or settings_row.smtp_port
+        settings_row.smtp_username = non_empty(settings.SMTP_USERNAME, settings_row.smtp_username)
+        settings_row.smtp_password = non_empty(settings.SMTP_PASSWORD, settings_row.smtp_password)
         settings_row.smtp_use_tls = settings.SMTP_USE_TLS
-        settings_row.cloudflare_api_token = settings.CLOUDFLARE_API_TOKEN
-        settings_row.cloudflare_zone_id = settings.CLOUDFLARE_ZONE_ID
-        settings_row.tenant_domain_target_ip = settings.TENANT_DNS_TARGET_VALUE or settings.TENANT_DOMAIN_TARGET_IP
+        settings_row.cloudflare_api_token = non_empty(settings.CLOUDFLARE_API_TOKEN, settings_row.cloudflare_api_token)
+        settings_row.cloudflare_zone_id = non_empty(settings.CLOUDFLARE_ZONE_ID, settings_row.cloudflare_zone_id)
+        settings_row.tenant_domain_target_ip = non_empty(
+            settings.TENANT_DNS_TARGET_VALUE or settings.TENANT_DOMAIN_TARGET_IP,
+            settings_row.tenant_domain_target_ip,
+        )
         settings_row.enable_cloudflare_dns_automation = settings.ENABLE_CLOUDFLARE_DNS_AUTOMATION
         return
 
@@ -195,9 +213,9 @@ async def _seed_system_settings(db: AsyncSession) -> None:
             secondary_color="#202020",
             platform_domain=settings.PRIMARY_PLATFORM_DOMAIN,
             tenant_domain_suffix=tenant_domain_suffix(),
-            sender_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoft.io",
+            sender_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoftlabs.com",
             sender_name=settings.SMTP_FROM_NAME,
-            support_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoft.io",
+            support_email=settings.SMTP_FROM_EMAIL or "farmexa@arosoftlabs.com",
             company_name="AROSOFT",
             footer_text="Powered by AROSOFT",
             smtp_host=settings.SMTP_HOST,
@@ -415,8 +433,7 @@ async def _seed_admin(db: AsyncSession) -> None:
 
     admin.email = email
     admin.full_name = settings.SEED_ADMIN_FULL_NAME
-    if not admin.hashed_password:
-        admin.hashed_password = hash_password(settings.SEED_ADMIN_PASSWORD)
+    admin.hashed_password = _password_hash_from_seed(settings.SEED_ADMIN_PASSWORD)
     admin.is_active = True
     admin.role_id = role.id
     admin.tenant_id = None
@@ -444,8 +461,7 @@ async def _seed_developer_admin(db: AsyncSession) -> None:
 
     admin.email = email
     admin.full_name = settings.SEED_DEV_ADMIN_FULL_NAME
-    if not admin.hashed_password:
-        admin.hashed_password = hash_password(settings.SEED_DEV_ADMIN_PASSWORD)
+    admin.hashed_password = _password_hash_from_seed(settings.SEED_DEV_ADMIN_PASSWORD)
     admin.is_active = True
     admin.role_id = role.id
     admin.tenant_id = None
@@ -597,7 +613,7 @@ async def _seed_demo_tenant_if_enabled(db: AsyncSession) -> None:
                 email=settings.SEED_DEMO_TENANT_ADMIN_EMAIL,
                 full_name=settings.SEED_DEMO_TENANT_ADMIN_FULL_NAME,
                 job_title="Tenant Administrator",
-                hashed_password=hash_password(settings.SEED_DEMO_TENANT_ADMIN_PASSWORD),
+                hashed_password=_password_hash_from_seed(settings.SEED_DEMO_TENANT_ADMIN_PASSWORD),
                 is_active=True,
                 role_id=role.id,
                 tenant_id=tenant.id,
@@ -611,3 +627,4 @@ async def _seed_demo_tenant_if_enabled(db: AsyncSession) -> None:
         user.is_active = True
 
     logger.info("Demo tenant/admin seed staged for %s at %s.", settings.SEED_DEMO_TENANT_ADMIN_EMAIL, host)
+
