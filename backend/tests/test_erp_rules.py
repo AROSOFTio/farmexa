@@ -23,7 +23,7 @@ from app.services.erp_rules import (
     ensure_sufficient_stock,
     validate_feed_formula_percentages,
 )
-from app.utils.domains import default_platform_domain, tenant_domain_suffix
+from app.utils.domains import default_platform_domain, is_platform_host, tenant_domain_suffix
 
 
 def test_slug_generation_uses_clean_farm_name():
@@ -32,14 +32,29 @@ def test_slug_generation_uses_clean_farm_name():
     assert DeveloperAdminService(None)._default_platform_domain("ngali") == "ngali.farm.arosoftlabs.com"
 
 
-def test_tenant_domain_suffix_uses_cloudflare_zone_when_env_is_nested(monkeypatch):
+def test_tenant_domain_suffix_preserves_default_suffix(monkeypatch):
     monkeypatch.setattr(settings, "DEFAULT_TENANT_DOMAIN_SUFFIX", "farm.arosoftlabs.com")
     monkeypatch.setattr(settings, "CLOUDFLARE_ZONE_NAME", "arosoftlabs.com")
     monkeypatch.setattr(settings, "PRIMARY_PLATFORM_DOMAIN", "farm.arosoftlabs.com")
 
-    assert tenant_domain_suffix() == "arosoftlabs.com"
+    assert tenant_domain_suffix() == "farm.arosoftlabs.com"
     assert default_platform_domain("arofa") == "arofa.farm.arosoftlabs.com"
     assert DeveloperAdminService(None)._default_platform_domain("arofa") == "arofa.farm.arosoftlabs.com"
+
+
+def test_tenant_domain_suffix_defaults_to_farm_subdomain():
+    monkeypatch.setattr(settings, "DEFAULT_TENANT_DOMAIN_SUFFIX", "")
+    assert tenant_domain_suffix() == "farm.arosoftlabs.com"
+
+
+def test_platform_hosts_include_control_panel_and_www():
+    monkeypatch.setattr(settings, "PLATFORM_HOSTS", "farm.arosoftlabs.com,cp.arosoftlabs.com,arosoftlabs.com,www.arosoftlabs.com,localhost,127.0.0.1")
+
+    assert is_platform_host("farm.arosoftlabs.com") is True
+    assert is_platform_host("cp.arosoftlabs.com") is True
+    assert is_platform_host("www.arosoftlabs.com") is True
+    assert is_platform_host("demo.farm.arosoftlabs.com") is False
+    assert is_platform_host("tenant.arosoftlabs.com") is False
 
 
 @pytest.mark.asyncio
