@@ -19,7 +19,8 @@ from app.core.config import settings
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt."""
     pwd_bytes = password.encode('utf-8')
-    salt = bcrypt.gensalt()
+    rounds = 4 if settings.APP_ENV == "development" else 12
+    salt = bcrypt.gensalt(rounds=rounds)
     hashed = bcrypt.hashpw(pwd_bytes, salt)
     return hashed.decode('utf-8')
 
