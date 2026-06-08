@@ -58,6 +58,15 @@ PERMISSIONS = [
     ("dev_admin:write", "Manage tenants, plans, and modules", "developer_admin"),
 ]
 
+
+def _password_hash_from_seed(value: str) -> str:
+    """Accept either a raw seed password or an existing bcrypt hash."""
+    clean = value.strip()
+    if clean.startswith(("$2a$", "$2b$", "$2y$")) and len(clean) == 60:
+        return clean
+    return hash_password(clean)
+
+
 async def run_seed() -> None:
     """Idempotent seeder that is safe to run on every startup."""
     logger.info("Starting database seed process.")
@@ -424,7 +433,7 @@ async def _seed_admin(db: AsyncSession) -> None:
 
     admin.email = email
     admin.full_name = settings.SEED_ADMIN_FULL_NAME
-    admin.hashed_password = hash_password(settings.SEED_ADMIN_PASSWORD)
+    admin.hashed_password = _password_hash_from_seed(settings.SEED_ADMIN_PASSWORD)
     admin.is_active = True
     admin.role_id = role.id
     admin.tenant_id = None
@@ -452,7 +461,7 @@ async def _seed_developer_admin(db: AsyncSession) -> None:
 
     admin.email = email
     admin.full_name = settings.SEED_DEV_ADMIN_FULL_NAME
-    admin.hashed_password = hash_password(settings.SEED_DEV_ADMIN_PASSWORD)
+    admin.hashed_password = _password_hash_from_seed(settings.SEED_DEV_ADMIN_PASSWORD)
     admin.is_active = True
     admin.role_id = role.id
     admin.tenant_id = None
@@ -604,7 +613,7 @@ async def _seed_demo_tenant_if_enabled(db: AsyncSession) -> None:
                 email=settings.SEED_DEMO_TENANT_ADMIN_EMAIL,
                 full_name=settings.SEED_DEMO_TENANT_ADMIN_FULL_NAME,
                 job_title="Tenant Administrator",
-                hashed_password=hash_password(settings.SEED_DEMO_TENANT_ADMIN_PASSWORD),
+                hashed_password=_password_hash_from_seed(settings.SEED_DEMO_TENANT_ADMIN_PASSWORD),
                 is_active=True,
                 role_id=role.id,
                 tenant_id=tenant.id,

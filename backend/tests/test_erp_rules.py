@@ -5,6 +5,8 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.core.config import settings
+from app.db.seeder import _password_hash_from_seed
+from app.core.security import verify_password
 from app.middleware import tenant_domain as tenant_domain_middleware
 from app.middleware.tenant_domain import TenantDomainResolverMiddleware
 from app.models.tenant import DomainStatus, TenantStatus
@@ -161,6 +163,15 @@ def test_affiliate_registration_requires_terms():
             country="Uganda",
             accepted_terms=False,
         )
+
+
+def test_seed_password_accepts_raw_or_bcrypt_hash():
+    existing_hash = "$2a$12$V31bGEvov1v5J9mvhL238eB2wETL3g8GDSezp6FusfmIGqcmGKxjS"
+    assert _password_hash_from_seed(existing_hash) == existing_hash
+
+    generated = _password_hash_from_seed("FarmexaAdmin2026!")
+    assert generated != "FarmexaAdmin2026!"
+    assert verify_password("FarmexaAdmin2026!", generated)
 
 
 def test_feed_formula_percentages_must_equal_100():
