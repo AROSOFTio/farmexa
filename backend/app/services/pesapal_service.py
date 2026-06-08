@@ -31,6 +31,12 @@ class PesapalStatusResult:
 
 
 class PesapalService:
+    """Pesapal API 3.0 integration.
+
+    Authentication is performed with consumer key and consumer secret only.
+    The service auto-registers IPN URLs and builds callback/endpoints when needed.
+    """
+
     def __init__(self, system_settings: Any | None = None):
         self.system_settings = system_settings
 
