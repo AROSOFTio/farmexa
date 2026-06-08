@@ -122,6 +122,7 @@ interface Subscription {
 
 interface Tenant {
   id: number
+  created_at: string
   name: string
   slug: string
   business_name: string | null
