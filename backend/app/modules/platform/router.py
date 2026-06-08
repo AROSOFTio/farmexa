@@ -14,7 +14,7 @@ router = APIRouter(prefix="/platform", tags=["Platform"])
 async def resolve_host(
     request: Request,
     hostname: str | None = None,
-    db: AsyncSession = Depends(_get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     resolved_host = normalize_host(hostname or request.headers.get("host"))
     if not resolved_host:
