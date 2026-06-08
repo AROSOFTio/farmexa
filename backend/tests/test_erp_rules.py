@@ -181,7 +181,7 @@ def test_affiliate_registration_requires_terms():
 
 
 def test_seed_password_accepts_raw_or_bcrypt_hash():
-    existing_hash = "$2a$12$V31bGEvov1v5J9mvhL238eB2wETL3g8GDSezp6FusfmIGqcmGKxjS"
+    existing_hash = "$2a$12$EXAMPLEEXAMPLEEXAMPLEEXAMPLEEXAMPLEEXAMPLE"
     assert _password_hash_from_seed(existing_hash) == existing_hash
 
     generated = _password_hash_from_seed("FarmexaAdmin2026!")
