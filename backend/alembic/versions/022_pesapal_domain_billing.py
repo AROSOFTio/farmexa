@@ -78,6 +78,7 @@ def upgrade() -> None:
         "failed",
         "cancelled",
         name="domainrequeststatus",
+        create_type=False,
     )
     bind = op.get_bind()
     _ensure_enum_type(domain_request_status, bind)
