@@ -14,6 +14,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { useHostResolution } from '@/hooks/useHostResolution'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { currentPlatformHost } from '@/lib/platform'
+import { SEO } from '@/components/SEO'
 import { getErrorMessage } from '@/lib/errors'
 
 const loginSchema = z.object({
@@ -63,7 +64,9 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen overflow-hidden">
+    <>
+      <SEO title="Sign in to Farmexa" description="Sign in to your Farmexa workspace." canonicalPath="/login" robots="noindex,nofollow" />
+      <div className="flex min-h-screen overflow-hidden">
 
       {/* ── LEFT: Visual Hero Panel ──────────────────────────────────── */}
       <div className="relative hidden lg:flex lg:w-[56%] xl:w-[58%] flex-col overflow-hidden">
@@ -288,6 +291,7 @@ export function LoginPage() {
         isOpen={isRegistrationOpen}
         onClose={() => setIsRegistrationOpen(false)}
       />
-    </div>
+      </div>
+    </>
   )
 }

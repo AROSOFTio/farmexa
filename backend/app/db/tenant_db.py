@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from threading import RLock
 from typing import Any
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine, URL, make_url
 from sqlalchemy.exc import SQLAlchemyError
@@ -26,9 +26,39 @@ from app.models.feed import FeedCategory, FeedItem
 from app.models.farm import PoultryHouse, PoultryHouseSection  # noqa: F401
 from app.models.inventory import MovementType, StockCategory, StockItem, StockMovement
 from app.models.tenant import Tenant
+from app.models.branch import Branch
 from app.models.user import User
 from app.services.inventory_coordinator import ReferenceType
 from app.services.stock_sku import generate_unique_sku
+
+from sqlalchemy import event
+from sqlalchemy.orm import with_loader_criteria
+
+@event.listens_for(Session, "do_orm_execute")
+def _add_branch_filter(execute_state):
+    if execute_state.is_select or execute_state.is_update or execute_state.is_delete:
+        branch_ids = execute_state.session.info.get("branch_ids")
+        if branch_ids is not None:
+            execute_state.statement = execute_state.statement.options(
+                with_loader_criteria(
+                    Base,
+                    lambda cls: cls.branch_id.in_(branch_ids) if hasattr(cls, "branch_id") else None,
+                    include_aliases=True
+                )
+            )
+
+@event.listens_for(AsyncSession, "do_orm_execute")
+def _add_async_branch_filter(execute_state):
+    if execute_state.is_select or execute_state.is_update or execute_state.is_delete:
+        branch_ids = execute_state.session.info.get("branch_ids")
+        if branch_ids is not None:
+            execute_state.statement = execute_state.statement.options(
+                with_loader_criteria(
+                    Base,
+                    lambda cls: cls.branch_id.in_(branch_ids) if hasattr(cls, "branch_id") else None,
+                    include_aliases=True
+                )
+            )
 
 PLATFORM_ADMIN_ROLES = {"super_manager", "developer_admin"}
 
@@ -229,6 +259,11 @@ def _apply_runtime_schema_patches(engine: Engine) -> None:
     Base.metadata.tables["template_accounts"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["fiscal_years"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["opening_balances"].create(bind=engine, checkfirst=True)
+    # Phase 2: Multi-Branch Enterprise Architecture
+    Base.metadata.tables["branches"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["user_branch_access"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["branch_transfers"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["branch_transfer_items"].create(bind=engine, checkfirst=True)
     inspector = inspect(engine)
     with engine.begin() as connection:
         connection.execute(
@@ -289,6 +324,15 @@ def _apply_runtime_schema_patches(engine: Engine) -> None:
         connection.execute(text("ALTER TABLE batches ADD COLUMN IF NOT EXISTS stock_item_id INTEGER"))
         connection.execute(text("ALTER TABLE feed_items ADD COLUMN IF NOT EXISTS stock_item_id INTEGER"))
         connection.execute(text("ALTER TABLE tenant_modules ADD COLUMN IF NOT EXISTS is_manual_override BOOLEAN NOT NULL DEFAULT false"))
+        # Phase 2 Branch ID patches
+        connection.execute(text("ALTER TABLE stock_items ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
+        connection.execute(text("ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
+        connection.execute(text("ALTER TABLE store_locations ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
+        connection.execute(text("ALTER TABLE poultry_houses ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
+        connection.execute(text("ALTER TABLE batches ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
+        connection.execute(text("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
+        connection.execute(text("ALTER TABLE feed_purchases ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
+        connection.execute(text("ALTER TABLE feed_production_batches ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_batches_section_id ON batches (section_id)"))
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_batches_stock_item_id ON batches (stock_item_id)"))
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_feed_items_stock_item_id ON feed_items (stock_item_id)"))
@@ -403,6 +447,27 @@ def _apply_runtime_schema_patches(engine: Engine) -> None:
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_accounts_tenant_id ON accounts (tenant_id)"))
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_journal_entries_tenant_id ON journal_entries (tenant_id)"))
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_journal_entries_reference_type ON journal_entries (reference_type)"))
+        # ---------------------------------------------------------------
+        # Phase 2 — Multi-Branch Enterprise Data Isolation
+        # ---------------------------------------------------------------
+        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
+        connection.execute(text("ALTER TABLE journal_lines ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
+        connection.execute(text("ALTER TABLE stock_items ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
+        connection.execute(text("ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
+        connection.execute(text("ALTER TABLE batches ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
+        connection.execute(text("ALTER TABLE feed_purchases ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
+        connection.execute(text("ALTER TABLE feed_consumptions ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
+        connection.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
+        connection.execute(text("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
+        connection.execute(text("ALTER TABLE poultry_houses ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
+        
+        # Add index for branch_id on heavy operational tables
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_journal_entries_branch_id ON journal_entries (branch_id)"))
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_stock_movements_branch_id ON stock_movements (branch_id)"))
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_batches_branch_id ON batches (branch_id)"))
+        
+        # Note: We don't automatically backfill branch_id here because head office might not be created yet.
+        # A separate service handles default branch assignment on initialization.
 
 
 def _upsert_tenant_identity(session: Session, tenant_snapshot: dict[str, Any]) -> None:
@@ -593,6 +658,29 @@ def _seed_default_inventory_items(session: Session) -> None:
             stock_item.current_quantity = opening_stock
 
 
+def _seed_default_branch(session: Session, tenant_snapshot: dict[str, Any]) -> None:
+    # Create Head Office if no branch exists
+    branch = session.query(Branch).filter(Branch.code == "HQ").first()
+    if branch is None:
+        branch = Branch(
+            name="Head Office",
+            code="HQ",
+            location=tenant_snapshot.get("address") or "Headquarters",
+            is_active=True,
+        )
+        session.add(branch)
+        session.flush()
+
+        # Update all operational records to belong to HQ branch if their branch_id is NULL
+        tables_to_update = [
+            "stock_items", "stock_movements", "store_locations",
+            "poultry_houses", "batches", "suppliers",
+            "feed_purchases", "feed_production_batches"
+        ]
+        for table in tables_to_update:
+            session.execute(text(f"UPDATE {table} SET branch_id = :branch_id WHERE branch_id IS NULL"), {"branch_id": branch.id})
+
+
 def _mark_user_synced(database_name: str, user_snapshot: dict[str, Any] | None) -> None:
     if user_snapshot is None:
         return
@@ -620,6 +708,7 @@ def _ensure_tenant_database_sync(
         with session_factory() as session:
             _upsert_tenant_identity(session, tenant_snapshot)
             _upsert_user_identity(session, user_snapshot)
+            _seed_default_branch(session, tenant_snapshot)
             _seed_default_inventory_items(session)
             session.commit()
         _mark_user_synced(database_name, user_snapshot)
@@ -742,7 +831,7 @@ async def provision_tenant_operational_database(tenant: Tenant, tenant_admin: Us
     _mark_user_synced(database_name, user_snapshot)
 
 
-async def get_tenant_db(current_user: User = Depends(get_current_user)):
+async def get_tenant_db(request: Request, current_user: User = Depends(get_current_user)):
     if _is_platform_admin(current_user) or not current_user.tenant_id:
         async with AsyncSessionLocal() as session:
             try:
@@ -757,6 +846,28 @@ async def get_tenant_db(current_user: User = Depends(get_current_user)):
     database_name = await _ensure_operational_database_ready(current_user)
     _, session_factory = _get_or_create_async_runtime(database_name)
     async with session_factory() as session:
+        requested_branch = request.headers.get("x-branch-id")
+        requested_branch_id = int(requested_branch) if requested_branch and requested_branch.isdigit() else None
+
+        if current_user.role and current_user.role.name not in PLATFORM_ADMIN_ROLES.union({"manager"}):
+            from app.models.branch import UserBranchAccess
+            from sqlalchemy import select
+            result = await session.execute(
+                select(UserBranchAccess.branch_id).where(UserBranchAccess.user_id == current_user.id)
+            )
+            branch_ids = list(result.scalars().all())
+            if not branch_ids:
+                raise HTTPException(status_code=403, detail="No branch access.")
+            
+            if requested_branch_id:
+                if requested_branch_id not in branch_ids:
+                    raise HTTPException(status_code=403, detail="You do not have access to this branch.")
+                session.info["branch_ids"] = [requested_branch_id]
+            else:
+                session.info["branch_ids"] = branch_ids
+        else:
+            session.info["branch_ids"] = [requested_branch_id] if requested_branch_id else None
+            
         try:
             yield session
         except Exception:
@@ -766,7 +877,7 @@ async def get_tenant_db(current_user: User = Depends(get_current_user)):
             await session.close()
 
 
-async def get_tenant_sync_db(current_user: User = Depends(get_current_user)):
+async def get_tenant_sync_db(request: Request, current_user: User = Depends(get_current_user)):
     if _is_platform_admin(current_user) or not current_user.tenant_id:
         session = SyncSessionLocal()
         try:
@@ -781,6 +892,31 @@ async def get_tenant_sync_db(current_user: User = Depends(get_current_user)):
     database_name = await _ensure_operational_database_ready(current_user)
     _engine, session_factory, _created_runtime = _get_or_create_sync_runtime(database_name)
     session = session_factory()
+    
+    requested_branch = request.headers.get("x-branch-id")
+    requested_branch_id = int(requested_branch) if requested_branch and requested_branch.isdigit() else None
+    
+    if current_user.role and current_user.role.name not in PLATFORM_ADMIN_ROLES.union({"manager"}):
+        from app.models.branch import UserBranchAccess
+        from sqlalchemy import select
+        result = session.execute(
+            select(UserBranchAccess.branch_id).where(UserBranchAccess.user_id == current_user.id)
+        )
+        branch_ids = list(result.scalars().all())
+        if not branch_ids:
+            session.close()
+            raise HTTPException(status_code=403, detail="No branch access.")
+            
+        if requested_branch_id:
+            if requested_branch_id not in branch_ids:
+                session.close()
+                raise HTTPException(status_code=403, detail="You do not have access to this branch.")
+            session.info["branch_ids"] = [requested_branch_id]
+        else:
+            session.info["branch_ids"] = branch_ids
+    else:
+        session.info["branch_ids"] = [requested_branch_id] if requested_branch_id else None
+
     try:
         yield session
     except Exception:

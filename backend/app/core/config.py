@@ -180,6 +180,7 @@ class Settings(BaseSettings):
     def trusted_hosts(self) -> list[str]:
         hosts = set(self.platform_hosts)
         hosts.add(self.PRIMARY_PLATFORM_DOMAIN.lower())
+        hosts.add("*.localhost")
         suffix = self.tenant_domain_suffix
         if suffix:
             hosts.add(suffix)

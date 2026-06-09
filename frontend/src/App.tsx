@@ -20,6 +20,7 @@ import { FarmOperationsPage } from '@/features/farm/FarmOperationsPage'
 import { HousesPage } from '@/features/farm/HousesPage'
 import { InventoryPage } from '@/features/inventory/InventoryPage'
 import { InventoryTransfersPage } from '@/features/inventory/InventoryTransfersPage'
+import { BranchTransfersPage } from '@/features/inventory/BranchTransfersPage'
 import { CustomersPage } from '@/features/sales/CustomersPage'
 import { InvoicesPage } from '@/features/sales/InvoicesPage'
 import { OrdersPage } from '@/features/sales/OrdersPage'
@@ -28,6 +29,7 @@ import { SettingsConfigPage } from '@/features/settings/SettingsConfigPage'
 import { UsersPage } from '@/features/settings/users/UsersPage'
 import { RolesPage } from '@/features/settings/users/RolesPage'
 import { StoreLocationsPage } from '@/features/settings/StoreLocationsPage'
+import { BranchesPage } from '@/features/settings/branches/BranchesPage'
 import { SlaughterPage } from '@/features/slaughter/SlaughterPage'
 import { AppLayout } from '@/layouts/AppLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
@@ -55,8 +57,7 @@ export default function App() {
     <HostValidationGate>
       <AuthProvider>
       <Routes>
-        {/* Login — available on every domain */}
-        <Route path="/login" element={<><SEO title="Sign in to Farmexa" description="Sign in to your Farmexa workspace." canonicalPath="/login" robots="noindex,nofollow" /><LoginPage /></>} />
+        <Route path="/login" element={<LoginPage />} />
 
         {/* Platform-only public routes — tenant domains redirect straight to /login */}
         <Route path="/" element={<PlatformOnlyRoute element={<PublicHomePage />} />} />
@@ -252,6 +253,16 @@ export default function App() {
                 <ProtectedRoute permission="inventory:read">
                   <ModuleGuard moduleKey="inventory_movements">
                     <InventoryTransfersPage view="transfers" />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="branch-transfers"
+              element={
+                <ProtectedRoute permission="inventory:read">
+                  <ModuleGuard moduleKey="inventory_movements">
+                    <BranchTransfersPage />
                   </ModuleGuard>
                 </ProtectedRoute>
               }
@@ -556,6 +567,16 @@ export default function App() {
               }
             />
             <Route
+              path="branches"
+              element={
+                <ProtectedRoute permission="settings:read">
+                  <ModuleGuard moduleKey="settings">
+                    <BranchesPage />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="config"
               element={
                 <ProtectedRoute permission="settings:read">
@@ -753,6 +774,14 @@ function PlatformOnlyRoute({ element }: { element: ReactNode }) {
 
 function HostValidationGate({ children }: { children: ReactNode }) {
   const { hostResolution, isLoading, error } = useHostResolution()
+
+  if (isLoading && !hostResolution) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--app-bg)]">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-[var(--brand-primary)] dark:border-slate-700" />
+      </div>
+    )
+  }
 
   if (error || (hostResolution && !hostResolution.is_platform_host && !hostResolution.tenant_exists)) {
     return <WorkspaceNotFoundPage />

@@ -10,6 +10,7 @@ from app.modules.analytics.router import router as analytics_router
 from app.modules.farm.router import router as farm_router
 from app.modules.feed.router import router as feed_router
 from app.modules.inventory.router import router as inventory_router
+from app.modules.inventory.branch_transfer_router import router as branch_transfer_router
 from app.modules.slaughter.router import router as slaughter_router
 from app.modules.sales.router import router as sales_router
 from app.modules.finance.router import router as finance_router
@@ -32,6 +33,7 @@ api_router.include_router(analytics_router)
 api_router.include_router(farm_router)
 api_router.include_router(feed_router)
 api_router.include_router(inventory_router)
+api_router.include_router(branch_transfer_router)
 api_router.include_router(slaughter_router)
 api_router.include_router(sales_router)
 api_router.include_router(finance_router)

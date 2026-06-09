@@ -11,6 +11,7 @@ class Supplier(Base):
     __tablename__ = "suppliers"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    branch_id: Mapped[Optional[int]] = mapped_column(ForeignKey("branches.id"), index=True, nullable=True)
     name: Mapped[str] = mapped_column(String(150), index=True)
     supplier_type: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
     products_supplied: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -65,6 +66,7 @@ class FeedPurchase(Base):
     __tablename__ = "feed_purchases"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    branch_id: Mapped[Optional[int]] = mapped_column(ForeignKey("branches.id"), index=True, nullable=True)
     supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"))
     purchase_date: Mapped[date] = mapped_column(Date)
     invoice_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -138,6 +140,7 @@ class FeedProductionBatch(Base):
     __tablename__ = "feed_production_batches"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    branch_id: Mapped[Optional[int]] = mapped_column(ForeignKey("branches.id"), index=True, nullable=True)
     batch_number: Mapped[str] = mapped_column(String(60), unique=True, index=True)
     formulation_id: Mapped[int] = mapped_column(ForeignKey("feed_formulations.id"))
     output_item_id: Mapped[int] = mapped_column(ForeignKey("feed_items.id"))

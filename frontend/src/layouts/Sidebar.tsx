@@ -75,6 +75,7 @@ const FARM_NAV: NavGroup[] = [
       { label: 'Stock Movements', path: '/inventory/movements', permission: 'inventory:read', moduleKey: 'inventory_movements' },
       { label: 'Goods Issue (GIV)', path: '/inventory/giv', permission: 'giv:read', moduleKey: 'inventory_movements' },
       { label: 'Goods Received (GRN)', path: '/inventory/grn', permission: 'grn:read', moduleKey: 'inventory_movements' },
+      { label: 'Branch Transfers', path: '/inventory/branch-transfers', permission: 'inventory:read', moduleKey: 'inventory_movements' },
       { label: 'Store Locations', path: '/inventory/store-locations', permission: 'inventory:read', moduleKey: 'inventory_items' },
       { label: 'Low Stock Alerts', path: '/inventory/low-stock', permission: 'inventory:read', moduleKey: 'inventory_items' },
       { label: 'Medicine Stock', path: '/inventory/medicine', permission: 'inventory:read', moduleKey: 'medicine_supplies' },
@@ -139,6 +140,7 @@ const FARM_NAV: NavGroup[] = [
     icon: Settings,
     children: [
       { label: 'Farm Profile', path: '/settings/profile', moduleKey: 'farm_profile' },
+      { label: 'Branches', path: '/settings/branches', permission: 'settings:read', moduleKey: 'settings' },
       { label: 'Users', path: '/settings/users', permission: 'users:read', moduleKey: 'users' },
       { label: 'Roles', path: '/settings/roles', permission: 'settings:read', moduleKey: 'settings' },
       { label: 'Company Settings', path: '/settings/company', permission: 'settings:read', moduleKey: 'settings' },

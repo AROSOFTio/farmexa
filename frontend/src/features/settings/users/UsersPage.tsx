@@ -20,6 +20,7 @@ import {
   Users,
   X,
   XCircle,
+  Building2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
@@ -28,6 +29,7 @@ import { ROLE_LABELS } from '@/lib/branding'
 import { useAuth } from '@/features/auth/AuthContext'
 import { getErrorMessage } from '@/lib/errors'
 import { usersService } from '@/services/usersService'
+import { branchService } from '@/services/branchService'
 import { ApiError, Role, User } from '@/types'
 
 const optionalText = (maxLength: number) =>
@@ -574,6 +576,7 @@ export function UsersPage() {
   const [page, setPage] = useState(1)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editUser, setEditUser] = useState<User | null>(null)
+  const [assignBranchesUser, setAssignBranchesUser] = useState<User | null>(null)
   const [menuOpenId, setMenuOpenId] = useState<number | null>(null)
 
   const handleSearchChange = (value: string) => {
@@ -770,6 +773,16 @@ export function UsersPage() {
                                     className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
                                     onClick={() => {
                                       setMenuOpenId(null)
+                                      setAssignBranchesUser(user)
+                                    }}
+                                  >
+                                    <Building2 className="h-4 w-4 text-neutral-400" />
+                                    Assign branches
+                                  </button>
+                                  <button
+                                    className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+                                    onClick={() => {
+                                      setMenuOpenId(null)
                                       toggleActiveMutation.mutate({ id: user.id, is_active: !user.is_active })
                                     }}
                                   >
@@ -836,6 +849,133 @@ export function UsersPage() {
       <AnimatePresence>
         {editUser ? <EditStaffModal open={!!editUser} onClose={() => setEditUser(null)} roles={roles} user={editUser} /> : null}
       </AnimatePresence>
+      <AnimatePresence>
+        {assignBranchesUser ? <AssignBranchesModal open={!!assignBranchesUser} onClose={() => setAssignBranchesUser(null)} user={assignBranchesUser} /> : null}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function AssignBranchesModal({
+  open,
+  onClose,
+  user,
+}: {
+  open: boolean
+  onClose: () => void
+  user: User | null
+}) {
+  const qc = useQueryClient()
+  const [selectedBranches, setSelectedBranches] = useState<number[]>([])
+
+  const { data: allBranches = [], isLoading: loadingBranches } = useQuery({
+    queryKey: ['settings-branches'],
+    queryFn: branchService.getBranches,
+  })
+
+  // Load user's current branch access
+  useEffect(() => {
+    if (open && user) {
+      usersService.getUserBranches(user.id).then((ids) => {
+        setSelectedBranches(ids)
+      })
+    }
+  }, [open, user])
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('No user selected.')
+      return usersService.updateUserBranches(user.id, selectedBranches)
+    },
+    onSuccess: () => {
+      toast.success('Branch access updated.')
+      qc.invalidateQueries({ queryKey: ['users'] })
+      onClose()
+    },
+    onError: (error: AxiosError<ApiError>) => {
+      toast.error(getErrorMessage(error, 'Failed to update branch access.'))
+    },
+  })
+
+  if (!open || !user) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-ink-950/35" onClick={onClose} />
+      <motion.div
+        className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-modal"
+        style={{ maxHeight: 'calc(100vh - 96px)' }}
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.24, ease: [0.23, 1, 0.32, 1] }}
+      >
+        <div className="flex items-start justify-between border-b border-neutral-100 bg-neutral-50 px-8 py-5">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-neutral-900">Assign branches to {user.full_name}</h2>
+            <p className="mt-1 text-sm text-neutral-500">Select which physical locations this staff member can access.</p>
+          </div>
+          <button onClick={onClose} className="rounded-xl p-2 text-neutral-400 transition-all hover:bg-white hover:shadow-sm">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex max-h-[calc(100vh-216px)] flex-col gap-4 overflow-y-auto px-8 py-6">
+          <div className="space-y-4">
+            {loadingBranches ? (
+              <div className="flex justify-center p-4">
+                <Loader2 className="h-6 w-6 animate-spin text-brand-500" />
+              </div>
+            ) : allBranches.length === 0 ? (
+              <div className="rounded-2xl border border-neutral-100 bg-neutral-50 px-4 py-4 text-sm text-neutral-600 text-center">
+                No branches configured. Go to Settings &gt; Branches to add them.
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {allBranches.map((branch) => (
+                  <label key={branch.id} className="flex cursor-pointer items-start gap-3 rounded-xl border border-neutral-200 px-3 py-3 transition-colors hover:border-brand-300">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-500"
+                      value={branch.id}
+                      checked={selectedBranches.includes(branch.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedBranches([...selectedBranches, branch.id])
+                        } else {
+                          setSelectedBranches(selectedBranches.filter((id) => id !== branch.id))
+                        }
+                      }}
+                    />
+                    <div>
+                      <div className="font-medium text-neutral-800">{branch.name} <span className="text-neutral-400 font-normal">({branch.code})</span></div>
+                      {branch.location && <div className="text-xs leading-relaxed text-neutral-500">{branch.location}</div>}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+            <button type="button" onClick={onClose} className="btn-secondary w-full rounded-xl py-3 font-bold">
+              Close
+            </button>
+            <button
+              type="button"
+              disabled={mutation.isPending}
+              onClick={() => mutation.mutate()}
+              className="btn-primary w-full rounded-xl py-3 font-bold shadow-glow"
+            >
+              {mutation.isPending ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>
+              ) : (
+                <><CheckCircle className="h-4 w-4" /> Save branch access</>
+              )}
+            </button>
+          </div>
+        </div>
+      </motion.div>
     </div>
   )
 }

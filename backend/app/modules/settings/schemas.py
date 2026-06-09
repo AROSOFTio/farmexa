@@ -75,3 +75,26 @@ class MasterDataRequestOut(MasterDataRequestCreate):
 
     class Config:
         from_attributes = True
+
+class BranchBase(BaseModel):
+    name: str
+    code: str
+    location: Optional[str] = None
+    is_active: bool = True
+
+class BranchCreate(BranchBase):
+    pass
+
+class BranchUpdate(BaseModel):
+    name: Optional[str] = None
+    code: Optional[str] = None
+    location: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class BranchOut(BranchBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

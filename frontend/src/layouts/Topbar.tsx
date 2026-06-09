@@ -31,6 +31,7 @@ import { clsx } from 'clsx'
 import { toast } from 'sonner'
 import { useAuth } from '@/features/auth/AuthContext'
 import { ThemeSelector } from '@/components/ThemeControls'
+import { BranchSwitcher } from '@/components/BranchSwitcher'
 import api from '@/services/api'
 
 function titleFromPath(pathname: string) {
@@ -354,6 +355,10 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
       ) : null}
 
       <div className="flex-1" />
+
+      <div className="mr-2 hidden sm:block">
+        <BranchSwitcher />
+      </div>
 
       <div className="hidden w-full max-w-[200px] lg:block">
         <button

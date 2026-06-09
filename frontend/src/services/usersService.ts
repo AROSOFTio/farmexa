@@ -50,4 +50,13 @@ export const usersService = {
     const { data } = await api.put<string[]>(`/users/${userId}/permissions`, permissionCodes)
     return data
   },
+
+  async getUserBranches(userId: number): Promise<number[]> {
+    const { data } = await api.get<number[]>(`/settings/users/${userId}/branches`)
+    return data
+  },
+
+  async updateUserBranches(userId: number, branchIds: number[]): Promise<void> {
+    await api.post(`/settings/users/${userId}/branches`, { branch_ids: branchIds })
+  },
 }

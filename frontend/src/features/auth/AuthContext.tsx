@@ -17,6 +17,7 @@ interface AuthState {
   enabledModules: string[]
   isAuthenticated: boolean
   isLoading: boolean
+  activeBranch: { id: number; name: string; code: string } | null
 }
 
 interface AuthContextValue extends AuthState {
@@ -26,6 +27,7 @@ interface AuthContextValue extends AuthState {
   hasRole: (role: string) => boolean
   hasModuleAccess: (moduleKey: string) => boolean
   refetchMe: () => Promise<void>
+  setActiveBranch: (branch: { id: number; name: string; code: string } | null) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -41,12 +43,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     enabledModules: [],
     isAuthenticated: false,
     isLoading: true,
+    activeBranch: null,
   })
 
   const clearSession = useCallback(() => {
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
-    setState({ user: null, tenant: null, permissions: [], enabledModules: [], isAuthenticated: false, isLoading: false })
+    localStorage.removeItem('active_branch')
+    setState({ user: null, tenant: null, permissions: [], enabledModules: [], isAuthenticated: false, isLoading: false, activeBranch: null })
   }, [])
 
   const loadMe = useCallback(async () => {
@@ -56,7 +60,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null
     }
     const { user, permissions, enabled_modules, tenant } = await authService.getMe()
-    setState({ user, tenant, permissions, enabledModules: enabled_modules, isAuthenticated: true, isLoading: false })
+    
+    // Try to load last active branch from localStorage if not platform admin
+    let activeBranch = null
+    const savedBranch = localStorage.getItem('active_branch')
+    if (savedBranch) {
+      try {
+        activeBranch = JSON.parse(savedBranch)
+      } catch (e) {
+        // ignore
+      }
+    }
+    
+    setState({ user, tenant, permissions, enabledModules: enabled_modules, isAuthenticated: true, isLoading: false, activeBranch })
     return { user, permissions, enabledModules: enabled_modules, tenant }
   }, [clearSession])
 
@@ -127,8 +143,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadMe()
   }, [loadMe])
 
+  const setBranch = useCallback((branch: { id: number; name: string; code: string } | null) => {
+    if (branch) {
+      localStorage.setItem('active_branch', JSON.stringify(branch))
+    } else {
+      localStorage.removeItem('active_branch')
+    }
+    setState(prev => ({ ...prev, activeBranch: branch }))
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, hasPermission, hasRole, hasModuleAccess, refetchMe }}>
+    <AuthContext.Provider value={{ ...state, login, logout, hasPermission, hasRole, hasModuleAccess, refetchMe, setActiveBranch: setBranch }}>
       {children}
     </AuthContext.Provider>
   )

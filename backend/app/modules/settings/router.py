@@ -118,3 +118,54 @@ def resolve_master_data_request(
     db.commit()
     db.refresh(request)
     return request
+
+
+from app.models.branch import Branch, UserBranchAccess
+
+@router.get("/branches", response_model=List[schemas.BranchOut])
+def list_branches(
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("settings:read")),
+):
+    """List all branches. Global admins see all, staff see only what they have access to."""
+    query = db.query(Branch)
+    # The global ORM filter `_add_branch_filter` already limits this to allowed branches automatically
+    # but wait, the ORM filter only filters if `branch_id` exists. `Branch` has `id` instead of `branch_id`.
+    # Let's manually filter if the user is not a platform admin.
+    if current_user.role and current_user.role.name not in {"super_manager", "developer_admin", "manager"}:
+        allowed = db.query(UserBranchAccess.branch_id).filter(UserBranchAccess.user_id == current_user.id).all()
+        allowed_ids = [a[0] for a in allowed]
+        query = query.filter(Branch.id.in_(allowed_ids))
+    return query.order_by(Branch.name).all()
+
+@router.post("/branches", response_model=schemas.BranchOut)
+def create_branch(
+    payload: schemas.BranchCreate,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("settings:write")),
+):
+    branch = Branch(**payload.model_dump())
+    db.add(branch)
+    db.commit()
+    db.refresh(branch)
+    return branch
+
+@router.patch("/branches/{branch_id}", response_model=schemas.BranchOut)
+def update_branch(
+    branch_id: int,
+    payload: schemas.BranchUpdate,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("settings:write")),
+):
+    branch = db.get(Branch, branch_id)
+    if not branch:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Branch not found")
+    
+    update_data = payload.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(branch, key, value)
+    
+    db.commit()
+    db.refresh(branch)
+    return branch

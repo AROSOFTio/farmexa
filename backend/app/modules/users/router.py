@@ -167,3 +167,50 @@ async def update_user_permissions(
         .where(UserPermission.user_id == user_id)
     )
     return list(result.scalars().all())
+
+
+@router.get("/{user_id}/branches", response_model=list[int], summary="Get user's allowed branches")
+async def get_user_branches(
+    user_id: int,
+    current_user=Depends(require_permission("users:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get list of branch IDs assigned to a user."""
+    from sqlalchemy import select
+    from app.models.branch import UserBranchAccess
+    
+    result = await db.execute(
+        select(UserBranchAccess.branch_id).where(UserBranchAccess.user_id == user_id)
+    )
+    return list(result.scalars().all())
+
+
+@router.put("/{user_id}/branches", response_model=list[int], summary="Update user's allowed branches")
+async def update_user_branches(
+    user_id: int,
+    branch_ids: list[int],
+    current_user=Depends(require_permission("users:write")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set the allowed branches for a user (replaces existing mapping)."""
+    from sqlalchemy import delete, select
+    from app.models.branch import UserBranchAccess
+    from app.models.user import User
+    
+    user_result = await db.execute(select(User).where(User.id == user_id))
+    user = user_result.scalar_one_or_none()
+    if not user:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    await db.execute(delete(UserBranchAccess).where(UserBranchAccess.user_id == user_id))
+    
+    for branch_id in branch_ids:
+        db.add(UserBranchAccess(user_id=user_id, branch_id=branch_id))
+    
+    await db.commit()
+    
+    result = await db.execute(
+        select(UserBranchAccess.branch_id).where(UserBranchAccess.user_id == user_id)
+    )
+    return list(result.scalars().all())

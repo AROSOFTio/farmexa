@@ -9,12 +9,25 @@ export const api: AxiosInstance = axios.create({
   timeout: 30_000,
 })
 
-// ── Auth token injection ──────────────────────────────────────
+// ── Auth token & Branch injection ──────────────────────────────────────
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  
+  const activeBranchStr = localStorage.getItem('active_branch')
+  if (activeBranchStr) {
+    try {
+      const activeBranch = JSON.parse(activeBranchStr)
+      if (activeBranch?.id) {
+        config.headers['X-Branch-ID'] = activeBranch.id.toString()
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+  
   return config
 })
 

@@ -32,6 +32,7 @@ class PoultryHouse(Base):
     __tablename__ = "poultry_houses"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    branch_id: Mapped[Optional[int]] = mapped_column(ForeignKey("branches.id"), index=True, nullable=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
     capacity: Mapped[int] = mapped_column(Integer)
     status: Mapped[HouseStatus] = mapped_column(db_enum(HouseStatus, name="housestatus"), default=HouseStatus.ACTIVE)
@@ -65,6 +66,7 @@ class Batch(Base):
     __tablename__ = "batches"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    branch_id: Mapped[Optional[int]] = mapped_column(ForeignKey("branches.id"), index=True, nullable=True)
     batch_number: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     house_id: Mapped[int] = mapped_column(ForeignKey("poultry_houses.id"))
     section_id: Mapped[Optional[int]] = mapped_column(

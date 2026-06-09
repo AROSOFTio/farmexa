@@ -38,6 +38,7 @@ class StockItem(Base):
     __tablename__ = "stock_items"
 
     id = Column(Integer, primary_key=True, index=True)
+    branch_id = Column(Integer, ForeignKey("branches.id"), index=True, nullable=True)
     sku = Column(String, unique=True, index=True, nullable=True)
     name = Column(String, index=True, nullable=False)
     category = Column(db_enum(StockCategory, name="stockcategory"), nullable=False)
@@ -59,6 +60,7 @@ class StockMovement(Base):
     __tablename__ = "stock_movements"
 
     id = Column(Integer, primary_key=True, index=True)
+    branch_id = Column(Integer, ForeignKey("branches.id"), index=True, nullable=True)
     item_id = Column(Integer, ForeignKey("stock_items.id"), nullable=False)
     movement_type = Column(db_enum(MovementType, name="movementtype"), nullable=False)
     quantity = Column(Float, nullable=False)
@@ -110,6 +112,7 @@ class StoreLocation(Base):
     __tablename__ = "store_locations"
 
     id = Column(Integer, primary_key=True, index=True)
+    branch_id = Column(Integer, ForeignKey("branches.id"), index=True, nullable=True)
     name = Column(String, unique=True, index=True, nullable=False)
     code = Column(String, unique=True, index=True, nullable=False)
     type = Column(db_enum(StoreLocationType, name="storelocationtype"), nullable=False, default=StoreLocationType.OTHER)
