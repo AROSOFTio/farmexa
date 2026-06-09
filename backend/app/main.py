@@ -5,6 +5,7 @@ Farmexa ERP FastAPI application entry point.
 from contextlib import asynccontextmanager
 import json
 from pathlib import Path
+import re
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
