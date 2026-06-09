@@ -32,10 +32,6 @@ CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
 
 [[ports]]
 localPort = 5000
-externalPort = 5000
-
-[[ports]]
-localPort = 6379
 externalPort = 80
 
 [[ports]]
@@ -74,10 +70,10 @@ waitForPort = 8000
 name = "Start application"
 author = "agent"
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd frontend && npm run dev"
 waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
