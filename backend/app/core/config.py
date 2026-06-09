@@ -110,6 +110,17 @@ class Settings(BaseSettings):
     ENABLE_AUTOMATIC_SSL_PROVISIONING: bool = False
     PAYMENT_CALLBACK_SECRET: str | None = None
 
+    PESAPAL_CONSUMER_KEY: str | None = None
+    PESAPAL_CONSUMER_SECRET: str | None = None
+    PESAPAL_ENVIRONMENT: str = "production"
+    PESAPAL_IPN_ID: str | None = None
+
+    CUSTOM_DOMAIN_ANNUAL_PRICE: float = 25.0
+    CUSTOM_DOMAIN_CURRENCY: str = "USD"
+
+    # Redis auth password (also embedded in REDIS_URL, but kept here for clarity)
+    REDIS_PASSWORD: str | None = None
+
     SEED_ADMIN_EMAIL: str = "admin@farmexa.local"
     SEED_ADMIN_PASSWORD: str = "Admin@2026!"
     SEED_ADMIN_FULL_NAME: str = "Farmexa System Administrator"
