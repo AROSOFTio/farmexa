@@ -50,6 +50,8 @@ app = FastAPI(
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(TenantDomainResolverMiddleware)
 
+register_exception_handlers(app)
+
 origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
 if settings.ALLOWED_ORIGINS.strip().startswith("["):
     origins = json.loads(settings.ALLOWED_ORIGINS)

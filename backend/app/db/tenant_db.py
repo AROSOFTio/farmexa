@@ -254,33 +254,17 @@ def _apply_runtime_schema_patches(engine: Engine) -> None:
     Base.metadata.tables["branch_transfers"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["branch_transfer_items"].create(bind=engine, checkfirst=True)
     inspector = inspect(engine)
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+        type_exists = conn.execute(text("SELECT 1 FROM pg_type WHERE typname = 'referencedatatype'")).scalar()
+        if type_exists:
+            values = ['bird_type', 'house_section_type', 'feed_type', 'medicine_type', 'egg_grade', 'slaughter_part', 'byproduct_type', 'expense_category', 'payment_method', 'unit_of_measure', 'customer_type']
+            for val in values:
+                try:
+                    conn.execute(text(f"ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS '{val}'"))
+                except Exception:
+                    pass
+
     with engine.begin() as connection:
-        connection.execute(
-            text(
-                """
-                DO $$
-                BEGIN
-                    IF EXISTS (
-                        SELECT 1
-                        FROM pg_type
-                        WHERE typname = 'referencedatatype'
-                    ) THEN
-                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'bird_type';
-                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'house_section_type';
-                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'feed_type';
-                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'medicine_type';
-                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'egg_grade';
-                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'slaughter_part';
-                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'byproduct_type';
-                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'expense_category';
-                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'payment_method';
-                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'unit_of_measure';
-                        ALTER TYPE referencedatatype ADD VALUE IF NOT EXISTS 'customer_type';
-                    END IF;
-                END $$;
-                """
-            )
-        )
         connection.execute(
             text(
                 """
@@ -649,12 +633,12 @@ def _seed_default_inventory_items(session: Session) -> None:
 
 def _seed_default_branch(session: Session, tenant_snapshot: dict[str, Any]) -> None:
     # Create Head Office if no branch exists
-    branch = session.query(Branch).filter(Branch.code == "HQ").first()
+    branch = session.query(Branch).filter(Branch.branch_code == "HQ").first()
     if branch is None:
         branch = Branch(
             name="Head Office",
-            code="HQ",
-            location=tenant_snapshot.get("address") or "Headquarters",
+            branch_code="HQ",
+            address=tenant_snapshot.get("address") or "Headquarters",
             is_active=True,
         )
         session.add(branch)
