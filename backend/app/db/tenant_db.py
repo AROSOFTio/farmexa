@@ -26,7 +26,7 @@ from app.models.feed import FeedCategory, FeedItem
 from app.models.farm import PoultryHouse, PoultryHouseSection  # noqa: F401
 from app.models.inventory import MovementType, StockCategory, StockItem, StockMovement
 from app.models.tenant import Tenant
-from app.models.branch import Branch
+from app.models.branch import Branch, BranchType
 from app.models.user import User
 from app.services.inventory_coordinator import ReferenceType
 from app.services.stock_sku import generate_unique_sku
@@ -636,10 +636,13 @@ def _seed_default_branch(session: Session, tenant_snapshot: dict[str, Any]) -> N
     branch = session.query(Branch).filter(Branch.branch_code == "HQ").first()
     if branch is None:
         branch = Branch(
+            tenant_id=tenant_snapshot["id"],
             name="Head Office",
             branch_code="HQ",
+            type=BranchType.HEAD_OFFICE,
             address=tenant_snapshot.get("address") or "Headquarters",
             is_active=True,
+            is_default=True,
         )
         session.add(branch)
         session.flush()
@@ -822,7 +825,7 @@ async def get_tenant_db(request: Request, current_user: User = Depends(get_curre
         requested_branch = request.headers.get("x-branch-id")
         requested_branch_id = int(requested_branch) if requested_branch and requested_branch.isdigit() else None
 
-        if current_user.role and current_user.role.name not in PLATFORM_ADMIN_ROLES.union({"manager"}):
+        if current_user.role and current_user.role.name not in PLATFORM_ADMIN_ROLES.union({"manager", "tenant_admin"}):
             from app.models.branch import UserBranchAccess
             from sqlalchemy import select
             result = await session.execute(
@@ -869,7 +872,7 @@ async def get_tenant_sync_db(request: Request, current_user: User = Depends(get_
     requested_branch = request.headers.get("x-branch-id")
     requested_branch_id = int(requested_branch) if requested_branch and requested_branch.isdigit() else None
     
-    if current_user.role and current_user.role.name not in PLATFORM_ADMIN_ROLES.union({"manager"}):
+    if current_user.role and current_user.role.name not in PLATFORM_ADMIN_ROLES.union({"manager", "tenant_admin"}):
         from app.models.branch import UserBranchAccess
         from sqlalchemy import select
         result = session.execute(
