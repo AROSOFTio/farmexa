@@ -9,7 +9,7 @@ from starlette.responses import JSONResponse
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.models.tenant import DomainStatus, TenantDomain, TenantStatus
-from app.utils.domains import is_infrastructure_host, is_platform_host, normalize_host
+from app.utils.domains import is_infrastructure_host, is_platform_host, normalize_host, tenant_domain_suffix
 
 
 WORKSPACE_NOT_FOUND = {
@@ -55,6 +55,17 @@ class TenantDomainResolverMiddleware(BaseHTTPMiddleware):
         # cp.*, mail.*, courses.*, etc. are non-Farmexa system services.
         # Return a plain 404 with no Farmexa HTML so they stay invisible.
         if is_infrastructure_host(resolved_host):
+            return JSONResponse(HOST_NOT_SERVED, status_code=404)
+
+        # ── 0b. Root / apex domain — never served by Farmexa ─────────────────
+        # arosoftlabs.com and www.arosoftlabs.com are the Arosoft Labs main
+        # website, not Farmexa.  Reject them before platform or tenant checks
+        # so they never receive Farmexa content and return a clean 404.
+        _suffix = tenant_domain_suffix()
+        if _suffix and (
+            resolved_host == _suffix
+            or resolved_host == f"www.{_suffix}"
+        ):
             return JSONResponse(HOST_NOT_SERVED, status_code=404)
 
         # ── 1. Platform hosts (farm.arosoftlabs.com, localhost, …) ──────────
