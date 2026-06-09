@@ -6,7 +6,7 @@ from typing import Any
 import httpx
 
 from app.core.config import settings
-from app.utils.domains import normalize_host, is_platform_host
+from app.utils.domains import normalize_host, is_platform_host, is_infrastructure_host, is_reserved_slug
 
 
 @dataclass
@@ -42,6 +42,11 @@ async def create_tenant_dns_record(host: str, system_settings: Any | None = None
     normalized = normalize_host(host)
     if is_platform_host(normalized):
         return CloudflareResult(ok=False, status="failed", message="Host is a reserved platform host and cannot be auto-provisioned.")
+    if is_infrastructure_host(normalized):
+        return CloudflareResult(ok=False, status="failed", message="Host is a reserved infrastructure subdomain and cannot be auto-provisioned.")
+    _subdomain = normalized.split(".")[0] if normalized else ""
+    if is_reserved_slug(_subdomain):
+        return CloudflareResult(ok=False, status="failed", message=f"'{_subdomain}' is a reserved slug and cannot be auto-provisioned.")
     if not api_token or not zone_id:
         return CloudflareResult(
             ok=False,

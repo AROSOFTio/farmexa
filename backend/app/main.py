@@ -53,9 +53,14 @@ origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if o
 if settings.ALLOWED_ORIGINS.strip().startswith("["):
     origins = json.loads(settings.ALLOWED_ORIGINS)
 
+# Also allow all *.{tenant_domain_suffix} origins so tenant subdomains can make API calls.
+_cf_suffix = re.escape(settings.tenant_domain_suffix)
+_tenant_origin_regex = rf"^https?://[a-zA-Z0-9][a-zA-Z0-9-]+\.{_cf_suffix}(:\d+)?$"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=_tenant_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -121,7 +121,7 @@ services:
     container_name: farmexa_adminer
     restart: unless-stopped
     ports:
-      - "4003:8080"
+      - "127.0.0.1:4003:8080"  # bind localhost only — access via SSH tunnel
     environment:
       ADMINER_DEFAULT_SERVER: db
       ADMINER_DESIGN: pepa-linha-dark

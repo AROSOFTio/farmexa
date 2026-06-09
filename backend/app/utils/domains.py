@@ -91,6 +91,7 @@ RESERVED_SLUGS = {
     "api",
     "admin",
     "support",
+    "myfarm",    # CNAME target subdomain — must not be a tenant slug
 }
 
 
