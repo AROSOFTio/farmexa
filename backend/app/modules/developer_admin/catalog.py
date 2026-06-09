@@ -45,6 +45,7 @@ DEFAULT_MODULES = [
     {"key": "batch_costing", "name": "Batch Costing", "category": "finance", "description": "Batch cost allocation", "is_core": False},
     {"key": "profit_loss", "name": "Profit & Loss", "category": "finance", "description": "Profit and loss reporting", "is_core": False},
     {"key": "cash_flow", "name": "Cash Flow", "category": "finance", "description": "Cash flow reporting", "is_core": False},
+    {"key": "accounting", "name": "Accounting", "category": "finance", "description": "Chart of accounts and journals", "is_core": False},
     {"key": "compliance_documents", "name": "Compliance Documents", "category": "compliance", "description": "Licences, permits, and tax documents", "is_core": False},
     {"key": "compliance_alerts", "name": "Compliance Alerts", "category": "compliance", "description": "Expiry and renewal alerts", "is_core": False},
     {"key": "reports", "name": "Reports", "category": "reports", "description": "Operational and management reports", "is_core": True},

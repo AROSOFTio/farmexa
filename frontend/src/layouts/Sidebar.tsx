@@ -106,12 +106,12 @@ const FARM_NAV: NavGroup[] = [
     label: 'Accounting',
     icon: CreditCard,
     children: [
-      { label: 'Chart of Accounts', path: '/accounting/coa', permission: 'accounting:read', moduleKey: 'accounting' },
-      { label: 'Journal Entries', path: '/accounting/journals', permission: 'accounting:read', moduleKey: 'accounting' },
-      { label: 'Fiscal Years', path: '/accounting/settings', permission: 'accounting:write', moduleKey: 'accounting' },
-      { label: 'Quick Expenses', path: '/finance/expenses', permission: 'finance:read', moduleKey: 'expenses' },
-      { label: 'Quick Income', path: '/finance/incomes', permission: 'finance:read', moduleKey: 'income' },
-      { label: 'Profit & Loss', path: '/reports/profit-loss', permission: 'reports:read', moduleKey: 'profit_loss' },
+      { label: 'Chart of Accounts', path: '/accounting/coa', permission: 'accounting:read' },
+      { label: 'Journal Entries', path: '/accounting/journals', permission: 'accounting:read' },
+      { label: 'Fiscal Years', path: '/accounting/settings', permission: 'accounting:write' },
+      { label: 'Quick Expenses', path: '/finance/expenses', permission: 'finance:read' },
+      { label: 'Quick Income', path: '/finance/incomes', permission: 'finance:read' },
+      { label: 'Profit & Loss', path: '/reports/profit-loss', permission: 'reports:read' },
     ],
   },
   {
@@ -178,7 +178,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   const { hasPermission, hasModuleAccess, tenant, user } = useAuth()
   const { settings } = usePlatformSettings()
   const isDevAdmin = PLATFORM_ADMIN_ROLES.has(user?.role?.name ?? '')
-  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(['Farm Operations', 'Feed']))
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set([]))
 
   const canSee = (item: NavLeaf | NavGroup) => {
     const allowedByPermission = !item.permission || hasPermission(item.permission)

@@ -107,7 +107,7 @@ class MortalityLogBase(BaseModel):
 
 
 class MortalityLogCreate(MortalityLogBase):
-    pass
+    batch_id: Optional[int] = None
 
 
 class MortalityLogOut(MortalityLogBase):
@@ -132,7 +132,7 @@ class VaccinationLogBase(BaseModel):
 
 
 class VaccinationLogCreate(VaccinationLogBase):
-    pass
+    batch_id: Optional[int] = None
 
 
 class VaccinationLogUpdate(BaseModel):
@@ -162,7 +162,7 @@ class GrowthLogBase(BaseModel):
 
 
 class GrowthLogCreate(GrowthLogBase):
-    pass
+    batch_id: Optional[int] = None
 
 
 class GrowthLogOut(GrowthLogBase):
@@ -185,7 +185,7 @@ class MedicationAdministrationBase(BaseModel):
 
 
 class MedicationAdministrationCreate(MedicationAdministrationBase):
-    pass
+    batch_id: Optional[int] = None
 
 
 class MedicationAdministrationUpdate(BaseModel):
