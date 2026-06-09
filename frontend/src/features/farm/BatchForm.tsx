@@ -48,6 +48,8 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
   const { hasPermission } = useAuth()
   const [isReferenceModalOpen, setIsReferenceModalOpen] = useState(false)
   const [isHouseModalOpen, setIsHouseModalOpen] = useState(false)
+  const [editHouseId, setEditHouseId] = useState<number | undefined>(undefined)
+  const [editHouseInitialValues, setEditHouseInitialValues] = useState<any>(undefined)
   const [referenceModalType, setReferenceModalType] = useState<FarmReferenceManagerType['type']>('batch_breed')
   const canManageFarm = hasPermission('farm:write')
 
@@ -167,21 +169,47 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
             ) : null}
           </div>
 
-          {selectedHouse?.sections?.length > 0 && (
+          {selectedHouse && (
             <div className="sm:col-span-2">
-              <label className="form-label">Section (Optional)</label>
-              <select
-                {...register('section_id')}
-                className={clsx('form-input', errors.section_id && 'border-red-500 focus:ring-red-500/20')}
-                onChange={(e) => setValue('section_id', e.target.value === '' ? null : parseInt(e.target.value, 10))}
-              >
-                <option value="">None (Use entire house)</option>
-                {selectedHouse.sections.map((s: any) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.section_type}) — {s.available_capacity ?? 0} available
-                  </option>
-                ))}
-              </select>
+              <label className="form-label">Section</label>
+              {selectedHouse.sections?.length > 0 ? (
+                <select
+                  {...register('section_id')}
+                  className={clsx('form-input', errors.section_id && 'border-red-500 focus:ring-red-500/20')}
+                  onChange={(e) => setValue('section_id', e.target.value === '' ? null : parseInt(e.target.value, 10))}
+                >
+                  <option value="">None — place in entire house</option>
+                  {selectedHouse.sections.map((s: any) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.section_type}) — {s.available_capacity ?? 0} available
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="flex items-center gap-3 rounded-[10px] border border-dashed border-amber-200 bg-amber-50/40 px-4 py-3 text-sm text-amber-800">
+                  <span className="flex-1">
+                    This house has no sections. The batch will occupy the entire house.
+                    {canManageFarm && (
+                      <button
+                        type="button"
+                        className="ml-2 font-semibold underline underline-offset-2 hover:text-amber-900 transition-colors"
+                        onClick={() => {
+                          setEditHouseId(selectedHouse.id)
+                          setEditHouseInitialValues({
+                            name: selectedHouse.name,
+                            capacity: selectedHouse.capacity,
+                            status: selectedHouse.status ?? 'active',
+                            sections: selectedHouse.sections ?? [],
+                          })
+                          setIsHouseModalOpen(true)
+                        }}
+                      >
+                        Add sections to this house →
+                      </button>
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -313,10 +341,22 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
 
       <Modal
         isOpen={isHouseModalOpen}
-        onClose={() => setIsHouseModalOpen(false)}
-        title="Add poultry house"
+        onClose={() => {
+          setIsHouseModalOpen(false)
+          setEditHouseId(undefined)
+          setEditHouseInitialValues(undefined)
+        }}
+        title={editHouseId ? 'Edit house sections' : 'Add poultry house'}
       >
-        <HouseForm onSuccess={() => setIsHouseModalOpen(false)} />
+        <HouseForm
+          houseId={editHouseId}
+          initialValues={editHouseInitialValues}
+          onSuccess={() => {
+            setIsHouseModalOpen(false)
+            setEditHouseId(undefined)
+            setEditHouseInitialValues(undefined)
+          }}
+        />
       </Modal>
     </form>
   )
