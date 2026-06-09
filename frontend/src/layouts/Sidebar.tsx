@@ -348,40 +348,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           })}
         </nav>
 
-        {/* ── Workspace / Trial Panel ── */}
-        {!isDevAdmin ? (
-          <div className="shrink-0 border-t border-white/[0.07] p-3">
-            <div className="rounded-[10px] border border-[rgba(var(--brand-primary-rgb),0.28)] bg-[rgba(var(--brand-primary-rgb),0.06)] px-3.5 py-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="truncate text-[11.5px] font-bold text-white/90">{workspaceName}</div>
-                  <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--brand-primary)]">
-                    {tenant?.plan ?? 'Trial'} plan
-                  </div>
-                </div>
-                <div className="shrink-0 rounded-[7px] border border-[rgba(var(--brand-primary-rgb),0.3)] bg-[rgba(var(--brand-primary-rgb),0.1)] px-2 py-1 text-center">
-                  <div className="text-[15px] font-extrabold leading-none text-white">{trialDays}</div>
-                  <div className="mt-0.5 text-[8.5px] font-bold uppercase tracking-wider text-white/45">days</div>
-                </div>
-              </div>
-
-              <div className="mt-3 h-[3px] overflow-hidden rounded-full bg-white/[0.08]">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-primary-hover)] transition-all duration-500"
-                  style={{ width: `${Math.max(Math.min((trialDays / 14) * 100, 100), 4)}%` }}
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => navigate('/subscription/upgrade')}
-                className="mt-3 flex h-8 w-full items-center justify-center rounded-[7px] bg-[var(--brand-primary)] text-[11.5px] font-bold text-[#111827] transition-opacity hover:opacity-90"
-              >
-                Upgrade to Pro
-              </button>
-            </div>
-          </div>
-        ) : null}
+        {/* Sidebar Footer (Optional) */}
       </aside>
     </>
   )
