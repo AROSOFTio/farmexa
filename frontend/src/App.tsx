@@ -758,27 +758,5 @@ function HostValidationGate({ children }: { children: ReactNode }) {
     return <WorkspaceNotFoundPage />
   }
 
-  if (isLoading || !hostResolution) {
-    return (
-      <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-[var(--text-strong)]">Loading…</h2>
-          <p className="text-sm text-[var(--text-muted)] mt-2">Fetching platform and workspace status</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-[var(--text-strong)]">Loading…</h2>
-          <p className="text-sm text-[var(--text-muted)] mt-2">Fetching platform settings</p>
-        </div>
-      </div>
-    )
-  }
-
   return <>{children}</>
 }
