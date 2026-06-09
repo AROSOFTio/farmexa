@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { AlertTriangle, ArrowLeft, Eye, EyeOff, LogIn, UserPlus } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Eye, EyeOff, LogIn, UserPlus } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -23,6 +23,13 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>
 
+const HERO_FEATURES = [
+  'Real-time flock, mortality & vaccination tracking',
+  'Feed mill, inventory & stock management',
+  'Integrated sales, invoicing & finance',
+  'Compliance documents with expiry alerts',
+]
+
 export function LoginPage() {
   const { login } = useAuth()
   const { settings } = usePlatformSettings()
@@ -30,6 +37,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
+
   const isPlatformHost = hostResolution?.is_platform_host ?? false
   const showRegisterAction = isPlatformHost
   const currentHost = hostResolution?.is_platform_host
@@ -40,9 +48,7 @@ export function LoginPage() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-  })
+  } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) })
 
   const onSubmit = async (values: LoginFormValues) => {
     setIsSubmitting(true)
@@ -57,120 +63,231 @@ export function LoginPage() {
   }
 
   return (
-    <div
-      className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8"
-      style={{
-        backgroundImage:
-          'linear-gradient(135deg, rgba(11,16,24,0.72), rgba(11,16,24,0.34)), url(/images/auth/farmexa-login-background.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
-    >
-      <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
-        <Link to="/" className="theme-icon-button" aria-label="Back to home" title="Back to home">
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <ThemeToggle />
-      </div>
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28 }}
-        className="auth-panel relative z-10 w-full max-w-[430px] overflow-hidden p-5 shadow-[0_30px_90px_-50px_rgba(0,0,0,.58)] sm:p-8"
-      >
-        <div className="mx-auto mb-6 flex justify-center">
-          <BrandMark />
-        </div>
-        <div className="text-center">
-          <div className="auth-eyebrow">Secure workspace access</div>
-          <h1 className="mt-3 text-[1.65rem] font-bold leading-tight text-ink-900">Sign in to {settings.system_name}</h1>
-          <p className="mt-2 text-[13.5px] leading-6 text-ink-500">Use your farm workspace account to continue.</p>
-        </div>
+    <div className="flex min-h-screen overflow-hidden">
 
-        {isPlatformHost ? (
-          <div className="mt-5 flex items-start gap-3 rounded-xl border border-amber-300/60 bg-amber-50/80 px-4 py-3 text-[13px] leading-relaxed text-amber-900 dark:border-amber-500/30 dark:bg-amber-900/20 dark:text-amber-300">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-            <span>
-              <strong>Platform administrator access only.</strong> If you are a tenant user, please sign in through your provisioned workspace domain (e.g.{' '}
-              <em>yourfarm.arosoftlabs.com</em>).
-            </span>
+      {/* ── LEFT: Visual Hero Panel ──────────────────────────────────── */}
+      <div className="relative hidden lg:flex lg:w-[56%] xl:w-[58%] flex-col overflow-hidden">
+        {/* Video layer — falls back silently if file missing */}
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 h-full w-full object-cover"
+        >
+          <source src="/videos/farmexa-hero.mp4" type="video/mp4" />
+        </video>
+        {/* Static background image (always visible, video covers it when loaded) */}
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: 'url(/images/auth/farmexa-login-background.png)' }}
+        />
+        {/* Dark gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#080e1a]/90 via-[#0d1829]/75 to-[#111827]/82" />
+
+        {/* Content positioned over the visual */}
+        <div className="relative z-10 flex h-full flex-col justify-between p-10 xl:p-14">
+          {/* Brand mark */}
+          <div>
+            <BrandMark compact light />
           </div>
-        ) : null}
 
-            <form onSubmit={handleSubmit(onSubmit)} className="mt-7 space-y-5">
-              <div>
-                <label htmlFor="email" className="form-label">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  className="form-input"
-                  {...register('email')}
-                />
-                {errors.email ? <p className="form-error">{errors.email.message}</p> : null}
+          {/* Hero copy */}
+          <div className="max-w-[480px]">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-1.5 backdrop-blur-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-300">
+                Poultry ERP Platform
+              </span>
+            </div>
+
+            <h1 className="text-[2.8rem] font-extrabold leading-[1.08] tracking-tight text-white xl:text-[3.4rem]">
+              Farm management<br />
+              <span className="text-amber-400">that stays</span><br />
+              organized.
+            </h1>
+
+            <p className="mt-5 text-[15px] leading-relaxed text-white/65">
+              Farmexa connects your entire operation — from feed mill to sales invoice — in one secure, fast workspace.
+            </p>
+
+            <ul className="mt-8 space-y-3.5">
+              {HERO_FEATURES.map((feature) => (
+                <li key={feature} className="flex items-center gap-3.5">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-400/20 ring-1 ring-amber-400/30">
+                    <CheckCircle2 className="h-3 w-3 text-amber-400" />
+                  </span>
+                  <span className="text-[13.5px] font-medium text-white/78">{feature}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Footer */}
+          <div className="text-[11.5px] text-white/32">
+            © {new Date().getFullYear()} Arosoft Labs — Farmexa Poultry ERP
+          </div>
+        </div>
+      </div>
+
+      {/* ── RIGHT: Login Form Panel ───────────────────────────────────── */}
+      <div className="relative flex flex-1 flex-col items-center justify-center bg-[var(--app-bg)] px-5 py-14 sm:px-8">
+        {/* Top-right utility buttons */}
+        <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+          <Link
+            to="/"
+            className="theme-icon-button"
+            aria-label="Back to home"
+            title="Back to home"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5" /><path d="m12 5-7 7 7 7" />
+            </svg>
+          </Link>
+          <ThemeToggle />
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-[400px]"
+        >
+          {/* Mobile-only logo */}
+          <div className="mb-8 flex justify-center lg:hidden">
+            <BrandMark />
+          </div>
+
+          {/* Card */}
+          <div className="overflow-hidden rounded-[18px] border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-[0_12px_48px_-16px_rgba(15,23,42,0.14)]">
+            {/* Card header strip */}
+            <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-soft)] px-7 py-5">
+              <div className="mb-1.5 text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-[var(--brand-primary)]">
+                Secure Workspace Access
               </div>
+              <h1 className="text-[1.5rem] font-extrabold leading-tight text-[var(--text-strong)]">
+                Sign in to {settings.system_name}
+              </h1>
+              <p className="mt-1 text-[13px] text-[var(--text-muted)]">
+                Use your farm workspace account to continue.
+              </p>
+            </div>
 
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <label htmlFor="password" className="form-label mb-0">
-                    Password
-                  </label>
-                  <a
-                    href={`https://${currentHost}/forgot-password`}
-                    className="text-[12px] font-bold text-[var(--brand-primary)]"
-                  >
-                    Forgot password?
-                  </a>
+            {/* Card body */}
+            <div className="px-7 py-6">
+              {isPlatformHost ? (
+                <div className="mb-5 flex items-start gap-3 rounded-[10px] border border-amber-300/60 bg-amber-50/80 px-4 py-3 text-[12.5px] leading-relaxed text-amber-900 dark:border-amber-500/30 dark:bg-amber-900/20 dark:text-amber-300">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                  <span>
+                    <strong>Platform administrator access only.</strong>{' '}
+                    Tenant users: sign in at your workspace domain (e.g.{' '}
+                    <em>yourfarm.arosoftlabs.com</em>).
+                  </span>
                 </div>
-                <div className="relative">
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    className="form-input pr-12"
-                    {...register('password')}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((current) => !current)}
-                    className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-[8px] text-ink-400 transition-colors hover:bg-neutral-100 hover:text-ink-700"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
-                  </button>
-                </div>
-                {errors.password ? <p className="form-error">{errors.password.message}</p> : null}
-              </div>
-
-              <button type="submit" disabled={isSubmitting} className="btn-primary btn-lg w-full">
-                {isSubmitting ? (
-                  <>
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-                    Signing in...
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="h-4.5 w-4.5" />
-                    Sign in
-                  </>
-                )}
-              </button>
-
-              {showRegisterAction ? (
-                <button type="button" onClick={() => setIsRegistrationOpen(true)} className="btn-secondary btn-lg w-full">
-                  <UserPlus className="h-4.5 w-4.5" />
-                  Start Free Trial
-                </button>
               ) : null}
-              <a href={`https://${currentHost}`} className="btn-ghost w-full">
-                Back to home
-              </a>
-            </form>
-      </motion.div>
-      <RegistrationWizardModal isOpen={isRegistrationOpen} onClose={() => setIsRegistrationOpen(false)} />
+
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div>
+                  <label htmlFor="email" className="form-label">
+                    Email address
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    className="form-input"
+                    placeholder="you@yourfarm.com"
+                    {...register('email')}
+                  />
+                  {errors.email ? <p className="form-error">{errors.email.message}</p> : null}
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <label htmlFor="password" className="form-label mb-0">
+                      Password
+                    </label>
+                    <a
+                      href={`https://${currentHost}/forgot-password`}
+                      className="text-[12px] font-semibold text-[var(--brand-primary)] hover:underline"
+                    >
+                      Forgot password?
+                    </a>
+                  </div>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      className="form-input pr-12"
+                      placeholder="••••••••"
+                      {...register('password')}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((c) => !c)}
+                      className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-[8px] text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-soft)] hover:text-[var(--text-strong)]"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {errors.password ? <p className="form-error">{errors.password.message}</p> : null}
+                </div>
+
+                <div className="pt-1 space-y-3">
+                  <button type="submit" disabled={isSubmitting} className="btn-primary btn-lg w-full">
+                    {isSubmitting ? (
+                      <>
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/25 border-t-white" />
+                        Signing in…
+                      </>
+                    ) : (
+                      <>
+                        <LogIn className="h-4 w-4" />
+                        Sign in
+                      </>
+                    )}
+                  </button>
+
+                  {showRegisterAction ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsRegistrationOpen(true)}
+                      className="btn-secondary btn-lg w-full"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      Start 14-Day Free Trial
+                    </button>
+                  ) : null}
+                </div>
+              </form>
+            </div>
+          </div>
+
+          {/* Below-card links */}
+          <div className="mt-5 flex items-center justify-center gap-4 text-[12px] text-[var(--text-muted)]">
+            <a
+              href={`https://${currentHost}`}
+              className="hover:text-[var(--text-strong)] transition-colors"
+            >
+              ← Back to home
+            </a>
+            <span className="opacity-30">·</span>
+            <a
+              href={`https://${currentHost}/support`}
+              className="hover:text-[var(--text-strong)] transition-colors"
+            >
+              Need help?
+            </a>
+          </div>
+        </motion.div>
+      </div>
+
+      <RegistrationWizardModal
+        isOpen={isRegistrationOpen}
+        onClose={() => setIsRegistrationOpen(false)}
+      />
     </div>
   )
 }
-

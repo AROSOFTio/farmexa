@@ -37,6 +37,7 @@ interface NavGroup {
   moduleKey?: string
   icon: ElementType
   children?: NavLeaf[]
+  section?: string
 }
 
 const FARM_NAV: NavGroup[] = [
@@ -44,6 +45,7 @@ const FARM_NAV: NavGroup[] = [
   {
     label: 'Farm Operations',
     icon: Gauge,
+    section: 'Operations',
     children: [
       { label: 'Houses / Pens', path: '/farm/houses', permission: 'farm:read', moduleKey: 'houses' },
       { label: 'Flocks / Batches', path: '/farm/batches', permission: 'farm:read', moduleKey: 'batches' },
@@ -91,6 +93,7 @@ const FARM_NAV: NavGroup[] = [
   {
     label: 'Sales',
     icon: ShoppingCart,
+    section: 'Commercial',
     children: [
       { label: 'POS / Cashier', path: '/sales/pos', permission: 'sales:write', moduleKey: 'sales_orders' },
       { label: 'Customers', path: '/sales/customers', permission: 'sales:read', moduleKey: 'customers' },
@@ -110,6 +113,7 @@ const FARM_NAV: NavGroup[] = [
   {
     label: 'Compliance',
     icon: ShieldCheck,
+    section: 'Governance',
     children: [
       { label: 'Documents', path: '/compliance/documents', permission: 'farm:read', moduleKey: 'compliance_documents' },
       { label: 'Expiry Alerts', path: '/compliance/alerts', permission: 'farm:read', moduleKey: 'compliance_alerts' },
@@ -217,104 +221,158 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
   return (
     <>
-      {isOpen ? <button type="button" className="fixed inset-0 z-40 bg-black/45 lg:hidden" onClick={onClose} /> : null}
+      {isOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={onClose}
+        />
+      ) : null}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-50 flex w-[232px] flex-col sidebar text-white shadow-[18px_0_38px_-30px_rgba(0,0,0,.7)] transition-transform duration-300',
+          'fixed inset-y-0 left-0 z-50 flex w-[232px] flex-col sidebar text-white shadow-[20px_0_48px_-28px_rgba(0,0,0,.8)] transition-transform duration-300',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="border-b border-white/10 px-4 py-4">
+        {/* ── Header ── */}
+        <div className="shrink-0 border-b border-white/[0.07] px-4 py-4">
           <div className="flex items-center gap-3">
             <BrandMark compact light />
-            <div className="min-w-0">
-              <div className="truncate text-[18px] font-extrabold uppercase leading-5 tracking-wide">
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[15px] font-extrabold leading-5 tracking-wide text-white">
                 {isDevAdmin ? settings.company_name : workspaceName.split(' ')[0]}
               </div>
-              <div className="mt-1 text-[11px] font-semibold uppercase leading-3 text-[var(--brand-primary)]">
+              <div className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--brand-primary)]">
                 {isDevAdmin ? 'SaaS Control Center' : 'Poultry ERP'}
               </div>
             </div>
-            <button type="button" onClick={onClose} className="ml-auto rounded-lg p-1 text-white/70 hover:bg-white/10 lg:hidden" aria-label="Close navigation">
+            <button
+              type="button"
+              onClick={onClose}
+              className="ml-auto flex h-7 w-7 items-center justify-center rounded-[7px] text-white/50 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+              aria-label="Close navigation"
+            >
               <X className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-3">
-          <div className="space-y-1">
-            {groups.map((group) => {
-              const Icon = group.icon
-              const hasChildren = Boolean(group.children?.length)
-              const open = openGroups.has(group.label)
-              const active = hasChildren
-                ? group.children!.some((child) => isActivePath(location.pathname, child.path))
-                : Boolean(group.path && isActivePath(location.pathname, group.path))
+        {/* ── Nav ── */}
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2.5 py-3 scrollbar-thin">
+          {groups.map((group, idx) => {
+            const Icon = group.icon
+            const hasChildren = Boolean(group.children?.length)
+            const open = openGroups.has(group.label)
+            const active = hasChildren
+              ? group.children!.some((child) => isActivePath(location.pathname, child.path))
+              : Boolean(group.path && isActivePath(location.pathname, group.path))
 
-              return (
-                <div key={group.label}>
+            const showSection = !isDevAdmin && group.section
+
+            return (
+              <div key={group.label}>
+                {/* Section divider label */}
+                {showSection ? (
+                  <div className={clsx('px-2 pb-1.5 text-[9.5px] font-extrabold uppercase tracking-[0.14em] text-white/30', idx === 0 ? 'pt-1' : 'pt-5')}>
+                    {group.section}
+                  </div>
+                ) : idx === 0 && !group.section ? null : null}
+
+                <div className="mb-0.5">
                   <button
                     type="button"
                     onClick={() => toggleGroup(group)}
                     className={clsx(
-                      'group flex h-10 w-full items-center gap-3 rounded-[7px] px-3 text-left text-[12.5px] font-semibold transition-all',
+                      'group flex h-9 w-full items-center gap-2.5 rounded-[8px] px-2.5 text-left text-[12px] font-semibold transition-all duration-150',
                       active
-                        ? 'bg-[var(--brand-primary)] text-[#111827] shadow-[0_12px_26px_-20px_rgba(226,178,59,.9)]'
-                        : 'text-white/88 hover:bg-white/8 hover:text-white'
+                        ? 'bg-[var(--brand-primary)] text-[#111827] shadow-[0_8px_20px_-12px_rgba(var(--brand-primary-rgb),0.8)]'
+                        : 'text-white/80 hover:bg-white/[0.09] hover:text-white'
                     )}
                   >
-                      <Icon className={clsx('h-4 w-4', active ? 'text-[#111827]' : 'text-[var(--brand-primary)]')} />
+                    <Icon
+                      className={clsx(
+                        'h-[15px] w-[15px] shrink-0 transition-colors',
+                        active ? 'text-[#111827]/80' : 'text-[var(--brand-primary)]'
+                      )}
+                    />
                     <span className="min-w-0 flex-1 truncate">{group.label}</span>
                     {hasChildren ? (
-                      <ChevronDown className={clsx('h-3.5 w-3.5 transition-transform', open && 'rotate-180', active ? 'text-[#111827]' : 'text-white/60')} />
+                      <ChevronDown
+                        className={clsx(
+                          'h-3 w-3 shrink-0 transition-transform duration-200',
+                          open && 'rotate-180',
+                          active ? 'text-[#111827]/60' : 'text-white/35'
+                        )}
+                      />
                     ) : null}
                   </button>
 
+                  {/* Children */}
                   {hasChildren && open ? (
-                    <div className="ml-[20px] mt-1 space-y-0.5 border-l border-white/10 pl-3">
-                      {group.children!.map((child) => (
-                        <NavLink
-                          key={child.path}
-                          to={child.path}
-                          onClick={() => {
-                            if (window.innerWidth < 1024) onClose()
-                          }}
-                          className={({ isActive }) => clsx(
-                            'block rounded-[6px] px-3 py-1.5 text-[11.5px] font-semibold transition-colors',
-                            isActive || isActivePath(location.pathname, child.path)
-                              ? 'bg-[rgba(var(--brand-primary-rgb),0.18)] text-[var(--brand-primary)]'
-                              : 'text-white/68 hover:bg-white/8 hover:text-white'
-                          )}
-                        >
-                          {child.label}
-                        </NavLink>
-                      ))}
+                    <div className="ml-[19px] mt-0.5 border-l border-white/[0.08] pl-3 pb-1">
+                      {group.children!.map((child) => {
+                        const childActive = isActivePath(location.pathname, child.path)
+                        return (
+                          <NavLink
+                            key={child.path}
+                            to={child.path}
+                            onClick={() => {
+                              if (window.innerWidth < 1024) onClose()
+                            }}
+                            className={clsx(
+                              'my-0.5 flex items-center gap-2 rounded-[6px] px-2.5 py-[5px] text-[11.5px] font-medium transition-colors duration-150',
+                              childActive
+                                ? 'bg-[rgba(var(--brand-primary-rgb),0.18)] font-semibold text-[var(--brand-primary)]'
+                                : 'text-white/58 hover:bg-white/[0.07] hover:text-white/90'
+                            )}
+                          >
+                            {childActive ? (
+                              <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--brand-primary)]" />
+                            ) : (
+                              <span className="h-1 w-1 shrink-0 rounded-full bg-white/20" />
+                            )}
+                            {child.label}
+                          </NavLink>
+                        )
+                      })}
                     </div>
                   ) : null}
                 </div>
-              )
-            })}
-          </div>
+              </div>
+            )
+          })}
         </nav>
 
+        {/* ── Workspace / Trial Panel ── */}
         {!isDevAdmin ? (
-          <div className="border-t border-white/10 p-3">
-            <div className="rounded-[10px] border border-[rgba(var(--brand-primary-rgb),0.35)] bg-[var(--sidebar-panel)] px-3 py-3">
-              <div className="flex items-center justify-between gap-3">
+          <div className="shrink-0 border-t border-white/[0.07] p-3">
+            <div className="rounded-[10px] border border-[rgba(var(--brand-primary-rgb),0.28)] bg-[rgba(var(--brand-primary-rgb),0.06)] px-3.5 py-3">
+              <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="truncate text-[11.5px] font-extrabold text-white">{workspaceName}</div>
-                  <div className="mt-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-[var(--brand-primary)]">{tenant?.plan ?? 'Trial'} plan</div>
+                  <div className="truncate text-[11.5px] font-bold text-white/90">{workspaceName}</div>
+                  <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--brand-primary)]">
+                    {tenant?.plan ?? 'Trial'} plan
+                  </div>
                 </div>
-                <div className="rounded-[8px] border border-[rgba(var(--brand-primary-rgb),0.35)] bg-[rgba(var(--brand-primary-rgb),0.12)] px-2.5 py-1 text-right">
-                  <div className="text-[17px] font-bold leading-none text-white">{trialDays}</div>
-                  <div className="text-[9px] font-bold uppercase tracking-wide text-white/60">days</div>
+                <div className="shrink-0 rounded-[7px] border border-[rgba(var(--brand-primary-rgb),0.3)] bg-[rgba(var(--brand-primary-rgb),0.1)] px-2 py-1 text-center">
+                  <div className="text-[15px] font-extrabold leading-none text-white">{trialDays}</div>
+                  <div className="mt-0.5 text-[8.5px] font-bold uppercase tracking-wider text-white/45">days</div>
                 </div>
               </div>
-              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
-                <div className="h-full rounded-full bg-[var(--brand-primary)]" style={{ width: `${Math.max(Math.min((trialDays / 14) * 100, 100), 0)}%` }} />
+
+              <div className="mt-3 h-[3px] overflow-hidden rounded-full bg-white/[0.08]">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-primary-hover)] transition-all duration-500"
+                  style={{ width: `${Math.max(Math.min((trialDays / 14) * 100, 100), 4)}%` }}
+                />
               </div>
-              <button type="button" onClick={() => navigate('/subscription/upgrade')} className="mt-3 h-8 w-full rounded-[7px] bg-[var(--brand-primary)] text-[11.5px] font-semibold text-[#111827]">
-                Upgrade
+
+              <button
+                type="button"
+                onClick={() => navigate('/subscription/upgrade')}
+                className="mt-3 flex h-8 w-full items-center justify-center rounded-[7px] bg-[var(--brand-primary)] text-[11.5px] font-bold text-[#111827] transition-opacity hover:opacity-90"
+              >
+                Upgrade to Pro
               </button>
             </div>
           </div>
