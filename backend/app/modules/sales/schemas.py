@@ -148,6 +148,8 @@ class PosCheckoutCreate(BaseModel):
     customer_phone: Optional[str] = None
     sale_payment_mode: Literal["full", "partial", "credit"] = "full"
     amount_paid_now: Optional[float] = None
+    # cash_tendered: actual physical cash given by customer — can exceed total for change calculation
+    cash_tendered: Optional[float] = None
     payment_method: Optional[PaymentMethod] = None
     payment_reference: Optional[str] = None
     credit_due_date: Optional[date] = None
@@ -161,6 +163,8 @@ class PosCheckoutOut(BaseModel):
     invoice: InvoiceOut
     payment: Optional[PaymentOut] = None
     balance_due: float = 0.0
+    change_to_return: float = 0.0
+    cash_tendered: float = 0.0
     email_status: Optional[str] = None
 
 

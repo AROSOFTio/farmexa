@@ -19,7 +19,7 @@ from app.models.compliance import ComplianceDocument
 from app.models.feed import FeedConsumption, FeedItem, FeedPurchase, FeedPurchaseItem
 from app.models.finance import Expense, Income
 from app.models.inventory import StockItem, StockMovement
-from app.models.sales import Invoice, Order, OrderItem, Payment
+from app.models.sales import Customer, Invoice, Order, OrderItem, Payment
 from app.services.pdf_branding import BRAND_DARK, BRAND_PRIMARY, draw_pdf_brand_header
 
 from .schemas import ReportCatalogItem, ReportField, ReportFilter, ReportPreview, ReportRequest
@@ -178,6 +178,46 @@ REPORT_CATALOG: dict[str, ReportCatalogItem] = {
             _field("responsible_person", "Responsible"),
         ],
     ),
+    "debtors": ReportCatalogItem(
+        key="debtors",
+        title="Debtors / Outstanding Balances",
+        category="Sales Reports",
+        description="All customers with unpaid or partially paid invoices, showing outstanding balances and due dates.",
+        filters=[
+            ReportFilter(key="start_date", label="Due from", type="date"),
+            ReportFilter(key="end_date", label="Due to", type="date"),
+            ReportFilter(key="search", label="Customer / Invoice", type="text"),
+        ],
+        fields=[
+            _field("customer", "Customer"),
+            _field("invoice_number", "Invoice"),
+            _field("issue_date", "Issued"),
+            _field("due_date", "Due date"),
+            _field("total_amount", "Invoice total"),
+            _field("paid_amount", "Paid"),
+            _field("balance", "Outstanding"),
+            _field("days_overdue", "Days overdue"),
+            _field("status", "Status"),
+        ],
+    ),
+    "credit-sales": ReportCatalogItem(
+        key="credit-sales",
+        title="Credit Sales",
+        category="Sales Reports",
+        description="All credit and partial-payment sales with outstanding amounts per customer.",
+        filters=_date_filters(),
+        fields=[
+            _field("invoice_number", "Invoice"),
+            _field("date", "Date"),
+            _field("customer", "Customer"),
+            _field("phone", "Phone", False),
+            _field("total_amount", "Total"),
+            _field("paid_amount", "Paid"),
+            _field("balance", "Balance"),
+            _field("due_date", "Due date"),
+            _field("status", "Status"),
+        ],
+    ),
 }
 
 
@@ -260,6 +300,8 @@ class ReportsService:
             "feed-consumption": self._feed_consumption,
             "profit-loss": self._profit_loss,
             "compliance-expiring": self._compliance_expiring,
+            "debtors": self._debtors,
+            "credit-sales": self._credit_sales,
         }
         return handlers[report_key](db, request)
 
@@ -485,6 +527,92 @@ class ReportsService:
             for document in documents
         ]
         return rows, {"documents": len(rows), "expired": len([row for row in rows if isinstance(row["days_left"], int) and row["days_left"] < 0])}
+
+    def _debtors(self, db: Session, request: ReportRequest):
+        """All outstanding invoice balances — the core debtors/credit report."""
+        today = date.today()
+        query = (
+            db.query(Invoice)
+            .options(joinedload(Invoice.customer))
+            .filter(
+                Invoice.total_amount > Invoice.paid_amount,  # outstanding balance exists
+            )
+        )
+        if request.start_date:
+            query = query.filter(Invoice.due_date >= request.start_date)
+        if request.end_date:
+            query = query.filter(Invoice.due_date <= request.end_date)
+        if request.search:
+            search_filter = _contains_search(Invoice.invoice_number, search=request.search)
+            if search_filter is not None:
+                query = query.filter(search_filter)
+        invoices = query.order_by(Invoice.due_date.asc()).all()
+        rows = []
+        for inv in invoices:
+            balance = max(float(inv.total_amount or 0) - float(inv.paid_amount or 0), 0)
+            if balance <= 0:
+                continue
+            days_overdue = (today - inv.due_date).days if inv.due_date else 0
+            customer_name = inv.customer.name if inv.customer else "Walk-in"
+            if request.search and request.search.lower() not in customer_name.lower() and request.search.lower() not in inv.invoice_number.lower():
+                continue
+            rows.append(
+                {
+                    "customer": customer_name,
+                    "invoice_number": inv.invoice_number,
+                    "issue_date": inv.issue_date.isoformat() if inv.issue_date else "",
+                    "due_date": inv.due_date.isoformat() if inv.due_date else "",
+                    "total_amount": float(inv.total_amount or 0),
+                    "paid_amount": float(inv.paid_amount or 0),
+                    "balance": balance,
+                    "days_overdue": max(days_overdue, 0),
+                    "status": "Overdue" if days_overdue > 0 else _label(inv.status),
+                }
+            )
+        total_outstanding = sum(row["balance"] for row in rows)
+        overdue_count = len([row for row in rows if row["days_overdue"] > 0])
+        return rows, {
+            "total_outstanding": total_outstanding,
+            "debtors": len(rows),
+            "overdue": overdue_count,
+        }
+
+    def _credit_sales(self, db: Session, request: ReportRequest):
+        """Credit and partial-payment sales within a date range."""
+        start, end = _date_range(request)
+        query = (
+            db.query(Invoice)
+            .options(joinedload(Invoice.customer))
+            .filter(
+                Invoice.issue_date >= start,
+                Invoice.issue_date <= end,
+                Invoice.total_amount > Invoice.paid_amount,
+            )
+        )
+        if request.search:
+            search_filter = _contains_search(Invoice.invoice_number, search=request.search)
+            if search_filter is not None:
+                query = query.filter(search_filter)
+        invoices = query.order_by(Invoice.issue_date.desc()).all()
+        rows = [
+            {
+                "invoice_number": inv.invoice_number,
+                "date": inv.issue_date.isoformat(),
+                "customer": inv.customer.name if inv.customer else "Walk-in",
+                "phone": inv.customer.phone or "" if inv.customer else "",
+                "total_amount": float(inv.total_amount or 0),
+                "paid_amount": float(inv.paid_amount or 0),
+                "balance": max(float(inv.total_amount or 0) - float(inv.paid_amount or 0), 0),
+                "due_date": inv.due_date.isoformat() if inv.due_date else "",
+                "status": _label(inv.status),
+            }
+            for inv in invoices
+        ]
+        return rows, {
+            "total_credit": sum(row["total_amount"] for row in rows),
+            "total_outstanding": sum(row["balance"] for row in rows),
+            "records": len(rows),
+        }
 
     def _csv(self, preview: ReportPreview) -> bytes:
         output = StringIO()

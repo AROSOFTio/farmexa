@@ -13,7 +13,7 @@ import { getErrorMessage } from '@/lib/errors'
 
 interface Customer { id: number; name: string; customer_type: string; email?: string | null; phone?: string | null }
 interface StockItem { id: number; name: string; unit_of_measure: string; unit_price: number; current_quantity: number; is_active: boolean }
-interface PosCheckoutResponse { receipt_number: string; balance_due: number; email_status?: string | null; invoice: { id: number; invoice_number: string; total_amount: number; paid_amount: number; due_date?: string | null } }
+interface PosCheckoutResponse { receipt_number: string; balance_due: number; change_to_return: number; cash_tendered: number; email_status?: string | null; invoice: { id: number; invoice_number: string; total_amount: number; paid_amount: number; due_date?: string | null } }
 
 const schema = z.object({
   customer_id: z.coerce.number().optional(),
@@ -22,6 +22,7 @@ const schema = z.object({
   customer_phone: z.string().optional(),
   sale_payment_mode: z.enum(['full', 'partial', 'credit']),
   amount_paid_now: z.coerce.number().min(0).optional(),
+  cash_tendered: z.coerce.number().min(0).optional(),
   payment_method: z.enum(['cash', 'mobile_money', 'bank_transfer', 'cheque']).optional(),
   payment_reference: z.string().optional(),
   credit_due_date: z.string().optional(),
@@ -91,8 +92,12 @@ export function PosPage() {
   const total = lines.reduce((sum: number, line: any) => sum + (Number(line.quantity) || 0) * (Number(line.unit_price) || 0), 0)
   const paymentMode = useWatch({ control: form.control, name: 'sale_payment_mode' }) ?? 'full'
   const amountPaidNow = useWatch({ control: form.control, name: 'amount_paid_now' })
+  const cashTendered = useWatch({ control: form.control, name: 'cash_tendered' })
   const paidNow = paymentMode === 'full' ? total : Number(amountPaidNow || 0)
   const balanceDue = Math.max(total - paidNow, 0)
+  // changeToReturn: when cashier receives more physical cash than the sale total
+  const effectiveCashTendered = paymentMode === 'full' ? Number(cashTendered || total) : Number(cashTendered || paidNow)
+  const changeToReturn = Math.max(effectiveCashTendered - paidNow, 0)
 
   const checkout = useMutation({
     mutationFn: (values: FormValues) => api.post('/sales/pos/checkout', {
@@ -102,6 +107,7 @@ export function PosPage() {
       customer_email: values.customer_email || null,
       customer_phone: values.customer_phone || null,
       amount_paid_now: values.sale_payment_mode === 'full' ? total : values.amount_paid_now ?? 0,
+      cash_tendered: values.cash_tendered ? Number(values.cash_tendered) : null,
       payment_reference: values.payment_reference || null,
       credit_due_date: values.credit_due_date || null,
       notes: values.notes || null,
@@ -112,7 +118,7 @@ export function PosPage() {
       qc.invalidateQueries({ queryKey: ['inventory-items'] })
       qc.invalidateQueries({ queryKey: ['sales-orders'] })
       qc.invalidateQueries({ queryKey: ['sales-invoices'] })
-      form.reset({ customer_id: 0, customer_name: 'Walk-in Customer', customer_email: '', customer_phone: '', sale_payment_mode: 'full', amount_paid_now: undefined, payment_method: 'cash', payment_reference: '', credit_due_date: '', notes: '', items: [{ product_id: 0, quantity: 1, unit_price: 0 }] })
+      form.reset({ customer_id: 0, customer_name: 'Walk-in Customer', customer_email: '', customer_phone: '', sale_payment_mode: 'full', amount_paid_now: undefined, cash_tendered: undefined, payment_method: 'cash', payment_reference: '', credit_due_date: '', notes: '', items: [{ product_id: 0, quantity: 1, unit_price: 0 }] })
     },
     onError: (error) => toast.error(getErrorMessage(error, 'POS checkout failed.')),
   })
@@ -254,6 +260,7 @@ export function PosPage() {
                   const next = event.target.value as FormValues['sale_payment_mode']
                   form.setValue('sale_payment_mode', next)
                   form.setValue('amount_paid_now', next === 'full' ? total : next === 'credit' ? 0 : undefined)
+                  form.setValue('cash_tendered', undefined)
                 }}>
                   <option value="full">Full payment</option>
                   <option value="partial">Partial payment</option>
@@ -277,9 +284,35 @@ export function PosPage() {
               </div>
               <div>
                 <label className="form-label">Balance due</label>
-                <div className="form-input flex items-center font-semibold">UGX {balanceDue.toLocaleString()}</div>
+                <div className="form-input flex items-center font-semibold text-amber-700">UGX {balanceDue.toLocaleString()}</div>
               </div>
             </div>
+            {/* Cash tendered & change — shown for cash payments when paying in full or partial */}
+            {paymentMode !== 'credit' ? (
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="form-label">Cash received from customer</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    min={paidNow}
+                    step="0.01"
+                    placeholder={`Min UGX ${paidNow.toLocaleString()}`}
+                    {...form.register('cash_tendered')}
+                    onChange={(e) => form.setValue('cash_tendered', Number(e.target.value) || undefined)}
+                  />
+                  <p className="mt-1 text-[11.5px] text-ink-400">Enter the physical cash given. Change will be calculated automatically.</p>
+                </div>
+                <div>
+                  <label className="form-label">Change to return</label>
+                  <div className={`form-input flex items-center text-lg font-bold ${
+                    changeToReturn > 0 ? 'text-emerald-700 bg-emerald-50 border-emerald-300' : 'text-ink-400'
+                  }`}>
+                    UGX {changeToReturn.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            ) : null}
             {balanceDue > 0 ? (
               <div className="mt-4">
                 <label className="form-label">Balance due date</label>
@@ -301,7 +334,13 @@ export function PosPage() {
           <div className="mt-2 text-3xl font-bold text-ink-950">UGX {total.toLocaleString()}</div>
           <div className="mt-4 grid gap-2 text-[13px]">
             <div className="flex justify-between"><span>Paid now</span><strong>UGX {paidNow.toLocaleString()}</strong></div>
-            <div className="flex justify-between"><span>Balance</span><strong>UGX {balanceDue.toLocaleString()}</strong></div>
+            {balanceDue > 0 && <div className="flex justify-between text-amber-700"><span>Balance due</span><strong>UGX {balanceDue.toLocaleString()}</strong></div>}
+            {changeToReturn > 0 && (
+              <div className="mt-1 flex justify-between rounded-[8px] bg-emerald-50 px-3 py-2 text-emerald-800">
+                <span className="font-semibold">Change to return</span>
+                <strong className="text-lg">UGX {changeToReturn.toLocaleString()}</strong>
+              </div>
+            )}
           </div>
           <div className="mt-6 rounded-[8px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] p-3 text-[12.5px] leading-5 text-ink-500">
             Receipt printing is generated as a clean PDF document after checkout.
@@ -325,6 +364,12 @@ export function PosPage() {
                   <div className="font-bold text-ink-900">{receipt.receipt_number} — {receipt.invoice.invoice_number}</div>
                   <div className="mt-0.5 text-[12.5px] text-ink-500">Total: <strong>UGX {receipt.invoice.total_amount.toLocaleString()}</strong> &nbsp;·&nbsp; Paid: <strong className="text-emerald-700">UGX {receipt.invoice.paid_amount.toLocaleString()}</strong> {receipt.balance_due > 0 ? <>&nbsp;·&nbsp; Balance: <strong className="text-amber-600">UGX {receipt.balance_due.toLocaleString()}</strong></> : null}</div>
                   {receipt.invoice.due_date && receipt.balance_due > 0 ? <div className="mt-0.5 text-[12px] text-amber-600">Balance due by {receipt.invoice.due_date}</div> : null}
+                  {receipt.change_to_return > 0 ? (
+                    <div className="mt-2 inline-flex items-center gap-2 rounded-[8px] bg-emerald-100 px-3 py-1.5 text-emerald-800">
+                      <span className="text-[12px] font-medium">Change to return:</span>
+                      <span className="text-[16px] font-bold">UGX {receipt.change_to_return.toLocaleString()}</span>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>

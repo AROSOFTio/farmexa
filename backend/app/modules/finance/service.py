@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
@@ -31,6 +33,29 @@ class FinanceService:
 
         db_expense = Expense(**expense.model_dump())
         db.add(db_expense)
+        db.flush()
+
+        # Auto-create double-entry journal: DR Expense / CR Cash (graceful fallback if COA missing)
+        try:
+            from app.services.accounting_service import AccountingService
+            from app.models.finance_coa import JournalEntryStatus
+            acct = AccountingService(db)
+            entry = acct.create_journal_entry(
+                entry_date=expense.expense_date,
+                reference_type="expense",
+                reference_id=db_expense.id,
+                description=f"Expense: {category.name} — {expense.description or ''}".strip(" —"),
+            )
+            acct.add_journal_line(entry, account_code="6000", debit=expense.amount,
+                                  memo=f"{category.name}: {expense.description or ''}")
+            acct.add_journal_line(entry, account_code="1100", credit=expense.amount,
+                                  memo="Cash / Bank payment")
+            entry.status = JournalEntryStatus.POSTED
+            entry.posted_at = datetime.now(timezone.utc)
+        except Exception:
+            # Non-fatal: COA may not be fully seeded in all tenant DBs
+            pass
+
         db.commit()
         return (
             db.query(Expense)
@@ -70,6 +95,29 @@ class FinanceService:
 
         db_income = Income(**income.model_dump())
         db.add(db_income)
+        db.flush()
+
+        # Auto-create double-entry journal: DR Cash / CR Income (graceful fallback if COA missing)
+        try:
+            from app.services.accounting_service import AccountingService
+            from app.models.finance_coa import JournalEntryStatus
+            acct = AccountingService(db)
+            entry = acct.create_journal_entry(
+                entry_date=income.income_date,
+                reference_type="income",
+                reference_id=db_income.id,
+                description=f"Income: {category.name} — {income.description or ''}".strip(" —"),
+            )
+            acct.add_journal_line(entry, account_code="1100", debit=income.amount,
+                                  memo="Cash / Bank receipt")
+            acct.add_journal_line(entry, account_code="4000", credit=income.amount,
+                                  memo=f"{category.name}: {income.description or ''}")
+            entry.status = JournalEntryStatus.POSTED
+            entry.posted_at = datetime.now(timezone.utc)
+        except Exception:
+            # Non-fatal: COA may not be fully seeded in all tenant DBs
+            pass
+
         db.commit()
         return (
             db.query(Income)

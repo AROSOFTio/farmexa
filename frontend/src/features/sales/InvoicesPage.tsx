@@ -82,6 +82,14 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
     [invoices]
   )
 
+  const overdueCount = useMemo(
+    () => invoices.filter((inv) => {
+      const balance = inv.total_amount - inv.paid_amount
+      return balance > 0 && new Date(inv.due_date) < new Date()
+    }).length,
+    [invoices]
+  )
+
   const downloadReceipt = async (invoice: Invoice, paper = 'a4') => {
     try {
       const response = await api.get(`/sales/invoices/${invoice.id}/receipt-download.pdf`, {
@@ -134,7 +142,7 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
         </div>
       </div>
 
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
+      <div className="mb-6 grid gap-4 md:grid-cols-4">
         <div className="metric-card">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -149,8 +157,18 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="metric-label">Outstanding</div>
-              <div className="metric-value">UGX {outstandingTotal.toLocaleString()}</div>
+              <div className="metric-value text-amber-600">UGX {outstandingTotal.toLocaleString()}</div>
               <div className="metric-note">Current unpaid balance still waiting for collection.</div>
+            </div>
+            <div className="metric-icon"><Landmark className="h-5 w-5" /></div>
+          </div>
+        </div>
+        <div className="metric-card">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="metric-label">Overdue</div>
+              <div className={`metric-value ${overdueCount > 0 ? 'text-red-600' : ''}`}>{overdueCount.toLocaleString()}</div>
+              <div className="metric-note">Invoices past due date with unpaid balances.</div>
             </div>
             <div className="metric-icon"><Landmark className="h-5 w-5" /></div>
           </div>
@@ -234,6 +252,7 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
                     <th className="pl-6">Invoice</th>
                     <th>Status</th>
                     <th>Issue / Due</th>
+                    <th>Total</th>
                     <th>Paid</th>
                     <th>Outstanding</th>
                     <th className="pr-6">Document</th>
@@ -242,35 +261,45 @@ export function InvoicesPage({ section }: { section: InvoiceSection }) {
                 <tbody>
                   {invoices.length === 0 ? (
                     <tr>
-                      <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={6}>
+                      <td className="pl-6 py-14 text-sm text-neutral-500" colSpan={7}>
                         No invoices.
                       </td>
                     </tr>
                   ) : (
-                    invoices.map((invoice) => (
-                      <tr key={invoice.id}>
-                        <td className="pl-6">
-                          <div className="font-semibold text-neutral-900">{invoice.invoice_number}</div>
-                          <div className="text-xs text-neutral-500">{invoice.customer?.name || `Customer #${invoice.customer_id}`}</div>
-                        </td>
-                        <td>
-                          <span className={invoice.status === 'paid' ? 'badge badge-success' : invoice.status === 'partial' ? 'badge badge-warning' : 'badge badge-brand'}>
-                            {invoice.status}
-                          </span>
-                        </td>
-                        <td>{formatDate(invoice.issue_date)} / {formatDate(invoice.due_date)}</td>
-                        <td>UGX {invoice.paid_amount.toLocaleString()}</td>
-                        <td className="font-semibold text-neutral-900">
-                          UGX {Math.max(invoice.total_amount - invoice.paid_amount, 0).toLocaleString()}
-                        </td>
-                        <td className="pr-6">
-                          <button type="button" className="btn-secondary btn-sm" onClick={() => downloadReceipt(invoice)}>
-                            <Download className="h-3.5 w-3.5" />
-                            PDF
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                    invoices.map((invoice) => {
+                      const balance = Math.max(invoice.total_amount - invoice.paid_amount, 0)
+                      const isOverdue = balance > 0 && new Date(invoice.due_date) < new Date()
+                      return (
+                        <tr key={invoice.id} className={isOverdue ? 'bg-red-50' : ''}>
+                          <td className="pl-6">
+                            <div className="font-semibold text-neutral-900">{invoice.invoice_number}</div>
+                            <div className="text-xs text-neutral-500">{invoice.customer?.name || `Customer #${invoice.customer_id}`}</div>
+                          </td>
+                          <td>
+                            <span className={`badge ${
+                              isOverdue ? 'badge-danger' :
+                              invoice.status === 'paid' ? 'badge-success' :
+                              invoice.status === 'partial' ? 'badge-warning' :
+                              'badge-brand'
+                            }`}>
+                              {isOverdue ? 'Overdue' : invoice.status}
+                            </span>
+                          </td>
+                          <td className={isOverdue ? 'text-red-600' : ''}>{formatDate(invoice.issue_date)} / {formatDate(invoice.due_date)}</td>
+                          <td>UGX {invoice.total_amount.toLocaleString()}</td>
+                          <td>UGX {invoice.paid_amount.toLocaleString()}</td>
+                          <td className={`font-semibold ${balance > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                            UGX {balance.toLocaleString()}
+                          </td>
+                          <td className="pr-6">
+                            <button type="button" className="btn-secondary btn-sm" onClick={() => downloadReceipt(invoice)}>
+                              <Download className="h-3.5 w-3.5" />
+                              PDF
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })
                   )}
                 </tbody>
               </table>

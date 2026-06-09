@@ -356,12 +356,17 @@ class SalesService:
         else:
             requested_paid = float(payload.amount_paid_now or 0)
 
+        # cash_tendered is the physical cash given by the customer (can exceed total for change)
+        cash_tendered = float(payload.cash_tendered or 0) if payload.cash_tendered is not None else requested_paid
+
         if requested_paid < 0:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Amount paid cannot be negative")
+        # NOTE: cash_tendered CAN exceed total — the excess is returned as change.
+        # requested_paid (amount credited to invoice) must not exceed total.
         if requested_paid > expected_total:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Amount paid cannot exceed the sale total",
+                detail="Amount credited to the invoice cannot exceed the sale total",
             )
         if payload.sale_payment_mode == "full" and requested_paid != expected_total:
             raise HTTPException(
@@ -447,6 +452,11 @@ class SalesService:
         else:
             amount_paid_now = float(payload.amount_paid_now or 0)
 
+        # Effective cash tendered (for change calculation)
+        effective_cash_tendered = float(payload.cash_tendered or 0) if payload.cash_tendered is not None else amount_paid_now
+        # Change = cash given minus what is owed on this sale (clamped to 0)
+        change_to_return = max(effective_cash_tendered - amount_paid_now, 0.0)
+
         balance_due = max(invoice_total - amount_paid_now, 0)
         if balance_due > 0:
             if customer.name.lower().strip() == "walk-in customer" and not (customer.email or customer.phone):
@@ -494,6 +504,8 @@ class SalesService:
             "invoice": invoice,
             "payment": payment,
             "balance_due": final_balance,
+            "change_to_return": change_to_return,
+            "cash_tendered": effective_cash_tendered,
             "email_status": email_status if final_balance > 0 else "sent_or_logged",
         }
 

@@ -133,13 +133,19 @@ def build_thermal_receipt_pdf(invoice: Invoice, current_user, paper: str = "80mm
     y -= 12
     row("Subtotal", money(invoice.total_amount), 8)
     row("Paid", money(invoice.paid_amount), 8)
-    row("Balance", money(max(float(invoice.total_amount) - float(invoice.paid_amount), 0)), 8)
+    balance = max(float(invoice.total_amount) - float(invoice.paid_amount), 0)
+    if balance > 0:
+        row("Balance Due", money(balance), 8)
     row("TOTAL", money(invoice.total_amount), 10, True, 13)
     payment = _latest_payment(invoice)
     if payment:
         row("Payment", _enum_label(payment.payment_method), 7)
         if payment.reference:
             row("Reference", payment.reference, 7)
+    # Show change to return if stored in invoice notes (set by POS checkout)
+    change = getattr(invoice, "_change_to_return", None)
+    if change and float(change) > 0:
+        row("Change to Return", money(float(change)), 8, True, 11)
     y -= 8
     center("Thank you for your business.", 8, False, 11)
     center("Powered by Farmexa", 6, False, 8)
@@ -217,12 +223,15 @@ def build_a4_receipt_pdf(invoice: Invoice, current_user) -> ReceiptDocument:
     pdf.setStrokeColor(colors.lightgrey)
     pdf.line(right - 210, y, right, y)
     y -= 18
+    balance = max(float(invoice.total_amount) - float(invoice.paid_amount), 0)
     for label, value in [
         ("Subtotal", invoice.total_amount),
         ("Amount paid", invoice.paid_amount),
-        ("Balance", max(float(invoice.total_amount) - float(invoice.paid_amount), 0)),
+        ("Balance due", balance),
         ("Total", invoice.total_amount),
     ]:
+        if label == "Balance due" and balance <= 0:
+            continue
         pdf.setFont("Helvetica-Bold" if label == "Total" else "Helvetica", 10)
         pdf.drawRightString(right - 90, y, label)
         pdf.drawRightString(right, y, money(value))
