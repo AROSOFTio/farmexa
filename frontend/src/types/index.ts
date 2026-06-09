@@ -146,6 +146,14 @@ export interface DashboardSummary {
   }
 }
 
+export interface StockItem {
+  id: number
+  name: string
+  unit_of_measure: string
+  current_quantity: number
+  reorder_level: number
+}
+
 // ── API Error ─────────────────────────────────────────────────
 
 export interface ApiError {
