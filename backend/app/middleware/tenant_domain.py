@@ -9,7 +9,7 @@ from starlette.responses import JSONResponse
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.models.tenant import DomainStatus, TenantDomain, TenantStatus
-from app.utils.domains import is_platform_host, normalize_host
+from app.utils.domains import is_infrastructure_host, is_platform_host, normalize_host
 
 
 WORKSPACE_NOT_FOUND = {
@@ -50,6 +50,12 @@ class TenantDomainResolverMiddleware(BaseHTTPMiddleware):
         # Always allow health‑checks and requests with no host header through.
         if not resolved_host or request.url.path == "/health":
             return await call_next(request)
+
+        # ── 0. Infrastructure hosts — hard reject before any DB or HTML ──────
+        # cp.*, mail.*, courses.*, etc. are non-Farmexa system services.
+        # Return a plain 404 with no Farmexa HTML so they stay invisible.
+        if is_infrastructure_host(resolved_host):
+            return JSONResponse(HOST_NOT_SERVED, status_code=404)
 
         # ── 1. Platform hosts (farm.arosoftlabs.com, localhost, …) ──────────
         if is_platform_host(resolved_host):

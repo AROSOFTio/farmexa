@@ -35,6 +35,49 @@ def is_platform_host(host: str | None) -> bool:
     return clean in platform_hosts
 
 
+# ---------------------------------------------------------------------------
+# Infrastructure subdomains — Farmexa must NEVER serve these
+# ---------------------------------------------------------------------------
+# These slugs belong to non-Farmexa system services on the same DNS zone
+# (Coolify CP, mail server, helpdesk, etc.).  Any first-level subdomain whose
+# slug appears here is immediately rejected at both the Nginx layer (return 444)
+# and the application middleware layer before any DB lookup or HTML is returned.
+#
+# IMPORTANT: Mirror any changes here into all three Nginx configs:
+#   - nginx/nginx.conf            (Docker Compose proxy)
+#   - docker/coolify-nginx.conf   (Coolify single-container)
+#   - nginx/farmexa.arosoft.io.conf (aaPanel reference)
+INFRASTRUCTURE_SUBDOMAINS: frozenset[str] = frozenset({
+    "cp",        # Coolify control panel   (cp.arosoftlabs.com)
+    "mail",      # Mail server             (mail.arosoftlabs.com)
+    "courses",   # LMS / courses platform  (courses.arosoftlabs.com)
+    "my",        # Reserved                (my.arosoftlabs.com)
+    "arofi",     # Reserved                (arofi.arosoftlabs.com)
+    "api",       # Separate API gateway    (api.arosoftlabs.com)
+    "admin",     # Reserved                (admin.arosoftlabs.com)
+    "support",   # Helpdesk                (support.arosoftlabs.com)
+})
+
+
+def is_infrastructure_host(host: str | None) -> bool:
+    """
+    Return True if *host* is a known infrastructure subdomain that Farmexa
+    must never serve.  Only direct first-level subdomains are matched:
+      - cp.arosoftlabs.com   → True
+      - foo.cp.arosoftlabs.com → False  (nested — not matched)
+      - arosoftlabs.com      → False  (apex — not matched here)
+    """
+    clean = normalize_host(host)
+    if not clean:
+        return False
+    suffix = tenant_domain_suffix()
+    if suffix and clean.endswith(f".{suffix}"):
+        subdomain = clean[: -(len(suffix) + 1)]   # strip ".arosoftlabs.com"
+        if "." not in subdomain:                   # direct subdomain only
+            return subdomain in INFRASTRUCTURE_SUBDOMAINS
+    return False
+
+
 # Reserved slugs that must not be used for tenant workspaces or customer slugs.
 RESERVED_SLUGS = {
     "cp",

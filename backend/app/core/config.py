@@ -80,14 +80,18 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    ALLOWED_ORIGINS: str = "https://farm.arosoftlabs.com,https://arosoftlabs.com,http://localhost:3000,http://localhost,http://localhost:5173,http://localhost:5000"
+    ALLOWED_ORIGINS: str = "https://farm.arosoftlabs.com,http://localhost:3000,http://localhost,http://localhost:5173,http://localhost:5000"
     # PRIMARY_PLATFORM_DOMAIN is the canonical hostname of the Farmexa SaaS app.
     # Only this host (plus whatever is listed in PLATFORM_HOSTS) is treated as a
-    # "platform" request that bypasses tenant lookup. Do NOT add infrastructure
-    # sub‑domains (cp.*, mail.*, courses.*, etc.) here — those are separate
-    # services and must never be served by Farmexa.
+    # "platform" request that bypasses tenant lookup.
+    #
+    # DO NOT add the root domain (arosoftlabs.com) or www.arosoftlabs.com here —
+    # those are the Arosoft Labs main website and must not be served by Farmexa.
+    # DO NOT add infrastructure sub‑domains (cp.*, mail.*, courses.*, etc.) here —
+    # those are separate services blocked by INFRASTRUCTURE_SUBDOMAINS in
+    # app/utils/domains.py and by the Nginx configs.
     PRIMARY_PLATFORM_DOMAIN: str = "farm.arosoftlabs.com"
-    PLATFORM_HOSTS: str = "farm.arosoftlabs.com,arosoftlabs.com,www.arosoftlabs.com,localhost,127.0.0.1"
+    PLATFORM_HOSTS: str = "farm.arosoftlabs.com,localhost,127.0.0.1"
     DEFAULT_TENANT_DOMAIN_SUFFIX: str = "arosoftlabs.com"
     CLOUDFLARE_ZONE_NAME: str = "arosoftlabs.com"
     TENANT_DNS_TARGET_TYPE: str = "A"
