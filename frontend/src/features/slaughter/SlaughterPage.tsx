@@ -71,7 +71,7 @@ const recordSchema = z.object({
   live_birds_count: z.coerce.number().int().positive('Bird count must be greater than zero'),
   mortality_birds_count: z.coerce.number().int().min(0),
   condemned_birds_count: z.coerce.number().int().min(0),
-  total_live_weight: z.coerce.number().positive('Live weight must be greater than zero'),
+  total_live_weight: z.coerce.number().min(0, 'Live weight cannot be negative'),
   waste_weight: z.coerce.number().min(0),
   blood_weight: z.coerce.number().min(0),
   feathers_weight: z.coerce.number().min(0),
@@ -905,10 +905,12 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
                 {selectedBatch ? (
                   <p className="form-hint">House: {selectedBatch.house?.name ?? `House #${selectedBatch.house_id ?? '-'}`}</p>
                 ) : null}
+                {recordForm.formState.errors.batch_id ? <p className="form-error">{recordForm.formState.errors.batch_id.message}</p> : null}
               </div>
               <div>
                 <label className="form-label">Slaughter date</label>
                 <input className="form-input" type="date" {...recordForm.register('slaughter_date')} />
+                {recordForm.formState.errors.slaughter_date ? <p className="form-error">{recordForm.formState.errors.slaughter_date.message}</p> : null}
               </div>
             </div>
           </div>
@@ -919,10 +921,12 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
               <div>
                 <label className="form-label">Live birds count</label>
                 <input className="form-input" type="number" min={0} {...recordForm.register('live_birds_count')} />
+                {recordForm.formState.errors.live_birds_count ? <p className="form-error">{recordForm.formState.errors.live_birds_count.message}</p> : null}
               </div>
               <div>
                 <label className="form-label">Total live weight (kg)</label>
                 <input className="form-input" type="number" min={0} step="0.01" {...recordForm.register('total_live_weight')} />
+                {recordForm.formState.errors.total_live_weight ? <p className="form-error">{recordForm.formState.errors.total_live_weight.message}</p> : null}
               </div>
               <div>
                 <label className="form-label">Mortality before process</label>
