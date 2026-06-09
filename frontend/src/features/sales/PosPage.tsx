@@ -34,16 +34,14 @@ const schema = z.object({
   })).min(1),
 }).superRefine((value, ctx) => {
   const total = value.items.reduce((sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_price || 0), 0)
-  const paid = value.sale_payment_mode === 'full' && value.amount_paid_now === undefined ? total : Number(value.amount_paid_now || 0)
+  // For full mode, amount_paid_now is always set to total at submit — skip validation
+  const paid = value.sale_payment_mode === 'full' ? total : Number(value.amount_paid_now || 0)
   const balance = Math.max(total - paid, 0)
-  if (value.sale_payment_mode === 'full' && paid !== total) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['amount_paid_now'], message: 'Full payment must match the sale total.' })
-  }
   if (value.sale_payment_mode === 'partial' && !(paid > 0 && paid < total)) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['amount_paid_now'], message: 'Partial payment must be more than zero and less than the total.' })
   }
-  if (paid > total) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['amount_paid_now'], message: 'Amount paid cannot exceed the sale total.' })
+  if (value.sale_payment_mode === 'partial' && paid >= total) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['amount_paid_now'], message: 'Partial amount must be less than the total. Use Full payment instead.' })
   }
   if (paid > 0 && !value.payment_method) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['payment_method'], message: 'Choose a payment method.' })
@@ -51,7 +49,8 @@ const schema = z.object({
   if (balance > 0 && !value.credit_due_date) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['credit_due_date'], message: 'Set a due date for the remaining balance.' })
   }
-  if (balance > 0 && !value.customer_id && (!value.customer_name || value.customer_name.toLowerCase() === 'walk-in customer')) {
+  // Customer name only required when there is a balance (partial or credit sales)
+  if (balance > 0 && !value.customer_id && (!value.customer_name || value.customer_name.trim() === '' || value.customer_name.toLowerCase() === 'walk-in customer')) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['customer_name'], message: 'Enter a named customer for credit or partial sales.' })
   }
 })
@@ -259,8 +258,11 @@ export function PosPage() {
                 <select className="form-input" {...form.register('sale_payment_mode')} onChange={(event) => {
                   const next = event.target.value as FormValues['sale_payment_mode']
                   form.setValue('sale_payment_mode', next)
-                  form.setValue('amount_paid_now', next === 'full' ? total : next === 'credit' ? 0 : undefined)
+                  if (next === 'full') form.setValue('amount_paid_now', total)
+                  else if (next === 'credit') form.setValue('amount_paid_now', 0)
+                  else form.setValue('amount_paid_now', undefined)
                   form.setValue('cash_tendered', undefined)
+                  form.clearErrors('amount_paid_now')
                 }}>
                   <option value="full">Full payment</option>
                   <option value="partial">Partial payment</option>
@@ -273,12 +275,12 @@ export function PosPage() {
                   className="form-input"
                   type="number"
                   min={0}
-                  max={total}
                   step="0.01"
-                  disabled={paymentMode === 'full'}
+                  readOnly={paymentMode === 'full'}
+                  style={paymentMode === 'full' ? { opacity: 0.7, cursor: 'not-allowed' } : undefined}
                   {...form.register('amount_paid_now')}
-                  value={paymentMode === 'full' ? total : undefined}
-                  onChange={paymentMode === 'full' ? undefined : (e) => form.setValue('amount_paid_now', Number(e.target.value))}
+                  value={paymentMode === 'full' ? total : (amountPaidNow ?? '')}
+                  onChange={paymentMode === 'full' ? undefined : (e) => form.setValue('amount_paid_now', e.target.value === '' ? undefined : Number(e.target.value))}
                 />
                 {errors.amount_paid_now ? <p className="form-error">{errors.amount_paid_now.message}</p> : null}
               </div>
