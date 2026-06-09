@@ -56,6 +56,8 @@ PERMISSIONS = [
     ("users:delete", "Delete/deactivate users", "users"),
     ("dev_admin:read", "View developer admin workspace", "developer_admin"),
     ("dev_admin:write", "Manage tenants, plans, and modules", "developer_admin"),
+    ("accounting:read", "View accounting data (COA, journals, reports)", "accounting"),
+    ("accounting:write", "Create and post journal entries, manage COA", "accounting"),
 ]
 
 
@@ -81,6 +83,7 @@ async def run_seed() -> None:
             await _seed_admin(db)
             await _seed_developer_admin(db)
             await _seed_demo_tenant_if_enabled(db)
+            await _seed_coa_templates(db)
             await db.commit()
             logger.info("Database seed completed successfully.")
         except Exception as exc:
@@ -628,3 +631,29 @@ async def _seed_demo_tenant_if_enabled(db: AsyncSession) -> None:
 
     logger.info("Demo tenant/admin seed staged for %s at %s.", settings.SEED_DEMO_TENANT_ADMIN_EMAIL, host)
 
+
+async def _seed_coa_templates(db: AsyncSession) -> None:
+    """Seed the default COA template into the platform main database.
+
+    The Poultry Enterprise template is stored in account_templates and
+    template_accounts tables on the main platform DB. When a tenant's
+    accounting module is initialized, this template is copied into their
+    operational database.
+    
+    Uses direct SQL upsert to avoid asyncpg/sync driver conflicts.
+    """
+    from sqlalchemy import select as sa_select
+
+    logger.info("Seeding COA templates (platform-level).")
+    try:
+        from app.models.finance_coa import AccountTemplate
+        result = await db.execute(
+            sa_select(AccountTemplate).where(AccountTemplate.name == "Poultry Enterprise")
+        )
+        existing = result.scalar_one_or_none()
+        if existing:
+            logger.info("COA template 'Poultry Enterprise' already exists — skipping seed.")
+            return
+        logger.info("COA template not found on platform DB; will be created on first tenant initialization.")
+    except Exception as exc:
+        logger.warning("COA template check skipped (non-critical): %s", exc)

@@ -224,6 +224,11 @@ def _apply_runtime_schema_patches(engine: Engine) -> None:
     Base.metadata.tables["email_logs"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["master_data_requests"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["invoice_balance_reminders"].create(bind=engine, checkfirst=True)
+    # Phase 1: Enterprise Accounting tables
+    Base.metadata.tables["account_templates"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["template_accounts"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["fiscal_years"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["opening_balances"].create(bind=engine, checkfirst=True)
     inspector = inspect(engine)
     with engine.begin() as connection:
         connection.execute(
@@ -332,6 +337,72 @@ def _apply_runtime_schema_patches(engine: Engine) -> None:
                 """
             )
         )
+        # ---------------------------------------------------------------
+        # Phase 1 — Enterprise Accounting column migrations
+        # ---------------------------------------------------------------
+        # accounts: add new enterprise columns
+        connection.execute(text("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS tenant_id INTEGER"))
+        connection.execute(text("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS description TEXT"))
+        connection.execute(text("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS allow_manual_entries BOOLEAN NOT NULL DEFAULT true"))
+        connection.execute(text("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_system BOOLEAN NOT NULL DEFAULT false"))
+        # Add normal_balance column (enum must be created first safely)
+        connection.execute(
+            text("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'normalbalance') THEN
+                    CREATE TYPE normalbalance AS ENUM ('debit', 'credit');
+                END IF;
+            END $$;
+            """)
+        )
+        connection.execute(
+            text("""
+            ALTER TABLE accounts ADD COLUMN IF NOT EXISTS normal_balance normalbalance NOT NULL DEFAULT 'debit';
+            """)
+        )
+        # Add fiscalyearstatus enum
+        connection.execute(
+            text("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'fiscalyearstatus') THEN
+                    CREATE TYPE fiscalyearstatus AS ENUM ('open', 'closed', 'locked');
+                END IF;
+            END $$;
+            """)
+        )
+        # accounts: migrate unique constraint from global to per-tenant
+        connection.execute(
+            text("""
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM pg_constraint WHERE conname = 'accounts_account_code_key'
+                ) THEN
+                    ALTER TABLE accounts DROP CONSTRAINT accounts_account_code_key;
+                END IF;
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint WHERE conname = 'uq_account_code_tenant'
+                ) THEN
+                    ALTER TABLE accounts ADD CONSTRAINT uq_account_code_tenant
+                        UNIQUE (account_code, tenant_id);
+                END IF;
+            END $$;
+            """)
+        )
+        # journal_entries: add missing audit columns that AccountingService references
+        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS tenant_id INTEGER"))
+        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS reference_type VARCHAR(50)"))
+        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS reference_id INTEGER"))
+        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS notes TEXT"))
+        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER"))
+        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS posted_at TIMESTAMPTZ"))
+        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS posted_by_user_id INTEGER"))
+        # Indexes for new columns
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_accounts_tenant_id ON accounts (tenant_id)"))
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_journal_entries_tenant_id ON journal_entries (tenant_id)"))
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_journal_entries_reference_type ON journal_entries (reference_type)"))
 
 
 def _upsert_tenant_identity(session: Session, tenant_snapshot: dict[str, Any]) -> None:

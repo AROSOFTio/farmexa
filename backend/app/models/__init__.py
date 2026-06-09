@@ -37,7 +37,12 @@ from app.models.inventory import (  # noqa: F401
 from app.models.slaughter import SlaughterRecord, SlaughterOutput, SlaughterByProduct  # noqa: F401
 from app.models.sales import Customer, Invoice, InvoiceBalanceReminder, Order, OrderItem, Payment  # noqa: F401
 from app.models.finance import ExpenseCategory, Expense, IncomeCategory, Income  # noqa: F401
-from app.models.finance_coa import Account, JournalEntry, JournalLine  # noqa: F401
+from app.models.finance_coa import (  # noqa: F401
+    Account, AccountTemplate, TemplateAccount,
+    FiscalYear, OpeningBalance,
+    JournalEntry, JournalLine,
+    AccountType, NormalBalance, JournalEntryStatus, FiscalYearStatus,
+)
 from app.models.safety import IncidentReport, SafetyInspection, SafetyInspectionItem, CorrectiveAction  # noqa: F401
 from app.models.settings import EmailLog, MasterDataRequest, ProductCatalog, ReferenceItem, SystemConfig, SystemSettings  # noqa: F401
 from app.models.egg_production import EggProductionLog  # noqa: F401
@@ -110,6 +115,10 @@ __all__ = [
     "IncomeCategory",
     "Income",
     "Account",
+    "AccountTemplate",
+    "TemplateAccount",
+    "FiscalYear",
+    "OpeningBalance",
     "JournalEntry",
     "JournalLine",
     "IncidentReport",
