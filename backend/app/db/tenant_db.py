@@ -47,18 +47,7 @@ def _add_branch_filter(execute_state):
                 )
             )
 
-@event.listens_for(AsyncSession, "do_orm_execute")
-def _add_async_branch_filter(execute_state):
-    if execute_state.is_select or execute_state.is_update or execute_state.is_delete:
-        branch_ids = execute_state.session.info.get("branch_ids")
-        if branch_ids is not None:
-            execute_state.statement = execute_state.statement.options(
-                with_loader_criteria(
-                    Base,
-                    lambda cls: cls.branch_id.in_(branch_ids) if hasattr(cls, "branch_id") else None,
-                    include_aliases=True
-                )
-            )
+
 
 PLATFORM_ADMIN_ROLES = {"super_manager", "developer_admin"}
 
