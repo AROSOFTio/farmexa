@@ -44,6 +44,9 @@ import { CompliancePage } from '@/features/compliance/CompliancePage'
 import { UpgradeModulesPage } from '@/features/subscriptions/UpgradeModulesPage'
 import { SubscriptionExpiredPage } from '@/features/subscriptions/SubscriptionExpiredPage'
 import { BillingPage, DomainsPage, SubscriptionPage, SupportPage } from '@/features/subscriptions/AccountPages'
+import { ChartOfAccountsPage } from '@/features/accounting/ChartOfAccountsPage'
+import { JournalsPage } from '@/features/accounting/JournalsPage'
+import { AccountingSettingsPage } from '@/features/accounting/AccountingSettingsPage'
 
 const PLATFORM_ADMIN_ROLES = new Set(['super_manager', 'developer_admin'])
 
@@ -456,6 +459,40 @@ export default function App() {
                 <ProtectedRoute permission="finance:read">
                   <ModuleGuard moduleKey="income">
                     <IncomesPage />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+          </Route>
+
+          <Route path="accounting">
+            <Route index element={<Navigate to="/accounting/coa" replace />} />
+            <Route
+              path="coa"
+              element={
+                <ProtectedRoute permission="accounting:read">
+                  <ModuleGuard moduleKey="accounting">
+                    <ChartOfAccountsPage />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="journals"
+              element={
+                <ProtectedRoute permission="accounting:read">
+                  <ModuleGuard moduleKey="accounting">
+                    <JournalsPage />
+                  </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="settings"
+              element={
+                <ProtectedRoute permission="accounting:write">
+                  <ModuleGuard moduleKey="accounting">
+                    <AccountingSettingsPage />
                   </ModuleGuard>
                 </ProtectedRoute>
               }

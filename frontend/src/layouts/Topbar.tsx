@@ -40,7 +40,7 @@ function titleFromPath(pathname: string) {
   if (pathname.startsWith('/inventory')) return 'Inventory & Transfers'
   if (pathname.startsWith('/slaughter')) return 'Slaughter'
   if (pathname.startsWith('/sales')) return 'Sales & POS'
-  if (pathname.startsWith('/finance')) return 'Finance'
+  if (pathname.startsWith('/finance') || pathname.startsWith('/accounting')) return 'Accounting'
   if (pathname.startsWith('/compliance')) return 'Compliance'
   if (pathname.startsWith('/reports')) return 'Reports'
   if (pathname.startsWith('/settings')) return 'Settings'
@@ -421,7 +421,10 @@ export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenS
                   {invoices?.some((inv) => inv.status === 'overdue') && (
                     <>
                       <div className="border-t border-[#efe5d2] px-4 py-2">
-                        <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Finance</div>
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4 text-[var(--brand-primary)]" />
+                          <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Accounting</div>
+                        </div>
                       </div>
                       {invoices.filter((inv) => inv.status === 'overdue').slice(0, 3).map((inv) => (
                         <button

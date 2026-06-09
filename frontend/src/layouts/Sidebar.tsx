@@ -102,11 +102,14 @@ const FARM_NAV: NavGroup[] = [
     ],
   },
   {
-    label: 'Finance',
+    label: 'Accounting',
     icon: CreditCard,
     children: [
-      { label: 'Expenses', path: '/finance/expenses', permission: 'finance:read', moduleKey: 'expenses' },
-      { label: 'Income', path: '/finance/incomes', permission: 'finance:read', moduleKey: 'income' },
+      { label: 'Chart of Accounts', path: '/accounting/coa', permission: 'accounting:read', moduleKey: 'accounting' },
+      { label: 'Journal Entries', path: '/accounting/journals', permission: 'accounting:read', moduleKey: 'accounting' },
+      { label: 'Fiscal Years', path: '/accounting/settings', permission: 'accounting:write', moduleKey: 'accounting' },
+      { label: 'Quick Expenses', path: '/finance/expenses', permission: 'finance:read', moduleKey: 'expenses' },
+      { label: 'Quick Income', path: '/finance/incomes', permission: 'finance:read', moduleKey: 'income' },
       { label: 'Profit & Loss', path: '/reports/profit-loss', permission: 'reports:read', moduleKey: 'profit_loss' },
     ],
   },
