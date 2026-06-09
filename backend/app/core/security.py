@@ -8,7 +8,8 @@ from typing import Optional
 import hashlib
 import secrets
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError as JWTError
 import bcrypt
 
 from app.core.config import settings
@@ -55,7 +56,7 @@ def create_access_token(subject: str, extra_claims: dict | None = None) -> str:
 
 def decode_access_token(token: str) -> dict:
     """Decode and verify a JWT access token. Raises JWTError on failure."""
-    return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+    return jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM], options={"verify_aud": False})
 
 
 # ── Refresh Token ─────────────────────────────────────────────

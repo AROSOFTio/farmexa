@@ -5,27 +5,30 @@ stack = "BEST_EFFORT_FALLBACK"
 
 [nix]
 channel = "stable-25_05"
-packages = ["cargo", "freetype", "glibcLocales", "libiconv", "libxcrypt", "postgresql", "rustc"]
+packages = ["cargo", "freetype", "glibcLocales", "libiconv", "libxcrypt", "openssl", "pkg-config", "postgresql", "rustc"]
 
 [userenv]
 
 [userenv.shared]
+API_V1_PREFIX = "/api/v1"
+APP_NAME = "Farmexa"
+APP_VERSION = "1.0.0"
+JWT_ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = "30"
+REFRESH_TOKEN_EXPIRE_DAYS = "7"
+SEED_DEMO_TENANT_ENABLED = "false"
 APP_ENV = "development"
 DEBUG = "true"
-POSTGRES_SERVER = "helium"
-POSTGRES_PORT = "5432"
-REDIS_URL = "redis://localhost:6379/0"
-CELERY_BROKER_URL = "redis://localhost:6379/0"
-CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
 UPLOAD_DIR = "/home/runner/workspace/uploads"
-ALLOWED_ORIGINS = "http://localhost:5000,http://localhost:5173,http://0.0.0.0:5000"
+ALLOWED_ORIGINS = "http://localhost:5000,http://localhost:5173,http://localhost:8000,http://0.0.0.0:5000,https://c18e40d4-b98e-4a48-bc2a-da0bfde67bfa-00-3cvzcvukeipg4.picard.replit.dev,http://c18e40d4-b98e-4a48-bc2a-da0bfde67bfa-00-3cvzcvukeipg4.picard.replit.dev,*"
 PLATFORM_HOSTS = "localhost,127.0.0.1,0.0.0.0"
 VITE_API_URL = "/api/v1"
-POSTGRES_USER = "postgres"
-POSTGRES_DB = "heliumdb"
 
 [userenv.development]
 JWT_SECRET_KEY = "farmexa-dev-secret-key-please-change-in-production-2026"
+REDIS_URL = "redis://localhost:6379/0"
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
 
 [[ports]]
 localPort = 5000
