@@ -121,7 +121,7 @@ export function PublicHomePage() {
             <a href="#contact">Contact</a>
           </nav>
           <div className="flex items-center gap-2">
-            <ThemeSelector compact />
+            <ThemeSelector />
             <ThemeToggle />
             <Link to="/login" className="btn-secondary">Sign In</Link>
             <button type="button" onClick={openRegistration} className="btn-primary">Start Free Trial</button>

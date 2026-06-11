@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.models.finance_coa import (
     Account, AccountTemplate, AccountType, FiscalYear, FiscalYearStatus,
-    NormalBalance, TemplateAccount,
+    NormalBalance, TemplateAccount, SystemAccountMapping
 )
 
 
@@ -448,6 +448,38 @@ def apply_template_to_tenant(db: Session, tenant_id: int, template_name: str = P
     for ta in entries:
         if ta.parent_code and ta.account_code in account_map and ta.parent_code in account_map:
             account_map[ta.account_code].parent_account_id = account_map[ta.parent_code].id
+
+    # Create default SystemAccountMappings
+    default_mappings = {
+        "cash": "1111",
+        "bank": "1112",
+        "ar": "1120",
+        "ap": "2110",
+        "feed_inventory": "1131",
+        "live_bird_inventory": "1133",
+        "finished_goods": "1134",
+        "byproduct_inventory": "1139",
+        "feed_cost": "5110",
+        "mortality_loss": "5400",
+        "slaughter_gain": "4200",
+        "slaughter_loss": "5400",
+        "sales_revenue": "4110",
+        "cogs": "5000",
+    }
+    
+    existing_mappings = {
+        m.operation_key
+        for m in db.query(SystemAccountMapping).filter(SystemAccountMapping.tenant_id == tenant_id).all()
+    }
+    
+    for op_key, acc_code in default_mappings.items():
+        if op_key not in existing_mappings and acc_code in account_map:
+            mapping = SystemAccountMapping(
+                tenant_id=tenant_id,
+                operation_key=op_key,
+                account_id=account_map[acc_code].id
+            )
+            db.add(mapping)
 
     db.commit()
     print(f"[COA] Applied template '{template_name}' to tenant {tenant_id}: {created} accounts created.")

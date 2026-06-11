@@ -150,10 +150,12 @@ def get_ledger(
     account_id: int = Query(..., description="Account ID to view ledger for"),
     from_date: Optional[date] = Query(None),
     to_date: Optional[date] = Query(None),
+    branch_id: Optional[int] = Query(None),
+    batch_id: Optional[int] = Query(None),
     svc=Depends(_svc),
     _=Depends(require_permission("accounting:read")),
 ):
-    return svc.get_ledger(account_id, from_date=from_date, to_date=to_date)
+    return svc.get_ledger(account_id, from_date=from_date, to_date=to_date, branch_id=branch_id, batch_id=batch_id)
 
 
 @router.get("/cashbook", response_model=schemas.GeneralLedgerOut, summary="Cashbook view for a cash/bank account")
@@ -161,38 +163,43 @@ def get_cashbook(
     account_id: int = Query(..., description="Cash or bank account ID"),
     from_date: Optional[date] = Query(None),
     to_date: Optional[date] = Query(None),
+    branch_id: Optional[int] = Query(None),
     svc=Depends(_svc),
     _=Depends(require_permission("accounting:read")),
 ):
-    return svc.get_cashbook(account_id, from_date=from_date, to_date=to_date)
+    return svc.get_cashbook(account_id, from_date=from_date, to_date=to_date, branch_id=branch_id)
 
 
 @router.get("/trial-balance", response_model=schemas.TrialBalanceOut, summary="Trial balance")
 def get_trial_balance(
     as_of_date: Optional[date] = Query(None, description="Date to compute balances up to"),
+    branch_id: Optional[int] = Query(None),
     svc=Depends(_svc),
     _=Depends(require_permission("accounting:read")),
 ):
-    return svc.get_trial_balance(as_of_date=as_of_date)
+    return svc.get_trial_balance(as_of_date=as_of_date, branch_id=branch_id)
 
 
 @router.get("/profit-loss", response_model=schemas.ProfitLossOut, summary="Profit & Loss statement")
 def get_profit_loss(
     from_date: Optional[date] = Query(None),
     to_date: Optional[date] = Query(None),
+    branch_id: Optional[int] = Query(None),
+    batch_id: Optional[int] = Query(None),
     svc=Depends(_svc),
     _=Depends(require_permission("accounting:read")),
 ):
-    return svc.get_profit_and_loss(from_date=from_date, to_date=to_date)
+    return svc.get_profit_and_loss(from_date=from_date, to_date=to_date, branch_id=branch_id, batch_id=batch_id)
 
 
 @router.get("/balance-sheet", response_model=schemas.BalanceSheetOut, summary="Balance sheet")
 def get_balance_sheet(
     as_of_date: Optional[date] = Query(None),
+    branch_id: Optional[int] = Query(None),
     svc=Depends(_svc),
     _=Depends(require_permission("accounting:read")),
 ):
-    return svc.get_balance_sheet(as_of_date=as_of_date)
+    return svc.get_balance_sheet(as_of_date=as_of_date, branch_id=branch_id)
 
 
 # ---------------------------------------------------------------------------

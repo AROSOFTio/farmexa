@@ -22,6 +22,7 @@ from app.modules.feed.schemas import (
 from app.modules.farm.repository import FarmRepository
 from app.services.inventory_coordinator import InventoryCoordinator, ReferenceType
 from app.services.stock_sku import generate_unique_sku_async
+from app.services.accounting_service import AccountingService
 
 
 def _feed_item_current_stock(item: FeedItem) -> float:
@@ -263,6 +264,19 @@ class FeedService:
                 await self.db.rollback()
                 raise HTTPException(status_code=400, detail=f"Cannot record stock movement for feed purchase: {e.detail}")
 
+        total_amount = sum(qty * price for _, qty, price in prepared_items)
+        def sync_accounting_call(session):
+            accounting = AccountingService(session, tenant_id=purchase.tenant_id)
+            accounting.record_feed_purchase(
+                amount=total_amount,
+                entry_date=purchase.purchase_date,
+                reference_id=purchase.id,
+                is_cash=True,  # Defaulting to cash for feed purchases
+                created_by_user_id=None,
+                branch_id=purchase.branch_id
+            )
+        await self.db.run_sync(sync_accounting_call)
+
         await self.db.commit()
         purchase = await self.repo.get_purchase(purchase.id)
         return FeedPurchaseOut.model_validate(purchase)
@@ -282,22 +296,36 @@ class FeedService:
             raise HTTPException(status_code=400, detail="Invalid feed_item_id")
 
         # Ensure stock linkage exists
-        await self._ensure_feed_stock_item(feed_item)
+        feed_stock_item = await self._ensure_feed_stock_item(feed_item)
+        consumption_cost = float(feed_stock_item.average_cost or 0) * data.quantity
 
         # Create consumption row first to get ID, then record movement atomically
         consumption = await self.repo.create_consumption(data)
         coordinator = InventoryCoordinator(self.db)
         try:
             await coordinator.record_out_async(
-                item_id=feed_item.stock_item_id,
+                item_id=feed_stock_item.id,
                 quantity=data.quantity,
                 reference_type=ReferenceType.FEED_CONSUMPTION.value,
                 reference_id=consumption.id,
                 notes=f"Feed consumption by batch {batch.batch_number}",
+                batch_id=data.batch_id,
             )
         except HTTPException as e:
             await self.db.rollback()
             raise HTTPException(status_code=400, detail=f"Cannot record stock movement for feed consumption: {e.detail}")
+
+        def sync_accounting_call(session):
+            accounting = AccountingService(session, tenant_id=consumption.tenant_id)
+            accounting.record_feed_consumption(
+                amount=consumption_cost,
+                entry_date=consumption.consumption_date,
+                reference_id=consumption.id,
+                created_by_user_id=None,
+                branch_id=batch.branch_id,
+                batch_id=data.batch_id,
+            )
+        await self.db.run_sync(sync_accounting_call)
 
         await self.db.commit()
         return FeedConsumptionOut.model_validate(consumption)

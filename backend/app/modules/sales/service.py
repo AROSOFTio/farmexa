@@ -22,6 +22,7 @@ from app.models.sales import (
 )
 from app.models.settings import EmailLog
 from app.services.inventory_coordinator import InventoryCoordinator, ReferenceType
+from app.services.accounting_service import AccountingService
 
 from . import schemas
 
@@ -158,7 +159,13 @@ class SalesService:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="At least one order line is required")
 
         total_amount = 0.0
-        db_order = Order(customer_id=order.customer_id, status=order.status, notes=order.notes, total_amount=0.0)
+        db_order = Order(
+            customer_id=order.customer_id, 
+            status=order.status, 
+            notes=order.notes, 
+            total_amount=0.0, 
+            batch_id=order.batch_id
+        )
         db.add(db_order)
         db.flush()
 
@@ -186,6 +193,7 @@ class SalesService:
                     quantity=item.quantity,
                     unit_price=item.unit_price,
                     subtotal=subtotal,
+                    batch_id=item.batch_id,
                 )
             )
 
@@ -197,24 +205,37 @@ class SalesService:
                 reference_type=ReferenceType.SALE.value,
                 reference_id=db_order.id,
                 notes=f"Order {db_order.id}",
+                batch_id=item.batch_id,
             )
 
         db_order.total_amount = total_amount
 
-        db.add(
-            Invoice(
-                invoice_number=f"INV-{uuid.uuid4().hex[:8].upper()}",
-                order_id=db_order.id,
-                customer_id=db_order.customer_id,
-                status=InvoiceStatus.ISSUED,
-                issue_date=date.today(),
-                due_date=date.today() + timedelta(days=14),
-                total_amount=total_amount,
-                paid_amount=0.0,
-            )
+        invoice = Invoice(
+            invoice_number=f"INV-{uuid.uuid4().hex[:8].upper()}",
+            order_id=db_order.id,
+            customer_id=db_order.customer_id,
+            status=InvoiceStatus.ISSUED,
+            issue_date=date.today(),
+            due_date=date.today() + timedelta(days=14),
+            total_amount=total_amount,
+            paid_amount=0.0,
+            batch_id=order.batch_id,
         )
+        db.add(invoice)
 
         customer.balance += total_amount
+        db.flush()
+
+        accounting = AccountingService(db, tenant_id=db_order.tenant_id)
+        accounting.record_egg_sales(
+            revenue=total_amount,
+            entry_date=invoice.issue_date,
+            reference_id=invoice.id,
+            is_cash=False,  # This creates AR
+            created_by_user_id=None,
+            batch_id=order.batch_id,
+        )
+
         db.commit()
 
         return (
@@ -305,6 +326,16 @@ class SalesService:
                 f"Outstanding balance: UGX {max(invoice.total_amount - invoice.paid_amount, 0):,.0f}\n\n"
                 "Thank you.\nFarmexa"
             ),
+        )
+        
+        db.flush()
+        
+        accounting = AccountingService(db, tenant_id=invoice.tenant_id)
+        accounting.record_payment_received(
+            payment_amount=payment.amount,
+            entry_date=payment.payment_date,
+            reference_id=db_payment.id,
+            created_by_user_id=None,
         )
 
         db.commit()
@@ -421,11 +452,13 @@ class SalesService:
                 customer_id=customer.id,
                 status="completed",
                 notes=payload.notes,
+                batch_id=payload.batch_id,
                 items=[
                     schemas.OrderItemCreate(
                         product_id=item.product_id,
                         quantity=item.quantity,
                         unit_price=item.unit_price,
+                        batch_id=item.batch_id,
                     )
                     for item in payload.items
                 ],

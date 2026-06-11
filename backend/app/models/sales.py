@@ -62,6 +62,7 @@ class Order(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
+    batch_id = Column(Integer, ForeignKey("batches.id"), nullable=True)
     status = Column(db_enum(OrderStatus, name="orderstatus"), default=OrderStatus.PENDING, nullable=False)
     total_amount = Column(Float, default=0.0, nullable=False)
     notes = Column(Text, nullable=True)
@@ -78,6 +79,7 @@ class OrderItem(Base):
     id = Column(Integer, primary_key=True, index=True)
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
     product_id = Column(Integer, ForeignKey("stock_items.id"), nullable=False)
+    batch_id = Column(Integer, ForeignKey("batches.id"), nullable=True)
     quantity = Column(Float, nullable=False)
     unit_price = Column(Float, nullable=False)
     subtotal = Column(Float, nullable=False)
@@ -93,6 +95,7 @@ class Invoice(Base):
     invoice_number = Column(String, unique=True, index=True, nullable=False)
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=True)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
+    batch_id = Column(Integer, ForeignKey("batches.id"), nullable=True)
     status = Column(db_enum(InvoiceStatus, name="invoicestatus"), default=InvoiceStatus.DRAFT, nullable=False)
     issue_date = Column(Date, nullable=False)
     due_date = Column(Date, nullable=False)

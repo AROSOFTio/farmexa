@@ -108,6 +108,7 @@ class InventoryCoordinator:
         unit_cost: Optional[float] = None,
         notes: Optional[str] = None,
         allow_negative: bool = False,
+        batch_id: Optional[int] = None,
     ) -> StockMovement:
         """
         Record a stock movement (async version).
@@ -176,6 +177,7 @@ class InventoryCoordinator:
             reference_id=reference_id,
             unit_cost=unit_cost or item.average_cost,
             notes=notes,
+            batch_id=batch_id,
         )
 
         # Update item quantity
@@ -265,6 +267,7 @@ class InventoryCoordinator:
             reference_id=reference_id,
             unit_cost=unit_cost or item.average_cost,
             notes=notes,
+            batch_id=batch_id,
         )
 
         # Update item quantity
@@ -284,6 +287,7 @@ class InventoryCoordinator:
         reference_id: Optional[int] = None,
         unit_cost: Optional[float] = None,
         notes: Optional[str] = None,
+        batch_id: Optional[int] = None,
     ) -> StockMovement:
         """Convenience method for recording IN movements (async)."""
         return await self.record_movement_async(
@@ -294,6 +298,7 @@ class InventoryCoordinator:
             reference_id=reference_id,
             unit_cost=unit_cost,
             notes=notes,
+            batch_id=batch_id,
         )
 
     def record_in(
@@ -305,6 +310,7 @@ class InventoryCoordinator:
         reference_id: Optional[int] = None,
         unit_cost: Optional[float] = None,
         notes: Optional[str] = None,
+        batch_id: Optional[int] = None,
     ) -> StockMovement:
         """Convenience method for recording IN movements (sync)."""
         return self.record_movement(
@@ -315,6 +321,7 @@ class InventoryCoordinator:
             reference_id=reference_id,
             unit_cost=unit_cost,
             notes=notes,
+            batch_id=batch_id,
         )
 
     async def record_out_async(
@@ -325,6 +332,7 @@ class InventoryCoordinator:
         reference_type: str,
         reference_id: Optional[int] = None,
         notes: Optional[str] = None,
+        batch_id: Optional[int] = None,
     ) -> StockMovement:
         """Convenience method for recording OUT movements (async)."""
         return await self.record_movement_async(
@@ -334,6 +342,7 @@ class InventoryCoordinator:
             reference_type=reference_type,
             reference_id=reference_id,
             notes=notes,
+            batch_id=batch_id,
         )
 
     def record_out(
@@ -344,6 +353,7 @@ class InventoryCoordinator:
         reference_type: str,
         reference_id: Optional[int] = None,
         notes: Optional[str] = None,
+        batch_id: Optional[int] = None,
     ) -> StockMovement:
         """Convenience method for recording OUT movements (sync)."""
         return self.record_movement(
@@ -353,6 +363,7 @@ class InventoryCoordinator:
             reference_type=reference_type,
             reference_id=reference_id,
             notes=notes,
+            batch_id=batch_id,
         )
 
     async def record_adjustment_async(
@@ -364,6 +375,7 @@ class InventoryCoordinator:
         reference_id: Optional[int] = None,
         notes: Optional[str] = None,
         allow_negative: bool = False,
+        batch_id: Optional[int] = None,
     ) -> StockMovement:
         """Convenience method for recording ADJUSTMENT movements (async)."""
         return await self.record_movement_async(
@@ -374,6 +386,7 @@ class InventoryCoordinator:
             reference_id=reference_id,
             notes=notes,
             allow_negative=allow_negative,
+            batch_id=batch_id,
         )
 
     def record_adjustment(
@@ -385,6 +398,7 @@ class InventoryCoordinator:
         reference_id: Optional[int] = None,
         notes: Optional[str] = None,
         allow_negative: bool = False,
+        batch_id: Optional[int] = None,
     ) -> StockMovement:
         """Convenience method for recording ADJUSTMENT movements (sync)."""
         return self.record_movement(
@@ -395,6 +409,7 @@ class InventoryCoordinator:
             reference_id=reference_id,
             notes=notes,
             allow_negative=allow_negative,
+            batch_id=batch_id,
         )
 
     async def reconcile_item_async(self, item_id: int) -> dict:

@@ -57,8 +57,12 @@ if settings.ALLOWED_ORIGINS.strip().startswith("["):
     origins = json.loads(settings.ALLOWED_ORIGINS)
 
 # Also allow all *.{tenant_domain_suffix} origins so tenant subdomains can make API calls.
+# Also allow *.localhost for local Docker development (e.g. testfarm.localhost:4021).
 _cf_suffix = re.escape(settings.tenant_domain_suffix)
-_tenant_origin_regex = rf"^https?://[a-zA-Z0-9][a-zA-Z0-9-]+\.{_cf_suffix}(:\d+)?$"
+_tenant_origin_regex = (
+    rf"^https?://[a-zA-Z0-9][a-zA-Z0-9-]+\.{_cf_suffix}(:\d+)?$"
+    rf"|^https?://[a-zA-Z0-9][a-zA-Z0-9-]+\.localhost(:\d+)?$"
+)
 
 app.add_middleware(
     CORSMiddleware,

@@ -474,10 +474,29 @@ class FarmService:
             reference_type=ReferenceType.MORTALITY.value,
             reference_id=log.id,
             notes=f"Mortality for batch {batch.batch_number}",
+            batch_id=data.batch_id,
         )
         batch.active_quantity -= data.quantity
         if batch.active_quantity == 0:
             batch.status = BatchStatus.DEPLETED
+            
+        stock_item_res = await self.db.execute(select(StockItem).where(StockItem.id == batch.stock_item_id))
+        stock_item = stock_item_res.scalar_one_or_none()
+        mortality_cost = float(stock_item.average_cost or 0) * data.quantity if stock_item else 0.0
+
+        def sync_accounting_call(session):
+            from app.services.accounting_service import AccountingService
+            accounting = AccountingService(session, tenant_id=batch.tenant_id)
+            accounting.record_bird_mortality(
+                amount=mortality_cost,
+                entry_date=log.log_date,
+                reference_id=log.id,
+                created_by_user_id=None,
+                branch_id=batch.house.branch_id if batch.house else None,
+                batch_id=data.batch_id,
+            )
+        await self.db.run_sync(sync_accounting_call)
+
         await self.db.commit()
         return MortalityLogOut.model_validate(log)
 
@@ -572,7 +591,7 @@ class FarmService:
         validator = FarmValidationService(self.db)
         
         # Validate medication workflow
-        await validator.validate_medication_workflow(
+        batch, medicine_item = await validator.validate_medication_workflow(
             batch_id=data.batch_id,
             medicine_item_id=data.medicine_item_id,
             total_quantity_used=data.total_quantity_used,
@@ -592,6 +611,21 @@ class FarmService:
             notes=data.notes or f"Medication administration for batch #{data.batch_id}",
         )
         
+        medication_cost = float(medicine_item.average_cost or 0) * data.total_quantity_used
+
+        def sync_accounting_call(session):
+            from app.services.accounting_service import AccountingService
+            accounting = AccountingService(session, tenant_id=batch.tenant_id)
+            accounting.record_medication_usage(
+                amount=medication_cost,
+                entry_date=admin.administered_date,
+                reference_id=admin.id,
+                created_by_user_id=None,
+                branch_id=batch.house.branch_id if batch.house else None,
+                batch_id=data.batch_id,
+            )
+        await self.db.run_sync(sync_accounting_call)
+
         await self.db.commit()
         return MedicationAdministrationOut.model_validate(admin)
 

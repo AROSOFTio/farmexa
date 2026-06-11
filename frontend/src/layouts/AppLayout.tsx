@@ -57,8 +57,8 @@ export function AppLayout() {
           onOpenSearch={() => setCommandPaletteOpen(true)}
         />
 
-        <main className="relative flex-1" style={{ paddingTop: '56px', minHeight: '100vh' }}>
-          <div className="relative mx-auto w-full max-w-[1760px] px-3 py-3 sm:px-4 lg:px-4 lg:py-3">
+        <main className="relative flex-1" style={{ paddingTop: '72px', minHeight: '100vh' }}>
+          <div className="relative mx-auto w-full max-w-[1760px] px-3 py-3 sm:px-4 lg:px-6 lg:py-6">
             <Outlet />
           </div>
         </main>

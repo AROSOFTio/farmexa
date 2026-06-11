@@ -53,6 +53,7 @@ class OrderItemBase(BaseModel):
     product_id: int
     quantity: float = Field(gt=0)
     unit_price: float = Field(ge=0)
+    batch_id: Optional[int] = None
 
 
 class OrderItemCreate(OrderItemBase):
@@ -71,6 +72,7 @@ class OrderBase(BaseModel):
     customer_id: int
     status: OrderStatus = OrderStatus.PENDING
     notes: Optional[str] = None
+    batch_id: Optional[int] = None
 
 
 class OrderCreate(OrderBase):
@@ -115,6 +117,7 @@ class InvoiceBase(BaseModel):
     due_date: date
     total_amount: float = Field(ge=0)
     notes: Optional[str] = None
+    batch_id: Optional[int] = None
 
 
 class InvoiceCreate(InvoiceBase):
@@ -139,6 +142,7 @@ class PosLineCreate(BaseModel):
     product_id: int
     quantity: float = Field(gt=0)
     unit_price: float = Field(ge=0)
+    batch_id: Optional[int] = None
 
 
 class PosCheckoutCreate(BaseModel):
@@ -154,6 +158,7 @@ class PosCheckoutCreate(BaseModel):
     payment_reference: Optional[str] = None
     credit_due_date: Optional[date] = None
     notes: Optional[str] = None
+    batch_id: Optional[int] = None
     items: List[PosLineCreate] = Field(min_length=1)
 
 

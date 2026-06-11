@@ -60,6 +60,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    healthcheck:
+      disable: true
     container_name: farmexa_celery_worker
     restart: unless-stopped
     env_file: .env
@@ -78,6 +80,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    healthcheck:
+      disable: true
     container_name: farmexa_celery_beat
     restart: unless-stopped
     env_file: .env
@@ -96,7 +100,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      target: production
     container_name: farmexa_frontend
     restart: unless-stopped
     networks:

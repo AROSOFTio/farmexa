@@ -235,16 +235,16 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
       ) : null}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-50 flex w-[232px] flex-col sidebar text-white shadow-[20px_0_48px_-28px_rgba(0,0,0,.8)] transition-transform duration-300',
+          'fixed inset-y-0 left-0 z-50 flex w-[232px] flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar)] text-[var(--sidebar-text)] shadow-[var(--sidebar-shadow)] transition-transform duration-300',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* ── Header ── */}
-        <div className="shrink-0 border-b border-white/[0.07] px-4 py-4">
+        <div className="shrink-0 border-b border-[var(--sidebar-border)] px-4 py-4">
           <div className="flex items-center gap-3">
-            <BrandMark compact light />
+            <BrandMark compact />
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[15px] font-extrabold leading-5 tracking-wide text-white">
+              <div className="truncate text-[15px] font-bold leading-5 text-[var(--sidebar-text)]">
                 {isDevAdmin ? settings.company_name : workspaceName.split(' ')[0]}
               </div>
               <div className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--brand-primary)]">
@@ -254,7 +254,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
             <button
               type="button"
               onClick={onClose}
-              className="ml-auto flex h-7 w-7 items-center justify-center rounded-[7px] text-white/50 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+              className="ml-auto flex h-7 w-7 items-center justify-center rounded-[7px] text-[var(--sidebar-muted)] transition-colors hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-text)] lg:hidden"
               aria-label="Close navigation"
             >
               <X className="h-4 w-4" />
@@ -278,7 +278,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               <div key={group.label}>
                 {/* Section divider label */}
                 {showSection ? (
-                  <div className={clsx('px-2 pb-1.5 text-[9.5px] font-extrabold uppercase tracking-[0.14em] text-white/30', idx === 0 ? 'pt-1' : 'pt-5')}>
+                  <div className={clsx('px-2 pb-1.5 text-[9.5px] font-bold uppercase tracking-[0.14em] text-[var(--sidebar-section)]', idx === 0 ? 'pt-1' : 'pt-5')}>
                     {group.section}
                   </div>
                 ) : idx === 0 && !group.section ? null : null}
@@ -290,14 +290,14 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                     className={clsx(
                       'group flex h-9 w-full items-center gap-2.5 rounded-[8px] px-2.5 text-left text-[12px] font-semibold transition-all duration-150',
                       active
-                        ? 'bg-[var(--brand-primary)] text-[#111827] shadow-[0_8px_20px_-12px_rgba(var(--brand-primary-rgb),0.8)]'
-                        : 'text-white/80 hover:bg-white/[0.09] hover:text-white'
+                        ? 'border border-[rgba(var(--brand-primary-rgb),0.22)] bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)]'
+                        : 'border border-transparent text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-text)]'
                     )}
                   >
                     <Icon
                       className={clsx(
                         'h-[15px] w-[15px] shrink-0 transition-colors',
-                        active ? 'text-[#111827]/80' : 'text-[var(--brand-primary)]'
+                        active ? 'text-[var(--sidebar-active-text)]' : 'text-[var(--sidebar-icon)]'
                       )}
                     />
                     <span className="min-w-0 flex-1 truncate">{group.label}</span>
@@ -306,7 +306,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                         className={clsx(
                           'h-3 w-3 shrink-0 transition-transform duration-200',
                           open && 'rotate-180',
-                          active ? 'text-[#111827]/60' : 'text-white/35'
+                          active ? 'text-[var(--sidebar-active-text)]' : 'text-[var(--sidebar-muted)]'
                         )}
                       />
                     ) : null}
@@ -314,7 +314,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
                   {/* Children */}
                   {hasChildren && open ? (
-                    <div className="ml-[19px] mt-0.5 border-l border-white/[0.08] pl-3 pb-1">
+                    <div className="ml-[19px] mt-0.5 border-l border-[var(--sidebar-border)] pl-3 pb-1">
                       {group.children!.map((child) => {
                         const childActive = isActivePath(location.pathname, child.path)
                         return (
@@ -327,14 +327,14 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                             className={clsx(
                               'my-0.5 flex items-center gap-2 rounded-[6px] px-2.5 py-[5px] text-[11.5px] font-medium transition-colors duration-150',
                               childActive
-                                ? 'bg-[rgba(var(--brand-primary-rgb),0.18)] font-semibold text-[var(--brand-primary)]'
-                                : 'text-white/58 hover:bg-white/[0.07] hover:text-white/90'
+                                ? 'bg-[var(--sidebar-active-bg)] font-semibold text-[var(--sidebar-active-text)]'
+                                : 'text-[var(--sidebar-muted)] hover:bg-[var(--sidebar-hover-bg)] hover:text-[var(--sidebar-text)]'
                             )}
                           >
                             {childActive ? (
                               <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--brand-primary)]" />
                             ) : (
-                              <span className="h-1 w-1 shrink-0 rounded-full bg-white/20" />
+                              <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--sidebar-muted)] opacity-40" />
                             )}
                             {child.label}
                           </NavLink>
@@ -348,7 +348,40 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           })}
         </nav>
 
-        {/* Sidebar Footer (Optional) */}
+        {/* ── Workspace / Trial Panel ── */}
+        {!isDevAdmin ? (
+          <div className="shrink-0 border-t border-[var(--sidebar-border)] p-3">
+            <div className="rounded-[10px] border border-[rgba(var(--brand-primary-rgb),0.24)] bg-[var(--sidebar-panel)] px-3.5 py-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate text-[11.5px] font-bold text-[var(--sidebar-text)]">{workspaceName}</div>
+                  <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--brand-primary)]">
+                    {tenant?.subscription_status ?? 'Trial'} plan
+                  </div>
+                </div>
+                <div className="shrink-0 rounded-[7px] border border-[rgba(var(--brand-primary-rgb),0.3)] bg-[rgba(var(--brand-primary-rgb),0.1)] px-2 py-1 text-center">
+                  <div className="text-[15px] font-bold leading-none text-[var(--sidebar-text)]">{trialDays}</div>
+                  <div className="mt-0.5 text-[8.5px] font-bold uppercase tracking-wider text-[var(--sidebar-muted)]">days</div>
+                </div>
+              </div>
+
+              <div className="mt-3 h-[3px] overflow-hidden rounded-full bg-[rgba(var(--brand-primary-rgb),0.14)]">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-primary-hover)] transition-all duration-500"
+                  style={{ width: `${Math.max(Math.min((trialDays / 14) * 100, 100), 4)}%` }}
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => navigate('/subscription/upgrade')}
+                className="mt-3 flex h-8 w-full items-center justify-center rounded-[7px] bg-[var(--brand-primary)] text-[11.5px] font-bold text-white transition-opacity hover:opacity-90"
+              >
+                Upgrade to Pro
+              </button>
+            </div>
+          </div>
+        ) : null}
       </aside>
     </>
   )

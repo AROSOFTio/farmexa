@@ -4,8 +4,10 @@ Scheduled Celery tasks for Farmexa background operations.
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
+from typing import TypeVar
 
-from app.db.session import AsyncSessionLocal
+from app.db.session import AsyncSessionLocal, engine
 from datetime import UTC, datetime
 
 from sqlalchemy import select
@@ -20,6 +22,17 @@ from app.tasks.celery_app import celery_app
 from app.db.tenant_db import _ensure_schema_ready_sync, operational_db_name_for_tenant
 
 logger = logging.getLogger("farmexa.tasks")
+T = TypeVar("T")
+
+
+def _run_async_task(coro_factory: Callable[[], Awaitable[T]]) -> T:
+    async def runner() -> T:
+        try:
+            return await coro_factory()
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(runner())
 
 
 @celery_app.task(name="tasks.health_ping")
@@ -32,7 +45,7 @@ def health_ping() -> str:
 @celery_app.task(name="tasks.process_compliance_reminders")
 def process_compliance_reminders_task() -> int:
     """Send due compliance expiry reminders and mark them as delivered."""
-    return asyncio.run(_process_compliance_reminders_async())
+    return _run_async_task(_process_compliance_reminders_async)
 
 
 async def _process_compliance_reminders_async() -> int:
@@ -44,22 +57,22 @@ async def _process_compliance_reminders_async() -> int:
 
 @celery_app.task(name="tasks.process_trial_day_7_warnings")
 def process_trial_day_7_warnings() -> int:
-    return asyncio.run(_process_trial_warnings_async(day=7))
+    return _run_async_task(lambda: _process_trial_warnings_async(day=7))
 
 
 @celery_app.task(name="tasks.process_trial_day_13_warnings")
 def process_trial_day_13_warnings() -> int:
-    return asyncio.run(_process_trial_warnings_async(day=13))
+    return _run_async_task(lambda: _process_trial_warnings_async(day=13))
 
 
 @celery_app.task(name="tasks.process_expired_trials")
 def process_expired_trials() -> int:
-    return asyncio.run(_process_expired_trials_async())
+    return _run_async_task(_process_expired_trials_async)
 
 
 @celery_app.task(name="tasks.process_subscription_status_updates")
 def process_subscription_status_updates() -> int:
-    return asyncio.run(_process_expired_trials_async())
+    return _run_async_task(_process_expired_trials_async)
 
 
 @celery_app.task(name="tasks.process_email_retries")
@@ -70,7 +83,7 @@ def process_email_retries() -> int:
 
 @celery_app.task(name="tasks.process_customer_balance_reminders")
 def process_customer_balance_reminders() -> int:
-    return asyncio.run(_process_customer_balance_reminders_async())
+    return _run_async_task(_process_customer_balance_reminders_async)
 
 
 async def _system_settings(db):

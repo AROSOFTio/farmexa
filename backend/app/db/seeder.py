@@ -566,6 +566,29 @@ async def _seed_demo_tenant_if_enabled(db: AsyncSession) -> None:
         existing_domain.status = DomainStatus.ACTIVE
         existing_domain.activated_at = existing_domain.activated_at or datetime.now(UTC)
 
+    # Also register the localhost variant so local Docker dev works
+    # (browser hits testfarm.localhost:4021 → nginx proxies to backend with host testfarm.localhost)
+    local_host = f"{slug}.localhost"
+    existing_local_domain = (
+        await db.execute(select(TenantDomain).where(TenantDomain.normalized_host == local_host))
+    ).scalar_one_or_none()
+    if existing_local_domain is None:
+        db.add(
+            TenantDomain(
+                tenant_id=tenant.id,
+                host=local_host,
+                normalized_host=local_host,
+                domain_type=DomainType.PLATFORM_SUBDOMAIN,
+                is_primary=False,
+                status=DomainStatus.ACTIVE,
+                dns_verified_at=datetime.now(UTC),
+                activated_at=datetime.now(UTC),
+            )
+        )
+    elif existing_local_domain.tenant_id == tenant.id:
+        existing_local_domain.status = DomainStatus.ACTIVE
+        existing_local_domain.activated_at = existing_local_domain.activated_at or datetime.now(UTC)
+
     for module in DEFAULT_MODULES:
         statement = (
             insert(TenantModule)

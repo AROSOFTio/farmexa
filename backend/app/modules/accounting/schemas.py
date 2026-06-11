@@ -77,6 +77,8 @@ class JournalLineBase(BaseModel):
     memo: Optional[str] = Field(default=None, max_length=255)
     debit: float = Field(default=0.0, ge=0)
     credit: float = Field(default=0.0, ge=0)
+    branch_id: Optional[int] = None
+    batch_id: Optional[int] = None
 
 
 class JournalLineCreate(JournalLineBase):
@@ -103,6 +105,7 @@ class JournalEntryBase(BaseModel):
     source_reference: Optional[str] = None
     description: Optional[str] = None
     notes: Optional[str] = None
+    branch_id: Optional[int] = None
 
 
 class JournalEntryCreate(JournalEntryBase):

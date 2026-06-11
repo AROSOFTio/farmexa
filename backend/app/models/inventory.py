@@ -61,6 +61,7 @@ class StockMovement(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     branch_id = Column(Integer, ForeignKey("branches.id"), index=True, nullable=True)
+    batch_id = Column(Integer, ForeignKey("batches.id"), index=True, nullable=True)
     item_id = Column(Integer, ForeignKey("stock_items.id"), nullable=False)
     movement_type = Column(db_enum(MovementType, name="movementtype"), nullable=False)
     quantity = Column(Float, nullable=False)

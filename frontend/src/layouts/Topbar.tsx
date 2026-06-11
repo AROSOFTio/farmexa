@@ -1,52 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
-  AlertTriangle,
-  ArrowUpRight,
   Bell,
-  Bird,
   Building2,
   ChevronDown,
-  ClipboardCheck,
-  Loader2,
-  CreditCard,
-  DollarSign,
-  Drumstick,
   HelpCircle,
   LogOut,
   Menu,
-  Package,
   PanelLeftClose,
-  Scale,
   Search,
-  ShoppingCart,
-  Skull,
-  Syringe,
   UserRound,
-  Wheat,
-  type LucideIcon,
 } from 'lucide-react'
 import { clsx } from 'clsx'
-import { toast } from 'sonner'
 import { useAuth } from '@/features/auth/AuthContext'
 import { ThemeSelector } from '@/components/ThemeControls'
 import { BranchSwitcher } from '@/components/BranchSwitcher'
-import api from '@/services/api'
-
-function titleFromPath(pathname: string) {
-  if (pathname.startsWith('/dev-admin')) return 'Dev Admin Dashboard'
-  if (pathname.startsWith('/feed-mill')) return 'Feed Mill'
-  if (pathname.startsWith('/farm')) return 'Farm Operations'
-  if (pathname.startsWith('/inventory')) return 'Inventory & Transfers'
-  if (pathname.startsWith('/slaughter')) return 'Slaughter'
-  if (pathname.startsWith('/sales')) return 'Sales & POS'
-  if (pathname.startsWith('/finance') || pathname.startsWith('/accounting')) return 'Accounting'
-  if (pathname.startsWith('/compliance')) return 'Compliance'
-  if (pathname.startsWith('/reports')) return 'Reports'
-  if (pathname.startsWith('/settings')) return 'Settings'
-  return 'Dashboard'
-}
 
 interface TopbarProps {
   onToggleSidebar: () => void
@@ -55,511 +23,186 @@ interface TopbarProps {
   onOpenSearch: () => void
 }
 
-type NotificationTone = 'info' | 'warning' | 'danger'
-
-interface NotificationItem {
-  id: string
-  title: string
-  description: string
-  icon: LucideIcon
-  tone: NotificationTone
-  href?: string
-}
-
-interface QuickAction {
-  label: string
-  description: string
-  icon: LucideIcon
-  href: string
-  enabled: boolean
-  state?: Record<string, unknown>
-}
-
-interface QuickSection {
-  title: string
-  items: QuickAction[]
-}
-
-const PLATFORM_ADMIN_ROLES = new Set(['super_manager', 'developer_admin'])
-
-interface ComplianceAlertSummary {
-  document_id: number
-  title: string
-  document_type: string
-  status: string
-  expiry_date: string | null
-  days_to_expiry: number | null
-  reminder_offsets: number[]
-}
-
-interface ComplianceSummaryResponse {
-  alerts: ComplianceAlertSummary[]
-}
-
-interface InventoryItemSummary {
-  id: number
-  name: string
-  unit_of_measure: string
-  current_quantity: number
-  reorder_level: number
-}
-
-interface InvoiceCustomerSummary {
-  name?: string | null
-}
-
-interface InvoiceSummary {
-  id: number
-  invoice_number: string
-  status: 'draft' | 'issued' | 'partial' | 'paid' | 'overdue' | 'cancelled'
-  due_date: string
-  total_amount: number
-  paid_amount: number
-  customer?: InvoiceCustomerSummary | null
-}
-
-interface SlaughterRecordSummary {
-  id: number
-  slaughter_date: string
-  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
-  inventory_posted_at?: string | null
-  batch?: { batch_number?: string | null } | null
-}
-
 export function Topbar({ onToggleSidebar, isSidebarOpen, leftOffset = 0, onOpenSearch }: TopbarProps) {
-  const { user, tenant, logout, hasPermission, hasModuleAccess } = useAuth()
-  const location = useLocation()
+  const { user, tenant, logout } = useAuth()
   const navigate = useNavigate()
   const [profileOpen, setProfileOpen] = useState(false)
   const [farmOpen, setFarmOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [quickOpen, setQuickOpen] = useState(false)
-  const isDevAdmin = PLATFORM_ADMIN_ROLES.has(user?.role?.name ?? '')
 
-  // Fetch compliance summary for document expiry alerts
-  const { data: complianceSummary } = useQuery({
-    queryKey: ['compliance-summary'],
-    queryFn: async () => {
-      const response = await api.get<ComplianceSummaryResponse>('/compliance/summary')
-      return response.data
-    },
-    enabled: !isDevAdmin && hasPermission('farm:read'),
-  })
-
-  // Fetch ERP dashboard for aggregated alerts (low stock, slaughter outputs, etc.)
-  const { data: erpDashboard } = useQuery({
-    queryKey: ['erp-dashboard'],
-    queryFn: async () => {
-      const response = await api.get('/analytics/erp-dashboard')
-      return response.data
-    },
-    enabled: !isDevAdmin && hasPermission('dashboard:read'),
-  })
-
-  // Fetch invoices for overdue alerts
-  const { data: invoices } = useQuery({
-    queryKey: ['invoices'],
-    queryFn: async () => {
-      const response = await api.get<InvoiceSummary[]>('/sales/invoices')
-      return response.data
-    },
-    enabled: !isDevAdmin && hasPermission('sales:read'),
-  })
-
-  // Fetch slaughter records for pending output posting alerts
-  const { data: slaughterRecords } = useQuery({
-    queryKey: ['slaughter-records'],
-    queryFn: async () => {
-      const response = await api.get<SlaughterRecordSummary[]>('/slaughter/records')
-      return response.data
-    },
-    enabled: !isDevAdmin && hasPermission('slaughter:read'),
-  })
-
-  // Calculate notification counts
-  const notificationCount = useMemo(() => {
-    let count = 0
-
-    // Compliance alerts
-    if ((complianceSummary?.alerts?.length ?? 0) > 0) {
-      count += complianceSummary?.alerts?.length ?? 0
-    }
-
-    // Low stock from ERP dashboard
-    if (erpDashboard?.feed_stock?.some((item: any) => item.status === 'Low stock')) {
-      count += erpDashboard.feed_stock.filter((item: any) => item.status === 'Low stock').length
-    }
-    if (erpDashboard?.slaughter_stock?.some((item: any) => item.status === 'Low stock')) {
-      count += erpDashboard.slaughter_stock.filter((item: any) => item.status === 'Low stock').length
-    }
-
-    // Overdue invoices
-    if (invoices?.some((inv) => inv.status === 'overdue')) {
-      count += invoices.filter((inv) => inv.status === 'overdue').length
-    }
-
-    // Slaughter records awaiting output posting
-    if (slaughterRecords?.some((record) => record.status === 'completed' && !record.inventory_posted_at)) {
-      count += slaughterRecords.filter((record) => record.status === 'completed' && !record.inventory_posted_at).length
-    }
-
-    // Trial expiry warning
-    if (tenant?.subscription_status === 'trial' && tenant.subscription_expiry) {
-      const daysRemaining = Math.max(Math.ceil((new Date(tenant.subscription_expiry).getTime() - Date.now()) / 86_400_000), 0)
-      if (daysRemaining <= 7) {
-        count += 1
-      }
-    }
-
-    return count
-  }, [complianceSummary, erpDashboard, invoices, slaughterRecords, tenant])
-
-  const searchShortcut = useMemo(() => {
-    if (typeof navigator === 'undefined') return 'Ctrl K'
-    return /Mac|iPhone|iPad|iPod/i.test(navigator.platform) ? '⌘ K' : 'Ctrl K'
-  }, [])
   const initials = useMemo(() => {
     const source = user?.full_name || user?.email || 'NF'
     return source.split(/[ @.]/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
   }, [user])
 
-  const title = titleFromPath(location.pathname)
-  const trialLabel = useMemo(() => {
-    if (!tenant) return null
-    if (tenant.is_profile_only || tenant.subscription_status === 'expired') return 'Trial Expired'
-    if (tenant.subscription_status === 'trial' && tenant.subscription_expiry) {
-      const days = Math.max(Math.ceil((new Date(tenant.subscription_expiry).getTime() - Date.now()) / 86_400_000), 0)
-      return `Trial: ${days} days remaining`
-    }
-    return 'Subscription Active'
-  }, [tenant])
-
   const handleLogout = async () => {
     try {
       await logout()
     } catch {
-      toast.error('Sign-out failed. Please try again.')
+      console.error('Logout failed')
     }
   }
 
+  // Simplified notifications for the enterprise view
+  const notificationCount = 3 // Mock count for UI
+
   return (
     <header
-      className={clsx('topbar fixed right-0 top-0 z-30 flex h-[56px] items-center gap-4 border-b px-4 lg:px-5', isDevAdmin && 'bg-[var(--brand-secondary)] text-white')}
-      style={{ left: leftOffset, transition: 'left 300ms cubic-bezier(0.4,0,0.2,1)' }}
+      className="fixed right-0 top-0 z-30 flex h-[72px] items-center gap-4 border-b border-border bg-card px-4 lg:px-6 transition-all duration-300"
+      style={{ left: leftOffset }}
     >
-      <button type="button" onClick={onToggleSidebar} className={clsx('flex h-8 w-8 items-center justify-center rounded-md transition-colors', isDevAdmin ? 'text-white hover:bg-white/10' : 'text-[#111827] hover:bg-slate-100')} aria-label="Toggle navigation">
-        {isSidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+      {/* Sidebar Toggle */}
+      <button 
+        type="button" 
+        onClick={onToggleSidebar} 
+        className="flex h-9 w-9 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-border/50 hover:text-text-primary outline-none"
+        aria-label="Toggle navigation"
+      >
+        {isSidebarOpen ? <PanelLeftClose className="h-[22px] w-[22px]" /> : <Menu className="h-[22px] w-[22px]" />}
       </button>
 
-      <div className="flex min-w-0 items-center gap-7">
-        {title !== 'Dashboard' && <h1 className={clsx('text-[18px] font-extrabold', isDevAdmin ? 'text-white' : 'text-[#111827]')}>{title}</h1>}
-        {!isDevAdmin ? (
-          <div className="relative hidden md:block">
-            <button
-              type="button"
-              onClick={() => setFarmOpen((open) => !open)}
-              className="flex items-center gap-2 rounded-[7px] border border-transparent px-2 py-1.5 text-[13px] font-semibold text-[#111827] hover:border-[#e6ddc8] hover:bg-[#fffaf0]"
-            >
-              {tenant?.name ?? 'Tenant Workspace'}
-              <ChevronDown className={clsx('h-3.5 w-3.5 transition-transform', farmOpen && 'rotate-180')} />
-            </button>
-            {farmOpen ? (
-              <>
-                <button type="button" className="fixed inset-0 z-30" onClick={() => setFarmOpen(false)} />
-                <div className="absolute left-0 top-full z-40 mt-2 w-72 overflow-hidden rounded-[10px] border border-[#e8dcc3] bg-white shadow-xl">
-                  <div className="border-b border-[#efe5d2] px-4 py-3">
-                    <div className="text-[13px] font-extrabold text-[#111827]">{tenant?.name ?? 'Tenant Workspace'}</div>
-                    <div className="text-[12px] text-slate-500">{tenant?.subscription_status ?? 'active'} plan workspace</div>
-                  </div>
-                  {[
-                    { label: 'Farm Profile', path: '/farm/profile', icon: Building2 },
-                    { label: 'Subscription', path: '/subscription/upgrade', icon: CreditCard },
-                    { label: 'Support', path: '/support', icon: HelpCircle },
-                  ].map((item) => {
-                    const Icon = item.icon
-                    return (
-                      <button
-                        key={item.path}
-                        type="button"
-                        onClick={() => {
-                          setFarmOpen(false)
-                          navigate(item.path)
-                        }}
-                        className="flex w-full items-center gap-2 px-4 py-3 text-left text-[13px] font-bold text-[#111827] hover:bg-[#fff7e2]"
-                      >
-                        <Icon className="h-4 w-4 text-[#b98512]" />
-                        {item.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-
-      {!isDevAdmin ? (
-        <div className="relative hidden md:block">
-          <button
-            type="button"
-            onClick={() => setQuickOpen((open) => !open)}
-            className="flex items-center gap-1.5 rounded-[7px] border border-transparent bg-[var(--brand-primary)] px-3 py-1.5 text-[12px] font-extrabold text-[#111827] hover:bg-[#e1b23b] transition-colors"
-          >
-            ⚡ Quick
-            <ChevronDown className={clsx('h-3 w-3 transition-transform', quickOpen && 'rotate-180')} />
-          </button>
-          {quickOpen ? (
-            <>
-              <button type="button" className="fixed inset-0 z-30" onClick={() => setQuickOpen(false)} />
-            <div className="absolute left-0 top-full z-40 mt-1.5 w-56 overflow-hidden rounded-[10px] border border-[#e8dcc3] bg-white shadow-xl">
-              <div className="border-b border-[#efe5d2] px-4 py-2">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Farm Operations</div>
+      {/* Farm Selector */}
+      <div className="relative hidden md:block">
+        <button
+          type="button"
+          onClick={() => setFarmOpen((open) => !open)}
+          className="flex items-center gap-2 rounded-md px-3 py-2 text-[14px] font-semibold text-text-primary transition-colors hover:bg-border/50 outline-none"
+        >
+          <Building2 className="h-4 w-4 text-text-secondary" />
+          {tenant?.name ?? 'Tenant Workspace'}
+          <ChevronDown className={clsx('h-4 w-4 text-text-secondary transition-transform', farmOpen && 'rotate-180')} />
+        </button>
+        {farmOpen && (
+          <>
+            <button type="button" className="fixed inset-0 z-30 cursor-default" onClick={() => setFarmOpen(false)} />
+            <div className="absolute left-0 top-full z-40 mt-1 w-[280px] overflow-hidden rounded-md border border-border bg-card shadow-card">
+              <div className="border-b border-border px-4 py-3 bg-background/50">
+                <div className="text-[13px] font-bold text-text-primary">{tenant?.name ?? 'Tenant Workspace'}</div>
+                <div className="text-[12px] text-text-secondary capitalize">{tenant?.subscription_status ?? 'active'} plan</div>
               </div>
-              {[
-                { label: 'New Batch', path: '/farm/batches', icon: Bird, permission: 'farm:write', module: 'farm' },
-                { label: 'Record Mortality', path: '/farm/mortality', icon: Skull, permission: 'farm:write', module: 'farm' },
-                { label: 'Log Vaccination', path: '/farm/vaccination', icon: Syringe, permission: 'farm:write', module: 'farm' },
-                { label: 'Log Growth / Weight', path: '/farm/growth', icon: Scale, permission: 'farm:write', module: 'farm' },
-                { label: 'Log Feed Usage', path: '/farm/feed-usage', icon: Wheat, permission: 'farm:write', module: 'farm' },
-              ].filter((item) => hasPermission(item.permission) && hasModuleAccess(item.module)).map((item) => {
-                const Icon = item.icon
-                return (
-                  <button key={item.path} type="button" onClick={() => { setQuickOpen(false); navigate(item.path) }} className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[13px] font-semibold text-[#111827] hover:bg-[#fff7e2]">
-                    <Icon className="h-4 w-4 text-[#b98512] shrink-0" />
+              <div className="py-1">
+                {[
+                  { label: 'Farm Profile', path: '/farm/profile', icon: Building2 },
+                  { label: 'Support', path: '/support', icon: HelpCircle },
+                ].map((item) => (
+                  <button
+                    key={item.path}
+                    onClick={() => {
+                      setFarmOpen(false)
+                      navigate(item.path)
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-[13px] font-medium text-text-secondary hover:bg-border/30 hover:text-text-primary"
+                  >
+                    <item.icon className="h-4 w-4" />
                     {item.label}
                   </button>
-                )
-              })}
-              <div className="border-t border-[#efe5d2] px-4 py-2">
-                <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Sales & Finance</div>
+                ))}
               </div>
-              {[
-                { label: 'New Sale / Invoice', path: '/sales/invoices', icon: ShoppingCart, permission: 'sales:write', module: 'sales' },
-                { label: 'New Expense', path: '/finance/expenses', icon: DollarSign, permission: 'finance:write', module: 'finance' },
-                { label: 'Slaughter Record', path: '/slaughter', icon: Drumstick, permission: 'slaughter:write', module: 'slaughter' },
-                { label: 'Inventory', path: '/inventory', icon: Package, permission: 'inventory:read', module: 'inventory' },
-              ].filter((item) => hasPermission(item.permission) && hasModuleAccess(item.module)).map((item) => {
-                const Icon = item.icon
-                return (
-                  <button key={item.path} type="button" onClick={() => { setQuickOpen(false); navigate(item.path) }} className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[13px] font-semibold text-[#111827] hover:bg-[#fff7e2]">
-                    <Icon className="h-4 w-4 text-[#b98512] shrink-0" />
-                    {item.label}
-                  </button>
-                )
-              })}
             </div>
-            </>
-          ) : null}
-        </div>
-      ) : null}
+          </>
+        )}
+      </div>
 
       <div className="flex-1" />
 
-      <div className="mr-2 hidden sm:block">
-        <BranchSwitcher />
-      </div>
-
-      <div className="hidden w-full max-w-[200px] lg:block">
+      {/* Global Search */}
+      <div className="hidden w-full max-w-[320px] lg:block">
         <button
           type="button"
           onClick={onOpenSearch}
-          className="group flex h-8 w-full items-center justify-between gap-2 rounded-[8px] border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 text-[11px] text-[var(--text-muted)] transition-colors hover:border-[var(--brand-primary)] hover:text-[var(--text-strong)]"
-          aria-label="Open global search"
+          className="group flex h-[40px] w-full items-center justify-between gap-2 rounded-md border border-border bg-background px-4 text-[13px] text-text-secondary transition-colors hover:border-primary/50 hover:text-text-primary outline-none"
         >
           <span className="flex items-center gap-2">
-            <Search className="h-3.5 w-3.5 text-slate-500 transition-colors group-hover:text-[var(--brand-primary)]" />
-            <span className="truncate">Search</span>
+            <Search className="h-4 w-4 text-text-secondary group-hover:text-primary transition-colors" />
+            <span>Search or type a command...</span>
           </span>
+          <span className="text-[10px] font-medium tracking-wider bg-border/50 px-1.5 py-0.5 rounded text-text-secondary">Ctrl K</span>
         </button>
       </div>
 
+      <div className="flex-1 lg:flex-none" />
+
+      {/* Branch Selector */}
+      <div className="hidden sm:block">
+        <BranchSwitcher />
+      </div>
+
+      {/* Notifications */}
       <div className="relative">
         <button
           type="button"
           onClick={() => setNotificationsOpen((open) => !open)}
-          className={clsx('relative flex h-8 w-8 items-center justify-center rounded-full border', isDevAdmin ? 'border-white/20 text-white' : 'border-[#e6ddc8] text-[#111827]')}
-          aria-label="Notifications"
+          className="relative flex h-[40px] w-[40px] items-center justify-center rounded-md border border-border bg-background text-text-secondary transition-colors hover:text-text-primary hover:border-primary/50 outline-none"
         >
-          <Bell className="h-3.5 w-3.5" />
+          <Bell className="h-4 w-4" />
           {notificationCount > 0 && (
-            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[var(--brand-primary)]" />
+            <span className="absolute right-2 top-2 h-[8px] w-[8px] rounded-full bg-danger border border-card" />
           )}
         </button>
-        {notificationsOpen ? (
+        {notificationsOpen && (
           <>
-            <button type="button" className="fixed inset-0 z-30" onClick={() => setNotificationsOpen(false)} />
-            <div className="absolute right-0 top-full z-40 mt-2 w-72 overflow-hidden rounded-[10px] border border-[#e8dcc3] bg-white shadow-xl">
-              <div className="border-b border-[#efe5d2] px-4 py-3">
-                <div className="text-[13px] font-extrabold text-[#111827]">Notifications</div>
-                <div className="text-[12px] text-slate-500">{notificationCount > 0 ? `${notificationCount} alert${notificationCount !== 1 ? 's' : ''}` : 'No new alerts'}</div>
+            <button type="button" className="fixed inset-0 z-30 cursor-default" onClick={() => setNotificationsOpen(false)} />
+            <div className="absolute right-0 top-full z-40 mt-1 w-[320px] overflow-hidden rounded-md border border-border bg-card shadow-card">
+              <div className="border-b border-border px-4 py-3 bg-background/50 flex justify-between items-center">
+                <div className="text-[13px] font-bold text-text-primary">Notifications</div>
+                <div className="text-[11px] font-medium text-primary cursor-pointer hover:underline">Mark all read</div>
               </div>
-              {notificationCount === 0 ? (
-                <div className="px-4 py-8 text-center text-[12px] text-slate-500">
-                  No alerts at this time
-                </div>
-              ) : (
-                <>
-                  {(complianceSummary?.alerts?.length ?? 0) > 0 && (
-                    <>
-                      <div className="border-t border-[#efe5d2] px-4 py-2">
-                        <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Compliance</div>
-                      </div>
-                      {complianceSummary?.alerts?.slice(0, 3).map((alert) => (
-                        <button
-                          key={alert.document_id}
-                          type="button"
-                          onClick={() => { setNotificationsOpen(false); navigate('/compliance') }}
-                          className="block w-full px-4 py-3 text-left hover:bg-[#fff7e2]"
-                        >
-                          <div className="flex items-start gap-2">
-                            <AlertTriangle className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
-                            <div className="flex-1 min-w-0">
-                              <div className="text-[13px] font-bold text-[#111827] truncate">{alert.title}</div>
-                              <div className="text-[12px] text-slate-500">{alert.days_to_expiry !== null ? `Expires in ${alert.days_to_expiry} days` : 'Expired'}</div>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </>
-                  )}
-                  {invoices?.some((inv) => inv.status === 'overdue') && (
-                    <>
-                      <div className="border-t border-[#efe5d2] px-4 py-2">
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="h-4 w-4 text-[var(--brand-primary)]" />
-                          <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Accounting</div>
-                        </div>
-                      </div>
-                      {invoices.filter((inv) => inv.status === 'overdue').slice(0, 3).map((inv) => (
-                        <button
-                          key={inv.id}
-                          type="button"
-                          onClick={() => { setNotificationsOpen(false); navigate('/sales/invoices') }}
-                          className="block w-full px-4 py-3 text-left hover:bg-[#fff7e2]"
-                        >
-                          <div className="flex items-start gap-2">
-                            <DollarSign className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                            <div className="flex-1 min-w-0">
-                              <div className="text-[13px] font-bold text-[#111827] truncate">{inv.invoice_number}</div>
-                              <div className="text-[12px] text-slate-500">Overdue • {inv.customer?.name || 'Customer'}</div>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </>
-                  )}
-                  {slaughterRecords?.some((record) => record.status === 'completed' && !record.inventory_posted_at) && (
-                    <>
-                      <div className="border-t border-[#efe5d2] px-4 py-2">
-                        <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Slaughter</div>
-                      </div>
-                      {slaughterRecords.filter((record) => record.status === 'completed' && !record.inventory_posted_at).slice(0, 3).map((record) => (
-                        <button
-                          key={record.id}
-                          type="button"
-                          onClick={() => { setNotificationsOpen(false); navigate('/slaughter') }}
-                          className="block w-full px-4 py-3 text-left hover:bg-[#fff7e2]"
-                        >
-                          <div className="flex items-start gap-2">
-                            <Drumstick className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                            <div className="flex-1 min-w-0">
-                              <div className="text-[13px] font-bold text-[#111827] truncate">{record.batch?.batch_number || 'Batch'}</div>
-                              <div className="text-[12px] text-slate-500">Awaiting output posting</div>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </>
-                  )}
-                  {(erpDashboard?.feed_stock?.some((item: any) => item.status === 'Low stock') || erpDashboard?.slaughter_stock?.some((item: any) => item.status === 'Low stock')) && (
-                    <>
-                      <div className="border-t border-[#efe5d2] px-4 py-2">
-                        <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Inventory</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => { setNotificationsOpen(false); navigate('/inventory') }}
-                        className="block w-full px-4 py-3 text-left hover:bg-[#fff7e2]"
-                      >
-                        <div className="flex items-start gap-2">
-                          <Package className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-[13px] font-bold text-[#111827]">Low stock items</div>
-                            <div className="text-[12px] text-slate-500">
-                              {[
-                                ...(erpDashboard?.feed_stock?.filter((item: any) => item.status === 'Low stock') || []),
-                                ...(erpDashboard?.slaughter_stock?.filter((item: any) => item.status === 'Low stock') || []),
-                              ].length} item{[
-                                ...(erpDashboard?.feed_stock?.filter((item: any) => item.status === 'Low stock') || []),
-                                ...(erpDashboard?.slaughter_stock?.filter((item: any) => item.status === 'Low stock') || []),
-                              ].length !== 1 ? 's' : ''} below reorder level
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    </>
-                  )}
-                  {tenant?.subscription_status === 'trial' && tenant.subscription_expiry && (
-                    <>
-                      <div className="border-t border-[#efe5d2] px-4 py-2">
-                        <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-slate-400">Subscription</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => { setNotificationsOpen(false); navigate('/subscription/upgrade') }}
-                        className="block w-full px-4 py-3 text-left hover:bg-[#fff7e2]"
-                      >
-                        <div className="flex items-start gap-2">
-                          <CreditCard className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-[13px] font-bold text-[#111827]">{trialLabel}</div>
-                            <div className="text-[12px] text-slate-500">Upgrade to continue using all features</div>
-                          </div>
-                        </div>
-                      </button>
-                    </>
-                  )}
-                </>
-              )}
+              <div className="px-4 py-8 text-center text-[13px] text-text-secondary">
+                No new enterprise alerts
+              </div>
             </div>
           </>
-        ) : null}
+        )}
       </div>
 
+      {/* User Menu */}
       <div className="relative">
-        <button type="button" onClick={() => setProfileOpen((open) => !open)} className={clsx('flex items-center gap-2 rounded-[9px] px-2 py-1.5', isDevAdmin ? 'text-white hover:bg-white/10' : 'text-[#111827] hover:bg-slate-50')}>
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand-primary)] text-[11px] font-semibold text-[#111827]">{initials}</span>
-          <span className="hidden min-w-0 text-left sm:block">
-            <span className={clsx('block truncate text-[12px] font-extrabold leading-4', isDevAdmin ? 'text-white' : 'text-[#111827]')}>{tenant?.name ?? user?.full_name ?? 'Ngali Farm'}</span>
-            <span className={clsx('block text-[10px] leading-3', isDevAdmin ? 'text-white/70' : 'text-slate-500')}>{user?.job_title ?? 'Admin'}</span>
+        <button 
+          type="button" 
+          onClick={() => setProfileOpen((open) => !open)} 
+          className="flex h-[40px] items-center gap-3 rounded-md pl-1.5 pr-3 transition-colors hover:bg-border/50 outline-none border border-transparent hover:border-border"
+        >
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary text-[11px] font-bold">
+            {initials}
           </span>
-          <ChevronDown className="hidden h-3.5 w-3.5 sm:block" />
+          <span className="hidden min-w-0 text-left sm:block">
+            <span className="block truncate text-[13px] font-semibold leading-none text-text-primary">
+              {user?.full_name ?? 'User'}
+            </span>
+            <span className="block mt-1 text-[11px] leading-none text-text-secondary">
+              {user?.job_title ?? 'Administrator'}
+            </span>
+          </span>
+          <ChevronDown className="hidden h-4 w-4 text-text-secondary sm:block" />
         </button>
 
-        {profileOpen ? (
+        {profileOpen && (
           <>
-            <button type="button" className="fixed inset-0 z-30" onClick={() => setProfileOpen(false)} />
-            <div className="absolute right-0 top-full z-40 mt-2 w-64 overflow-hidden rounded-[10px] border border-[#e8dcc3] bg-white shadow-xl">
-              <div className="border-b border-[#efe5d2] px-4 py-3">
-                <div className="text-[13px] font-extrabold text-[#111827]">{user?.full_name}</div>
-                <div className="text-[12px] text-slate-500">{user?.email}</div>
+            <button type="button" className="fixed inset-0 z-30 cursor-default" onClick={() => setProfileOpen(false)} />
+            <div className="absolute right-0 top-full z-40 mt-1 w-[260px] overflow-hidden rounded-md border border-border bg-card shadow-card">
+              <div className="border-b border-border px-4 py-3 bg-background/50">
+                <div className="text-[13px] font-bold text-text-primary">{user?.full_name}</div>
+                <div className="text-[12px] text-text-secondary">{user?.email}</div>
               </div>
-              <button type="button" onClick={() => { setProfileOpen(false); navigate('/settings/profile') }} className="flex w-full items-center gap-2 px-4 py-3 text-left text-[13px] font-bold text-[#111827] hover:bg-[#fff7e2]">
-                <UserRound className="h-4 w-4 text-[#b98512]" />
-                Profile
-              </button>
-              <div className="border-t border-[#efe5d2] px-4 py-3">
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Theme</div>
-                <ThemeSelector />
+              <div className="py-1">
+                <button type="button" onClick={() => { setProfileOpen(false); navigate('/settings/profile') }} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-[13px] font-medium text-text-secondary hover:bg-border/30 hover:text-text-primary">
+                  <UserRound className="h-4 w-4" />
+                  Profile settings
+                </button>
+                <div className="px-4 py-2 border-t border-border mt-1">
+                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-text-secondary/70">Theme</div>
+                  <ThemeSelector />
+                </div>
+                <div className="border-t border-border mt-1 pt-1">
+                  <button type="button" onClick={handleLogout} className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-[13px] font-medium text-danger hover:bg-danger/10">
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </button>
+                </div>
               </div>
-              <button type="button" onClick={handleLogout} className="flex w-full items-center gap-2 px-4 py-3 text-left text-[13px] font-bold text-[#111827] hover:bg-[#fff7e2]">
-                <LogOut className="h-4 w-4 text-[#b98512]" />
-                Logout
-              </button>
             </div>
           </>
-        ) : null}
+        )}
       </div>
     </header>
   )

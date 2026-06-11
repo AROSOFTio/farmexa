@@ -1,19 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Check, Moon, Palette, Sun } from 'lucide-react'
+import { Moon, Sun } from 'lucide-react'
 import { clsx } from 'clsx'
 import {
   type AppearanceMode,
-  type BrandTheme,
   type ThemePreference,
   THEME_CHANGE_EVENT,
   persistThemePreference,
   resolveInitialTheme,
 } from '@/lib/theme'
-
-const themeOptions: Array<{ value: BrandTheme; label: string; note: string; swatches: string[] }> = [
-  { value: 'navy-gold', label: 'Navy & Gold', note: 'Default', swatches: ['#202020', '#d6a62e'] },
-  { value: 'green-black', label: 'Green & Black', note: 'Agriculture', swatches: ['#202020', '#2fa66a'] },
-]
 
 function useThemePreference() {
   const [preference, setPreference] = useState<ThemePreference>(() => resolveInitialTheme())
@@ -25,7 +19,7 @@ function useThemePreference() {
   useEffect(() => {
     const sync = (event: Event) => {
       const next = (event as CustomEvent<ThemePreference>).detail
-      if (next?.brandTheme && next?.appearance) {
+      if (next?.appearance) {
         setPreference(next)
       }
     }
@@ -44,7 +38,7 @@ export function ThemeToggle({ className }: { className?: string }) {
   return (
     <button
       type="button"
-      className={clsx('theme-icon-button', className)}
+      className={clsx('flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-text-secondary transition-colors hover:bg-border/50 hover:text-text-primary', className)}
       onClick={() => setPreference({ ...preference, appearance: next })}
       aria-label={`Switch to ${next} mode`}
       title={`Switch to ${next} mode`}
@@ -54,50 +48,31 @@ export function ThemeToggle({ className }: { className?: string }) {
   )
 }
 
-export function ThemeSelector({ compact = false }: { compact?: boolean }) {
+export function ThemeSelector() {
   const [preference, setPreference] = useThemePreference()
 
-  if (compact) {
-    const current = themeOptions.find((option) => option.value === preference.brandTheme) ?? themeOptions[0]
-    const next = themeOptions.find((option) => option.value !== preference.brandTheme) ?? themeOptions[1]
-    return (
+  return (
+    <div className="flex rounded-md border border-border bg-background p-1">
       <button
         type="button"
-        className="theme-icon-button"
-        onClick={() => setPreference({ ...preference, brandTheme: next.value })}
-        aria-label={`Switch brand theme. Current theme is ${current.label}`}
-        title={`Theme: ${current.label}`}
+        onClick={() => setPreference({ ...preference, appearance: 'light' })}
+        className={clsx(
+          'flex flex-1 items-center justify-center gap-2 rounded px-3 py-1.5 text-[12px] font-semibold transition-colors',
+          preference.appearance === 'light' ? 'bg-card text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
+        )}
       >
-        <Palette className="h-4 w-4" />
+        <Sun className="h-3.5 w-3.5" /> Light
       </button>
-    )
-  }
-
-  return (
-    <div className="grid gap-2">
-      {themeOptions.map((option) => {
-        const selected = option.value === preference.brandTheme
-        return (
-          <button
-            key={option.value}
-            type="button"
-            className={clsx('theme-choice', selected && 'theme-choice-selected')}
-            onClick={() => setPreference({ ...preference, brandTheme: option.value })}
-            aria-pressed={selected}
-          >
-            <span className="flex items-center gap-2">
-              {option.swatches.map((swatch) => (
-                <span key={swatch} className="h-4 w-4 rounded-full border border-black/10" style={{ backgroundColor: swatch }} />
-              ))}
-            </span>
-            <span className="min-w-0 flex-1 text-left">
-              <span className="block text-[13px] font-semibold text-ink-900">{option.label}</span>
-              <span className="block text-[11px] text-ink-500">{option.note}</span>
-            </span>
-            {selected ? <Check className="h-4 w-4 text-[var(--brand-primary)]" /> : null}
-          </button>
-        )
-      })}
+      <button
+        type="button"
+        onClick={() => setPreference({ ...preference, appearance: 'dark' })}
+        className={clsx(
+          'flex flex-1 items-center justify-center gap-2 rounded px-3 py-1.5 text-[12px] font-semibold transition-colors',
+          preference.appearance === 'dark' ? 'bg-card text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
+        )}
+      >
+        <Moon className="h-3.5 w-3.5" /> Dark
+      </button>
     </div>
   )
 }

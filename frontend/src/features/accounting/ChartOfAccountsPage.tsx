@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Edit2, Trash2, ShieldAlert } from 'lucide-react'
+import { Plus, Edit2, Trash2, ShieldAlert, ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import api from '@/services/api'
 import clsx from 'clsx'
@@ -48,6 +48,16 @@ export function ChartOfAccountsPage() {
   const queryClient = useQueryClient()
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set([]))
+
+  const toggleGroup = (group: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(group)) next.delete(group)
+      else next.add(group)
+      return next
+    })
+  }
 
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ['accounting-coa'],
@@ -67,29 +77,48 @@ export function ChartOfAccountsPage() {
     },
   })
 
+  const handleError = (error: any, fallbackMessage: string) => {
+    const detail = error?.response?.data?.detail
+    if (Array.isArray(detail)) {
+      toast.error(detail.map((err: any) => `${err.loc?.join('.') || 'Field'}: ${err.msg}`).join(', '))
+    } else if (typeof detail === 'string') {
+      toast.error(detail)
+    } else {
+      toast.error(fallbackMessage)
+    }
+  }
+
   const createMutation = useMutation({
-    mutationFn: (values: AccountFormValues) => api.post('/accounting/chart-of-accounts', values),
+    mutationFn: (values: AccountFormValues) => {
+      // Clean up empty string for parent_account_id
+      const payload = { ...values }
+      if (payload.parent_account_id === 0 || !payload.parent_account_id) {
+        payload.parent_account_id = null
+      }
+      return api.post('/accounting/chart-of-accounts', payload)
+    },
     onSuccess: () => {
       toast.success('Account created successfully')
       queryClient.invalidateQueries({ queryKey: ['accounting-coa'] })
       closeModal()
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to create account')
-    },
+    onError: (error: any) => handleError(error, 'Failed to create account'),
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, values }: { id: number; values: AccountFormValues }) =>
-      api.patch(`/accounting/chart-of-accounts/${id}`, values),
+    mutationFn: ({ id, values }: { id: number; values: AccountFormValues }) => {
+      const payload = { ...values }
+      if (payload.parent_account_id === 0 || !payload.parent_account_id) {
+        payload.parent_account_id = null
+      }
+      return api.patch(`/accounting/chart-of-accounts/${id}`, payload)
+    },
     onSuccess: () => {
       toast.success('Account updated successfully')
       queryClient.invalidateQueries({ queryKey: ['accounting-coa'] })
       closeModal()
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to update account')
-    },
+    onError: (error: any) => handleError(error, 'Failed to update account'),
   })
 
   const deleteMutation = useMutation({
@@ -98,9 +127,7 @@ export function ChartOfAccountsPage() {
       toast.success('Account deleted successfully')
       queryClient.invalidateQueries({ queryKey: ['accounting-coa'] })
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Failed to delete account')
-    },
+    onError: (error: any) => handleError(error, 'Failed to delete account'),
   })
 
   const openNewModal = () => {
@@ -125,7 +152,7 @@ export function ChartOfAccountsPage() {
       description: account.description || '',
       account_type: account.account_type,
       normal_balance: account.normal_balance,
-      parent_account_id: account.parent_account_id,
+      parent_account_id: account.parent_account_id || null,
       allow_manual_entries: account.allow_manual_entries,
       is_active: account.is_active,
     })
@@ -194,13 +221,27 @@ export function ChartOfAccountsPage() {
 
                 return (
                   <React.Fragment key={typeGroup.value}>
-                    <tr className="bg-ink-50/50">
-                      <td colSpan={6} className="px-6 py-2 text-xs font-bold uppercase tracking-wider text-ink-500">
-                        {typeGroup.label}
+                    <tr 
+                      className="bg-ink-50/50 cursor-pointer hover:bg-ink-100/80 transition-colors"
+                      onClick={() => toggleGroup(typeGroup.value)}
+                    >
+                      <td colSpan={6} className="px-6 py-3">
+                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-ink-500">
+                          {expandedGroups.has(typeGroup.value) ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                          {typeGroup.label}
+                        </div>
                       </td>
                     </tr>
-                    {groupAccounts.map((account) => (
-                      <tr key={account.id}>
+                    {expandedGroups.has(typeGroup.value) && groupAccounts.map((account) => (
+                      <tr 
+                        key={account.id}
+                        className="hover:bg-ink-50/50 cursor-pointer transition-colors"
+                        onClick={() => openEditModal(account)}
+                      >
                         <td className="pl-6 font-mono text-sm text-ink-600">{account.account_code}</td>
                         <td>
                           <div className="flex items-center gap-2">
@@ -229,7 +270,7 @@ export function ChartOfAccountsPage() {
                           </span>
                         </td>
                         <td className="text-right font-mono text-sm font-semibold text-ink-900">
-                          {account.current_balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          {(account.current_balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </td>
                         <td className="pr-6 text-right">
                           <div className="flex items-center justify-end gap-2">
@@ -242,7 +283,8 @@ export function ChartOfAccountsPage() {
                             </button>
                             {!account.is_system && (
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation()
                                   if (window.confirm('Are you sure you want to delete this account?')) {
                                     deleteMutation.mutate(account.id)
                                   }
@@ -341,6 +383,23 @@ export function ChartOfAccountsPage() {
                     <option value="debit">Debit</option>
                     <option value="credit">Credit</option>
                   </select>
+                </div>
+                <div>
+                  <label className="form-label">Parent Account (Optional)</label>
+                  <select
+                    className="form-input"
+                    {...form.register('parent_account_id')}
+                  >
+                    <option value="">None (Top Level)</option>
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.account_code} - {a.name}
+                      </option>
+                    ))}
+                  </select>
+                  {form.formState.errors.parent_account_id && (
+                    <p className="mt-1 text-xs text-red-500">{form.formState.errors.parent_account_id.message}</p>
+                  )}
                 </div>
 
                 <div className="sm:col-span-2">

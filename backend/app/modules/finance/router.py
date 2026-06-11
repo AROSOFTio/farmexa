@@ -1,11 +1,12 @@
-from typing import List
-
+from typing import List, Optional
+from datetime import date
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_permission
 from app.db.tenant_db import get_tenant_sync_db
 from app.modules.finance import schemas, service
+from app.services.accounting_service import AccountingService
 
 router = APIRouter(prefix="/finance", tags=["Finance"])
 
@@ -80,3 +81,82 @@ def create_income(
     current_user=Depends(require_permission("finance:write")),
 ):
     return service.finance_service.create_income(db, income)
+
+# ---------------------------------------------------------
+# Financial Reports
+# ---------------------------------------------------------
+
+@router.get("/reports/cash-accounts", response_model=List[schemas.AccountInfo])
+def get_cash_accounts(
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("finance:read")),
+):
+    acct_service = AccountingService(db, tenant_id=current_user.tenant_id)
+    accounts = acct_service.get_cash_accounts()
+    return [{"id": a.id, "code": a.account_code, "name": a.name, "type": a.account_type.value, "normal_balance": a.normal_balance.value} for a in accounts]
+
+@router.get("/reports/cashbook", response_model=schemas.LedgerReport)
+def get_cashbook(
+    account_id: int,
+    from_date: Optional[date] = None,
+    to_date: Optional[date] = None,
+    branch_id: Optional[int] = None,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("finance:read")),
+):
+    acct_service = AccountingService(db, tenant_id=current_user.tenant_id)
+    return acct_service.get_cashbook(account_id, from_date, to_date, branch_id)
+
+@router.get("/reports/general-ledger", response_model=schemas.LedgerReport)
+def get_general_ledger(
+    account_id: int,
+    from_date: Optional[date] = None,
+    to_date: Optional[date] = None,
+    branch_id: Optional[int] = None,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("finance:read")),
+):
+    acct_service = AccountingService(db, tenant_id=current_user.tenant_id)
+    return acct_service.get_ledger(account_id, from_date, to_date, branch_id)
+
+@router.get("/reports/trial-balance", response_model=schemas.TrialBalanceReport)
+def get_trial_balance(
+    as_of_date: Optional[date] = None,
+    branch_id: Optional[int] = None,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("finance:read")),
+):
+    acct_service = AccountingService(db, tenant_id=current_user.tenant_id)
+    return acct_service.get_trial_balance(as_of_date, branch_id)
+
+@router.get("/reports/profit-and-loss", response_model=schemas.ProfitLossReport)
+def get_profit_and_loss(
+    from_date: Optional[date] = None,
+    to_date: Optional[date] = None,
+    branch_id: Optional[int] = None,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("finance:read")),
+):
+    acct_service = AccountingService(db, tenant_id=current_user.tenant_id)
+    return acct_service.get_profit_and_loss(from_date, to_date, branch_id)
+
+@router.get("/reports/balance-sheet", response_model=schemas.BalanceSheetReport)
+def get_balance_sheet(
+    as_of_date: Optional[date] = None,
+    branch_id: Optional[int] = None,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("finance:read")),
+):
+    acct_service = AccountingService(db, tenant_id=current_user.tenant_id)
+    return acct_service.get_balance_sheet(as_of_date, branch_id)
+
+@router.get("/reports/cash-flow", response_model=schemas.CashFlowReport)
+def get_cash_flow(
+    from_date: Optional[date] = None,
+    to_date: Optional[date] = None,
+    branch_id: Optional[int] = None,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("finance:read")),
+):
+    acct_service = AccountingService(db, tenant_id=current_user.tenant_id)
+    return acct_service.get_cash_flow(from_date, to_date, branch_id)

@@ -439,6 +439,17 @@ def _apply_runtime_schema_patches(engine: Engine) -> None:
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_stock_movements_branch_id ON stock_movements (branch_id)"))
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_batches_branch_id ON batches (branch_id)"))
         
+        # ---------------------------------------------------------------
+        # Phase 4 — Poultry Accounting Automation
+        # ---------------------------------------------------------------
+        connection.execute(text("ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS batch_id INTEGER"))
+        connection.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS batch_id INTEGER"))
+        connection.execute(text("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS batch_id INTEGER"))
+        connection.execute(text("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS batch_id INTEGER"))
+        connection.execute(text("ALTER TABLE expenses ADD COLUMN IF NOT EXISTS batch_id INTEGER"))
+        
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_stock_movements_batch_id ON stock_movements (batch_id)"))
+
         # Note: We don't automatically backfill branch_id here because head office might not be created yet.
         # A separate service handles default branch assignment on initialization.
 

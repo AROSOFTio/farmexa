@@ -49,7 +49,10 @@ import { BillingPage, DomainsPage, SubscriptionPage, SupportPage } from '@/featu
 import { ChartOfAccountsPage } from '@/features/accounting/ChartOfAccountsPage'
 import { JournalsPage } from '@/features/accounting/JournalsPage'
 import { AccountingSettingsPage } from '@/features/accounting/AccountingSettingsPage'
-
+import { CashbookPage } from '@/features/finance/reports/CashbookPage'
+import { GeneralLedgerPage } from '@/features/finance/reports/GeneralLedgerPage'
+import { TrialBalancePage } from '@/features/finance/reports/TrialBalancePage'
+import { FinancialStatementsPage } from '@/features/finance/reports/FinancialStatementsPage'
 const PLATFORM_ADMIN_ROLES = new Set(['super_manager', 'developer_admin'])
 
 export default function App() {
@@ -478,6 +481,10 @@ export default function App() {
 
           <Route path="accounting">
             <Route index element={<Navigate to="/accounting/coa" replace />} />
+            <Route path="cashbook" element={<ProtectedRoute permission="accounting:read"><ModuleGuard moduleKey="accounting"><CashbookPage /></ModuleGuard></ProtectedRoute>} />
+            <Route path="ledger" element={<ProtectedRoute permission="accounting:read"><ModuleGuard moduleKey="accounting"><GeneralLedgerPage /></ModuleGuard></ProtectedRoute>} />
+            <Route path="trial-balance" element={<ProtectedRoute permission="accounting:read"><ModuleGuard moduleKey="accounting"><TrialBalancePage /></ModuleGuard></ProtectedRoute>} />
+            <Route path="statements" element={<ProtectedRoute permission="accounting:read"><ModuleGuard moduleKey="accounting"><FinancialStatementsPage /></ModuleGuard></ProtectedRoute>} />
             <Route
               path="coa"
               element={
@@ -627,8 +634,10 @@ export default function App() {
           </Route>
 
           <Route path="finance/income" element={<Navigate to="/finance/incomes" replace />} />
-          <Route path="finance/profit-loss" element={<Navigate to="/reports/profit-loss" replace />} />
-          <Route path="finance/cash-flow" element={<Navigate to="/reports/profit-loss" replace />} />
+          <Route path="finance/profit-loss" element={<Navigate to="/accounting/statements" replace />} />
+          <Route path="finance/cash-flow" element={<Navigate to="/accounting/statements" replace />} />
+          <Route path="reports/profit-loss" element={<Navigate to="/accounting/statements" replace />} />
+          <Route path="reports/balance-sheet" element={<Navigate to="/accounting/statements" replace />} />
 
           <Route path="compliance/quality-control" element={<Navigate to="/compliance/documents" replace />} />
 

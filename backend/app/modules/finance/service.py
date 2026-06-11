@@ -38,20 +38,18 @@ class FinanceService:
         # Auto-create double-entry journal: DR Expense / CR Cash (graceful fallback if COA missing)
         try:
             from app.services.accounting_service import AccountingService
-            from app.models.finance_coa import JournalEntryStatus
-            acct = AccountingService(db)
-            entry = acct.create_journal_entry(
+            acct = AccountingService(db, tenant_id=db_expense.tenant_id)
+            acct.record_expense(
+                amount=expense.amount,
+                expense_account_code="6000", # Usually mapping happens inside record_expense, but since it requires a code, we pass a default/generic expense code or we could fetch mapping
                 entry_date=expense.expense_date,
-                reference_type="expense",
                 reference_id=db_expense.id,
+                is_cash=True,
+                created_by_user_id=None,
                 description=f"Expense: {category.name} — {expense.description or ''}".strip(" —"),
+                branch_id=batch.house.branch_id if (expense.batch_id and batch and batch.house) else None,
+                batch_id=expense.batch_id,
             )
-            acct.add_journal_line(entry, account_code="6000", debit=expense.amount,
-                                  memo=f"{category.name}: {expense.description or ''}")
-            acct.add_journal_line(entry, account_code="1100", credit=expense.amount,
-                                  memo="Cash / Bank payment")
-            entry.status = JournalEntryStatus.POSTED
-            entry.posted_at = datetime.now(timezone.utc)
         except Exception:
             # Non-fatal: COA may not be fully seeded in all tenant DBs
             pass

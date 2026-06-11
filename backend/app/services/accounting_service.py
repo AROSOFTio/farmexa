@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.models.finance_coa import (
     Account, AccountType, FiscalYear, JournalEntry, JournalEntryStatus,
-    JournalLine, NormalBalance, OpeningBalance,
+    JournalLine, NormalBalance, OpeningBalance, SystemAccountMapping,
 )
 
 
@@ -40,6 +40,23 @@ class AccountingService:
     def __init__(self, db: Session, tenant_id: Optional[int] = None):
         self.db = db
         self.tenant_id = tenant_id
+
+    def get_mapped_account_code(self, operation_key: str, default_code: str) -> str:
+        """Lookup account code from SystemAccountMapping, falling back to default_code."""
+        if self.tenant_id is None:
+            return default_code
+        mapping = (
+            self.db.query(SystemAccountMapping)
+            .join(Account, SystemAccountMapping.account_id == Account.id)
+            .filter(
+                SystemAccountMapping.tenant_id == self.tenant_id,
+                SystemAccountMapping.operation_key == operation_key
+            )
+            .first()
+        )
+        if mapping and mapping.account:
+            return mapping.account.account_code
+        return default_code
 
     # ------------------------------------------------------------------
     # Account Lookups
@@ -140,6 +157,8 @@ class AccountingService:
         debit: float = 0.0,
         credit: float = 0.0,
         memo: Optional[str] = None,
+        branch_id: Optional[int] = None,
+        batch_id: Optional[int] = None,
     ) -> JournalLine:
         """Add a debit or credit line to a journal entry."""
         account = self._get_account(account_code)
@@ -149,6 +168,8 @@ class AccountingService:
             debit=round(debit, 2),
             credit=round(credit, 2),
             memo=memo,
+            branch_id=branch_id,
+            batch_id=batch_id,
         )
         self.db.add(line)
         return line
@@ -171,7 +192,7 @@ class AccountingService:
     def create_and_post_journal(
         self,
         entry_date: date,
-        lines: list[dict],  # [{"account_code": "1111", "debit": 100.0, "credit": 0.0, "memo": "..."}]
+        lines: list[dict],  # [{"account_code": "1111", "debit": 100.0, "credit": 0.0, "memo": "...", "branch_id": 1, "batch_id": 2}]
         description: Optional[str] = None,
         reference_type: Optional[str] = None,
         reference_id: Optional[int] = None,
@@ -179,6 +200,7 @@ class AccountingService:
         source_reference: Optional[str] = None,
         notes: Optional[str] = None,
         created_by_user_id: Optional[int] = None,
+        branch_id: Optional[int] = None,
     ) -> JournalEntry:
         """Atomic: create, add lines, validate, and post a journal entry in one call."""
         entry = self.create_journal_entry(
@@ -191,6 +213,7 @@ class AccountingService:
             notes=notes,
             created_by_user_id=created_by_user_id,
         )
+        entry.branch_id = branch_id
         for line_data in lines:
             self.add_journal_line(
                 journal_entry=entry,
@@ -198,6 +221,8 @@ class AccountingService:
                 debit=line_data.get("debit", 0.0),
                 credit=line_data.get("credit", 0.0),
                 memo=line_data.get("memo"),
+                branch_id=line_data.get("branch_id"),
+                batch_id=line_data.get("batch_id"),
             )
         self.db.flush()
         self._validate_balance(entry.lines)
@@ -217,6 +242,8 @@ class AccountingService:
         account_id: int,
         as_of_date: Optional[date] = None,
         from_date: Optional[date] = None,
+        branch_id: Optional[int] = None,
+        batch_id: Optional[int] = None,
     ) -> dict:
         """Compute debit/credit totals from posted journal lines for an account."""
         q = (
@@ -235,6 +262,10 @@ class AccountingService:
             q = q.filter(JournalEntry.entry_date >= from_date)
         if as_of_date:
             q = q.filter(JournalEntry.entry_date <= as_of_date)
+        if branch_id:
+            q = q.filter(JournalLine.branch_id == branch_id)
+        if batch_id:
+            q = q.filter(JournalLine.batch_id == batch_id)
 
         result = q.one()
         total_debit = float(result.total_debit)
@@ -255,15 +286,25 @@ class AccountingService:
             return float(ob.opening_debit), float(ob.opening_credit)
         return 0.0, 0.0
 
-    def get_account_net_balance(self, account: Account, as_of_date: Optional[date] = None) -> float:
+    def get_account_net_balance(
+        self, 
+        account: Account, 
+        as_of_date: Optional[date] = None,
+        branch_id: Optional[int] = None,
+        batch_id: Optional[int] = None,
+    ) -> float:
         """
         Compute the net running balance for an account per its normal balance convention:
         - DEBIT-normal accounts (assets, expenses, COGS): balance = total_debit - total_credit
         - CREDIT-normal accounts (liabilities, equity, revenue): balance = total_credit - total_debit
-        Opening balances are included.
+        Opening balances are included unless branch_id or batch_id are provided (as OBs are tenant-level).
         """
-        ob_debit, ob_credit = self._opening_balance_amounts(account.id)
-        bal = self._get_account_balance(account.id, as_of_date=as_of_date)
+        if branch_id or batch_id:
+            ob_debit, ob_credit = 0.0, 0.0
+        else:
+            ob_debit, ob_credit = self._opening_balance_amounts(account.id)
+            
+        bal = self._get_account_balance(account.id, as_of_date=as_of_date, branch_id=branch_id, batch_id=batch_id)
         total_debit = ob_debit + bal["total_debit"]
         total_credit = ob_credit + bal["total_credit"]
 
@@ -281,6 +322,8 @@ class AccountingService:
         account_id: int,
         from_date: Optional[date] = None,
         to_date: Optional[date] = None,
+        branch_id: Optional[int] = None,
+        batch_id: Optional[int] = None,
     ) -> dict:
         """
         General ledger for a specific account with running balance.
@@ -309,13 +352,21 @@ class AccountingService:
             q = q.filter(JournalEntry.entry_date >= from_date)
         if to_date:
             q = q.filter(JournalEntry.entry_date <= to_date)
+        if branch_id:
+            q = q.filter(JournalLine.branch_id == branch_id)
+        if batch_id:
+            q = q.filter(JournalLine.batch_id == batch_id)
 
         lines = q.all()
 
         # Opening balance as of from_date
-        ob_debit, ob_credit = self._opening_balance_amounts(account.id)
+        if branch_id or batch_id:
+            ob_debit, ob_credit = 0.0, 0.0
+        else:
+            ob_debit, ob_credit = self._opening_balance_amounts(account.id)
+
         if from_date:
-            prior = self._get_account_balance(account.id, as_of_date=from_date)
+            prior = self._get_account_balance(account.id, as_of_date=from_date, branch_id=branch_id, batch_id=batch_id)
             opening_debit = ob_debit + prior["total_debit"]
             opening_credit = ob_credit + prior["total_credit"]
         else:
@@ -367,7 +418,7 @@ class AccountingService:
     # Trial Balance
     # ------------------------------------------------------------------
 
-    def get_trial_balance(self, as_of_date: Optional[date] = None) -> dict:
+    def get_trial_balance(self, as_of_date: Optional[date] = None, branch_id: Optional[int] = None) -> dict:
         """
         Compute a trial balance for all active accounts of the tenant.
         Returns accounts with debit/credit totals; total debits must equal total credits.
@@ -384,8 +435,12 @@ class AccountingService:
         total_credit = 0.0
 
         for account in accounts:
-            ob_dr, ob_cr = self._opening_balance_amounts(account.id)
-            bal = self._get_account_balance(account.id, as_of_date=as_of_date)
+            if branch_id:
+                ob_dr, ob_cr = 0.0, 0.0
+            else:
+                ob_dr, ob_cr = self._opening_balance_amounts(account.id)
+            
+            bal = self._get_account_balance(account.id, as_of_date=as_of_date, branch_id=branch_id)
             dr = round(ob_dr + bal["total_debit"], 2)
             cr = round(ob_cr + bal["total_credit"], 2)
             if dr == 0 and cr == 0:
@@ -412,7 +467,13 @@ class AccountingService:
     # Profit & Loss
     # ------------------------------------------------------------------
 
-    def get_profit_and_loss(self, from_date: Optional[date] = None, to_date: Optional[date] = None) -> dict:
+    def get_profit_and_loss(
+        self, 
+        from_date: Optional[date] = None, 
+        to_date: Optional[date] = None,
+        branch_id: Optional[int] = None,
+        batch_id: Optional[int] = None,
+    ) -> dict:
         """
         Dynamic P&L: Revenue - Cost of Sales - Expenses = Net Profit.
         """
@@ -435,7 +496,7 @@ class AccountingService:
         total_revenue = total_cos = total_expenses = 0.0
 
         for account in accounts:
-            bal = self._get_account_balance(account.id, from_date=from_date, as_of_date=to_date)
+            bal = self._get_account_balance(account.id, from_date=from_date, as_of_date=to_date, branch_id=branch_id, batch_id=batch_id)
             net = round(bal["total_credit"] - bal["total_debit"], 2) if account.account_type == AccountType.REVENUE \
                 else round(bal["total_debit"] - bal["total_credit"], 2)
             if net == 0:
@@ -472,7 +533,7 @@ class AccountingService:
     # Balance Sheet
     # ------------------------------------------------------------------
 
-    def get_balance_sheet(self, as_of_date: Optional[date] = None) -> dict:
+    def get_balance_sheet(self, as_of_date: Optional[date] = None, branch_id: Optional[int] = None) -> dict:
         """
         Balance sheet: Assets = Liabilities + Equity.
         """
@@ -491,7 +552,7 @@ class AccountingService:
         total_assets = total_liabilities = total_equity = 0.0
 
         for account in balance_accounts:
-            net = self.get_account_net_balance(account, as_of_date=as_of_date)
+            net = self.get_account_net_balance(account, as_of_date=as_of_date, branch_id=branch_id)
             if net == 0:
                 continue
             row = {"account_code": account.account_code, "account_name": account.name, "balance": net}
@@ -526,12 +587,158 @@ class AccountingService:
         account_id: int,
         from_date: Optional[date] = None,
         to_date: Optional[date] = None,
+        branch_id: Optional[int] = None,
     ) -> dict:
         """
         Cashbook view for a cash/bank/mobile money account.
         Alias of get_ledger with friendlier labels.
         """
-        return self.get_ledger(account_id, from_date=from_date, to_date=to_date)
+        return self.get_ledger(account_id, from_date=from_date, to_date=to_date, branch_id=branch_id)
+
+    def get_cash_accounts(self) -> list[Account]:
+        """
+        Identify cash, bank, mobile money, and petty cash accounts using heuristics.
+        Assets that have 'cash', 'bank', 'mpesa', 'm-pesa', 'wallet', 'petty' in name,
+        or account code starting with '111' or '110'.
+        """
+        accounts = self.db.query(Account).filter(
+            Account.tenant_id == self.tenant_id,
+            Account.is_active.is_(True),
+            Account.account_type == AccountType.ASSET
+        ).all()
+        
+        cash_accounts = []
+        for account in accounts:
+            name_lower = account.name.lower()
+            code = account.account_code
+            if (
+                code.startswith("111") or code.startswith("110") or
+                "cash" in name_lower or "bank" in name_lower or
+                "mpesa" in name_lower or "m-pesa" in name_lower or
+                "wallet" in name_lower
+            ):
+                cash_accounts.append(account)
+        return cash_accounts
+
+    # ------------------------------------------------------------------
+    # Cash Flow Statement
+    # ------------------------------------------------------------------
+
+    def get_cash_flow(
+        self,
+        from_date: Optional[date] = None,
+        to_date: Optional[date] = None,
+        branch_id: Optional[int] = None,
+    ) -> dict:
+        """
+        Derive a cash flow statement by analyzing journal entries that hit cash accounts.
+        Classifies cash movements into Operating, Investing, and Financing activities.
+        """
+        cash_accounts = self.get_cash_accounts()
+        cash_account_ids = {a.id for a in cash_accounts}
+        
+        if not cash_account_ids:
+            return {
+                "from_date": from_date.isoformat() if from_date else None,
+                "to_date": to_date.isoformat() if to_date else None,
+                "operating": [], "total_operating": 0.0,
+                "investing": [], "total_investing": 0.0,
+                "financing": [], "total_financing": 0.0,
+                "net_cash_flow": 0.0,
+            }
+
+        # Find all posted journal entries that touch any cash account
+        q = (
+            self.db.query(JournalEntry)
+            .join(JournalLine, JournalLine.journal_entry_id == JournalEntry.id)
+            .filter(
+                JournalLine.account_id.in_(cash_account_ids),
+                JournalEntry.status == JournalEntryStatus.POSTED,
+                JournalEntry.tenant_id == self.tenant_id,
+            )
+        )
+        if from_date:
+            q = q.filter(JournalEntry.entry_date >= from_date)
+        if to_date:
+            q = q.filter(JournalEntry.entry_date <= to_date)
+        if branch_id:
+            q = q.filter(JournalLine.branch_id == branch_id)
+            
+        entries = q.options(joinedload(JournalEntry.lines).joinedload(JournalLine.account)).all()
+
+        operating_flows = {}
+        investing_flows = {}
+        financing_flows = {}
+        
+        total_operating = 0.0
+        total_investing = 0.0
+        total_financing = 0.0
+
+        for entry in entries:
+            # Check if this entry applies to the branch (if branch filtered, only consider lines for this branch)
+            # Find the net cash change in this entry for the branch
+            net_cash_change = 0.0
+            offset_lines = []
+            
+            for line in entry.lines:
+                if branch_id and line.branch_id != branch_id:
+                    continue
+                if line.account_id in cash_account_ids:
+                    # Cash account line: debit = cash in (+), credit = cash out (-)
+                    net_cash_change += (line.debit or 0.0) - (line.credit or 0.0)
+                else:
+                    # Offsetting line
+                    offset_lines.append(line)
+                    
+            if abs(net_cash_change) < 0.01:
+                continue
+                
+            # Classify based on the primary offset account
+            # If multiple offsets, we pick the first one or split proportionally. 
+            # For simplicity, if there's an offset account, we use its type to classify the whole net_cash_change.
+            if not offset_lines:
+                continue
+                
+            # Heuristic: Find the offset account that carries the most weight, or just use the first non-cash line
+            primary_offset = sorted(offset_lines, key=lambda l: max(l.debit or 0, l.credit or 0), reverse=True)[0]
+            offset_acct = primary_offset.account
+            
+            # Classification rules
+            is_investing = offset_acct.account_type == AccountType.ASSET and "equipment" in offset_acct.name.lower() or "property" in offset_acct.name.lower()
+            is_financing = offset_acct.account_type == AccountType.EQUITY or (offset_acct.account_type == AccountType.LIABILITY and ("loan" in offset_acct.name.lower() or "capital" in offset_acct.name.lower()))
+            
+            category = "Operating"
+            if is_investing:
+                category = "Investing"
+                target_dict = investing_flows
+                total_investing += net_cash_change
+            elif is_financing:
+                category = "Financing"
+                target_dict = financing_flows
+                total_financing += net_cash_change
+            else:
+                target_dict = operating_flows
+                total_operating += net_cash_change
+                
+            # Group by offset account name or a broader category
+            group_key = f"Cash from {offset_acct.name}" if net_cash_change > 0 else f"Cash paid for {offset_acct.name}"
+            target_dict[group_key] = target_dict.get(group_key, 0.0) + net_cash_change
+
+        # Format output
+        def format_flows(flow_dict):
+            return [{"category": k, "amount": round(v, 2)} for k, v in flow_dict.items() if round(v, 2) != 0]
+
+        return {
+            "from_date": from_date.isoformat() if from_date else None,
+            "to_date": to_date.isoformat() if to_date else None,
+            "operating": format_flows(operating_flows),
+            "total_operating": round(total_operating, 2),
+            "investing": format_flows(investing_flows),
+            "total_investing": round(total_investing, 2),
+            "financing": format_flows(financing_flows),
+            "total_financing": round(total_financing, 2),
+            "net_cash_flow": round(total_operating + total_investing + total_financing, 2),
+        }
 
     # ------------------------------------------------------------------
     # Business Operation Hooks (called by PostingEngine)
@@ -545,9 +752,15 @@ class AccountingService:
         reference_id: int,
         is_cash: bool = True,
         created_by_user_id: Optional[int] = None,
+        branch_id: Optional[int] = None,
+        batch_id: Optional[int] = None,
     ) -> JournalEntry:
         """Record a sale: Dr Cash/AR, Cr Sales; Dr COGS, Cr Inventory."""
-        receivable_code = "1111" if is_cash else "1120"
+        receivable_code = self.get_mapped_account_code("cash" if is_cash else "ar", "1111" if is_cash else "1120")
+        sales_code = self.get_mapped_account_code("sales_revenue", "4110")
+        cogs_code = self.get_mapped_account_code("cogs", "5000")
+        inv_code = self.get_mapped_account_code("finished_goods", "1134")
+        
         return self.create_and_post_journal(
             entry_date=entry_date,
             description=f"Sale #{reference_id}",
@@ -555,11 +768,12 @@ class AccountingService:
             reference_id=reference_id,
             source_module="sales",
             created_by_user_id=created_by_user_id,
+            branch_id=branch_id,
             lines=[
-                {"account_code": receivable_code,  "debit": sale_amount,        "memo": "Sale proceeds"},
-                {"account_code": "4110",            "credit": sale_amount,       "memo": "Sales revenue"},
-                {"account_code": "5000",            "debit": cost_of_goods_sold, "memo": "Cost of goods sold"},
-                {"account_code": "1130",            "credit": cost_of_goods_sold,"memo": "Inventory reduction"},
+                {"account_code": receivable_code,  "debit": sale_amount,        "memo": "Sale proceeds", "branch_id": branch_id, "batch_id": batch_id},
+                {"account_code": sales_code,       "credit": sale_amount,       "memo": "Sales revenue", "branch_id": branch_id, "batch_id": batch_id},
+                {"account_code": cogs_code,        "debit": cost_of_goods_sold, "memo": "Cost of goods sold", "branch_id": branch_id, "batch_id": batch_id},
+                {"account_code": inv_code,         "credit": cost_of_goods_sold,"memo": "Inventory reduction", "branch_id": branch_id, "batch_id": batch_id},
             ],
         )
 
@@ -570,9 +784,12 @@ class AccountingService:
         reference_id: int,
         is_cash: bool = True,
         created_by_user_id: Optional[int] = None,
+        branch_id: Optional[int] = None,
+        batch_id: Optional[int] = None,
     ) -> JournalEntry:
         """Feed purchase: Dr Feed Inventory, Cr Cash/AP."""
-        payable_code = "1111" if is_cash else "2110"
+        payable_code = self.get_mapped_account_code("cash" if is_cash else "ap", "1111" if is_cash else "2110")
+        feed_inv_code = self.get_mapped_account_code("feed_inventory", "1131")
         return self.create_and_post_journal(
             entry_date=entry_date,
             description=f"Feed purchase #{reference_id}",
@@ -580,9 +797,10 @@ class AccountingService:
             reference_id=reference_id,
             source_module="feed",
             created_by_user_id=created_by_user_id,
+            branch_id=branch_id,
             lines=[
-                {"account_code": "1131", "debit": amount,  "memo": "Feed stock received"},
-                {"account_code": payable_code, "credit": amount, "memo": "Feed supplier payment"},
+                {"account_code": feed_inv_code, "debit": amount,  "memo": "Feed stock received", "branch_id": branch_id, "batch_id": batch_id},
+                {"account_code": payable_code, "credit": amount, "memo": "Feed supplier payment", "branch_id": branch_id, "batch_id": batch_id},
             ],
         )
 
@@ -591,10 +809,13 @@ class AccountingService:
         amount: float,
         entry_date: date,
         reference_id: int,
-        feed_cost_code: str = "5110",
         created_by_user_id: Optional[int] = None,
+        branch_id: Optional[int] = None,
+        batch_id: Optional[int] = None,
     ) -> JournalEntry:
         """Feed usage: Dr Feed Cost, Cr Feed Inventory."""
+        feed_cost_code = self.get_mapped_account_code("feed_cost", "5110")
+        feed_inv_code = self.get_mapped_account_code("feed_inventory", "1131")
         return self.create_and_post_journal(
             entry_date=entry_date,
             description=f"Feed consumption #{reference_id}",
@@ -602,9 +823,92 @@ class AccountingService:
             reference_id=reference_id,
             source_module="feed",
             created_by_user_id=created_by_user_id,
+            branch_id=branch_id,
             lines=[
-                {"account_code": feed_cost_code, "debit": amount,  "memo": "Feed consumed by flock"},
-                {"account_code": "1131",          "credit": amount, "memo": "Feed inventory reduction"},
+                {"account_code": feed_cost_code, "debit": amount,  "memo": "Feed consumed by flock", "branch_id": branch_id, "batch_id": batch_id},
+                {"account_code": feed_inv_code,  "credit": amount, "memo": "Feed inventory reduction", "branch_id": branch_id, "batch_id": batch_id},
+            ],
+        )
+        
+    def record_egg_sales(
+        self,
+        revenue: float,
+        entry_date: date,
+        reference_id: int,
+        is_cash: bool = True,
+        created_by_user_id: Optional[int] = None,
+        branch_id: Optional[int] = None,
+        batch_id: Optional[int] = None,
+    ) -> JournalEntry:
+        """Egg Sales: Dr Cash/AR, Cr Egg Sales."""
+        receivable_code = self.get_mapped_account_code("cash" if is_cash else "ar", "1111" if is_cash else "1120")
+        sales_code = self.get_mapped_account_code("egg_sales", "4130")
+
+        return self.create_and_post_journal(
+            entry_date=entry_date,
+            description=f"Egg Sales #{reference_id}",
+            reference_type="egg_sale",
+            reference_id=reference_id,
+            source_module="sales",
+            created_by_user_id=created_by_user_id,
+            branch_id=branch_id,
+            lines=[
+                {"account_code": receivable_code, "debit": revenue, "memo": "Egg sales revenue", "branch_id": branch_id, "batch_id": batch_id},
+                {"account_code": sales_code, "credit": revenue, "memo": "Egg sales revenue", "branch_id": branch_id, "batch_id": batch_id},
+            ],
+        )
+
+    def record_bird_mortality(
+        self,
+        amount: float,
+        entry_date: date,
+        reference_id: int,
+        created_by_user_id: Optional[int] = None,
+        branch_id: Optional[int] = None,
+        batch_id: Optional[int] = None,
+    ) -> JournalEntry:
+        """Bird Mortality: Dr Mortality Loss, Cr Live Bird Inventory."""
+        loss_code = self.get_mapped_account_code("mortality_loss", "5400")
+        inv_code = self.get_mapped_account_code("live_bird_inventory", "1133")
+
+        return self.create_and_post_journal(
+            entry_date=entry_date,
+            description=f"Bird mortality #{reference_id}",
+            reference_type="mortality",
+            reference_id=reference_id,
+            source_module="flock",
+            created_by_user_id=created_by_user_id,
+            branch_id=branch_id,
+            lines=[
+                {"account_code": loss_code, "debit": amount, "memo": "Mortality write-off", "branch_id": branch_id, "batch_id": batch_id},
+                {"account_code": inv_code, "credit": amount, "memo": "Live bird inventory reduction", "branch_id": branch_id, "batch_id": batch_id},
+            ],
+        )
+
+    def record_medication_usage(
+        self,
+        amount: float,
+        entry_date: date,
+        reference_id: int,
+        created_by_user_id: Optional[int] = None,
+        branch_id: Optional[int] = None,
+        batch_id: Optional[int] = None,
+    ) -> JournalEntry:
+        """Medication usage: Dr Medication Expense, Cr Medication Inventory."""
+        expense_code = self.get_mapped_account_code("medication_expense", "5200")
+        inv_code = self.get_mapped_account_code("medication_inventory", "1132")
+
+        return self.create_and_post_journal(
+            entry_date=entry_date,
+            description=f"Medication usage #{reference_id}",
+            reference_type="medication",
+            reference_id=reference_id,
+            source_module="flock",
+            created_by_user_id=created_by_user_id,
+            branch_id=branch_id,
+            lines=[
+                {"account_code": expense_code, "debit": amount, "memo": "Medication cost", "branch_id": branch_id, "batch_id": batch_id},
+                {"account_code": inv_code, "credit": amount, "memo": "Medication inventory reduction", "branch_id": branch_id, "batch_id": batch_id},
             ],
         )
 
@@ -651,6 +955,8 @@ class AccountingService:
         is_cash: bool = True,
         created_by_user_id: Optional[int] = None,
         description: Optional[str] = None,
+        branch_id: Optional[int] = None,
+        batch_id: Optional[int] = None,
     ) -> JournalEntry:
         """Expense: Dr Expense Account, Cr Cash/AP."""
         payable_code = "1111" if is_cash else "2110"
@@ -661,9 +967,10 @@ class AccountingService:
             reference_id=reference_id,
             source_module="finance",
             created_by_user_id=created_by_user_id,
+            branch_id=branch_id,
             lines=[
-                {"account_code": expense_account_code, "debit": amount,  "memo": "Expense recorded"},
-                {"account_code": payable_code,          "credit": amount, "memo": "Cash/Payable"},
+                {"account_code": expense_account_code, "debit": amount,  "memo": "Expense recorded", "branch_id": branch_id, "batch_id": batch_id},
+                {"account_code": payable_code,          "credit": amount, "memo": "Cash/Payable", "branch_id": branch_id, "batch_id": batch_id},
             ],
         )
 
