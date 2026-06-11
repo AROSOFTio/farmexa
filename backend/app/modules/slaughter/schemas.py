@@ -1,7 +1,8 @@
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, Field, computed_field
 from typing import Literal, Optional, List
 from datetime import date, datetime
 from app.models.slaughter import SlaughterStatus
+from app.schemas.money import Money, NonNegativeMoney, NonNegativeWeight, Weight
 
 SlaughterOutputType = Literal[
     "finished_product",
@@ -28,15 +29,15 @@ SlaughterOutputType = Literal[
 class SlaughterOutputBase(BaseModel):
     stock_item_id: int
     output_type: SlaughterOutputType = "dressed_chicken"
-    quantity: float
-    unit_cost: Optional[float] = None
+    quantity: NonNegativeWeight
+    unit_cost: Optional[NonNegativeMoney] = None
 
 class SlaughterOutputCreate(SlaughterOutputBase):
     pass
 
 class SlaughterOutputOut(SlaughterOutputBase):
     id: int
-    total_cost: Optional[float] = None
+    total_cost: Optional[Money] = None
 
     class Config:
         from_attributes = True
@@ -46,11 +47,11 @@ class SlaughterByProductBase(BaseModel):
     stock_item_id: Optional[int] = None
     store_location_id: Optional[int] = None
     byproduct_name: str
-    quantity_weight: float
+    quantity_weight: NonNegativeWeight
     unit: str = "kg"
-    value: Optional[float] = 0.0
-    unit_cost: Optional[float] = None
-    total_value: Optional[float] = None
+    value: Optional[NonNegativeMoney] = Field(default=0)
+    unit_cost: Optional[NonNegativeMoney] = None
+    total_value: Optional[Money] = None
     notes: Optional[str] = None
 
 
@@ -62,11 +63,11 @@ class SlaughterByProductUpdate(BaseModel):
     stock_item_id: Optional[int] = None
     store_location_id: Optional[int] = None
     byproduct_name: Optional[str] = None
-    quantity_weight: Optional[float] = None
+    quantity_weight: Optional[NonNegativeWeight] = None
     unit: Optional[str] = None
-    value: Optional[float] = None
-    unit_cost: Optional[float] = None
-    total_value: Optional[float] = None
+    value: Optional[NonNegativeMoney] = None
+    unit_cost: Optional[NonNegativeMoney] = None
+    total_value: Optional[Money] = None
     notes: Optional[str] = None
 
 
@@ -83,15 +84,15 @@ class SlaughterRecordBase(BaseModel):
     slaughter_date: date
     live_birds_count: int
     mortality_birds_count: int = 0
-    total_live_weight: float
-    waste_weight: float = 0.0
+    total_live_weight: NonNegativeWeight
+    waste_weight: NonNegativeWeight = Field(default=0)
     condemned_birds_count: int = 0
-    blood_weight: float = 0.0
-    feathers_weight: float = 0.0
-    offal_weight: float = 0.0
-    head_weight: float = 0.0
-    feet_weight: float = 0.0
-    reusable_byproducts_weight: float = 0.0
+    blood_weight: NonNegativeWeight = Field(default=0)
+    feathers_weight: NonNegativeWeight = Field(default=0)
+    offal_weight: NonNegativeWeight = Field(default=0)
+    head_weight: NonNegativeWeight = Field(default=0)
+    feet_weight: NonNegativeWeight = Field(default=0)
+    reusable_byproducts_weight: NonNegativeWeight = Field(default=0)
     waste_disposal_notes: Optional[str] = None
     quality_inspection_status: str = "pending"
     cold_room_location: Optional[str] = None
@@ -102,16 +103,16 @@ class SlaughterRecordCreate(SlaughterRecordBase):
 
 class SlaughterRecordUpdate(BaseModel):
     status: Optional[SlaughterStatus] = None
-    total_dressed_weight: Optional[float] = None
-    waste_weight: Optional[float] = None
+    total_dressed_weight: Optional[NonNegativeWeight] = None
+    waste_weight: Optional[NonNegativeWeight] = None
     mortality_birds_count: Optional[int] = None
     condemned_birds_count: Optional[int] = None
-    blood_weight: Optional[float] = None
-    feathers_weight: Optional[float] = None
-    offal_weight: Optional[float] = None
-    head_weight: Optional[float] = None
-    feet_weight: Optional[float] = None
-    reusable_byproducts_weight: Optional[float] = None
+    blood_weight: Optional[NonNegativeWeight] = None
+    feathers_weight: Optional[NonNegativeWeight] = None
+    offal_weight: Optional[NonNegativeWeight] = None
+    head_weight: Optional[NonNegativeWeight] = None
+    feet_weight: Optional[NonNegativeWeight] = None
+    reusable_byproducts_weight: Optional[NonNegativeWeight] = None
     waste_disposal_notes: Optional[str] = None
     quality_inspection_status: Optional[str] = None
     cold_room_location: Optional[str] = None
@@ -121,9 +122,9 @@ class SlaughterRecordUpdate(BaseModel):
 class SlaughterRecordOut(SlaughterRecordBase):
     id: int
     status: SlaughterStatus
-    average_live_weight: Optional[float] = None
-    total_dressed_weight: Optional[float] = None
-    average_dressed_weight: Optional[float] = None
+    average_live_weight: Optional[Weight] = None
+    total_dressed_weight: Optional[Weight] = None
+    average_dressed_weight: Optional[Weight] = None
     yield_percentage: Optional[float] = None
     loss_percentage: Optional[float] = None
     quality_inspection_status: str

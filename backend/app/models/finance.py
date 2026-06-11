@@ -1,4 +1,4 @@
-﻿from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, Date
+﻿from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, Text, Date
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 
@@ -18,7 +18,7 @@ class Expense(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     category_id = Column(Integer, ForeignKey("expense_categories.id"), nullable=False)
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(18, 4), nullable=False)
     expense_date = Column(Date, nullable=False)
     description = Column(Text, nullable=True)
     reference = Column(String, nullable=True)
@@ -42,7 +42,7 @@ class Income(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     category_id = Column(Integer, ForeignKey("income_categories.id"), nullable=False)
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(18, 4), nullable=False)
     income_date = Column(Date, nullable=False)
     description = Column(Text, nullable=True)
     reference = Column(String, nullable=True)

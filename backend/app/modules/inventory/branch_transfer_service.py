@@ -73,17 +73,17 @@ def update_transfer_status(db: Session, transfer_id: int, status_update: schemas
         # Deduct stock from source branch
         for item in db_transfer.items:
             stock = db.query(StockItem).filter(StockItem.id == item.stock_item_id).first()
-            if not stock or stock.current_quantity < item.quantity_shipped:
+            if not stock or stock.current_quantity < float(item.quantity_shipped):
                 raise HTTPException(status_code=400, detail=f"Insufficient stock for item {item.stock_item_id}")
-                
+
             prev_qty = stock.current_quantity
-            stock.current_quantity -= item.quantity_shipped
-            
+            stock.current_quantity -= float(item.quantity_shipped)
+
             movement = StockMovement(
                 item_id=stock.id,
                 branch_id=db_transfer.from_branch_id,
                 movement_type=MovementType.OUT,
-                quantity=item.quantity_shipped,
+                quantity=float(item.quantity_shipped),
                 previous_quantity=prev_qty,
                 new_quantity=stock.current_quantity,
                 reference_type="branch_transfer",

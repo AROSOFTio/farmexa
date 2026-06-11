@@ -7,6 +7,7 @@ to ensure consistent inventory tracking, audit trails, and transaction integrity
 """
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Optional
 from enum import Enum
 
@@ -15,6 +16,7 @@ from sqlalchemy import case, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
+from app.core.money import FOUR_PLACES, quantize_money, to_decimal
 from app.models.inventory import MovementType, StockItem, StockMovement
 
 
@@ -81,21 +83,29 @@ class InventoryCoordinator:
 
     def _calculate_average_cost(
         self,
-        current_quantity: float,
-        current_average_cost: float,
-        incoming_quantity: float,
-        incoming_unit_cost: float
-    ) -> float:
+        current_quantity: Decimal | float | int,
+        current_average_cost: Decimal | float | int,
+        incoming_quantity: Decimal | float | int,
+        incoming_unit_cost: Decimal | float | int,
+    ) -> Decimal:
         """
         Calculate weighted average cost for inventory items.
-        
+
         Formula: (Current Value + Incoming Value) / (Current Qty + Incoming Qty)
         """
+        current_quantity = to_decimal(current_quantity)
+        current_average_cost = to_decimal(current_average_cost)
+        incoming_quantity = to_decimal(incoming_quantity)
+        incoming_unit_cost = to_decimal(incoming_unit_cost)
+
         if current_quantity + incoming_quantity == 0:
-            return current_average_cost
+            return quantize_money(current_average_cost, FOUR_PLACES)
         current_value = current_quantity * current_average_cost
         incoming_value = incoming_quantity * incoming_unit_cost
-        return (current_value + incoming_value) / (current_quantity + incoming_quantity)
+        return quantize_money(
+            (current_value + incoming_value) / (current_quantity + incoming_quantity),
+            FOUR_PLACES,
+        )
 
     async def record_movement_async(
         self,
@@ -199,6 +209,7 @@ class InventoryCoordinator:
         unit_cost: Optional[float] = None,
         notes: Optional[str] = None,
         allow_negative: bool = False,
+        batch_id: Optional[int] = None,
     ) -> StockMovement:
         """
         Record a stock movement (sync version for compatibility with existing code).

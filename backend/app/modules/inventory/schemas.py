@@ -1,7 +1,8 @@
-﻿from pydantic import BaseModel
+﻿from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 from app.models.inventory import StockCategory, MovementType, TransferStatus, TransferType, StoreLocationType, GIVStatus, GRNStatus
+from app.schemas.money import Money, NonNegativeMoney
 
 class StockItemBase(BaseModel):
     name: str
@@ -9,13 +10,13 @@ class StockItemBase(BaseModel):
     category: StockCategory
     unit_of_measure: str
     reorder_level: float = 0.0
-    unit_price: float = 0.0
+    unit_price: NonNegativeMoney = Field(default=0)
     description: Optional[str] = None
     is_active: bool = True
 
 class StockItemCreate(StockItemBase):
     initial_quantity: float = 0.0
-    initial_unit_cost: float = 0.0
+    initial_unit_cost: NonNegativeMoney = Field(default=0)
 
 class StockItemUpdate(BaseModel):
     name: Optional[str] = None
@@ -23,14 +24,14 @@ class StockItemUpdate(BaseModel):
     category: Optional[StockCategory] = None
     unit_of_measure: Optional[str] = None
     reorder_level: Optional[float] = None
-    unit_price: Optional[float] = None
+    unit_price: Optional[NonNegativeMoney] = None
     description: Optional[str] = None
     is_active: Optional[bool] = None
 
 class StockItemOut(StockItemBase):
     id: int
     current_quantity: float
-    average_cost: float
+    average_cost: Money
     created_at: datetime
 
     class Config:
@@ -42,7 +43,7 @@ class StockMovementBase(BaseModel):
     quantity: float
     reference_type: Optional[str] = None
     reference_id: Optional[int] = None
-    unit_cost: Optional[float] = None
+    unit_cost: Optional[NonNegativeMoney] = None
     notes: Optional[str] = None
 
 class StockMovementCreate(StockMovementBase):
@@ -167,7 +168,7 @@ class GRNBase(BaseModel):
     received_into_store_location_id: int
     source_type: str = "supplier"
     supplier_reference: Optional[str] = None
-    unit_cost: Optional[float] = 0.0
+    unit_cost: Optional[NonNegativeMoney] = Field(default=0)
     notes: Optional[str] = None
 
 
@@ -182,7 +183,7 @@ class GRNUpdate(BaseModel):
     received_into_store_location_id: Optional[int] = None
     source_type: Optional[str] = None
     supplier_reference: Optional[str] = None
-    unit_cost: Optional[float] = None
+    unit_cost: Optional[NonNegativeMoney] = None
     notes: Optional[str] = None
 
 

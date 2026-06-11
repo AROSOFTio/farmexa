@@ -4,6 +4,7 @@ from typing import List, Literal, Optional
 from pydantic import BaseModel, Field
 
 from app.models.sales import CustomerType, DeliveryStatus, InvoiceStatus, OrderStatus, PaymentMethod
+from app.schemas.money import Money, NonNegativeMoney, PositiveMoney, PositiveQuantity
 
 
 class CustomerBase(BaseModel):
@@ -12,7 +13,7 @@ class CustomerBase(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
-    credit_limit: float = Field(default=0.0, ge=0)
+    credit_limit: NonNegativeMoney = Field(default=0)
     payment_terms_days: int = Field(default=30, ge=0)
     tax_id: Optional[str] = None
     contact_person: Optional[str] = None
@@ -27,7 +28,7 @@ class CustomerCreate(CustomerBase):
 
 class CustomerOut(CustomerBase):
     id: int
-    balance: float
+    balance: Money
     created_at: datetime
 
     class Config:
@@ -40,7 +41,7 @@ class CustomerUpdate(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
-    credit_limit: Optional[float] = Field(default=None, ge=0)
+    credit_limit: Optional[NonNegativeMoney] = None
     payment_terms_days: Optional[int] = Field(default=None, ge=0)
     tax_id: Optional[str] = None
     contact_person: Optional[str] = None
@@ -51,8 +52,8 @@ class CustomerUpdate(BaseModel):
 
 class OrderItemBase(BaseModel):
     product_id: int
-    quantity: float = Field(gt=0)
-    unit_price: float = Field(ge=0)
+    quantity: PositiveQuantity
+    unit_price: NonNegativeMoney
     batch_id: Optional[int] = None
 
 
@@ -62,7 +63,7 @@ class OrderItemCreate(OrderItemBase):
 
 class OrderItemOut(OrderItemBase):
     id: int
-    subtotal: float
+    subtotal: Money
 
     class Config:
         from_attributes = True
@@ -81,7 +82,7 @@ class OrderCreate(OrderBase):
 
 class OrderOut(OrderBase):
     id: int
-    total_amount: float
+    total_amount: Money
     created_at: datetime
     customer: Optional[CustomerOut] = None
     items: List[OrderItemOut] = []
@@ -91,7 +92,7 @@ class OrderOut(OrderBase):
 
 
 class PaymentBase(BaseModel):
-    amount: float = Field(gt=0)
+    amount: PositiveMoney
     payment_method: PaymentMethod
     payment_date: date
     reference: Optional[str] = None
@@ -115,7 +116,7 @@ class InvoiceBase(BaseModel):
     status: InvoiceStatus = InvoiceStatus.DRAFT
     issue_date: date
     due_date: date
-    total_amount: float = Field(ge=0)
+    total_amount: NonNegativeMoney
     notes: Optional[str] = None
     batch_id: Optional[int] = None
 
@@ -127,7 +128,7 @@ class InvoiceCreate(InvoiceBase):
 class InvoiceOut(InvoiceBase):
     id: int
     invoice_number: str
-    paid_amount: float
+    paid_amount: Money
     pdf_generated_at: Optional[datetime] = None
     pdf_file_path: Optional[str] = None
     created_at: datetime
@@ -140,8 +141,8 @@ class InvoiceOut(InvoiceBase):
 
 class PosLineCreate(BaseModel):
     product_id: int
-    quantity: float = Field(gt=0)
-    unit_price: float = Field(ge=0)
+    quantity: PositiveQuantity
+    unit_price: NonNegativeMoney
     batch_id: Optional[int] = None
 
 
@@ -151,9 +152,9 @@ class PosCheckoutCreate(BaseModel):
     customer_email: Optional[str] = None
     customer_phone: Optional[str] = None
     sale_payment_mode: Literal["full", "partial", "credit"] = "full"
-    amount_paid_now: Optional[float] = None
+    amount_paid_now: Optional[NonNegativeMoney] = None
     # cash_tendered: actual physical cash given by customer — can exceed total for change calculation
-    cash_tendered: Optional[float] = None
+    cash_tendered: Optional[NonNegativeMoney] = None
     payment_method: Optional[PaymentMethod] = None
     payment_reference: Optional[str] = None
     credit_due_date: Optional[date] = None
@@ -167,9 +168,9 @@ class PosCheckoutOut(BaseModel):
     order: OrderOut
     invoice: InvoiceOut
     payment: Optional[PaymentOut] = None
-    balance_due: float = 0.0
-    change_to_return: float = 0.0
-    cash_tendered: float = 0.0
+    balance_due: Money = Money(0)
+    change_to_return: Money = Money(0)
+    cash_tendered: Money = Money(0)
     email_status: Optional[str] = None
 
 

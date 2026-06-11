@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
+from app.core.money import to_decimal
 from app.models.feed import FeedCategory, FeedFormulation, FeedFormulationIngredient, FeedItem, FeedProductionBatch
 from app.models.inventory import StockCategory, StockItem
 from app.modules.feed.repository import FeedRepository
@@ -264,7 +266,9 @@ class FeedService:
                 await self.db.rollback()
                 raise HTTPException(status_code=400, detail=f"Cannot record stock movement for feed purchase: {e.detail}")
 
-        total_amount = sum(qty * price for _, qty, price in prepared_items)
+        total_amount = sum(
+            (to_decimal(qty) * price for _, qty, price in prepared_items), Decimal("0")
+        )
         def sync_accounting_call(session):
             accounting = AccountingService(session, tenant_id=purchase.tenant_id)
             accounting.record_feed_purchase(

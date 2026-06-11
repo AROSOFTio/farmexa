@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 import enum
 
-from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, Date, DateTime, Float, Numeric, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -39,21 +39,21 @@ class SlaughterRecord(Base):
 
     live_birds_count = Column(Integer, nullable=False)
     mortality_birds_count = Column(Integer, default=0, nullable=False)
-    total_live_weight = Column(Float, nullable=False)
-    average_live_weight = Column(Float, nullable=True)
-    total_dressed_weight = Column(Float, nullable=True)
-    average_dressed_weight = Column(Float, nullable=True)
+    total_live_weight = Column(Numeric(12, 3), nullable=False)
+    average_live_weight = Column(Numeric(12, 3), nullable=True)
+    total_dressed_weight = Column(Numeric(12, 3), nullable=True)
+    average_dressed_weight = Column(Numeric(12, 3), nullable=True)
     yield_percentage = Column(Float, nullable=True)
     loss_percentage = Column(Float, nullable=True)
 
-    waste_weight = Column(Float, default=0.0)
+    waste_weight = Column(Numeric(12, 3), default=0)
     condemned_birds_count = Column(Integer, default=0)
-    blood_weight = Column(Float, default=0.0)
-    feathers_weight = Column(Float, default=0.0)
-    offal_weight = Column(Float, default=0.0)
-    head_weight = Column(Float, default=0.0)
-    feet_weight = Column(Float, default=0.0)
-    reusable_byproducts_weight = Column(Float, default=0.0)
+    blood_weight = Column(Numeric(12, 3), default=0)
+    feathers_weight = Column(Numeric(12, 3), default=0)
+    offal_weight = Column(Numeric(12, 3), default=0)
+    head_weight = Column(Numeric(12, 3), default=0)
+    feet_weight = Column(Numeric(12, 3), default=0)
+    reusable_byproducts_weight = Column(Numeric(12, 3), default=0)
     waste_disposal_notes = Column(Text, nullable=True)
     quality_inspection_status = Column(
         db_enum(QualityInspectionStatus, name="qualityinspectionstatus"),
@@ -85,9 +85,9 @@ class SlaughterOutput(Base):
     slaughter_record_id = Column(Integer, ForeignKey("slaughter_records.id"), nullable=False)
     stock_item_id = Column(Integer, ForeignKey("stock_items.id"), nullable=False)
     output_type = Column(String(50), nullable=False, default="finished_product")
-    quantity = Column(Float, nullable=False)
-    unit_cost = Column(Float, nullable=True)
-    total_cost = Column(Float, nullable=True)
+    quantity = Column(Numeric(12, 3), nullable=False)
+    unit_cost = Column(Numeric(18, 4), nullable=True)
+    total_cost = Column(Numeric(18, 4), nullable=True)
 
     slaughter_record = relationship("SlaughterRecord", back_populates="outputs")
     stock_item = relationship("StockItem")
@@ -101,11 +101,11 @@ class SlaughterByProduct(Base):
     stock_item_id = Column(Integer, ForeignKey("stock_items.id"), nullable=True)
     store_location_id = Column(Integer, ForeignKey("store_locations.id"), nullable=True)
     byproduct_name = Column(String(100), nullable=False)
-    quantity_weight = Column(Float, nullable=False)
+    quantity_weight = Column(Numeric(12, 3), nullable=False)
     unit = Column(String(20), nullable=False, default="kg")
-    value = Column(Float, nullable=True, default=0.0)
-    unit_cost = Column(Float, nullable=True)
-    total_value = Column(Float, nullable=True)
+    value = Column(Numeric(18, 4), nullable=True, default=0)
+    unit_cost = Column(Numeric(18, 4), nullable=True)
+    total_value = Column(Numeric(18, 4), nullable=True)
     notes = Column(Text, nullable=True)
 
     slaughter_record = relationship("SlaughterRecord", back_populates="byproducts")

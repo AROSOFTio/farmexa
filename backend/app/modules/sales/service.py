@@ -1,4 +1,5 @@
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 from email.message import EmailMessage
 import smtplib
 import threading
@@ -158,7 +159,7 @@ class SalesService:
         if not order.items:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="At least one order line is required")
 
-        total_amount = 0.0
+        total_amount = Decimal("0")
         db_order = Order(
             customer_id=order.customer_id, 
             status=order.status, 
@@ -201,7 +202,7 @@ class SalesService:
             coordinator = InventoryCoordinator(db)
             coordinator.record_out(
                 item_id=stock.id,
-                quantity=item.quantity,
+                quantity=float(item.quantity),
                 reference_type=ReferenceType.SALE.value,
                 reference_id=db_order.id,
                 notes=f"Order {db_order.id}",

@@ -16,6 +16,7 @@ from typing import Any, List, Optional
 from pydantic import BaseModel, Field
 
 from app.models.finance_coa import AccountType, FiscalYearStatus, JournalEntryStatus, NormalBalance
+from app.schemas.money import Money, NonNegativeMoney
 
 
 # ---------------------------------------------------------------------------
@@ -75,8 +76,8 @@ AccountTreeOut.model_rebuild()
 class JournalLineBase(BaseModel):
     account_id: int
     memo: Optional[str] = Field(default=None, max_length=255)
-    debit: float = Field(default=0.0, ge=0)
-    credit: float = Field(default=0.0, ge=0)
+    debit: NonNegativeMoney = Field(default=0)
+    credit: NonNegativeMoney = Field(default=0)
     branch_id: Optional[int] = None
     batch_id: Optional[int] = None
 
@@ -202,8 +203,8 @@ class FiscalYearOut(BaseModel):
 
 class OpeningBalanceEntry(BaseModel):
     account_id: int
-    opening_debit: float = Field(default=0.0, ge=0)
-    opening_credit: float = Field(default=0.0, ge=0)
+    opening_debit: NonNegativeMoney = Field(default=0)
+    opening_credit: NonNegativeMoney = Field(default=0)
     opening_date: Optional[date] = None
     notes: Optional[str] = None
 
@@ -219,8 +220,8 @@ class OpeningBalanceOut(BaseModel):
     account_code: Optional[str] = None
     account_name: Optional[str] = None
     fiscal_year_id: Optional[int] = None
-    opening_debit: float
-    opening_credit: float
+    opening_debit: Money
+    opening_credit: Money
     opening_date: Optional[date] = None
     notes: Optional[str] = None
 

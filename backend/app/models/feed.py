@@ -70,7 +70,7 @@ class FeedPurchase(Base):
     supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"))
     purchase_date: Mapped[date] = mapped_column(Date)
     invoice_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    total_amount: Mapped[float] = mapped_column(Numeric(12, 2))
+    total_amount: Mapped[float] = mapped_column(Numeric(18, 4))
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     supplier: Mapped["Supplier"] = relationship("Supplier", back_populates="purchases")
@@ -84,8 +84,8 @@ class FeedPurchaseItem(Base):
     purchase_id: Mapped[int] = mapped_column(ForeignKey("feed_purchases.id"))
     feed_item_id: Mapped[int] = mapped_column(ForeignKey("feed_items.id"))
     quantity: Mapped[float] = mapped_column(Float)
-    unit_price: Mapped[float] = mapped_column(Numeric(12, 2))
-    total_price: Mapped[float] = mapped_column(Numeric(12, 2))
+    unit_price: Mapped[float] = mapped_column(Numeric(18, 4))
+    total_price: Mapped[float] = mapped_column(Numeric(18, 4))
 
     purchase: Mapped["FeedPurchase"] = relationship("FeedPurchase", back_populates="items")
     feed_item: Mapped["FeedItem"] = relationship("FeedItem", back_populates="purchases")
@@ -113,7 +113,7 @@ class FeedFormulation(Base):
     stage: Mapped[str] = mapped_column(String(50), index=True)
     texture: Mapped[str] = mapped_column(String(50), default="Mash")
     output_quantity_kg: Mapped[float] = mapped_column(Float, default=1000.0)
-    cost_per_kg: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    cost_per_kg: Mapped[float] = mapped_column(Numeric(18, 4), default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     ingredients: Mapped[list["FeedFormulationIngredient"]] = relationship(
@@ -145,7 +145,7 @@ class FeedProductionBatch(Base):
     formulation_id: Mapped[int] = mapped_column(ForeignKey("feed_formulations.id"))
     output_item_id: Mapped[int] = mapped_column(ForeignKey("feed_items.id"))
     output_quantity_kg: Mapped[float] = mapped_column(Float)
-    cost_per_kg: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    cost_per_kg: Mapped[float] = mapped_column(Numeric(18, 4), default=0)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     produced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 

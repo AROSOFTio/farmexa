@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 import enum
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, Numeric, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -46,8 +46,8 @@ class StockItem(Base):
 
     current_quantity = Column(Float, default=0.0, nullable=False)
     reorder_level = Column(Float, default=0.0, nullable=False)
-    unit_price = Column(Float, default=0.0, nullable=False)
-    average_cost = Column(Float, default=0.0, nullable=False)
+    unit_price = Column(Numeric(18, 4), default=0, nullable=False)
+    average_cost = Column(Numeric(18, 4), default=0, nullable=False)
 
     description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
@@ -71,7 +71,7 @@ class StockMovement(Base):
     reference_type = Column(String, nullable=True)
     reference_id = Column(Integer, nullable=True)
 
-    unit_cost = Column(Float, nullable=True)
+    unit_cost = Column(Numeric(18, 4), nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
@@ -171,7 +171,7 @@ class GoodsReceivedNote(Base):
     received_into_store_location_id = Column(Integer, ForeignKey("store_locations.id"), nullable=False)
     source_type = Column(String, nullable=False, default="supplier")  # supplier, internal_transfer, return, other
     supplier_reference = Column(String, nullable=True)
-    unit_cost = Column(Float, nullable=True, default=0.0)
+    unit_cost = Column(Numeric(18, 4), nullable=True, default=0)
     notes = Column(Text, nullable=True)
     status = Column(db_enum(GRNStatus, name="grnstatus"), nullable=False, default=GRNStatus.DRAFT)
     received_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)

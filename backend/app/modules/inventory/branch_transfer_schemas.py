@@ -3,11 +3,12 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
 from app.models.branch_transfer import TransferStatus
+from app.schemas.money import NonNegativeQuantity
 
 
 class BranchTransferItemBase(BaseModel):
     stock_item_id: int
-    quantity_shipped: float
+    quantity_shipped: NonNegativeQuantity
     notes: Optional[str] = None
 
 class BranchTransferItemCreate(BranchTransferItemBase):
@@ -15,8 +16,8 @@ class BranchTransferItemCreate(BranchTransferItemBase):
 
 class BranchTransferItemOut(BranchTransferItemBase):
     id: int
-    quantity_received: Optional[float] = None
-    
+    quantity_received: Optional[NonNegativeQuantity] = None
+
     model_config = ConfigDict(from_attributes=True)
 
 

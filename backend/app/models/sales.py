@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 import enum
 
-from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, Date, DateTime, Numeric, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -44,8 +44,8 @@ class Customer(Base):
     email = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     address = Column(Text, nullable=True)
-    balance = Column(Float, default=0.0, nullable=False)
-    credit_limit = Column(Float, default=0.0, nullable=False)
+    balance = Column(Numeric(18, 4), default=0, nullable=False)
+    credit_limit = Column(Numeric(18, 4), default=0, nullable=False)
     payment_terms_days = Column(Integer, default=30, nullable=False)
     tax_id = Column(String, nullable=True)
     contact_person = Column(String, nullable=True)
@@ -64,7 +64,7 @@ class Order(Base):
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
     batch_id = Column(Integer, ForeignKey("batches.id"), nullable=True)
     status = Column(db_enum(OrderStatus, name="orderstatus"), default=OrderStatus.PENDING, nullable=False)
-    total_amount = Column(Float, default=0.0, nullable=False)
+    total_amount = Column(Numeric(18, 4), default=0, nullable=False)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
@@ -80,9 +80,9 @@ class OrderItem(Base):
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
     product_id = Column(Integer, ForeignKey("stock_items.id"), nullable=False)
     batch_id = Column(Integer, ForeignKey("batches.id"), nullable=True)
-    quantity = Column(Float, nullable=False)
-    unit_price = Column(Float, nullable=False)
-    subtotal = Column(Float, nullable=False)
+    quantity = Column(Numeric(14, 4), nullable=False)
+    unit_price = Column(Numeric(18, 4), nullable=False)
+    subtotal = Column(Numeric(18, 4), nullable=False)
 
     order = relationship("Order", back_populates="items")
     product = relationship("StockItem")
@@ -99,8 +99,8 @@ class Invoice(Base):
     status = Column(db_enum(InvoiceStatus, name="invoicestatus"), default=InvoiceStatus.DRAFT, nullable=False)
     issue_date = Column(Date, nullable=False)
     due_date = Column(Date, nullable=False)
-    total_amount = Column(Float, nullable=False)
-    paid_amount = Column(Float, default=0.0, nullable=False)
+    total_amount = Column(Numeric(18, 4), nullable=False)
+    paid_amount = Column(Numeric(18, 4), default=0, nullable=False)
     pdf_generated_at = Column(DateTime(timezone=True), nullable=True)
     pdf_file_path = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
@@ -116,7 +116,7 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=False)
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(18, 4), nullable=False)
     payment_method = Column(db_enum(PaymentMethod, name="paymentmethod"), nullable=False)
     payment_date = Column(Date, nullable=False)
     reference = Column(String, nullable=True)

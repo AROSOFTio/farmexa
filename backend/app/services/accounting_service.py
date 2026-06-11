@@ -23,6 +23,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.money import quantize_money, to_decimal
 from app.models.finance_coa import (
     Account, AccountType, FiscalYear, JournalEntry, JournalEntryStatus,
     JournalLine, NormalBalance, OpeningBalance, SystemAccountMapping,
@@ -110,9 +111,9 @@ class AccountingService:
 
     def _validate_balance(self, lines: list[JournalLine]) -> None:
         """Enforce that total debits == total credits (double-entry rule)."""
-        total_debits = round(sum(line.debit or 0 for line in lines), 2)
-        total_credits = round(sum(line.credit or 0 for line in lines), 2)
-        if abs(total_debits - total_credits) > 0.01:
+        total_debits = quantize_money(sum((to_decimal(line.debit) for line in lines), Decimal("0")))
+        total_credits = quantize_money(sum((to_decimal(line.credit) for line in lines), Decimal("0")))
+        if abs(total_debits - total_credits) > Decimal("0.01"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Journal entry is unbalanced: debits={total_debits}, credits={total_credits}. "
@@ -154,8 +155,8 @@ class AccountingService:
         self,
         journal_entry: JournalEntry,
         account_code: str,
-        debit: float = 0.0,
-        credit: float = 0.0,
+        debit: Decimal | float | int = 0,
+        credit: Decimal | float | int = 0,
         memo: Optional[str] = None,
         branch_id: Optional[int] = None,
         batch_id: Optional[int] = None,
@@ -165,8 +166,8 @@ class AccountingService:
         line = JournalLine(
             journal_entry_id=journal_entry.id,
             account_id=account.id,
-            debit=round(debit, 2),
-            credit=round(credit, 2),
+            debit=quantize_money(debit),
+            credit=quantize_money(credit),
             memo=memo,
             branch_id=branch_id,
             batch_id=batch_id,
@@ -268,11 +269,11 @@ class AccountingService:
             q = q.filter(JournalLine.batch_id == batch_id)
 
         result = q.one()
-        total_debit = float(result.total_debit)
-        total_credit = float(result.total_credit)
+        total_debit = to_decimal(result.total_debit)
+        total_credit = to_decimal(result.total_credit)
         return {"total_debit": total_debit, "total_credit": total_credit}
 
-    def _opening_balance_amounts(self, account_id: int) -> tuple[float, float]:
+    def _opening_balance_amounts(self, account_id: int) -> tuple[Decimal, Decimal]:
         """Get opening balance debit and credit for an account."""
         ob = (
             self.db.query(OpeningBalance)
@@ -283,16 +284,16 @@ class AccountingService:
             .first()
         )
         if ob:
-            return float(ob.opening_debit), float(ob.opening_credit)
-        return 0.0, 0.0
+            return to_decimal(ob.opening_debit), to_decimal(ob.opening_credit)
+        return Decimal("0"), Decimal("0")
 
     def get_account_net_balance(
-        self, 
-        account: Account, 
+        self,
+        account: Account,
         as_of_date: Optional[date] = None,
         branch_id: Optional[int] = None,
         batch_id: Optional[int] = None,
-    ) -> float:
+    ) -> Decimal:
         """
         Compute the net running balance for an account per its normal balance convention:
         - DEBIT-normal accounts (assets, expenses, COGS): balance = total_debit - total_credit
@@ -300,18 +301,18 @@ class AccountingService:
         Opening balances are included unless branch_id or batch_id are provided (as OBs are tenant-level).
         """
         if branch_id or batch_id:
-            ob_debit, ob_credit = 0.0, 0.0
+            ob_debit, ob_credit = Decimal("0"), Decimal("0")
         else:
             ob_debit, ob_credit = self._opening_balance_amounts(account.id)
-            
+
         bal = self._get_account_balance(account.id, as_of_date=as_of_date, branch_id=branch_id, batch_id=batch_id)
         total_debit = ob_debit + bal["total_debit"]
         total_credit = ob_credit + bal["total_credit"]
 
         if account.normal_balance == NormalBalance.DEBIT:
-            return round(total_debit - total_credit, 2)
+            return quantize_money(total_debit - total_credit)
         else:
-            return round(total_credit - total_debit, 2)
+            return quantize_money(total_credit - total_debit)
 
     # ------------------------------------------------------------------
     # General Ledger
@@ -361,7 +362,7 @@ class AccountingService:
 
         # Opening balance as of from_date
         if branch_id or batch_id:
-            ob_debit, ob_credit = 0.0, 0.0
+            ob_debit, ob_credit = Decimal("0"), Decimal("0")
         else:
             ob_debit, ob_credit = self._opening_balance_amounts(account.id)
 
@@ -373,25 +374,29 @@ class AccountingService:
             opening_debit, opening_credit = ob_debit, ob_credit
 
         if account.normal_balance == NormalBalance.DEBIT:
-            running_balance = round(opening_debit - opening_credit, 2)
+            running_balance = quantize_money(opening_debit - opening_credit)
         else:
-            running_balance = round(opening_credit - opening_debit, 2)
+            running_balance = quantize_money(opening_credit - opening_debit)
+
+        opening_balance = running_balance
 
         entries_out = []
         for line in lines:
             je = line.journal_entry
+            line_debit = to_decimal(line.debit)
+            line_credit = to_decimal(line.credit)
             if account.normal_balance == NormalBalance.DEBIT:
-                running_balance = round(running_balance + (line.debit or 0) - (line.credit or 0), 2)
+                running_balance = quantize_money(running_balance + line_debit - line_credit)
             else:
-                running_balance = round(running_balance + (line.credit or 0) - (line.debit or 0), 2)
+                running_balance = quantize_money(running_balance + line_credit - line_debit)
             entries_out.append({
                 "date": je.entry_date.isoformat(),
                 "entry_number": je.entry_number,
                 "description": je.description or line.memo,
                 "reference_type": je.reference_type,
                 "reference_id": je.reference_id,
-                "debit": line.debit or 0,
-                "credit": line.credit or 0,
+                "debit": line_debit,
+                "credit": line_credit,
                 "balance": running_balance,
             })
 
@@ -405,11 +410,7 @@ class AccountingService:
             },
             "from_date": from_date.isoformat() if from_date else None,
             "to_date": to_date.isoformat() if to_date else None,
-            "opening_balance": running_balance - sum(
-                (l.debit or 0) - (l.credit or 0) if account.normal_balance == NormalBalance.DEBIT
-                else (l.credit or 0) - (l.debit or 0)
-                for l in lines
-            ),
+            "opening_balance": opening_balance,
             "closing_balance": running_balance,
             "entries": entries_out,
         }
@@ -431,18 +432,18 @@ class AccountingService:
         )
 
         rows = []
-        total_debit = 0.0
-        total_credit = 0.0
+        total_debit = Decimal("0")
+        total_credit = Decimal("0")
 
         for account in accounts:
             if branch_id:
-                ob_dr, ob_cr = 0.0, 0.0
+                ob_dr, ob_cr = Decimal("0"), Decimal("0")
             else:
                 ob_dr, ob_cr = self._opening_balance_amounts(account.id)
-            
+
             bal = self._get_account_balance(account.id, as_of_date=as_of_date, branch_id=branch_id)
-            dr = round(ob_dr + bal["total_debit"], 2)
-            cr = round(ob_cr + bal["total_credit"], 2)
+            dr = quantize_money(ob_dr + bal["total_debit"])
+            cr = quantize_money(ob_cr + bal["total_credit"])
             if dr == 0 and cr == 0:
                 continue
             rows.append({
@@ -452,15 +453,15 @@ class AccountingService:
                 "total_debit": dr,
                 "total_credit": cr,
             })
-            total_debit = round(total_debit + dr, 2)
-            total_credit = round(total_credit + cr, 2)
+            total_debit = quantize_money(total_debit + dr)
+            total_credit = quantize_money(total_credit + cr)
 
         return {
             "as_of_date": as_of_date.isoformat() if as_of_date else None,
             "rows": rows,
             "total_debit": total_debit,
             "total_credit": total_credit,
-            "is_balanced": abs(total_debit - total_credit) < 0.02,
+            "is_balanced": abs(total_debit - total_credit) < Decimal("0.02"),
         }
 
     # ------------------------------------------------------------------
@@ -493,28 +494,28 @@ class AccountingService:
         )
 
         revenue_rows, cos_rows, expense_rows = [], [], []
-        total_revenue = total_cos = total_expenses = 0.0
+        total_revenue = total_cos = total_expenses = Decimal("0")
 
         for account in accounts:
             bal = self._get_account_balance(account.id, from_date=from_date, as_of_date=to_date, branch_id=branch_id, batch_id=batch_id)
-            net = round(bal["total_credit"] - bal["total_debit"], 2) if account.account_type == AccountType.REVENUE \
-                else round(bal["total_debit"] - bal["total_credit"], 2)
+            net = quantize_money(bal["total_credit"] - bal["total_debit"]) if account.account_type == AccountType.REVENUE \
+                else quantize_money(bal["total_debit"] - bal["total_credit"])
             if net == 0:
                 continue
 
             row = {"account_code": account.account_code, "account_name": account.name, "amount": net}
             if account.account_type == AccountType.REVENUE:
                 revenue_rows.append(row)
-                total_revenue = round(total_revenue + net, 2)
+                total_revenue = quantize_money(total_revenue + net)
             elif account.account_type == AccountType.COST_OF_SALES:
                 cos_rows.append(row)
-                total_cos = round(total_cos + net, 2)
+                total_cos = quantize_money(total_cos + net)
             else:
                 expense_rows.append(row)
-                total_expenses = round(total_expenses + net, 2)
+                total_expenses = quantize_money(total_expenses + net)
 
-        gross_profit = round(total_revenue - total_cos, 2)
-        net_profit = round(gross_profit - total_expenses, 2)
+        gross_profit = quantize_money(total_revenue - total_cos)
+        net_profit = quantize_money(gross_profit - total_expenses)
 
         return {
             "from_date": from_date.isoformat() if from_date else None,
@@ -549,7 +550,7 @@ class AccountingService:
         )
 
         asset_rows, liability_rows, equity_rows = [], [], []
-        total_assets = total_liabilities = total_equity = 0.0
+        total_assets = total_liabilities = total_equity = Decimal("0")
 
         for account in balance_accounts:
             net = self.get_account_net_balance(account, as_of_date=as_of_date, branch_id=branch_id)
@@ -558,13 +559,13 @@ class AccountingService:
             row = {"account_code": account.account_code, "account_name": account.name, "balance": net}
             if account.account_type == AccountType.ASSET:
                 asset_rows.append(row)
-                total_assets = round(total_assets + net, 2)
+                total_assets = quantize_money(total_assets + net)
             elif account.account_type == AccountType.LIABILITY:
                 liability_rows.append(row)
-                total_liabilities = round(total_liabilities + net, 2)
+                total_liabilities = quantize_money(total_liabilities + net)
             else:
                 equity_rows.append(row)
-                total_equity = round(total_equity + net, 2)
+                total_equity = quantize_money(total_equity + net)
 
         return {
             "as_of_date": as_of_date.isoformat() if as_of_date else None,
@@ -574,8 +575,8 @@ class AccountingService:
             "total_liabilities": total_liabilities,
             "equity": equity_rows,
             "total_equity": total_equity,
-            "total_liabilities_and_equity": round(total_liabilities + total_equity, 2),
-            "is_balanced": abs(total_assets - (total_liabilities + total_equity)) < 0.02,
+            "total_liabilities_and_equity": quantize_money(total_liabilities + total_equity),
+            "is_balanced": abs(total_assets - (total_liabilities + total_equity)) < Decimal("0.02"),
         }
 
     # ------------------------------------------------------------------
@@ -641,10 +642,10 @@ class AccountingService:
             return {
                 "from_date": from_date.isoformat() if from_date else None,
                 "to_date": to_date.isoformat() if to_date else None,
-                "operating": [], "total_operating": 0.0,
-                "investing": [], "total_investing": 0.0,
-                "financing": [], "total_financing": 0.0,
-                "net_cash_flow": 0.0,
+                "operating": [], "total_operating": Decimal("0"),
+                "investing": [], "total_investing": Decimal("0"),
+                "financing": [], "total_financing": Decimal("0"),
+                "net_cash_flow": Decimal("0"),
             }
 
         # Find all posted journal entries that touch any cash account
@@ -666,47 +667,51 @@ class AccountingService:
             
         entries = q.options(joinedload(JournalEntry.lines).joinedload(JournalLine.account)).all()
 
-        operating_flows = {}
-        investing_flows = {}
-        financing_flows = {}
-        
-        total_operating = 0.0
-        total_investing = 0.0
-        total_financing = 0.0
+        operating_flows: dict[str, Decimal] = {}
+        investing_flows: dict[str, Decimal] = {}
+        financing_flows: dict[str, Decimal] = {}
+
+        total_operating = Decimal("0")
+        total_investing = Decimal("0")
+        total_financing = Decimal("0")
 
         for entry in entries:
             # Check if this entry applies to the branch (if branch filtered, only consider lines for this branch)
             # Find the net cash change in this entry for the branch
-            net_cash_change = 0.0
+            net_cash_change = Decimal("0")
             offset_lines = []
-            
+
             for line in entry.lines:
                 if branch_id and line.branch_id != branch_id:
                     continue
                 if line.account_id in cash_account_ids:
                     # Cash account line: debit = cash in (+), credit = cash out (-)
-                    net_cash_change += (line.debit or 0.0) - (line.credit or 0.0)
+                    net_cash_change += to_decimal(line.debit) - to_decimal(line.credit)
                 else:
                     # Offsetting line
                     offset_lines.append(line)
-                    
-            if abs(net_cash_change) < 0.01:
+
+            if abs(net_cash_change) < Decimal("0.01"):
                 continue
-                
+
             # Classify based on the primary offset account
-            # If multiple offsets, we pick the first one or split proportionally. 
+            # If multiple offsets, we pick the first one or split proportionally.
             # For simplicity, if there's an offset account, we use its type to classify the whole net_cash_change.
             if not offset_lines:
                 continue
-                
+
             # Heuristic: Find the offset account that carries the most weight, or just use the first non-cash line
-            primary_offset = sorted(offset_lines, key=lambda l: max(l.debit or 0, l.credit or 0), reverse=True)[0]
+            primary_offset = sorted(
+                offset_lines,
+                key=lambda l: max(to_decimal(l.debit), to_decimal(l.credit)),
+                reverse=True,
+            )[0]
             offset_acct = primary_offset.account
-            
+
             # Classification rules
             is_investing = offset_acct.account_type == AccountType.ASSET and "equipment" in offset_acct.name.lower() or "property" in offset_acct.name.lower()
             is_financing = offset_acct.account_type == AccountType.EQUITY or (offset_acct.account_type == AccountType.LIABILITY and ("loan" in offset_acct.name.lower() or "capital" in offset_acct.name.lower()))
-            
+
             category = "Operating"
             if is_investing:
                 category = "Investing"
@@ -719,25 +724,30 @@ class AccountingService:
             else:
                 target_dict = operating_flows
                 total_operating += net_cash_change
-                
+
             # Group by offset account name or a broader category
             group_key = f"Cash from {offset_acct.name}" if net_cash_change > 0 else f"Cash paid for {offset_acct.name}"
-            target_dict[group_key] = target_dict.get(group_key, 0.0) + net_cash_change
+            target_dict[group_key] = target_dict.get(group_key, Decimal("0")) + net_cash_change
 
         # Format output
         def format_flows(flow_dict):
-            return [{"category": k, "amount": round(v, 2)} for k, v in flow_dict.items() if round(v, 2) != 0]
+            out = []
+            for k, v in flow_dict.items():
+                amt = quantize_money(v)
+                if amt != 0:
+                    out.append({"category": k, "amount": amt})
+            return out
 
         return {
             "from_date": from_date.isoformat() if from_date else None,
             "to_date": to_date.isoformat() if to_date else None,
             "operating": format_flows(operating_flows),
-            "total_operating": round(total_operating, 2),
+            "total_operating": quantize_money(total_operating),
             "investing": format_flows(investing_flows),
-            "total_investing": round(total_investing, 2),
+            "total_investing": quantize_money(total_investing),
             "financing": format_flows(financing_flows),
-            "total_financing": round(total_financing, 2),
-            "net_cash_flow": round(total_operating + total_investing + total_financing, 2),
+            "total_financing": quantize_money(total_financing),
+            "net_cash_flow": quantize_money(total_operating + total_investing + total_financing),
         }
 
     # ------------------------------------------------------------------
@@ -746,8 +756,8 @@ class AccountingService:
 
     def record_sale(
         self,
-        sale_amount: float,
-        cost_of_goods_sold: float,
+        sale_amount: Decimal | float | int,
+        cost_of_goods_sold: Decimal | float | int,
         entry_date: date,
         reference_id: int,
         is_cash: bool = True,
@@ -779,7 +789,7 @@ class AccountingService:
 
     def record_feed_purchase(
         self,
-        amount: float,
+        amount: Decimal | float | int,
         entry_date: date,
         reference_id: int,
         is_cash: bool = True,
@@ -806,7 +816,7 @@ class AccountingService:
 
     def record_feed_consumption(
         self,
-        amount: float,
+        amount: Decimal | float | int,
         entry_date: date,
         reference_id: int,
         created_by_user_id: Optional[int] = None,
@@ -832,7 +842,7 @@ class AccountingService:
         
     def record_egg_sales(
         self,
-        revenue: float,
+        revenue: Decimal | float | int,
         entry_date: date,
         reference_id: int,
         is_cash: bool = True,
@@ -860,7 +870,7 @@ class AccountingService:
 
     def record_bird_mortality(
         self,
-        amount: float,
+        amount: Decimal | float | int,
         entry_date: date,
         reference_id: int,
         created_by_user_id: Optional[int] = None,
@@ -887,7 +897,7 @@ class AccountingService:
 
     def record_medication_usage(
         self,
-        amount: float,
+        amount: Decimal | float | int,
         entry_date: date,
         reference_id: int,
         created_by_user_id: Optional[int] = None,
@@ -914,15 +924,19 @@ class AccountingService:
 
     def record_slaughter(
         self,
-        dressed_weight_value: float,
-        byproduct_value: float,
-        cost_of_production: float,
+        dressed_weight_value: Decimal | float | int,
+        byproduct_value: Decimal | float | int,
+        cost_of_production: Decimal | float | int,
         entry_date: date,
         reference_id: int,
         created_by_user_id: Optional[int] = None,
     ) -> JournalEntry:
         """Slaughter: Dr Finished Goods + Byproduct, Cr Live Birds Inventory."""
-        total_output = round(dressed_weight_value + byproduct_value, 2)
+        dressed_weight_value = to_decimal(dressed_weight_value)
+        byproduct_value = to_decimal(byproduct_value)
+        cost_of_production = to_decimal(cost_of_production)
+
+        total_output = quantize_money(dressed_weight_value + byproduct_value)
         lines = [
             {"account_code": "1134", "debit": dressed_weight_value, "memo": "Dressed chicken produced"},
             {"account_code": "1133", "credit": cost_of_production,  "memo": "Live birds consumed in slaughter"},
@@ -930,7 +944,7 @@ class AccountingService:
         if byproduct_value > 0:
             lines.append({"account_code": "1139", "debit": byproduct_value, "memo": "Byproducts produced"})
         # Adjust for any slaughter gain/loss
-        diff = round(total_output - cost_of_production, 2)
+        diff = quantize_money(total_output - cost_of_production)
         if diff > 0:
             lines.append({"account_code": "4200", "credit": diff, "memo": "Slaughter gain"})
         elif diff < 0:
@@ -948,7 +962,7 @@ class AccountingService:
 
     def record_expense(
         self,
-        amount: float,
+        amount: Decimal | float | int,
         expense_account_code: str,
         entry_date: date,
         reference_id: int,
@@ -976,7 +990,7 @@ class AccountingService:
 
     def record_payment_received(
         self,
-        payment_amount: float,
+        payment_amount: Decimal | float | int,
         entry_date: date,
         reference_id: int,
         bank_account_code: str = "1112",
@@ -998,7 +1012,7 @@ class AccountingService:
 
     def record_payment_made(
         self,
-        payment_amount: float,
+        payment_amount: Decimal | float | int,
         entry_date: date,
         reference_id: int,
         bank_account_code: str = "1112",

@@ -16,7 +16,7 @@ import enum
 from typing import Optional
 
 from sqlalchemy import (
-    Boolean, Column, Date, DateTime, Float, ForeignKey,
+    Boolean, Column, Date, DateTime, Numeric, ForeignKey,
     Integer, String, Text, UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
@@ -129,8 +129,8 @@ class JournalLine(Base):
     account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False)
     branch_id = Column(Integer, ForeignKey("branches.id", ondelete="SET NULL"), nullable=True, index=True)
     batch_id = Column(Integer, ForeignKey("batches.id", ondelete="SET NULL"), nullable=True, index=True)
-    debit = Column(Float, nullable=False, default=0.0)
-    credit = Column(Float, nullable=False, default=0.0)
+    debit = Column(Numeric(18, 4), nullable=False, default=0)
+    credit = Column(Numeric(18, 4), nullable=False, default=0)
     memo = Column(String(255), nullable=True)
 
     journal_entry = relationship("JournalEntry", back_populates="lines")
@@ -234,8 +234,8 @@ class OpeningBalance(Base):
     tenant_id = Column(Integer, ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True, index=True)
     account_id = Column(Integer, ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False, index=True)
     fiscal_year_id = Column(Integer, ForeignKey("fiscal_years.id", ondelete="CASCADE"), nullable=True, index=True)
-    opening_debit = Column(Float, nullable=False, default=0.0)
-    opening_credit = Column(Float, nullable=False, default=0.0)
+    opening_debit = Column(Numeric(18, 4), nullable=False, default=0)
+    opening_credit = Column(Numeric(18, 4), nullable=False, default=0)
     opening_date = Column(Date, nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

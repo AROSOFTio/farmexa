@@ -16,6 +16,7 @@ from app.models.slaughter import (
     SlaughterRecord,
     SlaughterStatus,
 )
+from app.core.money import quantize_money
 from app.services.inventory_coordinator import InventoryCoordinator, ReferenceType
 
 from . import schemas
@@ -207,7 +208,7 @@ class SlaughterService:
         try:
             coordinator.record_in(
                 item_id=item.id,
-                quantity=output.quantity,
+                quantity=float(output.quantity),
                 reference_type=ReferenceType.SLAUGHTER_OUTPUT.value,
                 reference_id=record_id,
                 unit_cost=output.unit_cost,
@@ -220,7 +221,7 @@ class SlaughterService:
                 detail=f"Cannot record stock movement for slaughter output: {e.detail}"
             )
 
-        total_cost = output.quantity * output.unit_cost if output.unit_cost is not None else None
+        total_cost = quantize_money(output.quantity * output.unit_cost) if output.unit_cost is not None else None
         db_output = SlaughterOutput(
             tenant_id=tenant_id,
             slaughter_record_id=record_id,
@@ -273,7 +274,7 @@ class SlaughterService:
             try:
                 coordinator.record_in(
                     item_id=item.id,
-                    quantity=byproduct.quantity_weight,
+                    quantity=float(byproduct.quantity_weight),
                     reference_type=ReferenceType.SLAUGHTER_BYPRODUCT.value,
                     reference_id=record_id,
                     unit_cost=byproduct.unit_cost,
@@ -286,7 +287,7 @@ class SlaughterService:
                     detail=f"Cannot record stock movement for byproduct: {e.detail}"
                 )
 
-        total_value = byproduct.quantity_weight * byproduct.unit_cost if byproduct.unit_cost is not None else byproduct.value
+        total_value = quantize_money(byproduct.quantity_weight * byproduct.unit_cost) if byproduct.unit_cost is not None else byproduct.value
         db_byproduct = SlaughterByProduct(
             slaughter_record_id=record_id,
             stock_item_id=byproduct.stock_item_id,
@@ -342,7 +343,7 @@ class SlaughterService:
                     if delta > 0:
                         coordinator.record_in(
                             item_id=item.id,
-                            quantity=delta,
+                            quantity=float(delta),
                             reference_type=ReferenceType.SLAUGHTER_BYPRODUCT_ADJUSTMENT.value,
                             reference_id=db_byproduct.id,
                             unit_cost=updates.unit_cost,
@@ -351,7 +352,7 @@ class SlaughterService:
                     else:
                         coordinator.record_out(
                             item_id=item.id,
-                            quantity=abs(delta),
+                            quantity=float(abs(delta)),
                             reference_type=ReferenceType.SLAUGHTER_BYPRODUCT_ADJUSTMENT.value,
                             reference_id=db_byproduct.id,
                             notes=f"Byproduct quantity reduction: {db_byproduct.byproduct_name}",
@@ -364,7 +365,11 @@ class SlaughterService:
                     )
 
         if "unit_cost" in update_values:
-            update_values["total_value"] = update_values["quantity_weight"] * update_values["unit_cost"] if "quantity_weight" in update_values else db_byproduct.quantity_weight * update_values["unit_cost"]
+            update_values["total_value"] = quantize_money(
+                update_values["quantity_weight"] * update_values["unit_cost"]
+                if "quantity_weight" in update_values
+                else db_byproduct.quantity_weight * update_values["unit_cost"]
+            )
 
         for key, value in update_values.items():
             setattr(db_byproduct, key, value)

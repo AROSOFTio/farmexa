@@ -8,7 +8,7 @@ Transfers go into a virtual 'transit' state until received by the destination br
 from datetime import datetime, timezone
 import enum
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Column, DateTime, Numeric, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -63,8 +63,8 @@ class BranchTransferItem(Base):
     transfer_id = Column(Integer, ForeignKey("branch_transfers.id", ondelete="CASCADE"), nullable=False, index=True)
     stock_item_id = Column(Integer, ForeignKey("stock_items.id"), nullable=False)
     
-    quantity_shipped = Column(Float, nullable=False)
-    quantity_received = Column(Float, nullable=True)
+    quantity_shipped = Column(Numeric(14, 4), nullable=False)
+    quantity_received = Column(Numeric(14, 4), nullable=True)
     
     notes = Column(String(255), nullable=True)
     

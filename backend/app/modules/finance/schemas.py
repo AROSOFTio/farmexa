@@ -2,6 +2,8 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import date, datetime
 
+from app.schemas.money import PositiveMoney
+
 class ExpenseCategoryBase(BaseModel):
     name: str
     description: Optional[str] = None
@@ -17,7 +19,7 @@ class ExpenseCategoryOut(ExpenseCategoryBase):
 
 class ExpenseBase(BaseModel):
     category_id: int
-    amount: float
+    amount: PositiveMoney
     expense_date: date
     description: Optional[str] = None
     reference: Optional[str] = None
@@ -49,7 +51,7 @@ class IncomeCategoryOut(IncomeCategoryBase):
 
 class IncomeBase(BaseModel):
     category_id: int
-    amount: float
+    amount: PositiveMoney
     income_date: date
     description: Optional[str] = None
     reference: Optional[str] = None

@@ -1,6 +1,7 @@
 from datetime import date
 from typing import Optional
 from pydantic import BaseModel, Field
+from app.schemas.money import Money, NonNegativeMoney
 
 
 # ── Supplier ───────────────────────────────────────────────────
@@ -96,23 +97,23 @@ class FeedPurchaseItemCreate(BaseModel):
     other_feed_unit: Optional[str] = Field(default="kg", max_length=50)
     other_reorder_threshold: float = Field(default=0.0, ge=0.0)
     quantity: float = Field(..., gt=0.0)
-    unit_price: float = Field(..., ge=0.0)
-    total_price: float = Field(..., ge=0.0)
+    unit_price: NonNegativeMoney
+    total_price: NonNegativeMoney
 
 class FeedPurchaseItemOut(BaseModel):
     id: int
     purchase_id: int
     feed_item_id: int
     quantity: float
-    unit_price: float
-    total_price: float
+    unit_price: Money
+    total_price: Money
     model_config = {"from_attributes": True}
 
 class FeedPurchaseBase(BaseModel):
     supplier_id: int
     purchase_date: date
     invoice_number: Optional[str] = None
-    total_amount: float = Field(..., ge=0.0)
+    total_amount: NonNegativeMoney
     notes: Optional[str] = None
 
 class FeedPurchaseCreate(FeedPurchaseBase):
@@ -177,7 +178,7 @@ class FeedFormulationOut(BaseModel):
     stage: str
     texture: str
     output_quantity_kg: float
-    cost_per_kg: float
+    cost_per_kg: Money
     ingredients: list[FeedFormulationIngredientOut] = []
     model_config = {"from_attributes": True}
 
@@ -194,6 +195,6 @@ class FeedProductionOut(BaseModel):
     formulation_id: int
     output_item_id: int
     output_quantity_kg: float
-    cost_per_kg: float
+    cost_per_kg: Money
     notes: Optional[str] = None
     model_config = {"from_attributes": True}
