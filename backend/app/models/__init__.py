@@ -17,6 +17,7 @@ from app.models.farm import (  # noqa: F401
 )
 from app.models.feed import (  # noqa: F401
     Supplier,
+    SupplierItemPrice,
     FeedCategory,
     FeedItem,
     FeedPurchase,
@@ -101,6 +102,7 @@ __all__ = [
     "VaccinationLog",
     "GrowthLog",
     "Supplier",
+    "SupplierItemPrice",
     "FeedCategory",
     "FeedItem",
     "FeedPurchase",

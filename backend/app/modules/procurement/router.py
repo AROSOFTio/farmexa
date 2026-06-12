@@ -186,3 +186,69 @@ def pay_supplier_invoice(
 ):
     service = ProcurementService(db, tenant_id=current_user.tenant_id)
     return service.record_supplier_payment(invoice_id, payload, created_by_id=current_user.id)
+
+
+# --- Suppliers & Tentative Pricing ---
+
+@router.get("/suppliers", response_model=List[schemas.SupplierOut])
+def list_suppliers(
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("procurement:read")),
+):
+    service = ProcurementService(db, tenant_id=current_user.tenant_id)
+    return service.list_suppliers()
+
+
+@router.post("/suppliers", response_model=schemas.SupplierOut, status_code=201)
+def create_supplier(
+    payload: schemas.SupplierCreate,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("procurement:write")),
+):
+    service = ProcurementService(db, tenant_id=current_user.tenant_id)
+    return service.create_supplier(payload)
+
+
+@router.put("/suppliers/{supplier_id}", response_model=schemas.SupplierOut)
+def update_supplier(
+    supplier_id: int,
+    payload: schemas.SupplierUpdate,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("procurement:write")),
+):
+    service = ProcurementService(db, tenant_id=current_user.tenant_id)
+    return service.update_supplier(supplier_id, payload)
+
+
+@router.get("/suppliers/{supplier_id}/prices", response_model=List[schemas.SupplierItemPriceOut])
+def list_supplier_item_prices(
+    supplier_id: int,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("procurement:read")),
+):
+    service = ProcurementService(db, tenant_id=current_user.tenant_id)
+    return service.list_supplier_item_prices(supplier_id)
+
+
+@router.post("/suppliers/{supplier_id}/prices", response_model=schemas.SupplierItemPriceOut)
+def create_or_update_supplier_item_price(
+    supplier_id: int,
+    payload: schemas.SupplierItemPriceCreate,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("procurement:write")),
+):
+    service = ProcurementService(db, tenant_id=current_user.tenant_id)
+    return service.create_or_update_supplier_item_price(supplier_id, payload)
+
+
+@router.delete("/suppliers/{supplier_id}/prices/{price_id}", status_code=204)
+def delete_supplier_item_price(
+    supplier_id: int,
+    price_id: int,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("procurement:write")),
+):
+    service = ProcurementService(db, tenant_id=current_user.tenant_id)
+    service.delete_supplier_item_price(supplier_id, price_id)
+    return None
+

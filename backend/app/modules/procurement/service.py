@@ -30,6 +30,7 @@ from app.models.procurement import (
     SupplierInvoiceStatus,
     SupplierPayment,
 )
+from app.models.feed import Supplier, SupplierItemPrice
 from app.modules.procurement import schemas
 
 logger = logging.getLogger(__name__)
@@ -593,3 +594,124 @@ class ProcurementService:
 
         doc.build(story)
         return buf.getvalue()
+
+    # ------------------------------------------------------------------
+    # Suppliers
+    # ------------------------------------------------------------------
+
+    def list_suppliers(self) -> List[Supplier]:
+        return (
+            self.db.query(Supplier)
+            .order_by(Supplier.name.asc())
+            .all()
+        )
+
+    def get_supplier(self, supplier_id: int) -> Supplier:
+        supplier = self.db.query(Supplier).filter(Supplier.id == supplier_id).first()
+        if not supplier:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Supplier not found")
+        return supplier
+
+    def create_supplier(self, data: schemas.SupplierCreate) -> Supplier:
+        supplier = Supplier(**data.model_dump())
+        self.db.add(supplier)
+        try:
+            self.db.commit()
+            self.db.refresh(supplier)
+            return supplier
+        except Exception as exc:
+            self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to create supplier: {str(exc)}",
+            )
+
+    def update_supplier(self, supplier_id: int, data: schemas.SupplierUpdate) -> Supplier:
+        supplier = self.get_supplier(supplier_id)
+        updates = data.model_dump(exclude_unset=True)
+        for key, value in updates.items():
+            setattr(supplier, key, value)
+        try:
+            self.db.commit()
+            self.db.refresh(supplier)
+            return supplier
+        except Exception as exc:
+            self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to update supplier: {str(exc)}",
+            )
+
+    # ------------------------------------------------------------------
+    # Supplier Item Pricing (Tentative Pricing)
+    # ------------------------------------------------------------------
+
+    def list_supplier_item_prices(self, supplier_id: int) -> List[SupplierItemPrice]:
+        # Verify supplier exists
+        self.get_supplier(supplier_id)
+        return (
+            self.db.query(SupplierItemPrice)
+            .filter(SupplierItemPrice.supplier_id == supplier_id)
+            .order_by(SupplierItemPrice.item_name.asc())
+            .all()
+        )
+
+    def create_or_update_supplier_item_price(
+        self, supplier_id: int, data: schemas.SupplierItemPriceCreate
+    ) -> SupplierItemPrice:
+        self.get_supplier(supplier_id)
+        
+        # Check if price entry already exists for this stock item or item name
+        query = self.db.query(SupplierItemPrice).filter(SupplierItemPrice.supplier_id == supplier_id)
+        if data.stock_item_id:
+            existing = query.filter(SupplierItemPrice.stock_item_id == data.stock_item_id).first()
+        else:
+            existing = query.filter(SupplierItemPrice.item_name == data.item_name).first()
+
+        if existing:
+            existing.unit_price = Decimal(str(data.unit_price))
+            existing.unit_of_measure = data.unit_of_measure
+            existing.notes = data.notes
+            if data.stock_item_id:
+                existing.stock_item_id = data.stock_item_id
+            existing.updated_at = datetime.now(timezone.utc)
+            item_price = existing
+        else:
+            item_price = SupplierItemPrice(
+                supplier_id=supplier_id,
+                stock_item_id=data.stock_item_id,
+                item_name=data.item_name,
+                unit_of_measure=data.unit_of_measure,
+                unit_price=Decimal(str(data.unit_price)),
+                notes=data.notes,
+                updated_at=datetime.now(timezone.utc),
+            )
+            self.db.add(item_price)
+
+        try:
+            self.db.commit()
+            self.db.refresh(item_price)
+            return item_price
+        except Exception as exc:
+            self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to save item price: {str(exc)}",
+            )
+
+    def delete_supplier_item_price(self, supplier_id: int, price_id: int) -> None:
+        self.get_supplier(supplier_id)
+        price = (
+            self.db.query(SupplierItemPrice)
+            .filter(
+                SupplierItemPrice.id == price_id,
+                SupplierItemPrice.supplier_id == supplier_id,
+            )
+            .first()
+        )
+        if not price:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item price entry not found")
+        
+        self.db.delete(price)
+        self.db.commit()
+

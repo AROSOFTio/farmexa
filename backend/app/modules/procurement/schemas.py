@@ -78,6 +78,61 @@ class SupplierBrief(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class SupplierCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=150)
+    supplier_type: Optional[str] = None
+    products_supplied: Optional[str] = None
+    contact_person: Optional[str] = None
+    supplier_officer: Optional[str] = None
+    phone: Optional[str] = None
+    alternate_phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    tax_id: Optional[str] = None
+    payment_terms: Optional[str] = None
+    lead_time_days: Optional[int] = Field(default=None, ge=0)
+    notes: Optional[str] = None
+    is_active: bool = True
+
+
+class SupplierUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=150)
+    supplier_type: Optional[str] = None
+    products_supplied: Optional[str] = None
+    contact_person: Optional[str] = None
+    supplier_officer: Optional[str] = None
+    phone: Optional[str] = None
+    alternate_phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    tax_id: Optional[str] = None
+    payment_terms: Optional[str] = None
+    lead_time_days: Optional[int] = Field(default=None, ge=0)
+    notes: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class SupplierOut(SupplierCreate):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SupplierItemPriceCreate(BaseModel):
+    stock_item_id: Optional[int] = None
+    item_name: str = Field(..., min_length=1, max_length=150)
+    unit_of_measure: Optional[str] = Field(default=None, max_length=50)
+    unit_price: NonNegativeMoney = Field(default=0)
+    notes: Optional[str] = Field(default=None, max_length=255)
+
+
+class SupplierItemPriceOut(SupplierItemPriceCreate):
+    id: int
+    supplier_id: int
+    updated_at: Optional[datetime] = None
+    model_config = ConfigDict(from_attributes=True)
+
+
+
 class PurchaseOrderOut(PurchaseOrderBase):
     id: int
     tenant_id: int

@@ -56,6 +56,7 @@ import { FinancialStatementsPage } from '@/features/finance/reports/FinancialSta
 import { EmployeesPage } from '@/features/hr/EmployeesPage'
 import { PurchaseOrdersPage } from '@/features/procurement/PurchaseOrdersPage'
 import { SupplierInvoicesPage } from '@/features/procurement/SupplierInvoicesPage'
+import { SuppliersPage } from '@/features/procurement/SuppliersPage'
 import { PayrollPage } from '@/features/hr/PayrollPage'
 import { LeavePage } from '@/features/hr/LeavePage'
 import { AttendancePage } from '@/features/hr/AttendancePage'
@@ -575,6 +576,14 @@ export default function App() {
               element={
                 <ProtectedRoute permission="procurement:read">
                   <SupplierInvoicesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="suppliers"
+              element={
+                <ProtectedRoute permission="procurement:read">
+                  <SuppliersPage />
                 </ProtectedRoute>
               }
             />

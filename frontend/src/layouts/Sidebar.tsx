@@ -131,6 +131,7 @@ const FARM_NAV: NavGroup[] = [
     children: [
       { label: 'Purchase Orders', path: '/procurement/purchase-orders', permission: 'procurement:read' },
       { label: 'Supplier Invoices', path: '/procurement/supplier-invoices', permission: 'procurement:read' },
+      { label: 'Suppliers', path: '/procurement/suppliers', permission: 'procurement:read' },
     ],
   },
   {

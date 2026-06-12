@@ -121,6 +121,40 @@ export interface SupplierPayment extends SupplierPaymentCreate {
   journal_entry_id?: number | null
 }
 
+export interface Supplier {
+  id: number
+  name: string
+  supplier_type?: string | null
+  products_supplied?: string | null
+  contact_person?: string | null
+  supplier_officer?: string | null
+  phone?: string | null
+  alternate_phone?: string | null
+  email?: string | null
+  address?: string | null
+  tax_id?: string | null
+  payment_terms?: string | null
+  lead_time_days?: number | null
+  notes?: string | null
+  is_active: boolean
+}
+
+export type SupplierCreate = Omit<Supplier, 'id'>
+export type SupplierUpdate = Partial<SupplierCreate>
+
+export interface SupplierItemPrice {
+  id: number
+  supplier_id: number
+  stock_item_id?: number | null
+  item_name: string
+  unit_of_measure?: string | null
+  unit_price: number
+  notes?: string | null
+  updated_at?: string | null
+}
+
+export type SupplierItemPriceCreate = Omit<SupplierItemPrice, 'id' | 'supplier_id' | 'updated_at'>
+
 export const procurementService = {
   // Purchase orders
   listPurchaseOrders: (params?: {
@@ -181,4 +215,24 @@ export const procurementService = {
 
   paySupplierInvoice: (id: number, data: SupplierPaymentCreate) =>
     api.post<SupplierPayment>(`/procurement/supplier-invoices/${id}/pay`, data).then(r => r.data),
+
+  // Suppliers
+  listSuppliers: () =>
+    api.get<Supplier[]>('/procurement/suppliers').then(r => r.data),
+
+  createSupplier: (data: SupplierCreate) =>
+    api.post<Supplier>('/procurement/suppliers', data).then(r => r.data),
+
+  updateSupplier: (id: number, data: SupplierUpdate) =>
+    api.put<Supplier>(`/procurement/suppliers/${id}`, data).then(r => r.data),
+
+  listSupplierItemPrices: (supplierId: number) =>
+    api.get<SupplierItemPrice[]>(`/procurement/suppliers/${supplierId}/prices`).then(r => r.data),
+
+  createOrUpdateSupplierItemPrice: (supplierId: number, data: SupplierItemPriceCreate) =>
+    api.post<SupplierItemPrice>(`/procurement/suppliers/${supplierId}/prices`, data).then(r => r.data),
+
+  deleteSupplierItemPrice: (supplierId: number, priceId: number) =>
+    api.delete(`/procurement/suppliers/${supplierId}/prices/${priceId}`).then(r => r.data),
 }
+

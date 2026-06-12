@@ -28,6 +28,34 @@ class Supplier(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     purchases: Mapped[list["FeedPurchase"]] = relationship("FeedPurchase", back_populates="supplier")
+    item_prices: Mapped[list["SupplierItemPrice"]] = relationship(
+        "SupplierItemPrice", back_populates="supplier", cascade="all, delete-orphan"
+    )
+
+
+class SupplierItemPrice(Base):
+    """Tentative/quoted price for an item a supplier provides. Used as a
+    reference when raising purchase orders; not a binding contract price."""
+
+    __tablename__ = "supplier_item_prices"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    supplier_id: Mapped[int] = mapped_column(
+        ForeignKey("suppliers.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    stock_item_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("stock_items.id", ondelete="SET NULL"), index=True, nullable=True
+    )
+    item_name: Mapped[str] = mapped_column(String(150), nullable=False)
+    unit_of_measure: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    unit_price: Mapped[float] = mapped_column(Numeric(18, 4), nullable=False, default=0)
+    notes: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    supplier: Mapped["Supplier"] = relationship("Supplier", back_populates="item_prices")
+    stock_item = relationship("StockItem")
 
 
 class FeedCategory(Base):
