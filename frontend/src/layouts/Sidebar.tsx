@@ -158,13 +158,14 @@ const FARM_NAV: NavGroup[] = [
     label: 'Settings',
     icon: Settings,
     children: [
-      { label: 'Farm Profile', path: '/settings/profile', moduleKey: 'farm_profile' },
+      // Company details, roles, billing, and domains are top-management only
+      { label: 'Farm Profile', path: '/settings/profile', permission: 'settings:read', moduleKey: 'farm_profile' },
       { label: 'Branches', path: '/settings/branches', permission: 'settings:read', moduleKey: 'settings' },
       { label: 'Users', path: '/settings/users', permission: 'users:read', moduleKey: 'users' },
-      { label: 'Roles', path: '/settings/roles', permission: 'settings:read', moduleKey: 'settings' },
-      { label: 'Company Settings', path: '/settings/company', permission: 'settings:read', moduleKey: 'settings' },
-      { label: 'Subscription', path: '/settings/subscription' },
-      { label: 'Custom Domains', path: '/account/domains' },
+      { label: 'Roles', path: '/settings/roles', permission: 'users:write', moduleKey: 'settings' },
+      { label: 'Company Settings', path: '/settings/company', permission: 'settings:write', moduleKey: 'settings' },
+      { label: 'Subscription', path: '/settings/subscription', permission: 'settings:write' },
+      { label: 'Custom Domains', path: '/account/domains', permission: 'settings:write' },
     ],
   },
 ]

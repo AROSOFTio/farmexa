@@ -64,6 +64,11 @@ class UserService:
         role_name = await self._get_role_name(payload.role_id)
         if not role_name:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected role was not found.")
+        if role_name in PLATFORM_ROLE_NAMES and not self._is_platform_admin(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Platform administrator roles cannot be assigned from a tenant workspace.",
+            )
         user = await self.repo.create(
             email=payload.email,
             full_name=payload.full_name,
@@ -90,6 +95,11 @@ class UserService:
             role_name = await self._get_role_name(updates["role_id"])
             if not role_name:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Selected role was not found.")
+            if role_name in PLATFORM_ROLE_NAMES and not self._is_platform_admin(current_user):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Platform administrator roles cannot be assigned from a tenant workspace.",
+                )
         if "tenant_id" in updates and not self._is_platform_admin(current_user):
             updates.pop("tenant_id")
         await self.repo.update(user, **updates)

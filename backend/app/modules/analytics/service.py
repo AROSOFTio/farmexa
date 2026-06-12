@@ -240,6 +240,17 @@ class AnalyticsService:
                 )
             )
 
+        # Financial figures are confidential: only expose them to users with
+        # finance:read. Others get zeros so the dashboard hides those panels.
+        from app.permissions.checker import has_permission
+        can_view_finance = await has_permission(current_user, "finance:read")
+        if not can_view_finance:
+            sales_today = 0.0
+            cash_sales = 0.0
+            mobile_money_sales = 0.0
+            bank_sales = 0.0
+            pending_payments = 0.0
+
         return schemas.DashboardOverviewOut(
             kpis=schemas.DashboardKPIOut(
                 total_birds=total_birds,

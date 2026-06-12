@@ -629,7 +629,7 @@ export default function App() {
             <Route
               path="roles"
               element={
-                <ProtectedRoute permission="settings:read">
+                <ProtectedRoute permission="users:write">
                   <ModuleGuard moduleKey="settings">
                     <RolesPage />
                   </ModuleGuard>
@@ -659,7 +659,7 @@ export default function App() {
             <Route
               path="company"
               element={
-                <ProtectedRoute permission="settings:read">
+                <ProtectedRoute permission="settings:write">
                   <ModuleGuard moduleKey="settings">
                     <SettingsConfigPage />
                   </ModuleGuard>

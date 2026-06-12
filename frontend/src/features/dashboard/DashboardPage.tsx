@@ -192,7 +192,8 @@ function QuickActionButton({ icon: Icon, label, to }: { icon: IconType; label: s
 
 export function DashboardPage() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, hasPermission } = useAuth()
+  const canViewFinance = hasPermission('finance:read')
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['erp-dashboard'],
     queryFn: () => api.get<DashboardOverview>('/analytics/erp-dashboard').then((r) => r.data),
@@ -247,14 +248,14 @@ export function DashboardPage() {
     { name: '30 Jun', revenue: 1400, expenses: 850 },
   ]
 
-  // Mock activity data for Row 4
+  // Mock activity data for Row 4 (financial items hidden without finance:read)
   const activities = [
-    { id: 1, title: 'Feed received: Layer Mash 5,000 KG', sub: 'Mukono Hatchery', time: '2h ago', icon: Wheat, color: 'text-info', bg: 'bg-info/10' },
-    { id: 2, title: 'Egg collection recorded: 98,440 eggs', sub: 'Kampala Farm', time: '4h ago', icon: Egg, color: 'text-warning', bg: 'bg-warning/10' },
-    { id: 3, title: 'Mortality recorded: 120 birds', sub: 'Jinja Farm - Batch B2405', time: '6h ago', icon: Skull, color: 'text-danger', bg: 'bg-danger/10' },
-    { id: 4, title: 'Invoice created: INV-000245', sub: 'ABC Traders Ltd', time: '8h ago', icon: ClipboardList, color: 'text-primary', bg: 'bg-primary/10' },
-    { id: 5, title: 'Payment received: UGX 4,200,000', sub: 'Mukono Hatchery', time: '1d ago', icon: Banknote, color: 'text-success', bg: 'bg-success/10' },
-  ]
+    { id: 1, title: 'Feed received: Layer Mash 5,000 KG', sub: 'Mukono Hatchery', time: '2h ago', icon: Wheat, color: 'text-info', bg: 'bg-info/10', financial: false },
+    { id: 2, title: 'Egg collection recorded: 98,440 eggs', sub: 'Kampala Farm', time: '4h ago', icon: Egg, color: 'text-warning', bg: 'bg-warning/10', financial: false },
+    { id: 3, title: 'Mortality recorded: 120 birds', sub: 'Jinja Farm - Batch B2405', time: '6h ago', icon: Skull, color: 'text-danger', bg: 'bg-danger/10', financial: false },
+    { id: 4, title: 'Invoice created: INV-000245', sub: 'ABC Traders Ltd', time: '8h ago', icon: ClipboardList, color: 'text-primary', bg: 'bg-primary/10', financial: true },
+    { id: 5, title: 'Payment received: UGX 4,200,000', sub: 'Mukono Hatchery', time: '1d ago', icon: Banknote, color: 'text-success', bg: 'bg-success/10', financial: true },
+  ].filter((act) => canViewFinance || !act.financial)
 
   return (
     <div className="page-container space-y-6 pb-12">
@@ -263,7 +264,7 @@ export function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between">
         <div>
         <h1 className="text-[24px] font-semibold text-[var(--text-strong)]">
-            Good evening, {firstName} <span className="text-2xl">👋</span>
+            {greeting()}, {firstName} <span className="text-2xl">👋</span>
           </h1>
           <p className="mt-1 text-[13px] font-medium text-text-secondary">{todayLabel()}</p>
         </div>
@@ -274,17 +275,22 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* ROW 1: EXECUTIVE KPI CARDS */}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-        <KpiCard title="Total Revenue" value={formatMoney(totalRevenue)} note="from last month" icon={DollarSign} trendStr="from last month" trendVal={12.5} />
-        <KpiCard title="Net Profit" value={formatMoney(netProfit)} note="from last month" icon={TrendingUp} trendStr="from last month" trendVal={8.3} />
-        <KpiCard title="Cash Position" value={formatMoney(cashPosition)} note="from last month" icon={Wallet} trendStr="from last month" trendVal={4.7} />
+      {/* ROW 1: EXECUTIVE KPI CARDS (financial cards only with finance:read) */}
+      <div className={`grid gap-4 md:grid-cols-2 ${canViewFinance ? 'xl:grid-cols-6' : 'xl:grid-cols-3'}`}>
+        {canViewFinance && (
+          <>
+            <KpiCard title="Total Revenue" value={formatMoney(totalRevenue)} note="from last month" icon={DollarSign} trendStr="from last month" trendVal={12.5} />
+            <KpiCard title="Net Profit" value={formatMoney(netProfit)} note="from last month" icon={TrendingUp} trendStr="from last month" trendVal={8.3} />
+            <KpiCard title="Cash Position" value={formatMoney(cashPosition)} note="from last month" icon={Wallet} trendStr="from last month" trendVal={4.7} />
+          </>
+        )}
         <KpiCard title="Active Birds" value={formatNumber(kpis.total_birds)} note="from last month" icon={Bird} trendStr="from last month" trendVal={4.2} />
         <KpiCard title="Eggs Today" value={formatNumber(eggsToday)} note="from yesterday" icon={Egg} trendStr="from yesterday" trendVal={6.2} />
         <KpiCard title="Mortality Rate" value={`${formatNumber(kpis.mortality_rate_today, 1)}%`} note="from last month" icon={AlertCircle} trendStr="from last month" trendVal={-0.3} />
       </div>
 
-      {/* ROW 2: ANALYTICS */}
+      {/* ROW 2: ANALYTICS (confidential — finance:read only) */}
+      {canViewFinance && (
       <div className="grid gap-5 lg:grid-cols-12">
         <div className="lg:col-span-8">
           <DashboardPanel 
@@ -384,6 +390,7 @@ export function DashboardPage() {
           </DashboardPanel>
         </div>
       </div>
+      )}
 
       {/* ROW 3 & 4: OPERATIONS & ACTIVITY */}
       <div className="grid gap-5 lg:grid-cols-3">
@@ -466,9 +473,9 @@ export function DashboardPage() {
       <div>
         <h3 className="text-[14px] font-bold text-text-primary mb-3">Quick Actions</h3>
         <div className="flex flex-wrap gap-3">
-          <QuickActionButton icon={ShoppingCart} label="New Sale" to="/sales/orders" />
-          <QuickActionButton icon={Package} label="New Purchase" to="/procurement/purchases" />
-          <QuickActionButton icon={DollarSign} label="Expense" to="/accounting/journals" />
+          {hasPermission('sales:write') && <QuickActionButton icon={ShoppingCart} label="New Sale" to="/sales/orders" />}
+          {hasPermission('procurement:write') && <QuickActionButton icon={Package} label="New Purchase" to="/procurement/purchase-orders" />}
+          {hasPermission('finance:write') && <QuickActionButton icon={DollarSign} label="Expense" to="/finance/expenses" />}
           <QuickActionButton icon={Wheat} label="Feed Issue" to="/feed/consumption" />
           <QuickActionButton icon={Egg} label="Egg Collection" to="/farm/eggs" />
           <QuickActionButton icon={Skull} label="Record Mortality" to="/farm/mortality" />

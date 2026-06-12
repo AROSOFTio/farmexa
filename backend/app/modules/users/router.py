@@ -54,6 +54,11 @@ async def get_roles(
         .order_by(Role.name)
     )
     roles = list(result.scalars().all())
+    # Platform roles (super_manager, developer_admin) must never be visible
+    # inside tenant workspaces.
+    is_platform_admin = bool(current_user.role and current_user.role.name in PLATFORM_ROLE_NAMES)
+    if not is_platform_admin:
+        roles = [role for role in roles if role.name not in PLATFORM_ROLE_NAMES]
     roles.sort(key=lambda role: role_sort_key(role.name))
     return [
         RoleOut(
