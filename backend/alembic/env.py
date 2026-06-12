@@ -23,6 +23,12 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "index" and name and name.startswith("idx_"):
+        return False
+    return True
+
+
 def run_migrations_offline() -> None:
     context.configure(
         url=settings.ASYNC_DATABASE_URL,
@@ -31,6 +37,7 @@ def run_migrations_offline() -> None:
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
         render_as_batch=False,
+        include_object=include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -41,6 +48,7 @@ def do_run_migrations(connection) -> None:
         connection=connection,
         target_metadata=target_metadata,
         compare_type=True,
+        include_object=include_object,
     )
     with context.begin_transaction():
         context.run_migrations()

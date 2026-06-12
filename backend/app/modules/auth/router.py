@@ -28,10 +28,13 @@ from app.modules.auth.service import AuthService
 from app.modules.developer_admin.service import DeveloperAdminService
 from app.services.email_service import log_and_send_email
 
+from app.main import limiter
+
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/login", response_model=TokenPair, summary="Authenticate and receive token pair")
+@limiter.limit("10/minute")
 async def login(
     payload: LoginRequest,
     request: Request,
@@ -56,6 +59,7 @@ async def refresh_token(
     status_code=status.HTTP_201_CREATED,
     summary="Self-register a new tenant workspace",
 )
+@limiter.limit("5/minute")
 async def register_tenant(
     payload: TenantRegistrationRequest,
     request: Request,
@@ -71,6 +75,7 @@ async def register_tenant(
     status_code=status.HTTP_201_CREATED,
     summary="Backward-compatible tenant self-registration endpoint",
 )
+@limiter.limit("5/minute")
 async def register_vendor(
     payload: TenantRegistrationRequest,
     request: Request,

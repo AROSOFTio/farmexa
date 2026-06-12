@@ -13,6 +13,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.logging import setup_logging
@@ -22,6 +26,8 @@ from app.db.tenant_db import dispose_tenant_engines
 from app.middleware.error_handler import register_exception_handlers
 from app.middleware.request_logging import RequestLoggingMiddleware
 from app.middleware.tenant_domain import TenantDomainResolverMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.middleware.branch_context import BranchContextMiddleware
 
 
 setup_logging()
@@ -37,6 +43,8 @@ async def lifespan(app: FastAPI):
     sync_engine.dispose()
 
 
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
@@ -47,8 +55,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(TenantDomainResolverMiddleware)
+app.add_middleware(BranchContextMiddleware)
 
 register_exception_handlers(app)
 
@@ -72,6 +84,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 if settings.is_production:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts)

@@ -209,6 +209,12 @@ class AccountingService:
         journal_entry.posted_by_user_id = posted_by_user_id
         self.db.commit()
         self.db.refresh(journal_entry)
+
+        from app.services.cache import cache_delete_pattern
+        cache_delete_pattern(f"farmexa:trial_balance:{self.tenant_id}:*")
+        cache_delete_pattern(f"farmexa:pnl:{self.tenant_id}:*")
+        cache_delete_pattern(f"farmexa:balance_sheet:{self.tenant_id}:*")
+
         return journal_entry
 
     def create_and_post_journal(
@@ -253,6 +259,12 @@ class AccountingService:
         entry.posted_by_user_id = created_by_user_id
         self.db.commit()
         self.db.refresh(entry)
+
+        from app.services.cache import cache_delete_pattern
+        cache_delete_pattern(f"farmexa:trial_balance:{self.tenant_id}:*")
+        cache_delete_pattern(f"farmexa:pnl:{self.tenant_id}:*")
+        cache_delete_pattern(f"farmexa:balance_sheet:{self.tenant_id}:*")
+
         return entry
 
     # ------------------------------------------------------------------
@@ -445,6 +457,12 @@ class AccountingService:
         Compute a trial balance for all active accounts of the tenant.
         Returns accounts with debit/credit totals; total debits must equal total credits.
         """
+        from app.services.cache import cache_get, cache_set, cache_key
+        ck = cache_key("trial_balance", self.tenant_id, branch_id, str(as_of_date))
+        cached = cache_get(ck)
+        if cached:
+            return cached
+
         accounts = (
             self.db.query(Account)
             .filter(Account.tenant_id == self.tenant_id, Account.is_active.is_(True))
@@ -477,13 +495,15 @@ class AccountingService:
             total_debit = quantize_money(total_debit + dr)
             total_credit = quantize_money(total_credit + cr)
 
-        return {
+        result = {
             "as_of_date": as_of_date.isoformat() if as_of_date else None,
             "rows": rows,
             "total_debit": total_debit,
             "total_credit": total_credit,
             "is_balanced": abs(total_debit - total_credit) < Decimal("0.02"),
         }
+        cache_set(ck, result, ttl=300)
+        return result
 
     # ------------------------------------------------------------------
     # Profit & Loss
@@ -499,6 +519,12 @@ class AccountingService:
         """
         Dynamic P&L: Revenue - Cost of Sales - Expenses = Net Profit.
         """
+        from app.services.cache import cache_get, cache_set, cache_key
+        ck = cache_key("pnl", self.tenant_id, branch_id, batch_id, str(from_date), str(to_date))
+        cached = cache_get(ck)
+        if cached:
+            return cached
+
         revenue_types = {AccountType.REVENUE}
         cos_types = {AccountType.COST_OF_SALES}
         expense_types = {AccountType.EXPENSE}
@@ -538,7 +564,7 @@ class AccountingService:
         gross_profit = quantize_money(total_revenue - total_cos)
         net_profit = quantize_money(gross_profit - total_expenses)
 
-        return {
+        result = {
             "from_date": from_date.isoformat() if from_date else None,
             "to_date": to_date.isoformat() if to_date else None,
             "revenue": revenue_rows,
@@ -550,6 +576,8 @@ class AccountingService:
             "total_expenses": total_expenses,
             "net_profit": net_profit,
         }
+        cache_set(ck, result, ttl=300)
+        return result
 
     # ------------------------------------------------------------------
     # Balance Sheet
@@ -559,6 +587,12 @@ class AccountingService:
         """
         Balance sheet: Assets = Liabilities + Equity.
         """
+        from app.services.cache import cache_get, cache_set, cache_key
+        ck = cache_key("balance_sheet", self.tenant_id, branch_id, str(as_of_date))
+        cached = cache_get(ck)
+        if cached:
+            return cached
+
         balance_accounts = (
             self.db.query(Account)
             .filter(
@@ -588,7 +622,7 @@ class AccountingService:
                 equity_rows.append(row)
                 total_equity = quantize_money(total_equity + net)
 
-        return {
+        result = {
             "as_of_date": as_of_date.isoformat() if as_of_date else None,
             "assets": asset_rows,
             "total_assets": total_assets,
@@ -599,6 +633,8 @@ class AccountingService:
             "total_liabilities_and_equity": quantize_money(total_liabilities + total_equity),
             "is_balanced": abs(total_assets - (total_liabilities + total_equity)) < Decimal("0.02"),
         }
+        cache_set(ck, result, ttl=300)
+        return result
 
     # ------------------------------------------------------------------
     # Cashbook

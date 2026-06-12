@@ -144,9 +144,18 @@ class AccountingModuleService:
         )
         return self._attach_balances(accounts)
 
-    def get_chart_of_accounts_tree(self, include_inactive: bool = False) -> List[Account]:
+    def get_chart_of_accounts_tree(self, include_inactive: bool = False) -> List[Any]:
         """Return all accounts; tree structure is built by the client using parent_account_id."""
-        return self.get_chart_of_accounts(limit=1000, include_inactive=include_inactive)
+        from app.services.cache import cache_get, cache_set, cache_key
+        ck = cache_key("coa_tree", self.tenant_id, str(include_inactive))
+        cached = cache_get(ck)
+        if cached:
+            return cached
+        accounts = self.get_chart_of_accounts(limit=1000, include_inactive=include_inactive)
+        from app.modules.accounting.schemas import AccountOut
+        serialized = [AccountOut.model_validate(a).model_dump(mode="json") for a in accounts]
+        cache_set(ck, serialized, ttl=300)
+        return serialized
 
     def get_cash_accounts(self) -> List[Account]:
         """Return all cash/bank type accounts (1110 group)."""
@@ -209,6 +218,11 @@ class AccountingModuleService:
         self.db.commit()
         self.db.refresh(account)
         account.current_balance = 0.0  # type: ignore[attr-defined]
+
+        from app.services.cache import cache_delete_pattern
+        cache_delete_pattern(f"farmexa:coa_tree:{self.tenant_id}:*")
+        cache_delete_pattern(f"farmexa:trial_balance:{self.tenant_id}:*")
+
         return account
 
     def update_account(self, account_id: int, data: schemas.AccountUpdate) -> Account:
@@ -224,6 +238,11 @@ class AccountingModuleService:
         self.db.commit()
         self.db.refresh(account)
         account.current_balance = self._compute_account_balance(account_id)  # type: ignore[attr-defined]
+
+        from app.services.cache import cache_delete_pattern
+        cache_delete_pattern(f"farmexa:coa_tree:{self.tenant_id}:*")
+        cache_delete_pattern(f"farmexa:trial_balance:{self.tenant_id}:*")
+
         return account
 
     def delete_account(self, account_id: int) -> None:
@@ -242,6 +261,10 @@ class AccountingModuleService:
             )
         self.db.delete(account)
         self.db.commit()
+
+        from app.services.cache import cache_delete_pattern
+        cache_delete_pattern(f"farmexa:coa_tree:{self.tenant_id}:*")
+        cache_delete_pattern(f"farmexa:trial_balance:{self.tenant_id}:*")
 
     # ------------------------------------------------------------------
     # Account Mappings

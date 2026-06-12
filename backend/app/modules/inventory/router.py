@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_permission, get_current_user
+from app.core.branch_deps import get_branch_context, BranchContext
 from app.db.tenant_db import get_tenant_sync_db
 from app.models.inventory import StockCategory, TransferStatus, TransferType, GIVStatus, GRNStatus
 from app.modules.inventory import schemas, service
@@ -17,6 +18,7 @@ def list_items(
     limit: int = 100,
     db: Session = Depends(get_tenant_sync_db),
     current_user=Depends(require_permission("inventory:read")),
+    branch_ctx: BranchContext = Depends(get_branch_context),
 ):
     return service.inventory_service.get_items(db, skip, limit)
 
