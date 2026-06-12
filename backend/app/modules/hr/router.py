@@ -115,7 +115,8 @@ def process_payroll_period(
 def approve_payroll_period(
     period_id: int,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:write", "accounting:write")),
+    current_user=Depends(require_permission("hr:write")),
+    _=Depends(require_permission("accounting:write")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     return service.approve_payroll_period(period_id, approved_by_id=current_user.id)
@@ -125,7 +126,8 @@ def approve_payroll_period(
 def post_payroll_journals(
     period_id: int,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:write", "accounting:write")),
+    current_user=Depends(require_permission("hr:write")),
+    _=Depends(require_permission("accounting:write")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     return service.post_payroll_journals(period_id, posted_by_id=current_user.id)
