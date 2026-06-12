@@ -27,6 +27,7 @@ export interface ReportRequest {
   search?: string | null
   selected_fields: string[]
   limit?: number
+  filters?: Record<string, any> | null
 }
 
 export interface ReportPreview {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { accountingService } from '@/services/accountingService'
 import { branchService, Branch } from '@/services/branchService'
+import { reportsService } from '@/services/reportsService'
 import { FileText, Loader2, RefreshCcw, Download, Printer, Wallet, Building2 } from 'lucide-react'
 import { UGX } from '@/lib/money'
 import clsx from 'clsx'
@@ -45,33 +46,25 @@ export function CashbookPage() {
     enabled: !!activeTab,
   })
 
-  const downloadCSV = (csvContent: string, fileName: string) => {
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', fileName)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
-  const handleExport = () => {
+  const handleExport = async (format: 'pdf' | 'xlsx' | 'csv') => {
     if (!data) return
-    let csv = `Cashbook Statement: ${data.account.name} (${data.account.code})\n`
-    csv += `Period: ${fromDate} to ${toDate}\n`
-    if (branchId) csv += `Branch ID: ${branchId}\n\n`
-    csv += 'Date,Entry #,Description,Money In (UGX),Money Out (UGX),Running Balance (UGX)\n'
-    
-    csv += `,,Opening Balance,,,${data.opening_balance}\n`
-    
-    data.entries.forEach((entry: any) => {
-      csv += `${entry.date},${entry.entry_number},"${entry.description || ''}",${entry.debit},${entry.credit},${entry.balance}\n`
-    })
-    
-    csv += `,,Closing Balance,,,${data.closing_balance}\n`
-    downloadCSV(csv, `cashbook_${data.account.code}_${fromDate}_to_${toDate}.csv`)
+    try {
+      await reportsService.export(
+        'cashbook',
+        {
+          selected_fields: [],
+          filters: {
+            account_id: activeTab,
+            from_date: fromDate,
+            end_date: toDate,
+            branch_id: branchId || null,
+          }
+        },
+        format
+      )
+    } catch (err) {
+      console.error('Export failed:', err)
+    }
   }
 
   const handlePrint = () => {
@@ -106,8 +99,14 @@ export function CashbookPage() {
           <button onClick={handlePrint} className="btn-secondary flex items-center gap-1.5 text-xs py-1.5 font-bold" disabled={!data}>
             <Printer className="h-4 w-4" /> Print
           </button>
-          <button onClick={handleExport} className="btn-primary flex items-center gap-1.5 text-xs py-1.5 font-bold" disabled={!data}>
-            <Download className="h-4 w-4" /> Export CSV
+          <button onClick={() => handleExport('pdf')} className="btn-primary flex items-center gap-1.5 text-xs py-1.5 font-bold" disabled={!data}>
+            <FileText className="h-4 w-4" /> PDF
+          </button>
+          <button onClick={() => handleExport('xlsx')} className="btn-primary flex items-center gap-1.5 text-xs py-1.5 font-bold" disabled={!data}>
+            <Download className="h-4 w-4" /> Excel
+          </button>
+          <button onClick={() => handleExport('csv')} className="btn-primary flex items-center gap-1.5 text-xs py-1.5 font-bold" disabled={!data}>
+            <Download className="h-4 w-4" /> CSV
           </button>
         </div>
       </div>

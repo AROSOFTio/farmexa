@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { accountingService } from '@/services/accountingService'
 import { branchService, Branch } from '@/services/branchService'
+import { reportsService } from '@/services/reportsService'
 import { FileText, Loader2, RefreshCcw, Download, Printer, Filter, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { UGX } from '@/lib/money'
 import clsx from 'clsx'
@@ -35,29 +36,23 @@ export function TrialBalancePage() {
     )
   }, [data, hideZeroBalances])
 
-  const handleExport = () => {
+  const handleExport = async (format: 'pdf' | 'xlsx' | 'csv') => {
     if (!data) return
-    let csv = 'Trial Balance Report\n'
-    csv += `As of Date: ${asOfDate}\n`
-    if (branchId) csv += `Branch ID: ${branchId}\n\n`
-    csv += 'Account Code,Account Name,Account Type,Debit (UGX),Credit (UGX),Net Balance (UGX)\n'
-    
-    filteredRows.forEach((row: any) => {
-      csv += `${row.account_code},"${row.account_name}",${row.account_type},${row.total_debit},${row.total_credit},${row.balance}\n`
-    })
-    
-    csv += `\nTOTALS,,,${data.total_debit},${data.total_credit},${data.total_debit - data.total_credit}\n`
-    csv += `Balanced: ${data.is_balanced ? 'YES' : 'NO'}\n`
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', `trial_balance_${asOfDate}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    try {
+      await reportsService.export(
+        'trial-balance',
+        {
+          selected_fields: [],
+          filters: {
+            as_of_date: asOfDate,
+            branch_id: branchId || null,
+          }
+        },
+        format
+      )
+    } catch (err) {
+      console.error('Export failed:', err)
+    }
   }
 
   const handlePrint = () => {
@@ -89,8 +84,14 @@ export function TrialBalancePage() {
           <button onClick={handlePrint} className="btn-secondary flex items-center gap-1.5 text-xs py-1.5">
             <Printer className="h-4 w-4" /> Print
           </button>
-          <button onClick={handleExport} className="btn-primary flex items-center gap-1.5 text-xs py-1.5" disabled={!data}>
-            <Download className="h-4 w-4" /> Export CSV
+          <button onClick={() => handleExport('pdf')} className="btn-primary flex items-center gap-1.5 text-xs py-1.5" disabled={!data}>
+            <FileText className="h-4 w-4" /> PDF
+          </button>
+          <button onClick={() => handleExport('xlsx')} className="btn-primary flex items-center gap-1.5 text-xs py-1.5" disabled={!data}>
+            <Download className="h-4 w-4" /> Excel
+          </button>
+          <button onClick={() => handleExport('csv')} className="btn-primary flex items-center gap-1.5 text-xs py-1.5" disabled={!data}>
+            <Download className="h-4 w-4" /> CSV
           </button>
         </div>
       </div>

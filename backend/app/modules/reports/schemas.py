@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -35,6 +35,8 @@ class ReportRequest(BaseModel):
     search: str | None = None
     selected_fields: list[str] = Field(default_factory=list)
     limit: int = Field(default=100, ge=1, le=500)
+    # Generic key-value filters for accounting/farm reports
+    filters: dict[str, Any] | None = None
 
 
 class ReportPreview(BaseModel):

@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 from datetime import date, datetime, timedelta
 from io import BytesIO, StringIO
-from typing import Callable
+from typing import Any, Callable
 
 from fastapi import HTTPException, status
 from openpyxl import Workbook
@@ -15,11 +15,14 @@ from reportlab.pdfgen import canvas
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session, joinedload
 
+from app.models.branch import Branch
 from app.models.compliance import ComplianceDocument
+from app.models.farm import MortalityLog
 from app.models.feed import FeedConsumption, FeedItem, FeedPurchase, FeedPurchaseItem
 from app.models.finance import Expense, Income
 from app.models.inventory import StockItem, StockMovement
 from app.models.sales import Customer, Invoice, Order, OrderItem, Payment
+from app.models.slaughter import SlaughterRecord
 from app.services.pdf_branding import BRAND_DARK, BRAND_PRIMARY, draw_pdf_brand_header
 
 from .schemas import ReportCatalogItem, ReportField, ReportFilter, ReportPreview, ReportRequest
@@ -218,6 +221,193 @@ REPORT_CATALOG: dict[str, ReportCatalogItem] = {
             _field("status", "Status"),
         ],
     ),
+    # ── Accounting Reports ──────────────────────────────────────────
+    "trial-balance": ReportCatalogItem(
+        key="trial-balance",
+        title="Trial Balance",
+        category="Accounting Reports",
+        description="All account debit and credit balances at a given date, verifying books balance.",
+        filters=[
+            ReportFilter(key="as_of_date", label="As of date", type="date"),
+            ReportFilter(key="branch_id",  label="Branch (optional)", type="text"),
+        ],
+        fields=[
+            _field("account_code",  "Code"),
+            _field("account_name",  "Account"),
+            _field("account_type",  "Type"),
+            _field("total_debit",   "Debit (UGX)"),
+            _field("total_credit",  "Credit (UGX)"),
+        ],
+    ),
+    "balance-sheet": ReportCatalogItem(
+        key="balance-sheet",
+        title="Balance Sheet",
+        category="Accounting Reports",
+        description="Assets, liabilities and equity at a given date.",
+        filters=[
+            ReportFilter(key="as_of_date", label="As of date", type="date"),
+            ReportFilter(key="branch_id",  label="Branch (optional)", type="text"),
+        ],
+        fields=[
+            _field("section",       "Section"),
+            _field("account_code",  "Code"),
+            _field("account_name",  "Account"),
+            _field("amount",        "Amount (UGX)"),
+        ],
+    ),
+    "general-ledger": ReportCatalogItem(
+        key="general-ledger",
+        title="General Ledger",
+        category="Accounting Reports",
+        description="Full transaction history with running balance for any account.",
+        filters=[
+            ReportFilter(key="account_id", label="Account ID", type="text"),
+            ReportFilter(key="from_date",  label="From date",  type="date"),
+            ReportFilter(key="end_date",   label="To date",    type="date"),
+            ReportFilter(key="branch_id",  label="Branch",     type="text"),
+        ],
+        fields=[
+            _field("date",        "Date"),
+            _field("reference",   "Reference"),
+            _field("description", "Description"),
+            _field("debit",       "Debit (UGX)"),
+            _field("credit",      "Credit (UGX)"),
+            _field("balance",     "Balance (UGX)"),
+        ],
+    ),
+    "cashbook": ReportCatalogItem(
+        key="cashbook",
+        title="Cashbook",
+        category="Accounting Reports",
+        description="Cash inflows and outflows for a cash or bank account.",
+        filters=[
+            ReportFilter(key="account_id", label="Account ID", type="text"),
+            ReportFilter(key="from_date",  label="From date",  type="date"),
+            ReportFilter(key="end_date",   label="To date",    type="date"),
+        ],
+        fields=[
+            _field("date",        "Date"),
+            _field("description", "Description"),
+            _field("receipts",    "Receipts (IN)"),
+            _field("payments",    "Payments (OUT)"),
+            _field("balance",     "Balance (UGX)"),
+        ],
+    ),
+    "cash-flow": ReportCatalogItem(
+        key="cash-flow",
+        title="Cash Flow Statement",
+        category="Accounting Reports",
+        description="Cash flow statement showing operating, investing, and financing activities.",
+        filters=[
+            ReportFilter(key="from_date",  label="From date",  type="date"),
+            ReportFilter(key="end_date",   label="To date",    type="date"),
+            ReportFilter(key="branch_id",  label="Branch",     type="text"),
+        ],
+        fields=[
+            _field("section",     "Section"),
+            _field("category",    "Category"),
+            _field("amount",      "Amount (UGX)"),
+        ],
+    ),
+    # ── Sales / Procurement ──────────────────────────────────────────
+    "ar-aging": ReportCatalogItem(
+        key="ar-aging",
+        title="Accounts Receivable Aging",
+        category="Sales Reports",
+        description="Outstanding customer balances aged by days overdue.",
+        filters=_date_filters(),
+        fields=[
+            _field("customer",   "Customer"),
+            _field("current",    "Current (0-30 days)"),
+            _field("days_31_60", "31-60 days"),
+            _field("days_61_90", "61-90 days"),
+            _field("over_90",    "Over 90 days"),
+            _field("total",      "Total Outstanding"),
+        ],
+    ),
+    "ap-aging": ReportCatalogItem(
+        key="ap-aging",
+        title="Accounts Payable Aging",
+        category="Procurement Reports",
+        description="Outstanding supplier invoice balances aged by days overdue.",
+        filters=_date_filters(),
+        fields=[
+            _field("supplier",   "Supplier"),
+            _field("current",    "Current (0-30 days)"),
+            _field("days_31_60", "31-60 days"),
+            _field("days_61_90", "61-90 days"),
+            _field("over_90",    "Over 90 days"),
+            _field("total",      "Total Outstanding"),
+        ],
+    ),
+    # ── Farm Reports ─────────────────────────────────────────────────
+    "cost-per-bird": ReportCatalogItem(
+        key="cost-per-bird",
+        title="Cost Per Bird Analysis",
+        category="Farm Reports",
+        description="Production cost breakdown per batch: feed, labour, overhead, cost/kg.",
+        filters=_date_filters(),
+        fields=[
+            _field("batch",          "Batch"),
+            _field("slaughter_date", "Date"),
+            _field("birds_in",       "Birds"),
+            _field("dressed_weight", "Dressed Wt (kg)"),
+            _field("feed_cost",      "Feed Cost"),
+            _field("labour_cost",    "Labour"),
+            _field("overhead_cost",  "Overhead"),
+            _field("total_cost",     "Total Cost"),
+            _field("cost_per_bird",  "Cost/Bird"),
+            _field("cost_per_kg",    "Cost/kg"),
+        ],
+    ),
+    "mortality-analysis": ReportCatalogItem(
+        key="mortality-analysis",
+        title="Mortality Analysis",
+        category="Farm Reports",
+        description="Bird mortality by batch, cause and period.",
+        filters=_date_filters(),
+        fields=[
+            _field("date",      "Date"),
+            _field("batch",     "Batch"),
+            _field("cause",     "Cause"),
+            _field("count",     "Dead Count"),
+            _field("pct_flock", "% of Flock"),
+        ],
+    ),
+    "slaughter-yield": ReportCatalogItem(
+        key="slaughter-yield",
+        title="Slaughter Yield Report",
+        category="Farm Reports",
+        description="Slaughter batch yield percentage, carcass weight and by-products.",
+        filters=_date_filters(),
+        fields=[
+            _field("batch",          "Batch"),
+            _field("slaughter_date", "Date"),
+            _field("birds_in",       "Birds In"),
+            _field("live_weight",    "Live Wt (kg)"),
+            _field("dressed_weight", "Dressed Wt (kg)"),
+            _field("yield_pct",      "Yield %"),
+            _field("condemned",      "Condemned"),
+            _field("cost_per_kg",    "Cost/kg"),
+        ],
+    ),
+    # ── Management Reports ───────────────────────────────────────────
+    "branch-performance": ReportCatalogItem(
+        key="branch-performance",
+        title="Branch Performance Comparison",
+        category="Management Reports",
+        description="Revenue, COGS, gross margin and net income per branch side by side.",
+        filters=_date_filters(),
+        fields=[
+            _field("branch",       "Branch"),
+            _field("revenue",      "Revenue"),
+            _field("cogs",         "COGS"),
+            _field("gross_margin", "Gross Margin"),
+            _field("expenses",     "Operating Exp."),
+            _field("net_income",   "Net Income"),
+            _field("margin_pct",   "Margin %"),
+        ],
+    ),
 }
 
 
@@ -302,7 +492,24 @@ class ReportsService:
             "compliance-expiring": self._compliance_expiring,
             "debtors": self._debtors,
             "credit-sales": self._credit_sales,
+            # Accounting reports
+            "trial-balance": self._trial_balance,
+            "balance-sheet": self._balance_sheet,
+            "general-ledger": self._general_ledger,
+            "cashbook": self._cashbook_report,
+            "cash-flow": self._cash_flow_report,
+            # Sales / procurement
+            "ar-aging": self._ar_aging,
+            "ap-aging": self._ap_aging,
+            # Farm reports
+            "cost-per-bird": self._cost_per_bird,
+            "mortality-analysis": self._mortality_analysis,
+            "slaughter-yield": self._slaughter_yield,
+            # Management
+            "branch-performance": self._branch_performance,
         }
+        if report_key not in handlers:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No data handler for report '{report_key}'")
         return handlers[report_key](db, request)
 
     def _sales_summary(self, db: Session, request: ReportRequest):
@@ -612,6 +819,372 @@ class ReportsService:
             "total_credit": sum(row["total_amount"] for row in rows),
             "total_outstanding": sum(row["balance"] for row in rows),
             "records": len(rows),
+        }
+
+    # ── Helpers ──────────────────────────────────────────────────────
+
+    @staticmethod
+    def _get_tenant_id(db: Session) -> int | None:
+        return db.info.get("tenant_id") or (db.info.get("tenant_ids") or [None])[0]
+
+    @staticmethod
+    def _parse_date(s: Any) -> date | None:
+        if not s:
+            return None
+        try:
+            return date.fromisoformat(str(s))
+        except (ValueError, TypeError):
+            return None
+
+    @staticmethod
+    def _int_or_none(v: Any) -> int | None:
+        try:
+            return int(v) if v else None
+        except (ValueError, TypeError):
+            return None
+
+    # ── Accounting report handlers ────────────────────────────────────
+
+    def _trial_balance(self, db: Session, request: ReportRequest):
+        from app.services.accounting_service import AccountingService
+        extra = request.filters or {}
+        tenant_id = self._get_tenant_id(db)
+        svc = AccountingService(db, tenant_id=tenant_id)
+        result = svc.get_trial_balance(
+            as_of_date=self._parse_date(extra.get("as_of_date")),
+            branch_id=self._int_or_none(extra.get("branch_id")),
+        )
+        rows = [
+            {
+                "account_code": r["account_code"],
+                "account_name": r["account_name"],
+                "account_type": str(r["account_type"]).replace("_", " ").title(),
+                "total_debit": float(r["total_debit"]),
+                "total_credit": float(r["total_credit"]),
+            }
+            for r in result.get("rows", [])
+        ]
+        total_debit = sum(r["total_debit"] for r in rows)
+        total_credit = sum(r["total_credit"] for r in rows)
+        return rows, {
+            "total_debit": total_debit,
+            "total_credit": total_credit,
+            "balanced": "YES" if abs(total_debit - total_credit) < 0.02 else "NO",
+        }
+
+    def _balance_sheet(self, db: Session, request: ReportRequest):
+        from app.services.accounting_service import AccountingService
+        extra = request.filters or {}
+        tenant_id = self._get_tenant_id(db)
+        svc = AccountingService(db, tenant_id=tenant_id)
+        result = svc.get_balance_sheet(
+            as_of_date=self._parse_date(extra.get("as_of_date")),
+            branch_id=self._int_or_none(extra.get("branch_id")),
+        )
+        rows: list[dict[str, Any]] = []
+        for section_name, section_rows in [
+            ("Assets", result.get("assets", [])),
+            ("Liabilities", result.get("liabilities", [])),
+            ("Equity", result.get("equity", [])),
+        ]:
+            for r in section_rows:
+                rows.append({
+                    "section": section_name,
+                    "account_code": r.get("account_code", ""),
+                    "account_name": r.get("account_name", ""),
+                    "amount": float(r.get("balance", r.get("amount", 0))),
+                })
+        return rows, {
+            "total_assets": float(result.get("total_assets", 0)),
+            "total_liabilities": float(result.get("total_liabilities", 0)),
+            "total_equity": float(result.get("total_equity", 0)),
+            "balanced": "YES" if result.get("is_balanced") else "NO",
+        }
+
+    def _general_ledger(self, db: Session, request: ReportRequest):
+        from app.services.accounting_service import AccountingService
+        extra = request.filters or {}
+        account_id = self._int_or_none(extra.get("account_id"))
+        if not account_id:
+            return [], {}
+        tenant_id = self._get_tenant_id(db)
+        svc = AccountingService(db, tenant_id=tenant_id)
+        result = svc.get_ledger(
+            account_id=account_id,
+            from_date=self._parse_date(extra.get("from_date") or request.start_date),
+            to_date=self._parse_date(extra.get("end_date") or request.end_date),
+            branch_id=self._int_or_none(extra.get("branch_id")),
+        )
+        rows = [
+            {
+                "date": str(e.get("date", "")),
+                "reference": e.get("entry_number", ""),
+                "description": e.get("description", ""),
+                "debit": float(e.get("debit", 0)),
+                "credit": float(e.get("credit", 0)),
+                "balance": float(e.get("balance", 0)),
+            }
+            for e in result.get("entries", [])
+        ]
+        return rows, {
+            "opening_balance": float(result.get("opening_balance", 0)),
+            "closing_balance": float(result.get("closing_balance", 0)),
+            "transactions": len(rows),
+        }
+
+    def _cashbook_report(self, db: Session, request: ReportRequest):
+        from app.services.accounting_service import AccountingService
+        extra = request.filters or {}
+        account_id = self._int_or_none(extra.get("account_id"))
+        if not account_id:
+            return [], {}
+        tenant_id = self._get_tenant_id(db)
+        svc = AccountingService(db, tenant_id=tenant_id)
+        result = svc.get_cashbook(
+            account_id=account_id,
+            from_date=self._parse_date(extra.get("from_date") or request.start_date),
+            to_date=self._parse_date(extra.get("end_date") or request.end_date),
+        )
+        rows = [
+            {
+                "date": str(e.get("date", "")),
+                "description": e.get("description", ""),
+                "receipts": float(e.get("debit", 0)),
+                "payments": float(e.get("credit", 0)),
+                "balance": float(e.get("balance", 0)),
+            }
+            for e in result.get("entries", [])
+        ]
+        return rows, {
+            "opening_balance": float(result.get("opening_balance", 0)),
+            "closing_balance": float(result.get("closing_balance", 0)),
+            "transactions": len(rows),
+        }
+
+    def _cash_flow_report(self, db: Session, request: ReportRequest):
+        from app.services.accounting_service import AccountingService
+        extra = request.filters or {}
+        tenant_id = self._get_tenant_id(db)
+        svc = AccountingService(db, tenant_id=tenant_id)
+        result = svc.get_cash_flow(
+            from_date=self._parse_date(extra.get("from_date") or request.start_date),
+            to_date=self._parse_date(extra.get("end_date") or request.end_date),
+            branch_id=self._int_or_none(extra.get("branch_id")),
+        )
+        rows = []
+        for o in result.get("operating", []):
+            rows.append({"section": "Operating Activities", "category": o["category"], "amount": float(o["amount"])})
+        rows.append({"section": "Operating Activities", "category": "Net Cash from Operating Activities", "amount": float(result.get("total_operating", 0))})
+        
+        for i in result.get("investing", []):
+            rows.append({"section": "Investing Activities", "category": i["category"], "amount": float(i["amount"])})
+        rows.append({"section": "Investing Activities", "category": "Net Cash from Investing Activities", "amount": float(result.get("total_investing", 0))})
+        
+        for f in result.get("financing", []):
+            rows.append({"section": "Financing Activities", "category": f["category"], "amount": float(f["amount"])})
+        rows.append({"section": "Financing Activities", "category": "Net Cash from Financing Activities", "amount": float(result.get("total_financing", 0))})
+        
+        rows.append({"section": "Net Cash Flow", "category": "Net Increase (Decrease) in Cash", "amount": float(result.get("net_cash_flow", 0))})
+        
+        return rows, {
+            "total_operating": float(result.get("total_operating", 0)),
+            "total_investing": float(result.get("total_investing", 0)),
+            "total_financing": float(result.get("total_financing", 0)),
+            "net_cash_flow": float(result.get("net_cash_flow", 0)),
+        }
+
+    # ── AR / AP Aging ────────────────────────────────────────────────
+
+    def _ar_aging(self, db: Session, request: ReportRequest):
+        from collections import defaultdict
+        today = date.today()
+        invoices = (
+            db.query(Invoice)
+            .options(joinedload(Invoice.customer))
+            .filter(Invoice.total_amount > Invoice.paid_amount)
+            .all()
+        )
+        buckets: dict[int, dict[str, Any]] = defaultdict(
+            lambda: {"customer": "", "current": 0.0, "days_31_60": 0.0, "days_61_90": 0.0, "over_90": 0.0, "total": 0.0}
+        )
+        for inv in invoices:
+            balance = max(float(inv.total_amount or 0) - float(inv.paid_amount or 0), 0)
+            if balance <= 0:
+                continue
+            key = inv.customer_id or 0
+            buckets[key]["customer"] = inv.customer.name if inv.customer else "Walk-in"
+            days_due = (today - inv.due_date).days if inv.due_date else 0
+            if days_due <= 30:
+                buckets[key]["current"] += balance
+            elif days_due <= 60:
+                buckets[key]["days_31_60"] += balance
+            elif days_due <= 90:
+                buckets[key]["days_61_90"] += balance
+            else:
+                buckets[key]["over_90"] += balance
+            buckets[key]["total"] += balance
+        rows = sorted([v for v in buckets.values() if v["total"] > 0], key=lambda r: -r["total"])
+        return rows, {
+            "total_outstanding": sum(r["total"] for r in rows),
+            "customers": len(rows),
+        }
+
+    def _ap_aging(self, db: Session, request: ReportRequest):
+        from collections import defaultdict
+        today = date.today()
+        # Use feed purchases as proxy for AP
+        purchases = (
+            db.query(FeedPurchase)
+            .options(joinedload(FeedPurchase.supplier))
+            .all()
+        )
+        buckets: dict[int, dict[str, Any]] = defaultdict(
+            lambda: {"supplier": "", "current": 0.0, "days_31_60": 0.0, "days_61_90": 0.0, "over_90": 0.0, "total": 0.0}
+        )
+        for p in purchases:
+            balance = float(p.total_amount or 0)
+            if balance <= 0:
+                continue
+            key = p.supplier_id or 0
+            buckets[key]["supplier"] = p.supplier.name if p.supplier else "Unknown"
+            purchase_date = p.purchase_date or today
+            days_old = (today - purchase_date).days
+            if days_old <= 30:
+                buckets[key]["current"] += balance
+            elif days_old <= 60:
+                buckets[key]["days_31_60"] += balance
+            elif days_old <= 90:
+                buckets[key]["days_61_90"] += balance
+            else:
+                buckets[key]["over_90"] += balance
+            buckets[key]["total"] += balance
+        rows = sorted([v for v in buckets.values() if v["total"] > 0], key=lambda r: -r["total"])
+        return rows, {
+            "total_payable": sum(r["total"] for r in rows),
+            "suppliers": len(rows),
+        }
+
+    # ── Farm report handlers ────────────────────────────────────────
+
+    def _cost_per_bird(self, db: Session, request: ReportRequest):
+        start, end = _date_range(request, default_days=365)
+        records = (
+            db.query(SlaughterRecord)
+            .options(joinedload(SlaughterRecord.batch))
+            .filter(
+                SlaughterRecord.slaughter_date >= start,
+                SlaughterRecord.slaughter_date <= end,
+                SlaughterRecord.total_production_cost.isnot(None),
+            )
+            .order_by(SlaughterRecord.slaughter_date.desc())
+            .all()
+        )
+        rows = []
+        for rec in records:
+            birds = rec.live_birds_count or 1
+            total = float(rec.total_production_cost or 0)
+            rows.append({
+                "batch": rec.batch.batch_number if rec.batch else "",
+                "slaughter_date": str(rec.slaughter_date),
+                "birds_in": birds,
+                "dressed_weight": float(rec.total_dressed_weight or 0),
+                "feed_cost": 0,
+                "labour_cost": float(rec.direct_labour_cost or 0),
+                "overhead_cost": float(rec.overhead_cost or 0),
+                "total_cost": total,
+                "cost_per_bird": round(total / max(birds, 1), 2),
+                "cost_per_kg": float(rec.cost_per_kg or 0),
+            })
+        return rows, {"batches": len(rows), "total_cost": sum(r["total_cost"] for r in rows)}
+
+    def _mortality_analysis(self, db: Session, request: ReportRequest):
+        start, end = _date_range(request, default_days=365)
+        logs = (
+            db.query(MortalityLog)
+            .options(joinedload(MortalityLog.batch))
+            .filter(
+                MortalityLog.record_date >= start,
+                MortalityLog.record_date <= end,
+            )
+            .order_by(MortalityLog.record_date.desc())
+            .all()
+        )
+        rows = []
+        for log in logs:
+            flock_size = max(log.batch.current_quantity if log.batch else 1, 1)
+            rows.append({
+                "date": str(log.record_date),
+                "batch": log.batch.batch_number if log.batch else "",
+                "cause": log.cause or "Unknown",
+                "count": log.quantity,
+                "pct_flock": round((log.quantity / flock_size) * 100, 2),
+            })
+        return rows, {"total_deaths": sum(r["count"] for r in rows), "records": len(rows)}
+
+    def _slaughter_yield(self, db: Session, request: ReportRequest):
+        start, end = _date_range(request, default_days=365)
+        records = (
+            db.query(SlaughterRecord)
+            .options(joinedload(SlaughterRecord.batch))
+            .filter(
+                SlaughterRecord.slaughter_date >= start,
+                SlaughterRecord.slaughter_date <= end,
+            )
+            .order_by(SlaughterRecord.slaughter_date.desc())
+            .all()
+        )
+        rows = [
+            {
+                "batch": r.batch.batch_number if r.batch else "",
+                "slaughter_date": str(r.slaughter_date),
+                "birds_in": r.live_birds_count,
+                "live_weight": float(r.total_live_weight or 0),
+                "dressed_weight": float(r.total_dressed_weight or 0),
+                "yield_pct": round(float(r.yield_percentage or 0), 2),
+                "condemned": r.condemned_birds_count or 0,
+                "cost_per_kg": float(r.cost_per_kg or 0),
+            }
+            for r in records
+        ]
+        return rows, {"batches": len(rows), "avg_yield": round(sum(r["yield_pct"] for r in rows) / max(len(rows), 1), 2)}
+
+    def _branch_performance(self, db: Session, request: ReportRequest):
+        from app.services.accounting_service import AccountingService
+        start, end = _date_range(request, default_days=30)
+        tenant_id = self._get_tenant_id(db)
+        branches = (
+            db.query(Branch)
+            .filter(Branch.tenant_id == tenant_id, Branch.is_active.is_(True))
+            .all()
+        )
+        svc = AccountingService(db, tenant_id=tenant_id)
+        rows = []
+        for branch in branches:
+            try:
+                pl = svc.get_profit_and_loss(
+                    from_date=start,
+                    to_date=end,
+                    branch_id=branch.id,
+                )
+                revenue = float(pl.get("total_revenue") or 0)
+                cogs = float(pl.get("total_cost_of_sales") or 0)
+                gross = float(pl.get("gross_profit") or 0)
+                expenses = float(pl.get("total_expenses") or 0)
+                net = float(pl.get("net_profit") or pl.get("net_income") or 0)
+                rows.append({
+                    "branch": branch.name,
+                    "revenue": revenue,
+                    "cogs": cogs,
+                    "gross_margin": gross,
+                    "expenses": expenses,
+                    "net_income": net,
+                    "margin_pct": round(gross / max(revenue, 1) * 100, 1),
+                })
+            except Exception:
+                pass
+        return rows, {
+            "total_revenue": sum(r["revenue"] for r in rows),
+            "total_net": sum(r["net_income"] for r in rows),
         }
 
     def _csv(self, preview: ReportPreview) -> bytes:

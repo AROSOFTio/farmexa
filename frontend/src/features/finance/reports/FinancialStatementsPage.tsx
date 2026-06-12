@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { accountingService } from '@/services/accountingService'
 import { branchService, Branch } from '@/services/branchService'
+import { reportsService } from '@/services/reportsService'
 import api from '@/services/api'
 import { FileText, Loader2, RefreshCcw, Download, Printer, Filter, Building2, Bird } from 'lucide-react'
 import { UGX } from '@/lib/money'
@@ -72,104 +73,45 @@ export function FinancialStatementsPage() {
     enabled: statementType === 'cash-flow',
   })
 
-  // CSV Export utility
-  const downloadCSV = (csvContent: string, fileName: string) => {
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', fileName)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
+  const handleExport = async (format: 'pdf' | 'xlsx' | 'csv') => {
+    let reportKey = ''
+    let filters: Record<string, any> = {}
 
-  const handleExport = () => {
-    if (statementType === 'pnl' && pnlQuery.data) {
-      const data = pnlQuery.data
-      let csv = 'Statement of Comprehensive Income (Profit & Loss)\n'
-      csv += `Period: ${fromDate} to ${toDate}\n`
-      if (branchId) csv += `Branch ID: ${branchId}\n`
-      if (batchId) csv += `Batch ID: ${batchId}\n`
-      csv += '\nCategory,Account Code,Account Name,Amount (UGX)\n'
-      
-      csv += 'REVENUE,,,\n'
-      data.revenue.forEach((r: any) => {
-        csv += `Revenue,${r.account_code},"${r.account_name}",${r.amount}\n`
-      })
-      csv += `Total Revenue,,,${data.total_revenue}\n\n`
-      
-      csv += 'COST OF SALES,,,\n'
-      data.cost_of_sales.forEach((c: any) => {
-        csv += `Cost of Sales,${c.account_code},"${c.account_name}",${c.amount}\n`
-      })
-      csv += `Total Cost of Sales,,,${data.total_cost_of_sales}\n\n`
-      
-      csv += `GROSS PROFIT,,,${data.gross_profit}\n\n`
-      
-      csv += 'OPERATING EXPENSES,,,\n'
-      data.expenses.forEach((e: any) => {
-        csv += `Operating Expense,${e.account_code},"${e.account_name}",${e.amount}\n`
-      })
-      csv += `Total Operating Expenses,,,${data.total_expenses}\n\n`
-      
-      csv += `NET PROFIT,,,${data.net_profit}\n`
-      downloadCSV(csv, `profit_loss_${fromDate}_to_${toDate}.csv`)
-    } 
-    else if (statementType === 'balance-sheet' && bsQuery.data) {
-      const data = bsQuery.data
-      let csv = 'Statement of Financial Position (Balance Sheet)\n'
-      csv += `As of: ${asOfDate}\n`
-      if (branchId) csv += `Branch ID: ${branchId}\n`
-      csv += '\nSection,Account Code,Account Name,Balance (UGX)\n'
-      
-      csv += 'ASSETS,,,\n'
-      data.assets.forEach((a: any) => {
-        csv += `Asset,${a.account_code},"${a.account_name}",${a.balance}\n`
-      })
-      csv += `Total Assets,,,${data.total_assets}\n\n`
-      
-      csv += 'LIABILITIES,,,\n'
-      data.liabilities.forEach((l: any) => {
-        csv += `Liability,${l.account_code},"${l.account_name}",${l.balance}\n`
-      })
-      csv += `Total Liabilities,,,${data.total_liabilities}\n\n`
-      
-      csv += 'EQUITY,,,\n'
-      data.equity.forEach((e: any) => {
-        csv += `Equity,${e.account_code},"${e.account_name}",${e.balance}\n`
-      })
-      csv += `Total Equity,,,${data.total_equity}\n\n`
-      csv += `Total Liabilities & Equity,,,${data.total_liabilities_and_equity}\n`
-      downloadCSV(csv, `balance_sheet_${asOfDate}.csv`)
-    } 
-    else if (statementType === 'cash-flow' && cfQuery.data) {
-      const data = cfQuery.data
-      let csv = 'Statement of Cash Flows\n'
-      csv += `Period: ${fromDate} to ${toDate}\n`
-      if (branchId) csv += `Branch ID: ${branchId}\n`
-      csv += '\nSection,Category,Amount (UGX)\n'
-      
-      csv += 'OPERATING ACTIVITIES,,\n'
-      data.operating.forEach((o: any) => {
-        csv += `Operating,"${o.category}",${o.amount}\n`
-      })
-      csv += `Total Operating,,,${data.total_operating}\n\n`
-      
-      csv += 'INVESTING ACTIVITIES,,\n'
-      data.investing.forEach((i: any) => {
-        csv += `Investing,"${i.category}",${i.amount}\n`
-      })
-      csv += `Total Investing,,,${data.total_investing}\n\n`
-      
-      csv += 'FINANCING ACTIVITIES,,\n'
-      data.financing.forEach((f: any) => {
-        csv += `Financing,"${f.category}",${f.amount}\n`
-      })
-      csv += `Total Financing,,,${data.total_financing}\n\n`
-      csv += `Net Cash Flow,,,${data.net_cash_flow}\n`
-      downloadCSV(csv, `cash_flow_${fromDate}_to_${toDate}.csv`)
+    if (statementType === 'pnl') {
+      reportKey = 'profit-loss'
+      filters = {
+        start_date: fromDate,
+        end_date: toDate,
+        branch_id: branchId || null,
+        batch_id: batchId || null,
+      }
+    } else if (statementType === 'balance-sheet') {
+      reportKey = 'balance-sheet'
+      filters = {
+        as_of_date: asOfDate,
+        branch_id: branchId || null,
+      }
+    } else if (statementType === 'cash-flow') {
+      reportKey = 'cash-flow'
+      filters = {
+        from_date: fromDate,
+        end_date: toDate,
+        branch_id: branchId || null,
+      }
+    }
+
+    if (!reportKey) return
+    try {
+      await reportsService.export(
+        reportKey,
+        {
+          selected_fields: [],
+          filters,
+        },
+        format
+      )
+    } catch (err) {
+      console.error('Export failed:', err)
     }
   }
 
@@ -199,11 +141,17 @@ export function FinancialStatementsPage() {
           <p className="section-subtitle">Core financial reports for enterprise performance analysis.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={handlePrint} className="btn-secondary flex items-center gap-1 text-xs">
-            <Printer className="h-4 w-4" /> Print Report
+          <button onClick={handlePrint} className="btn-secondary flex items-center gap-1.5 text-xs py-1.5">
+            <Printer className="h-4 w-4" /> Print
           </button>
-          <button onClick={handleExport} className="btn-primary flex items-center gap-1 text-xs">
-            <Download className="h-4 w-4" /> Export CSV
+          <button onClick={() => handleExport('pdf')} className="btn-primary flex items-center gap-1.5 text-xs py-1.5">
+            <FileText className="h-4 w-4" /> PDF
+          </button>
+          <button onClick={() => handleExport('xlsx')} className="btn-primary flex items-center gap-1.5 text-xs py-1.5">
+            <Download className="h-4 w-4" /> Excel
+          </button>
+          <button onClick={() => handleExport('csv')} className="btn-primary flex items-center gap-1.5 text-xs py-1.5">
+            <Download className="h-4 w-4" /> CSV
           </button>
         </div>
       </div>
