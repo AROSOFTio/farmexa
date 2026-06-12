@@ -16,6 +16,7 @@ import {
   Skull,
   Syringe,
   TrendingUp,
+  Truck,
   Wallet,
   Wheat,
 } from 'lucide-react'
@@ -475,6 +476,7 @@ export function DashboardPage() {
         <div className="flex flex-wrap gap-3">
           {hasPermission('sales:write') && <QuickActionButton icon={ShoppingCart} label="New Sale" to="/sales/orders" />}
           {hasPermission('procurement:write') && <QuickActionButton icon={Package} label="New Purchase" to="/procurement/purchase-orders" />}
+          {hasPermission('procurement:write') && <QuickActionButton icon={Truck} label="Add Supplier" to="/procurement/suppliers" />}
           {hasPermission('finance:write') && <QuickActionButton icon={DollarSign} label="Expense" to="/finance/expenses" />}
           <QuickActionButton icon={Wheat} label="Feed Issue" to="/feed/consumption" />
           <QuickActionButton icon={Egg} label="Egg Collection" to="/farm/eggs" />

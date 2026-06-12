@@ -60,7 +60,7 @@ def _add_branch_filter(execute_state):
             # plain list is not cacheable as a SQL element and raises InvalidRequestError.
             execute_state.statement = execute_state.statement.options(
                 *[
-                    with_loader_criteria(cls, cls.branch_id.in_(branch_ids), include_aliases=True)
+                    with_loader_criteria(cls, (cls.branch_id.in_(branch_ids)) | (cls.branch_id.is_(None)), include_aliases=True)
                     for cls in _get_branch_scoped_classes()
                 ]
             )
