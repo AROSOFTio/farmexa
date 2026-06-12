@@ -115,6 +115,16 @@ const FARM_NAV: NavGroup[] = [
     ],
   },
   {
+    label: 'HR & Payroll',
+    icon: Users,
+    children: [
+      { label: 'Employees', path: '/hr/employees', permission: 'hr:read' },
+      { label: 'Payroll', path: '/hr/payroll', permission: 'hr:read' },
+      { label: 'Leave', path: '/hr/leave', permission: 'hr:read' },
+      { label: 'Attendance', path: '/hr/attendance', permission: 'hr:read' },
+    ],
+  },
+  {
     label: 'Compliance',
     icon: ShieldCheck,
     section: 'Governance',

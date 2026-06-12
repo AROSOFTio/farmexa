@@ -53,6 +53,11 @@ import { CashbookPage } from '@/features/finance/reports/CashbookPage'
 import { GeneralLedgerPage } from '@/features/finance/reports/GeneralLedgerPage'
 import { TrialBalancePage } from '@/features/finance/reports/TrialBalancePage'
 import { FinancialStatementsPage } from '@/features/finance/reports/FinancialStatementsPage'
+import { EmployeesPage } from '@/features/hr/EmployeesPage'
+import { PayrollPage } from '@/features/hr/PayrollPage'
+import { LeavePage } from '@/features/hr/LeavePage'
+import { AttendancePage } from '@/features/hr/AttendancePage'
+
 const PLATFORM_ADMIN_ROLES = new Set(['super_manager', 'developer_admin'])
 
 export default function App() {
@@ -512,6 +517,42 @@ export default function App() {
                   <ModuleGuard moduleKey="accounting">
                     <AccountingSettingsPage />
                   </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+          </Route>
+
+          <Route path="hr">
+            <Route index element={<Navigate to="/hr/employees" replace />} />
+            <Route
+              path="employees"
+              element={
+                <ProtectedRoute permission="hr:read">
+                  <EmployeesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="payroll"
+              element={
+                <ProtectedRoute permission="hr:read">
+                  <PayrollPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="leave"
+              element={
+                <ProtectedRoute permission="hr:read">
+                  <LeavePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="attendance"
+              element={
+                <ProtectedRoute permission="hr:read">
+                  <AttendancePage />
                 </ProtectedRoute>
               }
             />
