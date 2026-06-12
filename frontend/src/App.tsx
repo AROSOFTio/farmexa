@@ -54,6 +54,8 @@ import { GeneralLedgerPage } from '@/features/finance/reports/GeneralLedgerPage'
 import { TrialBalancePage } from '@/features/finance/reports/TrialBalancePage'
 import { FinancialStatementsPage } from '@/features/finance/reports/FinancialStatementsPage'
 import { EmployeesPage } from '@/features/hr/EmployeesPage'
+import { PurchaseOrdersPage } from '@/features/procurement/PurchaseOrdersPage'
+import { SupplierInvoicesPage } from '@/features/procurement/SupplierInvoicesPage'
 import { PayrollPage } from '@/features/hr/PayrollPage'
 import { LeavePage } from '@/features/hr/LeavePage'
 import { AttendancePage } from '@/features/hr/AttendancePage'
@@ -553,6 +555,26 @@ export default function App() {
               element={
                 <ProtectedRoute permission="hr:read">
                   <AttendancePage />
+                </ProtectedRoute>
+              }
+            />
+          </Route>
+
+          <Route path="procurement">
+            <Route index element={<Navigate to="/procurement/purchase-orders" replace />} />
+            <Route
+              path="purchase-orders"
+              element={
+                <ProtectedRoute permission="procurement:read">
+                  <PurchaseOrdersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="supplier-invoices"
+              element={
+                <ProtectedRoute permission="procurement:read">
+                  <SupplierInvoicesPage />
                 </ProtectedRoute>
               }
             />

@@ -74,6 +74,15 @@ from app.models.tenant import (  # noqa: F401
 from app.models.branch import Branch, UserBranchAccess  # noqa: F401
 from app.models.branch_transfer import BranchTransfer, BranchTransferItem, TransferStatus  # noqa: F401
 from app.models.hr import Employee, PayrollPeriod, PayrollLine, LeaveType, LeaveRequest, AttendanceRecord  # noqa: F401
+from app.models.procurement import (  # noqa: F401
+    PurchaseOrder,
+    PurchaseOrderItem,
+    SupplierInvoice,
+    SupplierPayment,
+    POStatus,
+    SupplierInvoiceStatus,
+    SupplierPaymentMethod,
+)
 
 __all__ = [
     "Base",
@@ -170,4 +179,8 @@ __all__ = [
     "LeaveType",
     "LeaveRequest",
     "AttendanceRecord",
+    "PurchaseOrder",
+    "PurchaseOrderItem",
+    "SupplierInvoice",
+    "SupplierPayment",
 ]

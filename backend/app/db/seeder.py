@@ -58,6 +58,10 @@ PERMISSIONS = [
     ("dev_admin:write", "Manage tenants, plans, and modules", "developer_admin"),
     ("accounting:read", "View accounting data (COA, journals, reports)", "accounting"),
     ("accounting:write", "Create and post journal entries, manage COA", "accounting"),
+    ("hr:read", "View HR and payroll records", "hr"),
+    ("hr:write", "Create/edit HR and payroll records", "hr"),
+    ("procurement:read", "View purchase orders and supplier invoices", "procurement"),
+    ("procurement:write", "Create/approve purchase orders, invoices, and payments", "procurement"),
 ]
 
 

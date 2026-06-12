@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   SlidersHorizontal,
+  Truck,
   Users,
   Warehouse,
   Wheat,
@@ -122,6 +123,14 @@ const FARM_NAV: NavGroup[] = [
       { label: 'Payroll', path: '/hr/payroll', permission: 'hr:read' },
       { label: 'Leave', path: '/hr/leave', permission: 'hr:read' },
       { label: 'Attendance', path: '/hr/attendance', permission: 'hr:read' },
+    ],
+  },
+  {
+    label: 'Procurement',
+    icon: Truck,
+    children: [
+      { label: 'Purchase Orders', path: '/procurement/purchase-orders', permission: 'procurement:read' },
+      { label: 'Supplier Invoices', path: '/procurement/supplier-invoices', permission: 'procurement:read' },
     ],
   },
   {

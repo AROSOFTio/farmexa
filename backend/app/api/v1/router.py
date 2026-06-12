@@ -25,6 +25,7 @@ from app.modules.reports.router import router as reports_router
 from app.modules.accounting.router import router as accounting_router
 from app.modules.health_safety.router import router as health_safety_router
 from app.modules.hr.router import router as hr_router
+from app.modules.procurement.router import router as procurement_router
 
 api_router = APIRouter()
 
@@ -49,3 +50,4 @@ api_router.include_router(reports_router)
 api_router.include_router(accounting_router)
 api_router.include_router(health_safety_router)
 api_router.include_router(hr_router)
+api_router.include_router(procurement_router)
