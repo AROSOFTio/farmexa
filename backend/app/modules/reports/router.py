@@ -8,7 +8,7 @@ from app.core.deps import require_permission
 from app.db.tenant_db import get_tenant_sync_db
 from app.modules.reports import schemas
 from app.modules.reports.service import reports_service
-from app.main import limiter
+from app.core.limiter import limiter
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 

@@ -28,7 +28,7 @@ from app.modules.auth.service import AuthService
 from app.modules.developer_admin.service import DeveloperAdminService
 from app.services.email_service import log_and_send_email
 
-from app.main import limiter
+from app.core.limiter import limiter
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 

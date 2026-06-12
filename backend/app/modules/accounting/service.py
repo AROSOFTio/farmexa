@@ -13,7 +13,7 @@ Wraps AccountingService and provides:
 
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy import func
