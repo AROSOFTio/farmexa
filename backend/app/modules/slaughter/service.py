@@ -76,7 +76,13 @@ class SlaughterService:
             # Compute total slaughter processing cost
             labour = float(record.direct_labour_cost or 0)
             overhead = float(record.overhead_cost or 0)
-            total_cost = labour + overhead
+            chick_unit = (
+                float(record.chick_cost_override)
+                if record.chick_cost_override is not None
+                else float(getattr(batch, "chick_cost", 0) or 0)
+            )
+            chick_cost = chick_unit * float(record.live_birds_count or 0)
+            total_cost = labour + overhead + chick_cost
 
             # Dressed weight and byproduct values (use weight as proxy if unit price unknown)
             dressed_value = float(record.total_dressed_weight or 0) * 1  # placeholder multiplier
@@ -97,7 +103,7 @@ class SlaughterService:
                 record.cost_per_kg = Decimal(str(round(total_cost / dressed_kg, 4)))
             record.total_production_cost = Decimal(str(total_cost))
 
-            accounting.record_slaughter(
+            entry = accounting.record_slaughter(
                 dressed_weight_value=dressed_value,
                 byproduct_value=byproduct_value,
                 cost_of_production=total_cost,
@@ -105,6 +111,7 @@ class SlaughterService:
                 reference_id=record.id,
                 created_by_user_id=user_id,
             )
+            record.production_journal_id = entry.id
         except Exception as exc:  # pragma: no cover
             # Accounting failures must not block the slaughter workflow
             import logging

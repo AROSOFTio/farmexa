@@ -36,7 +36,8 @@ class BranchTransfer(Base):
     from_branch_id = Column(Integer, ForeignKey("branches.id"), nullable=False, index=True)
     to_branch_id = Column(Integer, ForeignKey("branches.id"), nullable=False, index=True)
     
-    status = Column(db_enum(TransferStatus, name="transferstatus"), nullable=False, default=TransferStatus.PENDING)
+    # Distinct DB type: "transferstatus" belongs to StockTransfer and has different values
+    status = Column(db_enum(TransferStatus, name="branchtransferstatus"), nullable=False, default=TransferStatus.PENDING)
     
     initiated_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     dispatched_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)

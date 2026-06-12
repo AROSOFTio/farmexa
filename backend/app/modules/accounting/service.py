@@ -471,7 +471,8 @@ class AccountingModuleService:
         return fy
 
     def close_fiscal_year(self, fy_id: int) -> FiscalYear:
-        """Close a fiscal year — sets status to CLOSED and records closed_at."""
+        """Close a fiscal year: post the year-end closing entry (net income →
+        Retained Earnings), then set status to CLOSED and record closed_at."""
         fy = self.db.query(FiscalYear).filter(
             FiscalYear.id == fy_id, FiscalYear.tenant_id == self.tenant_id
         ).first()
@@ -481,6 +482,55 @@ class AccountingModuleService:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Fiscal year is already closed.")
         if fy.status == FiscalYearStatus.LOCKED:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Fiscal year is locked and cannot be changed.")
+
+        # Block close while unposted drafts exist in the period
+        draft_count = (
+            self.db.query(JournalEntry)
+            .filter(
+                JournalEntry.tenant_id == self.tenant_id,
+                JournalEntry.entry_date >= fy.start_date,
+                JournalEntry.entry_date <= fy.end_date,
+                JournalEntry.status == JournalEntryStatus.DRAFT,
+            )
+            .count()
+        )
+        if draft_count > 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot close: {draft_count} draft journal entries exist in this period. Post or delete them first.",
+            )
+
+        # Net income for the year, from the existing P&L computation
+        pl_result = self.engine.get_profit_and_loss(from_date=fy.start_date, to_date=fy.end_date)
+        net_income = Decimal(str(pl_result.get("net_profit") or 0))
+
+        # Post the closing entry only if there is a net income/loss to transfer
+        if net_income != Decimal("0"):
+            re_code = self.engine.get_mapped_account_code("retained_earnings", "3200")
+            cy_code = self.engine.get_mapped_account_code("current_year_pl", "3300")
+
+            if net_income > 0:
+                # Profit: debit Current Year P/L, credit Retained Earnings
+                debit_code, credit_code = cy_code, re_code
+            else:
+                # Loss: debit Retained Earnings, credit Current Year P/L
+                debit_code, credit_code = re_code, cy_code
+
+            abs_amount = abs(net_income)
+            self.engine.create_and_post_journal(
+                entry_date=fy.end_date,
+                description=f"Year-end closing entry — {fy.name}",
+                reference_type="year_end_close",
+                reference_id=fy_id,
+                source_module="accounting",
+                lines=[
+                    {"account_code": debit_code, "debit": abs_amount, "credit": Decimal("0"),
+                     "memo": f"Year-end close: {fy.name}"},
+                    {"account_code": credit_code, "debit": Decimal("0"), "credit": abs_amount,
+                     "memo": f"Year-end close: {fy.name}"},
+                ],
+            )
+
         fy.status = FiscalYearStatus.CLOSED
         fy.closed_at = datetime.now(timezone.utc)
         self.db.commit()

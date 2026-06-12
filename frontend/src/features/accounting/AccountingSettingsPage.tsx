@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, PlayCircle, Lock, Key, Calendar, Scale, Save, Search, Settings } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, PlayCircle, Lock, Key, Calendar, Scale, Save, Search, Settings } from 'lucide-react'
 import { toast } from 'sonner'
 import clsx from 'clsx'
 import { accountingService, FiscalYear, Account } from '@/services/accountingService'
@@ -22,6 +22,10 @@ export function AccountingSettingsPage() {
 
   // Opening balances state mapping: account_id -> OpeningBalanceValues
   const [formBalances, setFormBalances] = useState<Record<number, OpeningBalanceValues>>({})
+
+  // Close-year confirmation dialog
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false)
+  const [yearToClose, setYearToClose] = useState<FiscalYear | null>(null)
 
   // Fetch fiscal years
   const { data: fiscalYears = [], isLoading: isLoadingFY } = useQuery({
@@ -316,9 +320,8 @@ export function AccountingSettingsPage() {
                           {year.status === 'open' && (
                             <button
                               onClick={() => {
-                                if (window.confirm(`Are you sure you want to CLOSE ${year.name}? This will block draft entries and post closing net income accounts. Action is irreversible.`)) {
-                                  closeYearMutation.mutate(year.id)
-                                }
+                                setYearToClose(year)
+                                setCloseConfirmOpen(true)
                               }}
                               className="text-red-650 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 px-2.5 py-1.5 border border-red-200 rounded font-semibold text-xs inline-flex items-center gap-1"
                               disabled={closeYearMutation.isPending}
@@ -488,6 +491,63 @@ export function AccountingSettingsPage() {
                 </div>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Close fiscal year confirmation */}
+      {closeConfirmOpen && yearToClose && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-[var(--border-subtle)] p-6 max-w-md w-full mx-4 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-ink-900">Close Fiscal Year</h3>
+                <p className="text-sm text-ink-500">{yearToClose.name}</p>
+              </div>
+            </div>
+            <div className="space-y-3 mb-6">
+              <p className="text-sm text-ink-700">This will:</p>
+              <ul className="text-sm text-ink-600 space-y-1.5 list-none">
+                <li className="flex items-start gap-2">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  Post a closing journal entry transferring net income to Retained Earnings
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  Lock all journal entries in this period (no new postings)
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-red-500 mt-0.5">✗</span>
+                  This action cannot be undone
+                </li>
+              </ul>
+              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700">
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  Ensure all transactions for this period are posted before closing.
+                  Draft journal entries will block the close.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                className="flex-1 btn-secondary"
+                onClick={() => { setCloseConfirmOpen(false); setYearToClose(null) }}
+              >Cancel</button>
+              <button
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-[10px] border border-transparent bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={closeYearMutation.isPending}
+                onClick={() => {
+                  closeYearMutation.mutate(yearToClose.id, {
+                    onSuccess: () => { setCloseConfirmOpen(false); setYearToClose(null) }
+                  })
+                }}
+              >
+                {closeYearMutation.isPending ? 'Closing...' : 'Close Year'}
+              </button>
+            </div>
           </div>
         </div>
       )}

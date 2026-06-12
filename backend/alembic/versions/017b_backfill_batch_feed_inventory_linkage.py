@@ -16,7 +16,7 @@ from sqlalchemy import orm, select
 
 
 # Keep revision identifiers within Alembic's default varchar(32) version column.
-revision = "017_backfill_inventory_link"
+revision = "017b_backfill_inventory_link"
 down_revision = "017_batch_feed_inventory_link"
 branch_labels = None
 depends_on = None

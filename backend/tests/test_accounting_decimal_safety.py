@@ -10,6 +10,7 @@ from app.core.money import quantize_money, to_decimal
 from app.models.finance_coa import (
     Account,
     AccountType,
+    FiscalYear,
     JournalEntry,
     JournalEntryStatus,
     JournalLine,
@@ -25,7 +26,7 @@ TENANT_ID = 1
 @pytest.fixture()
 def db_session():
     engine = create_engine("sqlite:///:memory:")
-    tables = [Account.__table__, JournalEntry.__table__, OpeningBalance.__table__, JournalLine.__table__]
+    tables = [Account.__table__, FiscalYear.__table__, JournalEntry.__table__, OpeningBalance.__table__, JournalLine.__table__]
     for table in tables:
         table.create(bind=engine, checkfirst=True)
     TestingSession = sessionmaker(bind=engine)

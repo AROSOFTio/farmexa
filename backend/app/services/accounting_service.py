@@ -25,8 +25,9 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.money import quantize_money, to_decimal
 from app.models.finance_coa import (
-    Account, AccountType, FiscalYear, JournalEntry, JournalEntryStatus,
-    JournalLine, NormalBalance, OpeningBalance, SystemAccountMapping,
+    Account, AccountType, FiscalYear, FiscalYearStatus, JournalEntry,
+    JournalEntryStatus, JournalLine, NormalBalance, OpeningBalance,
+    SystemAccountMapping,
 )
 
 
@@ -132,6 +133,26 @@ class AccountingService:
         created_by_user_id: Optional[int] = None,
     ) -> JournalEntry:
         """Create a new DRAFT journal entry."""
+        # Reject postings into closed fiscal periods
+        if entry_date and self.tenant_id:
+            closed_fy = (
+                self.db.query(FiscalYear)
+                .filter(
+                    FiscalYear.tenant_id == self.tenant_id,
+                    FiscalYear.status == FiscalYearStatus.CLOSED,
+                    FiscalYear.start_date <= entry_date,
+                    FiscalYear.end_date >= entry_date,
+                )
+                .first()
+            )
+            if closed_fy:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Cannot post to closed period: {closed_fy.name} "
+                           f"({closed_fy.start_date} — {closed_fy.end_date}). "
+                           "Create a new fiscal year or use the adjustment date of an open period.",
+                )
+
         entry_number = f"JE-{uuid4().hex[:10].upper()}"
         entry = JournalEntry(
             tenant_id=self.tenant_id,

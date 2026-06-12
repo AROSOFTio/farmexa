@@ -19,6 +19,10 @@ const batchSchema = z.object({
   source: z.string().optional(),
   arrival_date: z.string().min(1, 'Arrival date is required'),
   initial_quantity: z.coerce.number().min(1, 'Quantity must be greater than 0'),
+  chick_cost: z.preprocess(
+    (value) => (value === '' || value === null || value === undefined ? undefined : value),
+    z.coerce.number().min(0).optional()
+  ),
 })
 
 type BatchFormValues = z.infer<typeof batchSchema>
@@ -309,6 +313,20 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
               className={clsx('form-input', errors.arrival_date && 'border-red-500 focus:ring-red-500/20')}
             />
             {errors.arrival_date && <p className="form-error">{errors.arrival_date.message}</p>}
+          </div>
+
+          <div>
+            <label className="form-label">Chick Cost Per Bird (UGX)</label>
+            <input
+              type="number"
+              min={0}
+              step="100"
+              {...register('chick_cost')}
+              className={clsx('form-input', errors.chick_cost && 'border-red-500 focus:ring-red-500/20')}
+              placeholder="0"
+            />
+            <p className="form-hint">Purchase cost per day-old chick</p>
+            {errors.chick_cost && <p className="form-error">{errors.chick_cost.message}</p>}
           </div>
         </div>
       </div>

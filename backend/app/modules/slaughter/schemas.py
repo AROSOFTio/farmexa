@@ -97,6 +97,9 @@ class SlaughterRecordBase(BaseModel):
     quality_inspection_status: str = "pending"
     cold_room_location: Optional[str] = None
     notes: Optional[str] = None
+    direct_labour_cost: Optional[NonNegativeMoney] = Field(default=0)
+    overhead_cost: Optional[NonNegativeMoney] = Field(default=0)
+    chick_cost_override: Optional[NonNegativeMoney] = None
 
 class SlaughterRecordCreate(SlaughterRecordBase):
     pass
@@ -118,6 +121,9 @@ class SlaughterRecordUpdate(BaseModel):
     cold_room_location: Optional[str] = None
     approval_status: Optional[str] = None
     notes: Optional[str] = None
+    direct_labour_cost: Optional[NonNegativeMoney] = None
+    overhead_cost: Optional[NonNegativeMoney] = None
+    chick_cost_override: Optional[NonNegativeMoney] = None
 
 class SlaughterRecordOut(SlaughterRecordBase):
     id: int
@@ -132,6 +138,9 @@ class SlaughterRecordOut(SlaughterRecordBase):
     approval_status: str
     approved_at: Optional[datetime] = None
     inventory_posted_at: Optional[datetime] = None
+    total_production_cost: Optional[Money] = None
+    cost_per_kg: Optional[Money] = None
+    production_journal_id: Optional[int] = None
     created_at: datetime
     outputs: List[SlaughterOutputOut] = []
     byproducts: List[SlaughterByProductOut] = []

@@ -59,6 +59,12 @@ interface SlaughterRecord {
   quality_inspection_status: string
   cold_room_location?: string | null
   approval_status: string
+  direct_labour_cost?: number | null
+  overhead_cost?: number | null
+  chick_cost_override?: number | null
+  total_production_cost?: number | null
+  cost_per_kg?: number | null
+  production_journal_id?: number | null
   inventory_posted_at?: string | null
   notes?: string | null
   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
@@ -83,6 +89,12 @@ const recordSchema = z.object({
   quality_inspection_status: z.enum(['pending', 'passed', 'failed', 'rework']),
   cold_room_location: z.string().optional(),
   notes: z.string().optional(),
+  direct_labour_cost: z.coerce.number().min(0),
+  overhead_cost: z.coerce.number().min(0),
+  chick_cost_override: z.preprocess(
+    (value) => (value === '' || value === null || value === undefined ? undefined : value),
+    z.coerce.number().min(0).optional()
+  ),
 })
 
 const completionSchema = z.object({
@@ -197,6 +209,10 @@ function formatDate(value: string) {
   })
 }
 
+function formatUGX(value: number | null | undefined) {
+  return `UGX ${Number(value || 0).toLocaleString()}`
+}
+
 function outputLabel(outputType: string) {
   return productionOutputCatalog.find((entry) => entry.value === outputType)?.label ?? outputType.replace(/_/g, ' ')
 }
@@ -235,6 +251,9 @@ function emptyRecordFormValues(): RecordFormValues {
     quality_inspection_status: 'pending',
     cold_room_location: '',
     notes: '',
+    direct_labour_cost: 0,
+    overhead_cost: 0,
+    chick_cost_override: undefined,
   }
 }
 
@@ -952,6 +971,27 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
             </div>
           </div>
 
+          <div className="rounded-[18px] border border-neutral-200 bg-neutral-50 p-4">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Production costs</div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div>
+                <label className="form-label">Direct labour cost (UGX)</label>
+                <input className="form-input" type="number" min={0} step="100" placeholder="0" {...recordForm.register('direct_labour_cost')} />
+                <p className="form-hint">Wages for slaughter floor workers</p>
+              </div>
+              <div>
+                <label className="form-label">Processing overhead (UGX)</label>
+                <input className="form-input" type="number" min={0} step="100" placeholder="0" {...recordForm.register('overhead_cost')} />
+                <p className="form-hint">Utilities, packaging, consumables</p>
+              </div>
+              <div>
+                <label className="form-label">Chick cost per bird (UGX)</label>
+                <input className="form-input" type="number" min={0} step="100" placeholder="Auto from batch" {...recordForm.register('chick_cost_override')} />
+                <p className="form-hint">Leave blank to use batch chick cost</p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="form-label">Quality inspection status</label>
@@ -1049,6 +1089,32 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
         description="Update dressed weight, inspection result, approval status, storage location, and loss categories for one record."
       >
         <form className="space-y-4" onSubmit={completionForm.handleSubmit((values) => completeRecord.mutate(values))}>
+          {selectedRecord?.total_production_cost ? (
+            <div className="rounded-[18px] border border-neutral-200 bg-neutral-50 p-4">
+              <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Production cost analysis</h4>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <div>
+                  <p className="text-xs text-neutral-500">Total production cost</p>
+                  <p className="text-sm font-semibold text-neutral-900">{formatUGX(selectedRecord.total_production_cost)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-neutral-500">Cost per kg</p>
+                  <p className="text-sm font-semibold text-neutral-900">{formatUGX(selectedRecord.cost_per_kg)}/kg</p>
+                </div>
+                <div>
+                  <p className="text-xs text-neutral-500">Direct labour</p>
+                  <p className="text-sm font-medium text-neutral-700">{formatUGX(selectedRecord.direct_labour_cost)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-neutral-500">Overhead</p>
+                  <p className="text-sm font-medium text-neutral-700">{formatUGX(selectedRecord.overhead_cost)}</p>
+                </div>
+              </div>
+              {selectedRecord.production_journal_id ? (
+                <p className="mt-2 text-xs text-neutral-500">Journal Entry #{selectedRecord.production_journal_id} posted ✓</p>
+              ) : null}
+            </div>
+          ) : null}
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="form-label">Workflow status</label>

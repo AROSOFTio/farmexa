@@ -1,4 +1,6 @@
-from datetime import datetime, timezone
+import logging
+from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -8,6 +10,8 @@ from sqlalchemy.exc import IntegrityError
 from app.models.branch_transfer import BranchTransfer, BranchTransferItem, TransferStatus
 from app.models.inventory import StockItem, StockMovement, MovementType
 from app.modules.inventory import branch_transfer_schemas as schemas
+
+logger = logging.getLogger(__name__)
 
 
 def get_transfers(db: Session, skip: int = 0, limit: int = 100, tenant_id: int = None) -> List[BranchTransfer]:
@@ -95,7 +99,37 @@ def update_transfer_status(db: Session, transfer_id: int, status_update: schemas
         db_transfer.status = new_status
         db_transfer.dispatched_by_id = current_user_id
         db_transfer.dispatch_date = datetime.now(timezone.utc)
-        
+
+        # Goods-in-transit journal: move inventory value out of the source branch
+        try:
+            from app.services.accounting_service import AccountingService
+            acct = AccountingService(db, tenant_id=db_transfer.tenant_id)
+            transit_code = acct.get_mapped_account_code("goods_in_transit", "1145")
+            inv_code = acct.get_mapped_account_code("finished_goods", "1134")
+            transfer_value = Decimal("0")
+            for item in db_transfer.items:
+                unit_cost = Decimal(str(item.stock_item.average_cost or 0)) if item.stock_item else Decimal("0")
+                qty = Decimal(str(item.quantity_shipped or 0))
+                transfer_value += qty * unit_cost
+            if transfer_value > 0:
+                acct.create_and_post_journal(
+                    entry_date=db_transfer.dispatch_date.date() if db_transfer.dispatch_date else date.today(),
+                    description=f"Branch transfer {db_transfer.transfer_number} dispatched → {db_transfer.to_branch.name if db_transfer.to_branch else db_transfer.to_branch_id}",
+                    reference_type="branch_transfer_dispatch",
+                    reference_id=db_transfer.id,
+                    source_module="inventory",
+                    created_by_user_id=current_user_id,
+                    branch_id=db_transfer.from_branch_id,
+                    lines=[
+                        {"account_code": transit_code, "debit": transfer_value, "credit": Decimal("0"),
+                         "memo": f"Transfer {db_transfer.transfer_number}: in transit"},
+                        {"account_code": inv_code, "debit": Decimal("0"), "credit": transfer_value,
+                         "memo": f"Transfer {db_transfer.transfer_number}: dispatched from branch"},
+                    ],
+                )
+        except Exception as e:
+            logger.warning("Branch transfer dispatch journal failed: %s", e)
+
     elif new_status == TransferStatus.COMPLETED and old_status == TransferStatus.IN_TRANSIT:
         if not status_update.received_items:
             raise HTTPException(status_code=400, detail="Received items quantities required to complete transfer")
@@ -150,7 +184,37 @@ def update_transfer_status(db: Session, transfer_id: int, status_update: schemas
         db_transfer.status = new_status
         db_transfer.received_by_id = current_user_id
         db_transfer.receive_date = datetime.now(timezone.utc)
-        
+
+        # Clear goods-in-transit into the destination branch's inventory
+        try:
+            from app.services.accounting_service import AccountingService
+            acct = AccountingService(db, tenant_id=db_transfer.tenant_id)
+            transit_code = acct.get_mapped_account_code("goods_in_transit", "1145")
+            inv_code = acct.get_mapped_account_code("finished_goods", "1134")
+            transfer_value = Decimal("0")
+            for item in db_transfer.items:
+                unit_cost = Decimal(str(item.stock_item.average_cost or 0)) if item.stock_item else Decimal("0")
+                qty = Decimal(str(item.quantity_received or item.quantity_shipped or 0))
+                transfer_value += qty * unit_cost
+            if transfer_value > 0:
+                acct.create_and_post_journal(
+                    entry_date=db_transfer.receive_date.date() if db_transfer.receive_date else date.today(),
+                    description=f"Branch transfer {db_transfer.transfer_number} received at {db_transfer.to_branch.name if db_transfer.to_branch else db_transfer.to_branch_id}",
+                    reference_type="branch_transfer_receive",
+                    reference_id=db_transfer.id,
+                    source_module="inventory",
+                    created_by_user_id=current_user_id,
+                    branch_id=db_transfer.to_branch_id,
+                    lines=[
+                        {"account_code": inv_code, "debit": transfer_value, "credit": Decimal("0"),
+                         "memo": f"Transfer {db_transfer.transfer_number}: received at branch"},
+                        {"account_code": transit_code, "debit": Decimal("0"), "credit": transfer_value,
+                         "memo": f"Transfer {db_transfer.transfer_number}: cleared from transit"},
+                    ],
+                )
+        except Exception as e:
+            logger.warning("Branch transfer receive journal failed: %s", e)
+
     elif new_status == TransferStatus.CANCELLED and old_status == TransferStatus.PENDING:
         db_transfer.status = new_status
     else:

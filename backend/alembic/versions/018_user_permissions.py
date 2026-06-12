@@ -7,7 +7,7 @@ import sqlalchemy as sa
 
 
 revision = "018_user_permissions"
-down_revision = "017_backfill_inventory_link"
+down_revision = "017b_backfill_inventory_link"
 branch_labels = None
 depends_on = None
 

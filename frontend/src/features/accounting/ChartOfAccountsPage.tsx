@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { 
-  Plus, Edit2, ShieldAlert, ChevronDown, ChevronRight, Search, 
-  Settings, FolderTree, List, Check, AlertCircle, RefreshCw, LogOut 
+import {
+  Plus, Edit2, ShieldAlert, ChevronDown, ChevronRight, Search,
+  Settings, FolderTree, List, Check, AlertCircle, RefreshCw, LogOut, Download
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { accountingService, Account, AccountMapping } from '@/services/accountingService'
@@ -287,6 +287,31 @@ export function ChartOfAccountsPage() {
     }
   }
 
+  const exportCoa = () => {
+    if (!accounts.length) return
+    const header = 'Code,Name,Type,Normal Balance,Parent Code,Active,Allow Manual,Balance (UGX)\n'
+    const rows = [...accounts]
+      .sort((a, b) => a.account_code.localeCompare(b.account_code))
+      .map((a) => [
+        a.account_code,
+        `"${a.name.replace(/"/g, '""')}"`,
+        a.account_type,
+        a.normal_balance,
+        accounts.find((p) => p.id === a.parent_account_id)?.account_code ?? '',
+        a.is_active ? 'Yes' : 'No',
+        a.allow_manual_entries ? 'Yes' : 'No',
+        Number(a.current_balance ?? 0).toFixed(2),
+      ].join(','))
+      .join('\n')
+    const blob = new Blob([header + rows], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `chart-of-accounts-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   const handleInitTemplate = () => {
     if (window.confirm('This will apply the Farmexa Poultry CoA template and initialize accounting. Custom accounts will not be removed. Continue?')) {
       initCoaMutation.mutate()
@@ -506,6 +531,15 @@ export function ChartOfAccountsPage() {
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto">
+          {activeTab === 'flat' && (
+            <button
+              onClick={exportCoa}
+              disabled={!accounts.length}
+              className="btn-secondary flex items-center gap-1.5 text-xs whitespace-nowrap"
+            >
+              <Download className="h-4 w-4" /> Export CSV
+            </button>
+          )}
           {activeTab !== 'mappings' && (
             <div className="relative w-full md:w-72">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />

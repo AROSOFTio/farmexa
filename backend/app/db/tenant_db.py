@@ -36,17 +36,33 @@ from app.services.stock_sku import generate_unique_sku
 from sqlalchemy import event
 from sqlalchemy.orm import with_loader_criteria
 
+_branch_scoped_classes: list[type] | None = None
+
+
+def _get_branch_scoped_classes() -> list[type]:
+    """Mapped classes that carry a branch_id column (computed once, post-configuration)."""
+    global _branch_scoped_classes
+    if _branch_scoped_classes is None:
+        _branch_scoped_classes = [
+            mapper.class_
+            for mapper in Base.registry.mappers
+            if hasattr(mapper.class_, "branch_id")
+        ]
+    return _branch_scoped_classes
+
+
 @event.listens_for(Session, "do_orm_execute")
 def _add_branch_filter(execute_state):
     if execute_state.is_select or execute_state.is_update or execute_state.is_delete:
         branch_ids = execute_state.session.info.get("branch_ids")
         if branch_ids is not None:
+            # Concrete per-class criteria (not a lambda over Base): a closure over a
+            # plain list is not cacheable as a SQL element and raises InvalidRequestError.
             execute_state.statement = execute_state.statement.options(
-                with_loader_criteria(
-                    Base,
-                    lambda cls: cls.branch_id.in_(branch_ids) if hasattr(cls, "branch_id") else None,
-                    include_aliases=True
-                )
+                *[
+                    with_loader_criteria(cls, cls.branch_id.in_(branch_ids), include_aliases=True)
+                    for cls in _get_branch_scoped_classes()
+                ]
             )
 
 
@@ -473,6 +489,31 @@ def _apply_runtime_schema_patches(engine: Engine) -> None:
         connection.execute(text("ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS total_production_cost NUMERIC(18, 4)"))
         connection.execute(text("ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS cost_per_kg NUMERIC(18, 4)"))
         connection.execute(text("ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS production_journal_id INTEGER"))
+        connection.execute(text("ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS chick_cost_override NUMERIC(18, 4)"))
+        # branch_transfers.status was historically bound to the stock_transfers
+        # 'transferstatus' type, whose values don't match — convert to its own type.
+        connection.execute(text("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'branchtransferstatus') THEN
+                    CREATE TYPE branchtransferstatus AS ENUM ('pending', 'in_transit', 'completed', 'rejected', 'cancelled');
+                END IF;
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'branch_transfers' AND column_name = 'status' AND udt_name = 'transferstatus'
+                ) THEN
+                    ALTER TABLE branch_transfers ALTER COLUMN status DROP DEFAULT;
+                    ALTER TABLE branch_transfers
+                        ALTER COLUMN status TYPE branchtransferstatus
+                        USING (CASE status::text
+                            WHEN 'draft' THEN 'pending'
+                            WHEN 'issued' THEN 'in_transit'
+                            WHEN 'received' THEN 'completed'
+                            ELSE 'cancelled'
+                        END)::branchtransferstatus;
+                END IF;
+            END $$;
+        """))
         connection.execute(text("ALTER TABLE expense_categories ADD COLUMN IF NOT EXISTS default_account_code VARCHAR(20)"))
         connection.execute(text("ALTER TABLE income_categories ADD COLUMN IF NOT EXISTS default_account_code VARCHAR(20)"))
         connection.execute(text("ALTER TABLE journal_lines ADD COLUMN IF NOT EXISTS batch_id INTEGER REFERENCES batches(id) ON DELETE SET NULL"))

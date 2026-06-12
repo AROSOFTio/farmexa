@@ -72,6 +72,7 @@ class SlaughterRecord(Base):
     # Accounting / costing fields
     direct_labour_cost = Column(Numeric(18, 4), nullable=True)
     overhead_cost = Column(Numeric(18, 4), nullable=True)
+    chick_cost_override = Column(Numeric(18, 4), nullable=True)  # per-bird; NULL = use batch chick_cost
     total_production_cost = Column(Numeric(18, 4), nullable=True)
     cost_per_kg = Column(Numeric(18, 4), nullable=True)
     production_journal_id = Column(Integer, nullable=True)  # references journal_entries.id

@@ -320,7 +320,7 @@ def test_backfill_migration_uses_active_quantity_for_batch_opening_balance():
         Path(__file__).resolve().parents[1]
         / "alembic"
         / "versions"
-        / "017_backfill_batch_feed_inventory_linkage.py"
+        / "017b_backfill_batch_feed_inventory_linkage.py"
     )
     source = migration_path.read_text()
 
