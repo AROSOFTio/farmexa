@@ -76,7 +76,7 @@ class BatchBase(BaseModel):
 
 
 class BatchCreate(BatchBase):
-    pass
+    chick_cost: Optional[float] = Field(default=None, ge=0, description="Cost per chick (UGX). If provided, triggers DOC procurement journal.")
 
 
 class BatchUpdate(BaseModel):
@@ -94,6 +94,7 @@ class BatchOut(BatchBase):
     house: Optional[PoultryHouseOut] = None
     section: Optional[PoultryHouseSectionOut] = None
     stock_item_id: Optional[int] = None
+    chick_cost: Optional[float] = None
 
     model_config = {"from_attributes": True}
 

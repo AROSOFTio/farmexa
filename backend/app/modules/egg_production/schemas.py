@@ -12,6 +12,7 @@ class EggProductionCreate(BaseModel):
     good_eggs: int = Field(default=0, ge=0)
     cracked_eggs: int = Field(default=0, ge=0)
     damaged_eggs: int = Field(default=0, ge=0)
+    price_per_tray: Optional[float] = Field(default=None, ge=0, description="Selling price per tray (30 eggs). If provided, books egg sales revenue.")
     notes: Optional[str] = None
 
     @model_validator(mode="after")
@@ -41,6 +42,7 @@ class EggProductionOut(BaseModel):
     total_eggs: int
     total_trays: float
     production_rate: Optional[float]
+    price_per_tray: Optional[float] = None
     notes: Optional[str]
 
     model_config = {"from_attributes": True}

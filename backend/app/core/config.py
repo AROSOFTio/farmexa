@@ -164,17 +164,9 @@ class Settings(BaseSettings):
         # Always include localhost variants so dev/health‑checks work.
         raw.extend(["localhost", "127.0.0.1"])
         return sorted(set(raw))
-
     @property
     def tenant_domain_suffix(self) -> str:
-        suffix = self.DEFAULT_TENANT_DOMAIN_SUFFIX.strip().lower().removeprefix("www.")
-        zone_name = self.CLOUDFLARE_ZONE_NAME.strip().lower().removeprefix("www.")
-        platform_domain = self.PRIMARY_PLATFORM_DOMAIN.strip().lower().removeprefix("www.")
-        if zone_name and suffix == platform_domain:
-            return zone_name
-        if zone_name and suffix.endswith(f".{zone_name}") and suffix.count(".") > zone_name.count("."):
-            return zone_name
-        return suffix or "arosoftlabs.com"
+        return self.DEFAULT_TENANT_DOMAIN_SUFFIX.strip().lower().removeprefix("www.") or "arosoftlabs.com"
 
     @property
     def trusted_hosts(self) -> list[str]:

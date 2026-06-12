@@ -2,14 +2,16 @@
 Enterprise Accounting API Router
 
 Endpoints:
-- Chart of Accounts (CRUD + tree)
-- Journal Entries (create, list, post)
+- Chart of Accounts (CRUD + tree + search + balances)
+- Account Mappings (list + update)
+- Journal Entries (create, list, post, reverse)
 - General Ledger
 - Trial Balance
 - Profit & Loss
 - Balance Sheet
 - Cashbook
-- Fiscal Years
+- Cash Account listing
+- Fiscal Years (create, list, update, close)
 - Opening Balances
 - Account Templates
 - Tenant Accounting Initialization
@@ -41,6 +43,25 @@ def _svc(
 # ---------------------------------------------------------------------------
 # Chart of Accounts
 # ---------------------------------------------------------------------------
+
+@router.get("/chart-of-accounts/search", response_model=List[schemas.AccountOut], summary="Search accounts by code or name")
+def search_accounts(
+    q: str = Query(..., min_length=1, description="Search query"),
+    limit: int = Query(20, le=100),
+    svc=Depends(_svc),
+    _=Depends(require_permission("accounting:read")),
+):
+    return svc.search_accounts(q, limit=limit)
+
+
+@router.get("/chart-of-accounts/tree", response_model=List[schemas.AccountOut], summary="All accounts (tree via parent_account_id)")
+def get_coa_tree(
+    include_inactive: bool = Query(False),
+    svc=Depends(_svc),
+    _=Depends(require_permission("accounting:read")),
+):
+    return svc.get_chart_of_accounts_tree(include_inactive=include_inactive)
+
 
 @router.get("/chart-of-accounts", response_model=List[schemas.AccountOut], summary="List accounts")
 def list_accounts(
@@ -92,6 +113,44 @@ def delete_account(
 
 
 # ---------------------------------------------------------------------------
+# Account Mappings
+# ---------------------------------------------------------------------------
+
+@router.get("/account-mappings", response_model=List[schemas.AccountMappingOut], summary="List all system account mappings")
+def list_account_mappings(
+    svc=Depends(_svc),
+    _=Depends(require_permission("accounting:read")),
+):
+    return svc.list_account_mappings()
+
+
+@router.patch(
+    "/account-mappings/{mapping_id}",
+    response_model=schemas.AccountMappingOut,
+    summary="Update a system account mapping",
+)
+def update_account_mapping(
+    mapping_id: int,
+    data: schemas.AccountMappingUpdate,
+    svc=Depends(_svc),
+    _=Depends(require_permission("accounting:write")),
+):
+    return svc.update_account_mapping(mapping_id, data)
+
+
+# ---------------------------------------------------------------------------
+# Cash Accounts
+# ---------------------------------------------------------------------------
+
+@router.get("/cash-accounts", response_model=List[schemas.CashAccountOut], summary="List cash and bank accounts")
+def list_cash_accounts(
+    svc=Depends(_svc),
+    _=Depends(require_permission("accounting:read")),
+):
+    return svc.get_cash_accounts()
+
+
+# ---------------------------------------------------------------------------
 # Journal Entries
 # ---------------------------------------------------------------------------
 
@@ -102,10 +161,14 @@ def list_journal_entries(
     status: Optional[str] = Query(None),
     from_date: Optional[date] = Query(None),
     to_date: Optional[date] = Query(None),
+    source_module: Optional[str] = Query(None),
     svc=Depends(_svc),
     _=Depends(require_permission("accounting:read")),
 ):
-    return svc.get_journal_entries(skip=skip, limit=limit, status_filter=status, from_date=from_date, to_date=to_date)
+    return svc.get_journal_entries(
+        skip=skip, limit=limit, status_filter=status,
+        from_date=from_date, to_date=to_date, source_module=source_module,
+    )
 
 
 @router.get("/journal-entries/{entry_id}", response_model=schemas.JournalEntryOut, summary="Get journal entry")
@@ -139,6 +202,22 @@ def post_journal_entry(
     _=Depends(require_permission("accounting:write")),
 ):
     return svc.post_journal_entry(entry_id, posted_by_user_id=current_user.id)
+
+
+@router.post(
+    "/journal-entries/{entry_id}/reverse",
+    response_model=schemas.JournalEntryOut,
+    status_code=201,
+    summary="Reverse a posted journal entry",
+)
+def reverse_journal_entry(
+    entry_id: int,
+    data: schemas.ReverseJournalRequest,
+    svc=Depends(_svc),
+    current_user: User = Depends(get_current_user),
+    _=Depends(require_permission("accounting:write")),
+):
+    return svc.reverse_journal_entry(entry_id, data, reversed_by_user_id=current_user.id)
 
 
 # ---------------------------------------------------------------------------
@@ -231,6 +310,15 @@ def update_fiscal_year(
     _=Depends(require_permission("accounting:write")),
 ):
     return svc.update_fiscal_year(fy_id, data)
+
+
+@router.post("/fiscal-years/{fy_id}/close", response_model=schemas.FiscalYearOut, summary="Close a fiscal year")
+def close_fiscal_year(
+    fy_id: int,
+    svc=Depends(_svc),
+    _=Depends(require_permission("accounting:write")),
+):
+    return svc.close_fiscal_year(fy_id)
 
 
 # ---------------------------------------------------------------------------

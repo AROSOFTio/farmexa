@@ -111,6 +111,8 @@ class JournalEntry(Base):
         nullable=False,
         default=JournalEntryStatus.DRAFT,
     )
+    is_reversed = Column(Boolean, default=False, nullable=False)
+    reversal_of_id = Column(Integer, ForeignKey("journal_entries.id", ondelete="SET NULL"), nullable=True)
     created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     posted_at = Column(DateTime(timezone=True), nullable=True)
     posted_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -119,6 +121,7 @@ class JournalEntry(Base):
     lines = relationship("JournalLine", back_populates="journal_entry", cascade="all, delete-orphan")
     created_by = relationship("User", foreign_keys=[created_by_user_id])
     posted_by = relationship("User", foreign_keys=[posted_by_user_id])
+    reversal_of = relationship("JournalEntry", remote_side=[id], foreign_keys=[reversal_of_id], backref="reversals")
 
 
 class JournalLine(Base):
@@ -215,6 +218,7 @@ class FiscalYear(Base):
         nullable=False,
         default=FiscalYearStatus.OPEN,
     )
+    closed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     opening_balances = relationship("OpeningBalance", back_populates="fiscal_year")

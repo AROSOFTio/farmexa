@@ -41,6 +41,15 @@ def update_customer(
     return service.sales_service.update_customer(db, customer_id, customer)
 
 
+@router.get("/customers/{customer_id}/balance", response_model=schemas.CustomerBalanceOut)
+def get_customer_balance(
+    customer_id: int,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("sales:read")),
+):
+    return service.sales_service.get_customer_balance(db, customer_id)
+
+
 @router.get("/orders", response_model=List[schemas.OrderOut])
 def list_orders(
     skip: int = 0,

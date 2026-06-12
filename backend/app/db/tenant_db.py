@@ -28,7 +28,9 @@ from app.models.inventory import MovementType, StockCategory, StockItem, StockMo
 from app.models.tenant import Tenant
 from app.models.branch import Branch, BranchType
 from app.models.user import User
+import app.models  # noqa: F401
 from app.services.inventory_coordinator import ReferenceType
+from app.seeds.chart_of_accounts_seed import seed_chart_of_accounts, create_default_fiscal_year
 from app.services.stock_sku import generate_unique_sku
 
 from sqlalchemy import event
@@ -244,10 +246,14 @@ def _apply_runtime_schema_patches(engine: Engine) -> None:
     Base.metadata.tables["master_data_requests"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["invoice_balance_reminders"].create(bind=engine, checkfirst=True)
     # Phase 1: Enterprise Accounting tables
+    Base.metadata.tables["accounts"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["account_templates"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["template_accounts"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["fiscal_years"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["opening_balances"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["journal_entries"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["journal_lines"].create(bind=engine, checkfirst=True)
+    Base.metadata.tables["system_account_mappings"].create(bind=engine, checkfirst=True)
     # Phase 2: Multi-Branch Enterprise Architecture
     Base.metadata.tables["branches"].create(bind=engine, checkfirst=True)
     Base.metadata.tables["user_branch_access"].create(bind=engine, checkfirst=True)
@@ -452,6 +458,42 @@ def _apply_runtime_schema_patches(engine: Engine) -> None:
 
         # Note: We don't automatically backfill branch_id here because head office might not be created yet.
         # A separate service handles default branch assignment on initialization.
+
+        # ---------------------------------------------------------------
+        # Reconcile missing columns and views for dynamic tenant databases
+        # ---------------------------------------------------------------
+        connection.execute(text("ALTER TABLE batches ADD COLUMN IF NOT EXISTS chick_cost NUMERIC(18, 4) DEFAULT 0"))
+        connection.execute(text("ALTER TABLE batches ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL"))
+        connection.execute(text("ALTER TABLE egg_production_logs ADD COLUMN IF NOT EXISTS price_per_tray NUMERIC(18, 4)"))
+        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS is_reversed BOOLEAN NOT NULL DEFAULT false"))
+        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS reversal_of_id INTEGER REFERENCES journal_entries(id) ON DELETE SET NULL"))
+        connection.execute(text("ALTER TABLE fiscal_years ADD COLUMN IF NOT EXISTS closed_at TIMESTAMP WITH TIME ZONE"))
+        connection.execute(text("ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS direct_labour_cost NUMERIC(18, 4)"))
+        connection.execute(text("ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS overhead_cost NUMERIC(18, 4)"))
+        connection.execute(text("ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS total_production_cost NUMERIC(18, 4)"))
+        connection.execute(text("ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS cost_per_kg NUMERIC(18, 4)"))
+        connection.execute(text("ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS production_journal_id INTEGER"))
+        connection.execute(text("ALTER TABLE expense_categories ADD COLUMN IF NOT EXISTS default_account_code VARCHAR(20)"))
+        connection.execute(text("ALTER TABLE income_categories ADD COLUMN IF NOT EXISTS default_account_code VARCHAR(20)"))
+        connection.execute(text("ALTER TABLE journal_lines ADD COLUMN IF NOT EXISTS batch_id INTEGER REFERENCES batches(id) ON DELETE SET NULL"))
+        connection.execute(text("""
+            CREATE OR REPLACE VIEW customer_balances AS
+            SELECT
+                c.id AS customer_id,
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN i.status::text <> 'cancelled'
+                            THEN i.total_amount - i.paid_amount
+                            ELSE 0
+                        END
+                    ),
+                    0
+                ) AS balance
+            FROM customers c
+            LEFT JOIN invoices i ON i.customer_id = c.id
+            GROUP BY c.id
+        """))
 
 
 def _upsert_tenant_identity(session: Session, tenant_snapshot: dict[str, Any]) -> None:
@@ -697,6 +739,9 @@ def _ensure_tenant_database_sync(
             _upsert_user_identity(session, user_snapshot)
             _seed_default_branch(session, tenant_snapshot)
             _seed_default_inventory_items(session)
+            # Seed Chart of Accounts + fiscal year if not already present
+            seed_chart_of_accounts(session, tenant_id=tenant_snapshot["id"])
+            create_default_fiscal_year(session, tenant_id=tenant_snapshot["id"])
             session.commit()
         _mark_user_synced(database_name, user_snapshot)
 

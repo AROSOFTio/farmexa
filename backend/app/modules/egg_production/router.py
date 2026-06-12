@@ -55,9 +55,10 @@ async def get_egg_log(
 async def create_egg_log(
     data: EggProductionCreate,
     db: AsyncSession = Depends(get_tenant_db),
-    _=Depends(require_permission("farm:write")),
+    current_user=Depends(require_permission("farm:write")),
 ):
-    return await EggProductionService(db).create_log(data)
+    tenant_id = getattr(current_user, "tenant_id", None)
+    return await EggProductionService(db).create_log(data, tenant_id=tenant_id)
 
 
 @router.put("/{log_id}", response_model=EggProductionOut)

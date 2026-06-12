@@ -54,12 +54,23 @@ class EggProductionService:
             raise HTTPException(status_code=404, detail="Egg production record not found")
         return log
 
-    async def create_log(self, data: EggProductionCreate) -> EggProductionLog:
+    async def create_log(self, data: EggProductionCreate, tenant_id: int | None = None) -> EggProductionLog:
         batch = await self._get_batch(data.batch_id)
 
         total = data.good_eggs + data.cracked_eggs + data.damaged_eggs
         trays = round(total / 30, 2)
         rate = round((data.good_eggs / batch.active_quantity) * 100, 2) if batch.active_quantity > 0 else None
+
+        price_per_tray = data.price_per_tray
+        if (not price_per_tray or price_per_tray <= 0) and trays > 0:
+            from app.models.settings import ProductCatalog
+            from sqlalchemy import select
+            product_res = await self.db.execute(
+                select(ProductCatalog).where(ProductCatalog.name.ilike("%egg%"), ProductCatalog.is_active == True).limit(1)
+            )
+            product = product_res.scalar_one_or_none()
+            if product:
+                price_per_tray = product.base_price
 
         log = EggProductionLog(
             batch_id=data.batch_id,
@@ -70,11 +81,48 @@ class EggProductionService:
             total_eggs=total,
             total_trays=trays,
             production_rate=rate,
+            price_per_tray=price_per_tray,
             notes=data.notes,
         )
         self.db.add(log)
         await self.db.commit()
         await self.db.refresh(log)
+
+        # Wire accounting: book egg sales revenue if price_per_tray is provided
+        if price_per_tray and price_per_tray > 0 and trays > 0:
+            revenue = round(trays * float(price_per_tray), 4)
+            _log_id = log.id
+            _record_date = data.record_date
+            _batch_id = data.batch_id
+            _branch_id = getattr(batch, "branch_id", None)
+            _tenant = tenant_id or getattr(batch, "tenant_id", None)
+
+            def _post_egg_journal(sync_session):
+                from app.services.accounting_service import AccountingService
+                acct = AccountingService(sync_session, tenant_id=_tenant)
+                try:
+                    acct.record_egg_sales(
+                        revenue=revenue,
+                        entry_date=_record_date,
+                        reference_id=_log_id,
+                        is_cash=False,   # staged as AR, not cash
+                        branch_id=_branch_id,
+                        batch_id=_batch_id,
+                    )
+                except Exception as exc:
+                    import logging
+                    logging.getLogger("farmexa.egg_production").warning(
+                        "Egg accounting journal failed for log %s: %s", _log_id, exc
+                    )
+
+            try:
+                await self.db.run_sync(_post_egg_journal)
+            except Exception as exc:
+                import logging
+                logging.getLogger("farmexa.egg_production").warning(
+                    "Egg accounting run_sync failed for log %s: %s", log.id, exc
+                )
+
         return log
 
     async def update_log(self, log_id: int, data: EggProductionUpdate) -> EggProductionLog:

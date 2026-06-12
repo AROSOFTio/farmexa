@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.auth import AuditLog
+from app.utils.audit import write_audit_log_sync
 from app.models.farm import Batch, BatchStatus
 from app.models.inventory import MovementType, StockItem, StockMovement
 from app.models.slaughter import (
@@ -50,16 +51,67 @@ class SlaughterService:
 
     @staticmethod
     def _write_audit(db: Session, *, user_id: int | None, action: str, entity_id: int, meta: str) -> None:
-        db.add(
-            AuditLog(
-                user_id=user_id,
-                action=action,
-                entity="slaughter_record",
-                entity_id=entity_id,
-                meta=meta,
-                created_at=datetime.now(timezone.utc),
-            )
+        write_audit_log_sync(
+            db,
+            user_id=user_id,
+            action=action,
+            entity="slaughter_record",
+            entity_id=entity_id,
+            meta={"detail": meta},
         )
+
+    @staticmethod
+    def _post_slaughter_production_journal(
+        db: Session,
+        record: SlaughterRecord,
+        batch: Batch,
+        user_id: int | None = None,
+    ) -> None:
+        """Post a COGS journal for a completed and approved slaughter record."""
+        try:
+            from app.services.accounting_service import AccountingService
+            tenant_id = getattr(batch, "tenant_id", None) or getattr(record, "tenant_id", None)
+            accounting = AccountingService(db, tenant_id=tenant_id)
+
+            # Compute total slaughter processing cost
+            labour = float(record.direct_labour_cost or 0)
+            overhead = float(record.overhead_cost or 0)
+            total_cost = labour + overhead
+
+            # Dressed weight and byproduct values (use weight as proxy if unit price unknown)
+            dressed_value = float(record.total_dressed_weight or 0) * 1  # placeholder multiplier
+            byproduct_value = float(
+                (record.feathers_weight or 0) +
+                (record.offal_weight or 0) +
+                (record.head_weight or 0) +
+                (record.feet_weight or 0)
+            ) * 1  # placeholder multiplier
+
+            # Only post if there's something to book (cost or output)
+            if total_cost <= 0 and dressed_value <= 0:
+                return
+
+            # Compute cost_per_kg for the record
+            dressed_kg = float(record.total_dressed_weight or 0)
+            if dressed_kg > 0 and total_cost > 0:
+                record.cost_per_kg = Decimal(str(round(total_cost / dressed_kg, 4)))
+            record.total_production_cost = Decimal(str(total_cost))
+
+            accounting.record_slaughter(
+                dressed_weight_value=dressed_value,
+                byproduct_value=byproduct_value,
+                cost_of_production=total_cost,
+                entry_date=record.slaughter_date,
+                reference_id=record.id,
+                created_by_user_id=user_id,
+            )
+        except Exception as exc:  # pragma: no cover
+            # Accounting failures must not block the slaughter workflow
+            import logging
+            logging.getLogger("farmexa.slaughter").warning(
+                "Slaughter accounting journal failed for record %s: %s", record.id, exc
+            )
+
 
     def get_records(self, db: Session, current_user, skip: int = 0, limit: int = 100):
         tenant_id = self._tenant_id_for(current_user)
@@ -137,6 +189,14 @@ class SlaughterService:
         if db_record.approval_status == SlaughterApprovalStatus.APPROVED:
             db_record.approved_at = datetime.now(timezone.utc)
             db_record.approved_by_user_id = current_user.id
+
+            # Wire accounting journal on approval
+            if db_record.production_journal_id is None:
+                batch = db.query(Batch).filter(Batch.id == db_record.batch_id).first()
+                if batch:
+                    self._post_slaughter_production_journal(
+                        db, db_record, batch, user_id=current_user.id
+                    )
 
         self._apply_metrics(db_record)
 

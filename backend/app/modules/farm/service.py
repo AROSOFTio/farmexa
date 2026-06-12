@@ -390,6 +390,40 @@ class FarmService:
             
             await self.db.commit()
             batch = await self.repo.get_batch(batch.id)
+
+            # Wire accounting: DOC procurement journal if chick_cost provided
+            if getattr(data, "chick_cost", None) and data.chick_cost > 0:
+                _chick_cost = float(data.chick_cost) * data.initial_quantity
+                _batch_id = batch.id
+                _arrival_date = data.arrival_date
+                _branch_id = batch.branch_id
+                _tenant_id = getattr(self, "tenant_id", None)
+
+                def _post_doc_journal(sync_session):
+                    from app.services.accounting_service import AccountingService
+                    acct = AccountingService(sync_session, tenant_id=_tenant_id)
+                    try:
+                        acct.record_feed_purchase(
+                            amount=_chick_cost,
+                            is_cash=False,  # staged as AP
+                            entry_date=_arrival_date,
+                            reference_id=_batch_id,
+                            expense_account_code=acct.get_mapped_account_code("doc_cost", "5300"),
+                        )
+                    except Exception as exc:
+                        import logging
+                        logging.getLogger("farmexa.farm").warning(
+                            "DOC procurement journal failed for batch %s: %s", _batch_id, exc
+                        )
+
+                try:
+                    await self.db.run_sync(_post_doc_journal)
+                except Exception as exc:
+                    import logging
+                    logging.getLogger("farmexa.farm").warning(
+                        "DOC journal run_sync failed for batch %s: %s", batch.id, exc
+                    )
+
             return self._serialize_batch(batch)
         except IntegrityError:
             await self.db.rollback()
@@ -532,6 +566,51 @@ class FarmService:
             )
         
         await self.db.commit()
+
+        # Wire accounting: vaccination cost when completed
+        if data.status == "completed" and data.quantity_used and data.quantity_used > 0:
+            _log_id = log.id
+            _log_date = log.scheduled_date or log.administered_date
+            _batch_id = data.batch_id
+            _branch_id = None  # fetch from batch if needed
+            _tenant_id = getattr(self, "tenant_id", None)
+
+            # Try to get vaccine cost from stock item
+            vaccine_cost = 0.0
+            if data.vaccine_item_id:
+                from sqlalchemy import select as _select
+                from app.models.inventory import StockItem as _StockItem
+                _si_res = await self.db.execute(_select(_StockItem).where(_StockItem.id == data.vaccine_item_id))
+                _si = _si_res.scalar_one_or_none()
+                if _si:
+                    vaccine_cost = float(_si.average_cost or 0) * data.quantity_used
+
+            if vaccine_cost > 0:
+                def _post_vaccine_journal(sync_session):
+                    from app.services.accounting_service import AccountingService
+                    acct = AccountingService(sync_session, tenant_id=_tenant_id)
+                    try:
+                        acct.record_medication_usage(
+                            amount=vaccine_cost,
+                            entry_date=_log_date,
+                            reference_id=_log_id,
+                            batch_id=_batch_id,
+                            usage_type="vaccination",
+                        )
+                    except Exception as exc:
+                        import logging
+                        logging.getLogger("farmexa.farm").warning(
+                            "Vaccine accounting journal failed for log %s: %s", _log_id, exc
+                        )
+
+                try:
+                    await self.db.run_sync(_post_vaccine_journal)
+                except Exception as exc:
+                    import logging
+                    logging.getLogger("farmexa.farm").warning(
+                        "Vaccine journal run_sync failed for log %s: %s", log.id, exc
+                    )
+
         return VaccinationLogOut.model_validate(log)
 
     async def update_vaccination_log(self, log_id: int, data: VaccinationLogUpdate, user_id: int) -> VaccinationLogOut:
@@ -540,6 +619,7 @@ class FarmService:
             raise HTTPException(status_code=404, detail="Vaccination log not found")
         
         validator = FarmValidationService(self.db)
+        is_transitioning = (data.status == "completed" and log.status != "completed")
         
         # If transitioning to completed status with vaccine item, validate and record stock movement
         if data.status == "completed" and log.status != "completed":
@@ -569,6 +649,51 @@ class FarmService:
         if data.status == "completed" and not log.administered_by_id:
             log.administered_by_id = user_id
         await self.db.commit()
+
+        if is_transitioning:
+            _log_id = log.id
+            _log_date = log.scheduled_date or log.administered_date
+            _batch_id = log.batch_id
+            _tenant_id = getattr(self, "tenant_id", None)
+            
+            # Try to get vaccine cost from stock item
+            vaccine_cost = 0.0
+            quantity_used = log.quantity_used
+            vaccine_item_id = log.vaccine_item_id
+            if vaccine_item_id and quantity_used and quantity_used > 0:
+                from sqlalchemy import select as _select
+                from app.models.inventory import StockItem as _StockItem
+                _si_res = await self.db.execute(_select(_StockItem).where(_StockItem.id == vaccine_item_id))
+                _si = _si_res.scalar_one_or_none()
+                if _si:
+                    vaccine_cost = float(_si.average_cost or 0) * quantity_used
+
+            if vaccine_cost > 0:
+                def _post_vaccine_journal(sync_session):
+                    from app.services.accounting_service import AccountingService
+                    acct = AccountingService(sync_session, tenant_id=_tenant_id)
+                    try:
+                        acct.record_medication_usage(
+                            amount=vaccine_cost,
+                            entry_date=_log_date,
+                            reference_id=_log_id,
+                            batch_id=_batch_id,
+                            usage_type="vaccination",
+                        )
+                    except Exception as exc:
+                        import logging
+                        logging.getLogger("farmexa.farm").warning(
+                            "Vaccine accounting journal failed for log %s on update: %s", _log_id, exc
+                        )
+
+                try:
+                    await self.db.run_sync(_post_vaccine_journal)
+                except Exception as exc:
+                    import logging
+                    logging.getLogger("farmexa.farm").warning(
+                        "Vaccine journal run_sync failed for log %s on update: %s", log.id, exc
+                    )
+
         return VaccinationLogOut.model_validate(log)
 
     async def get_growth_logs(self, batch_id: int) -> list[GrowthLogOut]:

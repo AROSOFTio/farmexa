@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import logging
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
@@ -8,6 +9,12 @@ from app.models.farm import Batch
 from app.models.finance import Expense, ExpenseCategory, Income, IncomeCategory
 
 from . import schemas
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_EXPENSE_ACCOUNT = "6000"
+DEFAULT_INCOME_ACCOUNT = "4000"
+DEFAULT_CASH_ACCOUNT = "1100"
 
 
 class FinanceService:
@@ -26,6 +33,7 @@ class FinanceService:
         if not category:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Expense category not found")
 
+        batch = None
         if expense.batch_id:
             batch = db.query(Batch).filter(Batch.id == expense.batch_id).first()
             if not batch:
@@ -35,24 +43,26 @@ class FinanceService:
         db.add(db_expense)
         db.flush()
 
-        # Auto-create double-entry journal: DR Expense / CR Cash (graceful fallback if COA missing)
+        expense_account = category.default_account_code or DEFAULT_EXPENSE_ACCOUNT
+        description = f"Expense: {category.name} — {expense.description or ''}".strip(" —")
         try:
             from app.services.accounting_service import AccountingService
-            acct = AccountingService(db, tenant_id=db_expense.tenant_id)
+
+            tenant_id = getattr(batch, "tenant_id", None) if batch else None
+            acct = AccountingService(db, tenant_id=tenant_id)
             acct.record_expense(
                 amount=expense.amount,
-                expense_account_code="6000", # Usually mapping happens inside record_expense, but since it requires a code, we pass a default/generic expense code or we could fetch mapping
+                expense_account_code=expense_account,
                 entry_date=expense.expense_date,
                 reference_id=db_expense.id,
                 is_cash=True,
                 created_by_user_id=None,
-                description=f"Expense: {category.name} — {expense.description or ''}".strip(" —"),
-                branch_id=batch.house.branch_id if (expense.batch_id and batch and batch.house) else None,
+                description=description,
+                branch_id=batch.house.branch_id if batch and batch.house else None,
                 batch_id=expense.batch_id,
             )
-        except Exception:
-            # Non-fatal: COA may not be fully seeded in all tenant DBs
-            pass
+        except Exception as exc:
+            logger.warning("Failed to auto-post expense journal for expense %s: %s", db_expense.id, exc)
 
         db.commit()
         return (
@@ -95,26 +105,23 @@ class FinanceService:
         db.add(db_income)
         db.flush()
 
-        # Auto-create double-entry journal: DR Cash / CR Income (graceful fallback if COA missing)
+        income_account = category.default_account_code or DEFAULT_INCOME_ACCOUNT
+        description = f"Income: {category.name} — {income.description or ''}".strip(" —")
         try:
             from app.services.accounting_service import AccountingService
-            from app.models.finance_coa import JournalEntryStatus
+
             acct = AccountingService(db)
-            entry = acct.create_journal_entry(
+            acct.record_income(
+                amount=income.amount,
+                income_account_code=income_account,
                 entry_date=income.income_date,
-                reference_type="income",
                 reference_id=db_income.id,
-                description=f"Income: {category.name} — {income.description or ''}".strip(" —"),
+                is_cash=True,
+                created_by_user_id=None,
+                description=description,
             )
-            acct.add_journal_line(entry, account_code="1100", debit=income.amount,
-                                  memo="Cash / Bank receipt")
-            acct.add_journal_line(entry, account_code="4000", credit=income.amount,
-                                  memo=f"{category.name}: {income.description or ''}")
-            entry.status = JournalEntryStatus.POSTED
-            entry.posted_at = datetime.now(timezone.utc)
-        except Exception:
-            # Non-fatal: COA may not be fully seeded in all tenant DBs
-            pass
+        except Exception as exc:
+            logger.warning("Failed to auto-post income journal for income %s: %s", db_income.id, exc)
 
         db.commit()
         return (
@@ -137,6 +144,3 @@ class FinanceService:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Income category already exists")
         db.refresh(db_category)
         return db_category
-
-
-finance_service = FinanceService()

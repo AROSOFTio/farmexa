@@ -7,12 +7,21 @@ which leaves the chain unresolvable (multiple heads / branch points) and
 crashes `alembic upgrade head` on a fresh database.
 """
 
+import sys
 from pathlib import Path
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+
+# backend/alembic/ shadows the installed alembic package when /app is on sys.path.
+_local_alembic = BACKEND_DIR / "alembic"
+for path in list(sys.path):
+    resolved = Path(path).resolve() if path else Path.cwd()
+    if resolved == BACKEND_DIR.resolve() or resolved == _local_alembic.resolve():
+        if path in sys.path:
+            sys.path.remove(path)
 
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-
-BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 
 def _script_directory() -> ScriptDirectory:

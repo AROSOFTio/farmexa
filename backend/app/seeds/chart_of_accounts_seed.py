@@ -92,9 +92,15 @@ ENTERPRISE_POULTRY_COA = [
     {"code": "1139", "name": "Byproduct Inventory",      "type": AccountType.ASSET, "parent": "1130",
      "desc": "Feathers, offal, manure and other byproducts"},
 
+    # Goods In Transit
+    {"code": "1145", "name": "Goods In Transit",         "type": AccountType.ASSET, "parent": "1130",
+     "desc": "Stock value of inter-branch transfers in transit"},
+
     # Other Current Assets
     {"code": "1140", "name": "Prepaid Expenses",         "type": AccountType.ASSET, "parent": "1100",
      "desc": "Insurance, rent and other advance payments"},
+    {"code": "1150", "name": "VAT Input Tax Recoverable", "type": AccountType.ASSET, "parent": "1100",
+     "desc": "VAT paid on purchases, recoverable from tax authority"},
 
     # Non-current Assets
     {"code": "1200", "name": "Non-Current Assets",       "type": AccountType.ASSET, "parent": "1000", "manual": False,
@@ -133,6 +139,12 @@ ENTERPRISE_POULTRY_COA = [
      "desc": "Loans due within 12 months"},
     {"code": "2160", "name": "Customer Deposits",        "type": AccountType.LIABILITY, "parent": "2100",
      "desc": "Advance payments from customers"},
+    {"code": "2170", "name": "NSSF Payable",             "type": AccountType.LIABILITY, "parent": "2100",
+     "desc": "National Social Security Fund contributions payable"},
+    {"code": "2180", "name": "NHIF Payable",             "type": AccountType.LIABILITY, "parent": "2100",
+     "desc": "National Health Insurance Fund contributions payable"},
+    {"code": "2190", "name": "Accrued Salaries Payable", "type": AccountType.LIABILITY, "parent": "2100",
+     "desc": "Net salaries owed to employees at period end"},
 
     # Long-term Liabilities
     {"code": "2200", "name": "Long-Term Liabilities",    "type": AccountType.LIABILITY, "parent": "2000", "manual": False,
@@ -217,6 +229,10 @@ ENTERPRISE_POULTRY_COA = [
      "desc": "Administrative and support staff wages"},
     {"code": "6130", "name": "Casual Labour",            "type": AccountType.EXPENSE, "parent": "6100",
      "desc": "Wages for temporary or casual workers"},
+    {"code": "6140", "name": "NSSF Employer Contribution", "type": AccountType.EXPENSE, "parent": "6100",
+     "desc": "Employer share of NSSF contributions"},
+    {"code": "6150", "name": "NHIF Employer Contribution", "type": AccountType.EXPENSE, "parent": "6100",
+     "desc": "Employer share of NHIF contributions"},
 
     # Utilities
     {"code": "6200", "name": "Utilities",                "type": AccountType.EXPENSE, "parent": "6000",
@@ -451,20 +467,55 @@ def apply_template_to_tenant(db: Session, tenant_id: int, template_name: str = P
 
     # Create default SystemAccountMappings
     default_mappings = {
+        # Cash & receivables
         "cash": "1111",
         "bank": "1112",
+        "mobile_money": "1113",
         "ar": "1120",
         "ap": "2110",
+        # Inventory
         "feed_inventory": "1131",
+        "medicine_inventory": "1132",
         "live_bird_inventory": "1133",
         "finished_goods": "1134",
+        "egg_inventory": "1138",
         "byproduct_inventory": "1139",
+        "goods_in_transit": "1145",
+        # Costs of sales
         "feed_cost": "5110",
+        "layer_feed_cost": "5120",
+        "vaccine_cost": "5210",
+        "medicine_cost": "5220",
+        "doc_cost": "5300",
         "mortality_loss": "5400",
+        "slaughter_processing_cost": "5500",
+        "slaughter_labour": "5600",
+        "slaughter_overhead": "5500",
+        # Revenue
+        "sales_revenue": "4110",
+        "egg_sales": "4130",
+        "doc_sales": "4140",
+        "byproduct_sales": "4170",
+        "live_bird_sales": "4120",
+        # Summary accounts
+        "cogs": "5000",
         "slaughter_gain": "4200",
         "slaughter_loss": "5400",
-        "sales_revenue": "4110",
-        "cogs": "5000",
+        # Liabilities
+        "vat_output": "2130",
+        "vat_input": "1150",
+        "paye_payable": "2140",
+        "nssf_payable": "2170",
+        "nhif_payable": "2180",
+        "accrued_salaries": "2190",
+        # Expenses
+        "salary_expense": "6110",
+        "nssf_employer": "6140",
+        "nhif_employer": "6150",
+        "depreciation_exp": "6600",
+        # Equity
+        "retained_earnings": "3200",
+        "current_year_pl": "3300",
     }
     
     existing_mappings = {

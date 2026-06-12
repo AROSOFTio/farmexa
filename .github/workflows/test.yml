@@ -1,0 +1,48 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest
+
+      - name: Alembic chain integrity
+        run: python -m pytest tests/test_alembic_migrations.py -v
+
+      - name: Run test suite
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test_db
+          DATABASE_URL_SYNC: postgresql://test:test@localhost:5432/test_db
+          JWT_SECRET_KEY: test-secret-key-for-ci-only
+        run: python -m pytest tests/ -v --tb=short

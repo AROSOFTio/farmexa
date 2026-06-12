@@ -69,6 +69,12 @@ class SlaughterRecord(Base):
     approved_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     approved_at = Column(DateTime(timezone=True), nullable=True)
     inventory_posted_at = Column(DateTime(timezone=True), nullable=True)
+    # Accounting / costing fields
+    direct_labour_cost = Column(Numeric(18, 4), nullable=True)
+    overhead_cost = Column(Numeric(18, 4), nullable=True)
+    total_production_cost = Column(Numeric(18, 4), nullable=True)
+    cost_per_kg = Column(Numeric(18, 4), nullable=True)
+    production_journal_id = Column(Integer, nullable=True)  # references journal_entries.id
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 

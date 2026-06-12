@@ -10,6 +10,7 @@ class ExpenseCategory(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(Text, nullable=True)
+    default_account_code = Column(String(20), nullable=True)
 
     expenses = relationship("Expense", back_populates="category")
 
@@ -34,6 +35,7 @@ class IncomeCategory(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(Text, nullable=True)
+    default_account_code = Column(String(20), nullable=True)
 
     incomes = relationship("Income", back_populates="category")
 

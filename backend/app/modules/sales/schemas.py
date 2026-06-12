@@ -35,6 +35,11 @@ class CustomerOut(CustomerBase):
         from_attributes = True
 
 
+class CustomerBalanceOut(BaseModel):
+    customer_id: int
+    balance: Money
+
+
 class CustomerUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=2, max_length=150)
     customer_type: Optional[CustomerType] = None

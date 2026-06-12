@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel
-from typing import Optional
+from typing import List, Optional
 
 class SystemConfigBase(BaseModel):
     key: str
@@ -101,6 +101,19 @@ class BranchUpdate(BaseModel):
 
 class BranchOut(BranchBase):
     id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AuditLogOut(BaseModel):
+    id: int
+    user_id: Optional[int] = None
+    action: str
+    entity: str
+    entity_id: Optional[int] = None
+    meta: Optional[str] = None
     created_at: datetime
 
     class Config:

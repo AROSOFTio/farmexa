@@ -5,7 +5,7 @@ Egg Production model for daily egg collection tracking.
 from datetime import date
 from typing import Optional
 
-from sqlalchemy import Date, Float, ForeignKey, Integer, Text
+from sqlalchemy import Date, Float, ForeignKey, Integer, Numeric, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -29,6 +29,8 @@ class EggProductionLog(Base):
     total_trays: Mapped[float] = mapped_column(Float, default=0.0)  # 30 eggs per tray
 
     production_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)  # % of birds laying
+
+    price_per_tray: Mapped[Optional[float]] = mapped_column(Numeric(18, 4), nullable=True)  # revenue trigger
 
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 

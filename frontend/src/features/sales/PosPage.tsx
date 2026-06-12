@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Download, ExternalLink, FileText, Plus, Printer, ReceiptText, Send, ShoppingCart } from 'lucide-react'
+import { Download, ExternalLink, FileText, Plus, Printer, ReceiptText, Send, ShoppingCart, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import api from '@/services/api'
@@ -218,7 +218,7 @@ export function PosPage() {
               </div>
             </div>
           ) : null}
-          <div className="mt-6 space-y-4">
+          <div className="mt-6 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-lg font-bold text-ink-900">Cart</h2>
               <div className="flex gap-2">
@@ -226,30 +226,78 @@ export function PosPage() {
                   {canAddProduct ? <Plus className="h-4 w-4" /> : <Send className="h-4 w-4" />}
                   {canAddProduct ? 'Add product' : 'Request product'}
                 </button>
-                <button className="btn-secondary btn-sm" type="button" onClick={() => fields.append({ product_id: 0, quantity: 1, unit_price: 0 })}>Add item</button>
+                <button className="btn-secondary btn-sm" type="button" onClick={() => fields.append({ product_id: 0, quantity: 1, unit_price: 0 })}>+ Add item</button>
               </div>
             </div>
-            {fields.fields.map((field, index) => {
-              const product = products.find((item) => item.id === Number(form.watch(`items.${index}.product_id`)))
-              return (
-                <div key={field.id} className="rounded-[18px] border border-neutral-150 p-4">
-                  <div className="grid gap-3 md:grid-cols-[1fr_120px_140px]">
-                    <select className="form-input" {...form.register(`items.${index}.product_id`)} onChange={(event) => {
-                      const productId = Number(event.target.value)
-                      const selected = products.find((item) => item.id === productId)
-                      form.setValue(`items.${index}.product_id`, productId)
-                      form.setValue(`items.${index}.unit_price`, selected?.unit_price ?? 0)
-                    }}>
-                      <option value={0}>Choose meat product</option>
-                      {products.filter((item) => item.is_active && item.current_quantity > 0).map((item) => <option key={item.id} value={item.id}>{item.name} - {item.current_quantity.toLocaleString()} {item.unit_of_measure}</option>)}
-                    </select>
-                    <input className="form-input" type="number" min={0} step="0.01" {...form.register(`items.${index}.quantity`)} />
-                    <input className="form-input" type="number" min={0} step="0.01" {...form.register(`items.${index}.unit_price`)} />
+
+            {/* Column Headers */}
+            {fields.fields.length > 0 && (
+              <div className="grid grid-cols-[minmax(0,1fr)_80px_100px_32px] gap-2 px-2 text-[10px] font-bold uppercase tracking-wider text-ink-400">
+                <div>Product</div>
+                <div>Qty</div>
+                <div>Price / Subtotal</div>
+                <div />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {fields.fields.map((field, index) => {
+                const product = products.find((item) => item.id === Number(form.watch(`items.${index}.product_id`)))
+                const qty = Number(form.watch(`items.${index}.quantity`)) || 0
+                const price = Number(form.watch(`items.${index}.unit_price`)) || 0
+                const subtotal = qty * price
+
+                return (
+                  <div key={field.id} className="grid grid-cols-[minmax(0,1fr)_80px_100px_32px] gap-2 items-start rounded-lg border border-neutral-150 bg-white p-2 hover:border-neutral-250 transition-colors">
+                    {/* Product Selector */}
+                    <div>
+                      <select className="form-input text-sm py-1.5 px-2" {...form.register(`items.${index}.product_id`)} onChange={(event) => {
+                        const productId = Number(event.target.value)
+                        const selected = products.find((item) => item.id === productId)
+                        form.setValue(`items.${index}.product_id`, productId)
+                        form.setValue(`items.${index}.unit_price`, selected?.unit_price ?? 0)
+                      }}>
+                        <option value={0}>Choose product</option>
+                        {products.filter((item) => item.is_active && item.current_quantity > 0).map((item) => <option key={item.id} value={item.id}>{item.name} ({item.current_quantity.toLocaleString()} {item.unit_of_measure})</option>)}
+                      </select>
+                      {product && (
+                        <div className="mt-0.5 px-1 text-[10px] text-ink-400">
+                          Stock: {product.current_quantity.toLocaleString()} {product.unit_of_measure}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Quantity */}
+                    <div>
+                      <input className="form-input text-sm py-1.5 px-2 w-full" type="number" min={0} step="0.01" placeholder="Qty" {...form.register(`items.${index}.quantity`)} />
+                    </div>
+
+                    {/* Price + Subtotal stacked */}
+                    <div>
+                      <input className="form-input text-sm py-1.5 px-2 w-full" type="number" min={0} step="0.01" placeholder="Price" {...form.register(`items.${index}.unit_price`)} />
+                      {subtotal > 0 && (
+                        <div className="mt-0.5 px-1 text-[10px] font-semibold text-emerald-700">
+                          = {subtotal.toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Remove Button — always visible */}
+                    <div className="flex items-center justify-center pt-0.5">
+                      <button
+                        type="button"
+                        className="flex h-7 w-7 items-center justify-center rounded-md text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+                        onClick={() => fields.remove(index)}
+                        disabled={fields.fields.length <= 1}
+                        title="Remove item"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="mt-2 text-xs text-ink-500">{product ? `Available: ${product.current_quantity.toLocaleString()} ${product.unit_of_measure}` : 'Select product to view stock.'}</div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
           <div className="mt-6 rounded-[10px] border border-neutral-150 bg-neutral-50 p-4">
             <div className="grid gap-4 md:grid-cols-3">

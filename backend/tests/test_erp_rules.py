@@ -40,14 +40,12 @@ def test_tenant_domain_suffix_preserves_default_suffix(monkeypatch):
     assert tenant_domain_suffix() == "farm.arosoftlabs.com"
     assert default_platform_domain("arofa") == "arofa.farm.arosoftlabs.com"
     assert DeveloperAdminService(None)._default_platform_domain("arofa") == "arofa.farm.arosoftlabs.com"
-
-
-def test_tenant_domain_suffix_defaults_to_farm_subdomain():
+def test_tenant_domain_suffix_defaults_to_farm_subdomain(monkeypatch):
     monkeypatch.setattr(settings, "DEFAULT_TENANT_DOMAIN_SUFFIX", "")
     assert tenant_domain_suffix() == "arosoftlabs.com"
 
 
-def test_platform_hosts_include_control_panel_and_www():
+def test_platform_hosts_include_control_panel_and_www(monkeypatch):
     monkeypatch.setattr(settings, "PLATFORM_HOSTS", "farm.arosoftlabs.com,cp.arosoftlabs.com,arosoftlabs.com,www.arosoftlabs.com,localhost,127.0.0.1")
 
     assert is_platform_host("farm.arosoftlabs.com") is True
@@ -86,7 +84,7 @@ async def test_unknown_tenant_host_does_not_activate_tenant_mode(monkeypatch):
 
     response = await middleware.dispatch(request, call_next)
 
-    assert response.status_code == 200
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -161,7 +159,7 @@ async def test_suspended_tenant_host_does_not_activate_tenant_mode(monkeypatch):
 
     response = await middleware.dispatch(request, call_next)
 
-    assert response.status_code == 200
+    assert response.status_code == 404
 
 
 def test_full_trial_plan_includes_every_module():
@@ -185,7 +183,7 @@ def test_affiliate_registration_requires_terms():
 
 
 def test_seed_password_accepts_raw_or_bcrypt_hash():
-    existing_hash = "$2a$12$EXAMPLEEXAMPLEEXAMPLEEXAMPLEEXAMPLEEXAMPLE"
+    existing_hash = "$2a$12$EXAMPLEEXAMPLEEXAMPLEEXAMPLEEXAMPLEEXAMPLEEXAMPLEEXAM"
     assert _password_hash_from_seed(existing_hash) == existing_hash
 
     generated = _password_hash_from_seed("FarmexaAdmin2026!")

@@ -6,6 +6,7 @@ import threading
 import uuid
 
 from fastapi import HTTPException, status
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import settings
@@ -29,6 +30,33 @@ from . import schemas
 
 
 class SalesService:
+    def compute_customer_balance(self, db: Session, customer_id: int) -> Decimal:
+        """Derive live AR balance from open invoices (ignores stale customers.balance column)."""
+        balance = (
+            db.query(
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (
+                                Invoice.status != InvoiceStatus.CANCELLED,
+                                Invoice.total_amount - Invoice.paid_amount,
+                            ),
+                            else_=Decimal("0"),
+                        )
+                    ),
+                    0,
+                )
+            )
+            .filter(Invoice.customer_id == customer_id)
+            .scalar()
+        )
+        return Decimal(str(balance or 0))
+
+    def serialize_customer(self, db: Session, customer: Customer) -> schemas.CustomerOut:
+        out = schemas.CustomerOut.model_validate(customer)
+        out.balance = self.compute_customer_balance(db, customer.id)
+        return out
+
     def _send_customer_email(self, db: Session, invoice: Invoice, *, email_type: str, subject: str, body: str) -> str:
         customer = invoice.customer
         if not customer or not customer.email:
@@ -128,7 +156,19 @@ class SalesService:
             )
 
     def get_customers(self, db: Session, skip: int = 0, limit: int = 100):
-        return db.query(Customer).order_by(Customer.created_at.desc()).offset(skip).limit(limit).all()
+        customers = (
+            db.query(Customer).order_by(Customer.created_at.desc()).offset(skip).limit(limit).all()
+        )
+        return [self.serialize_customer(db, customer) for customer in customers]
+
+    def get_customer_balance(self, db: Session, customer_id: int) -> schemas.CustomerBalanceOut:
+        customer = db.query(Customer).filter(Customer.id == customer_id).first()
+        if not customer:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+        return schemas.CustomerBalanceOut(
+            customer_id=customer.id,
+            balance=self.compute_customer_balance(db, customer.id),
+        )
 
     def get_orders(self, db: Session, skip: int = 0, limit: int = 100):
         return (
@@ -149,7 +189,7 @@ class SalesService:
         db.add(db_customer)
         db.commit()
         db.refresh(db_customer)
-        return db_customer
+        return self.serialize_customer(db, db_customer)
 
     def create_order(self, db: Session, order: schemas.OrderCreate):
         customer = db.query(Customer).filter(Customer.id == order.customer_id, Customer.is_active.is_(True)).first()
@@ -224,10 +264,12 @@ class SalesService:
         )
         db.add(invoice)
 
-        customer.balance += total_amount
         db.flush()
 
-        accounting = AccountingService(db, tenant_id=db_order.tenant_id)
+        from app.models.tenant import Tenant
+        tenant = db.query(Tenant).first()
+        tenant_id = tenant.id if tenant else None
+        accounting = AccountingService(db, tenant_id=tenant_id)
         accounting.record_egg_sales(
             revenue=total_amount,
             entry_date=invoice.issue_date,
@@ -307,8 +349,6 @@ class SalesService:
         elif invoice.paid_amount > 0:
             invoice.status = InvoiceStatus.PARTIAL
 
-        if invoice.customer:
-            invoice.customer.balance = max(invoice.customer.balance - payment.amount, 0)
         if invoice.paid_amount >= invoice.total_amount:
             db.query(InvoiceBalanceReminder).filter(
                 InvoiceBalanceReminder.invoice_id == invoice.id,
@@ -331,7 +371,10 @@ class SalesService:
         
         db.flush()
         
-        accounting = AccountingService(db, tenant_id=invoice.tenant_id)
+        from app.models.tenant import Tenant
+        tenant = db.query(Tenant).first()
+        tenant_id = tenant.id if tenant else None
+        accounting = AccountingService(db, tenant_id=tenant_id)
         accounting.record_payment_received(
             payment_amount=payment.amount,
             entry_date=payment.payment_date,
@@ -554,7 +597,7 @@ class SalesService:
 
         db.commit()
         db.refresh(db_customer)
-        return db_customer
+        return self.serialize_customer(db, db_customer)
 
     def get_delivery_notes(self, db: Session, skip: int = 0, limit: int = 100):
         return (

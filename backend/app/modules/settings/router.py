@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user, require_permission
 from app.db.session import get_db
 from app.db.tenant_db import get_tenant_sync_db
+from app.models.auth import AuditLog
 from app.models.settings import MasterDataRequest, SystemSettings
 from app.modules.settings import schemas, service
 
@@ -169,3 +170,19 @@ def update_branch(
     db.commit()
     db.refresh(branch)
     return branch
+
+
+@router.get("/audit-log", response_model=List[schemas.AuditLogOut])
+def list_audit_log(
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("settings:read")),
+):
+    return (
+        db.query(AuditLog)
+        .order_by(AuditLog.created_at.desc())
+        .offset(skip)
+        .limit(min(limit, 500))
+        .all()
+    )

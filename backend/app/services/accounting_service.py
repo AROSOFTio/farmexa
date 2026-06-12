@@ -903,22 +903,29 @@ class AccountingService:
         created_by_user_id: Optional[int] = None,
         branch_id: Optional[int] = None,
         batch_id: Optional[int] = None,
+        usage_type: str = "medication",
     ) -> JournalEntry:
-        """Medication usage: Dr Medication Expense, Cr Medication Inventory."""
-        expense_code = self.get_mapped_account_code("medication_expense", "5200")
-        inv_code = self.get_mapped_account_code("medication_inventory", "1132")
+        """Medication usage: Dr Medication/Vaccine Expense, Cr Medication Inventory."""
+        op_key = "vaccine_cost" if usage_type == "vaccination" else "medicine_cost"
+        default_cost_code = "5210" if usage_type == "vaccination" else "5220"
+        expense_code = self.get_mapped_account_code(op_key, default_cost_code)
+        inv_code = self.get_mapped_account_code("medicine_inventory", "1132")
+
+        description = f"Vaccination usage #{reference_id}" if usage_type == "vaccination" else f"Medication usage #{reference_id}"
+        memo_expense = "Vaccine cost" if usage_type == "vaccination" else "Medication cost"
+        memo_inv = "Vaccine inventory reduction" if usage_type == "vaccination" else "Medication inventory reduction"
 
         return self.create_and_post_journal(
             entry_date=entry_date,
-            description=f"Medication usage #{reference_id}",
+            description=description,
             reference_type="medication",
             reference_id=reference_id,
             source_module="flock",
             created_by_user_id=created_by_user_id,
             branch_id=branch_id,
             lines=[
-                {"account_code": expense_code, "debit": amount, "memo": "Medication cost", "branch_id": branch_id, "batch_id": batch_id},
-                {"account_code": inv_code, "credit": amount, "memo": "Medication inventory reduction", "branch_id": branch_id, "batch_id": batch_id},
+                {"account_code": expense_code, "debit": amount, "memo": memo_expense, "branch_id": branch_id, "batch_id": batch_id},
+                {"account_code": inv_code, "credit": amount, "memo": memo_inv, "branch_id": branch_id, "batch_id": batch_id},
             ],
         )
 
@@ -977,7 +984,7 @@ class AccountingService:
         return self.create_and_post_journal(
             entry_date=entry_date,
             description=description or f"Expense #{reference_id}",
-            reference_type="expense",
+            reference_type="finance_expense",
             reference_id=reference_id,
             source_module="finance",
             created_by_user_id=created_by_user_id,
@@ -985,6 +992,34 @@ class AccountingService:
             lines=[
                 {"account_code": expense_account_code, "debit": amount,  "memo": "Expense recorded", "branch_id": branch_id, "batch_id": batch_id},
                 {"account_code": payable_code,          "credit": amount, "memo": "Cash/Payable", "branch_id": branch_id, "batch_id": batch_id},
+            ],
+        )
+
+    def record_income(
+        self,
+        amount: Decimal | float | int,
+        income_account_code: str,
+        entry_date: date,
+        reference_id: int,
+        is_cash: bool = True,
+        created_by_user_id: Optional[int] = None,
+        description: Optional[str] = None,
+        branch_id: Optional[int] = None,
+        batch_id: Optional[int] = None,
+    ) -> JournalEntry:
+        """Income: Dr Cash/AR, Cr Income Account."""
+        receivable_code = "1100" if is_cash else "1120"
+        return self.create_and_post_journal(
+            entry_date=entry_date,
+            description=description or f"Income #{reference_id}",
+            reference_type="finance_income",
+            reference_id=reference_id,
+            source_module="finance",
+            created_by_user_id=created_by_user_id,
+            branch_id=branch_id,
+            lines=[
+                {"account_code": receivable_code, "debit": amount, "memo": "Cash / AR receipt", "branch_id": branch_id, "batch_id": batch_id},
+                {"account_code": income_account_code, "credit": amount, "memo": "Income recorded", "branch_id": branch_id, "batch_id": batch_id},
             ],
         )
 

@@ -7,13 +7,15 @@ Pydantic models for:
 - Account Templates
 - Fiscal Years
 - Opening Balances
+- Account Mappings
 - Reporting outputs (Trial Balance, P&L, Balance Sheet, Ledger, Cashbook)
 """
 
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from app.models.finance_coa import AccountType, FiscalYearStatus, JournalEntryStatus, NormalBalance
 from app.schemas.money import Money, NonNegativeMoney
@@ -53,6 +55,7 @@ class AccountOut(AccountBase):
     tenant_id: Optional[int] = None
     is_system: bool = False
     created_at: datetime
+    current_balance: float = 0.0
 
     class Config:
         from_attributes = True
@@ -67,6 +70,25 @@ class AccountTreeOut(AccountOut):
 
 
 AccountTreeOut.model_rebuild()
+
+
+# ---------------------------------------------------------------------------
+# Account Mapping Schemas
+# ---------------------------------------------------------------------------
+
+class AccountMappingOut(BaseModel):
+    id: int
+    operation_key: str
+    account_id: int
+    account_code: Optional[str] = None
+    account_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AccountMappingUpdate(BaseModel):
+    account_id: int
 
 
 # ---------------------------------------------------------------------------
@@ -119,6 +141,12 @@ class JournalEntryUpdate(BaseModel):
     notes: Optional[str] = None
 
 
+class ReverseJournalRequest(BaseModel):
+    reversal_date: Optional[date] = None
+    description: Optional[str] = None
+    notes: Optional[str] = None
+
+
 class JournalEntryOut(JournalEntryBase):
     id: int
     entry_number: str
@@ -126,6 +154,8 @@ class JournalEntryOut(JournalEntryBase):
     reference_type: Optional[str] = None
     reference_id: Optional[int] = None
     status: JournalEntryStatus
+    is_reversed: bool = False
+    reversal_of_id: Optional[int] = None
     created_by_user_id: Optional[int] = None
     posted_at: Optional[datetime] = None
     posted_by_user_id: Optional[int] = None
@@ -191,6 +221,7 @@ class FiscalYearOut(BaseModel):
     start_date: date
     end_date: date
     status: FiscalYearStatus
+    closed_at: Optional[datetime] = None
     created_at: datetime
 
     class Config:
@@ -239,6 +270,7 @@ class TrialBalanceRow(BaseModel):
     account_type: str
     total_debit: float
     total_credit: float
+    balance: float = 0.0
 
 
 class TrialBalanceOut(BaseModel):
@@ -263,9 +295,15 @@ class ProfitLossOut(BaseModel):
     cost_of_sales: List[ReportRow]
     total_cost_of_sales: float
     gross_profit: float
+    gross_margin_pct: float = 0.0
     expenses: List[ReportRow]
     total_expenses: float
     net_profit: float
+
+    @property
+    def net_income(self) -> float:
+        """Alias for net_profit (used by frontend)."""
+        return self.net_profit
 
 
 class BalanceSheetRow(BaseModel):
@@ -304,3 +342,14 @@ class GeneralLedgerOut(BaseModel):
     opening_balance: float
     closing_balance: float
     entries: List[LedgerEntry]
+
+
+class CashAccountOut(BaseModel):
+    """Minimal account info for the cash account selector."""
+    id: int
+    account_code: str
+    name: str
+    account_type: str
+
+    class Config:
+        from_attributes = True

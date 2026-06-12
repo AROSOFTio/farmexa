@@ -82,8 +82,20 @@ NUMERIC_RESCALE = [
 ]
 
 
+def _table_columns(bind, table_name: str) -> set[str]:
+    inspector = sa.inspect(bind)
+    if table_name not in inspector.get_table_names():
+        return set()
+    return {col["name"] for col in inspector.get_columns(table_name)}
+
+
 def upgrade() -> None:
+    bind = op.get_bind()
+
     for table, column, precision, scale, nullable in FLOAT_TO_NUMERIC:
+        columns = _table_columns(bind, table)
+        if column not in columns:
+            continue
         op.alter_column(
             table,
             column,
@@ -94,6 +106,9 @@ def upgrade() -> None:
         )
 
     for table, column, old_p, old_s, new_p, new_s, nullable in NUMERIC_RESCALE:
+        columns = _table_columns(bind, table)
+        if column not in columns:
+            continue
         op.alter_column(
             table,
             column,

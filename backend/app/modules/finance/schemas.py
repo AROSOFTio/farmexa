@@ -7,6 +7,7 @@ from app.schemas.money import PositiveMoney
 class ExpenseCategoryBase(BaseModel):
     name: str
     description: Optional[str] = None
+    default_account_code: Optional[str] = None
 
 class ExpenseCategoryCreate(ExpenseCategoryBase):
     pass
@@ -39,6 +40,7 @@ class ExpenseOut(ExpenseBase):
 class IncomeCategoryBase(BaseModel):
     name: str
     description: Optional[str] = None
+    default_account_code: Optional[str] = None
 
 class IncomeCategoryCreate(IncomeCategoryBase):
     pass
