@@ -7,6 +7,7 @@ import {
   useStockItems,
   useCreateRecord,
   useCompleteRecord,
+  useUpdateRecordStatus,
   useCreateOutput,
   emptyOutputValues,
 } from './hooks'
@@ -88,21 +89,76 @@ function SlaughterMetrics({ records, completedRecords, allOutputs }: { records: 
   )
 }
 
-function RecordsSection({ section, records, batches, planningRecords, onFinalizeClick, onRecordClick }: any) {
+function WorkflowSteps() {
+  const steps = [
+    ['1', 'Plan the run', 'Batch, date, birds, weigh-in'],
+    ['2', 'Review & approve', 'Supervisor approves to start'],
+    ['3', 'Record yield', 'Dressed weight, waste, costs'],
+    ['4', 'Sign off & post', 'Approve → inventory & accounting'],
+  ]
+  return (
+    <div className="card p-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {steps.map(([n, title, desc]) => (
+          <div key={n} className="flex gap-3">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[13px] font-bold text-brand-700">{n}</span>
+            <div>
+              <div className="text-sm font-semibold text-neutral-900">{title}</div>
+              <div className="text-xs text-neutral-500">{desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function PlanActions({ record, onApproveStart, onCancel, onFinalizeClick }: any) {
+  if (record.status === 'scheduled') {
+    return (
+      <div className="flex justify-end gap-2">
+        <button type="button" className="btn-secondary btn-sm" onClick={() => onCancel(record)}>
+          Cancel
+        </button>
+        <button type="button" className="btn-primary btn-sm" onClick={() => onApproveStart(record)}>
+          Approve & start
+        </button>
+      </div>
+    )
+  }
+  if (record.status === 'in_progress') {
+    return (
+      <button type="button" className="btn-primary btn-sm" onClick={() => onFinalizeClick(record)}>
+        Record yield
+      </button>
+    )
+  }
+  if (record.status === 'cancelled') {
+    return <span className="text-xs text-neutral-400">Cancelled</span>
+  }
+  return (
+    <button type="button" className="btn-secondary btn-sm" onClick={() => onFinalizeClick(record)}>
+      View / edit
+    </button>
+  )
+}
+
+function RecordsSection({ section, records, batches, planningRecords, onFinalizeClick, onRecordClick, onApproveStart, onCancel }: any) {
   const copy = getSectionCopy(section)
   const recordRows = section === 'planning' ? planningRecords : records
 
   return (
     <div className="space-y-4">
+      {section === 'planning' ? <WorkflowSteps /> : null}
       <div className="card overflow-hidden">
         <div className="flex flex-col gap-4 border-b border-neutral-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-neutral-900">
-              {section === 'planning' ? 'Scheduled and active runs' : 'Processing runs'}
+              {section === 'planning' ? 'Slaughter plans' : 'Processing runs'}
             </h2>
             <p className="mt-1 text-sm text-neutral-500">
               {section === 'planning'
-                ? 'Monitor scheduled and in-progress batches before they reach yield approval.'
+                ? 'Scheduled plans await supervisor approval before processing begins.'
                 : 'Finalize yield, approval, and cold-room posting one record at a time.'}
             </p>
           </div>
@@ -155,9 +211,12 @@ function RecordsSection({ section, records, batches, planningRecords, onFinalize
                       </td>
                       <td>{record.outputs?.length?.toLocaleString() ?? 0}</td>
                       <td className="pr-6">
-                        <button type="button" className="btn-secondary btn-sm" onClick={() => onFinalizeClick(record)}>
-                          Finalize Yield
-                        </button>
+                        <PlanActions
+                          record={record}
+                          onApproveStart={onApproveStart}
+                          onCancel={onCancel}
+                          onFinalizeClick={onFinalizeClick}
+                        />
                       </td>
                     </tr>
                   )
@@ -394,7 +453,20 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
 
   const createRecord = useCreateRecord()
   const completeRecord = useCompleteRecord()
+  const updateStatus = useUpdateRecordStatus()
   const createOutput = useCreateOutput(outputInventoryItems)
+
+  const handleApproveStart = (record: SlaughterRecord) => {
+    if (window.confirm(`Approve the plan for batch #${record.batch_id} and start processing?`)) {
+      updateStatus.mutate({ recordId: record.id, status: 'in_progress' })
+    }
+  }
+
+  const handleCancelPlan = (record: SlaughterRecord) => {
+    if (window.confirm('Cancel this slaughter plan? This cannot be undone.')) {
+      updateStatus.mutate({ recordId: record.id, status: 'cancelled' })
+    }
+  }
 
   const completedRecords = useMemo(() => records.filter((record) => record.status === 'completed'), [records])
   const planningRecords = useMemo(() => records.filter((record) => record.status === 'scheduled' || record.status === 'in_progress'), [records])
@@ -513,6 +585,8 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
           planningRecords={planningRecords}
           onFinalizeClick={(record: SlaughterRecord) => setSelectedRecord(record)}
           onRecordClick={() => setIsRecordModalOpen(true)}
+          onApproveStart={handleApproveStart}
+          onCancel={handleCancelPlan}
         />
       )}
 

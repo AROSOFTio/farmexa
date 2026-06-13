@@ -44,6 +44,12 @@ export const completionSchema = z.object({
   approval_status: z.enum(['pending', 'approved', 'rejected']),
   cold_room_location: z.string().optional(),
   notes: z.string().optional(),
+  direct_labour_cost: z.coerce.number().min(0),
+  overhead_cost: z.coerce.number().min(0),
+  chick_cost_override: z.preprocess(
+    (value) => (value === '' || value === null || value === undefined ? undefined : value),
+    z.coerce.number().min(0).optional()
+  ),
 })
 
 export const outputSchema = z.object({

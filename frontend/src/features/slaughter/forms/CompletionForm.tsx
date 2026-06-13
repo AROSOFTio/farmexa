@@ -52,6 +52,9 @@ export function CompletionForm({ record, onSubmit, onCancel, isLoading }: Comple
       approval_status: record.approval_status as CompletionFormValues['approval_status'],
       cold_room_location: record.cold_room_location ?? '',
       notes: record.notes ?? '',
+      direct_labour_cost: Number(record.direct_labour_cost ?? 0),
+      overhead_cost: Number(record.overhead_cost ?? 0),
+      chick_cost_override: record.chick_cost_override ?? undefined,
     },
   })
   const { register } = form
@@ -129,6 +132,17 @@ export function CompletionForm({ record, onSubmit, onCancel, isLoading }: Comple
             <Field label="Feet"><input className="form-input" type="number" min={0} step="0.01" {...register('feet_weight')} /></Field>
             <Field label="Cold-room location"><input className="form-input" {...register('cold_room_location')} /></Field>
           </div>
+        </Section>
+
+        <Section title="Processing costs">
+          <div className="grid gap-4 md:grid-cols-3">
+            <Field label="Direct labour (UGX)"><input className="form-input" type="number" min={0} step="100" placeholder="0" {...register('direct_labour_cost')} /></Field>
+            <Field label="Overhead (UGX)"><input className="form-input" type="number" min={0} step="100" placeholder="0" {...register('overhead_cost')} /></Field>
+            <Field label="Chick cost / bird (UGX)"><input className="form-input" type="number" min={0} step="100" placeholder="Auto from batch" {...register('chick_cost_override')} /></Field>
+          </div>
+          <p className="text-xs text-neutral-500">
+            Costs are posted to the accounting journal when you set <strong>Approval status → Approved</strong>.
+          </p>
         </Section>
 
         <Section title="Notes">

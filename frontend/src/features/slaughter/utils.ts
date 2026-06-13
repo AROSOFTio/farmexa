@@ -51,9 +51,9 @@ export function getSectionCopy(section: SlaughterSection) {
   const copies: Record<SlaughterSection, { title: string; description: string; actionLabel?: string; actionDescription?: string }> = {
     planning: {
       title: 'Slaughter Planning',
-      description: 'Schedule and prepare one processing run at a time before final yield approval.',
+      description: 'Schedule a processing run, then have a supervisor review and approve it before slaughter begins.',
       actionLabel: 'Plan slaughter run',
-      actionDescription: 'Capture the date, batch, live birds, and pre-processing checks in a clean planning dialog.',
+      actionDescription: 'Pick the batch, date, number of birds and weigh-in weight. Actual yield is recorded later, after processing.',
     },
     records: {
       title: 'Slaughter Records',

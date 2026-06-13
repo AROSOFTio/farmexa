@@ -61,6 +61,9 @@ export function useCompleteRecord() {
         approval_status: values.approval_status,
         cold_room_location: values.cold_room_location || null,
         notes: values.notes || null,
+        direct_labour_cost: values.direct_labour_cost,
+        overhead_cost: values.overhead_cost,
+        chick_cost_override: values.chick_cost_override ?? null,
       }),
     onSuccess: () => {
       toast.success('Slaughter yield finalized.')
@@ -68,6 +71,25 @@ export function useCompleteRecord() {
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.detail ?? 'Failed to update slaughter record.')
+    },
+  })
+}
+
+/**
+ * Plan-level workflow transitions: approve a scheduled plan to start processing,
+ * or cancel it. Uses the same PATCH endpoint with just a status change.
+ */
+export function useUpdateRecordStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ recordId, status }: { recordId: number; status: 'in_progress' | 'cancelled' }) =>
+      api.patch(`/slaughter/records/${recordId}`, { status }),
+    onSuccess: (_data, variables) => {
+      toast.success(variables.status === 'in_progress' ? 'Plan approved — processing started.' : 'Plan cancelled.')
+      qc.invalidateQueries({ queryKey: ['slaughter-records'] })
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.detail ?? 'Failed to update plan.')
     },
   })
 }
@@ -144,6 +166,9 @@ export function emptyCompletionValues(): CompletionFormValues {
     approval_status: 'pending',
     cold_room_location: '',
     notes: '',
+    direct_labour_cost: 0,
+    overhead_cost: 0,
+    chick_cost_override: undefined,
   }
 }
 

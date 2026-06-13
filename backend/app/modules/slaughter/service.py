@@ -143,10 +143,12 @@ class SlaughterService:
             )
 
         payload = record.model_dump()
+        quality_status = payload.pop("quality_inspection_status", "pending")
         db_record = SlaughterRecord(
             **payload,
             tenant_id=self._tenant_id_for(current_user),
-            quality_inspection_status=QualityInspectionStatus(payload["quality_inspection_status"]),
+            status=SlaughterStatus.SCHEDULED,
+            quality_inspection_status=QualityInspectionStatus(quality_status),
             approval_status=SlaughterApprovalStatus.PENDING,
         )
         self._apply_metrics(db_record)
