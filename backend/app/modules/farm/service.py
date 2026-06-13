@@ -401,7 +401,11 @@ class FarmService:
 
                 def _post_doc_journal(sync_session):
                     from app.services.accounting_service import AccountingService
-                    acct = AccountingService(sync_session, tenant_id=_tenant_id)
+                    from app.models.tenant import Tenant
+                    resolved_tenant_id = _tenant_id
+                    if resolved_tenant_id is None:
+                        resolved_tenant_id = sync_session.execute(select(Tenant.id)).scalars().first()
+                    acct = AccountingService(sync_session, tenant_id=resolved_tenant_id)
                     try:
                         acct.record_feed_purchase(
                             amount=_chick_cost,
@@ -513,26 +517,53 @@ class FarmService:
         batch.active_quantity -= data.quantity
         if batch.active_quantity == 0:
             batch.status = BatchStatus.DEPLETED
-            
+
         stock_item_res = await self.db.execute(select(StockItem).where(StockItem.id == batch.stock_item_id))
         stock_item = stock_item_res.scalar_one_or_none()
         mortality_cost = float(stock_item.average_cost or 0) * data.quantity if stock_item else 0.0
 
+        # Persist the operational record (log + inventory reduction + batch update)
+        # before attempting the accounting journal, so a chart-of-accounts gap can
+        # never block recording the mortality itself.
+        await self.db.commit()
+        # Snapshot the response now: a later accounting rollback expires ORM
+        # instances, and re-reading them in async context would raise.
+        result = MortalityLogOut.model_validate(log)
+
+        _log_id = log.id
+        _log_date = log.record_date
+        _batch_id = data.batch_id
+        # Operational records don't carry tenant_id; fall back to the single tenant
+        # identity stored in this tenant's operational database.
+        _tenant_id = batch.tenant_id
+
         def sync_accounting_call(session):
             from app.services.accounting_service import AccountingService
-            accounting = AccountingService(session, tenant_id=batch.tenant_id)
+            from app.models.tenant import Tenant
+            resolved_tenant_id = _tenant_id
+            if resolved_tenant_id is None:
+                resolved_tenant_id = session.execute(select(Tenant.id)).scalars().first()
+            accounting = AccountingService(session, tenant_id=resolved_tenant_id)
+            # batch.house lazy-loads here in the sync greenlet, which is permitted.
             accounting.record_bird_mortality(
                 amount=mortality_cost,
-                entry_date=log.log_date,
-                reference_id=log.id,
+                entry_date=_log_date,
+                reference_id=_log_id,
                 created_by_user_id=None,
                 branch_id=batch.house.branch_id if batch.house else None,
-                batch_id=data.batch_id,
+                batch_id=_batch_id,
             )
-        await self.db.run_sync(sync_accounting_call)
 
-        await self.db.commit()
-        return MortalityLogOut.model_validate(log)
+        try:
+            await self.db.run_sync(sync_accounting_call)
+        except Exception as exc:
+            import logging
+            await self.db.rollback()
+            logging.getLogger("farmexa.farm").warning(
+                "Mortality accounting journal failed for log %s: %s", _log_id, exc
+            )
+
+        return result
 
     async def get_vaccination_logs(self, batch_id: int) -> list[VaccinationLogOut]:
         logs = await self.repo.get_vaccination_logs(batch_id)
@@ -588,7 +619,11 @@ class FarmService:
             if vaccine_cost > 0:
                 def _post_vaccine_journal(sync_session):
                     from app.services.accounting_service import AccountingService
-                    acct = AccountingService(sync_session, tenant_id=_tenant_id)
+                    from app.models.tenant import Tenant
+                    resolved_tenant_id = _tenant_id
+                    if resolved_tenant_id is None:
+                        resolved_tenant_id = sync_session.execute(select(Tenant.id)).scalars().first()
+                    acct = AccountingService(sync_session, tenant_id=resolved_tenant_id)
                     try:
                         acct.record_medication_usage(
                             amount=vaccine_cost,
@@ -671,7 +706,11 @@ class FarmService:
             if vaccine_cost > 0:
                 def _post_vaccine_journal(sync_session):
                     from app.services.accounting_service import AccountingService
-                    acct = AccountingService(sync_session, tenant_id=_tenant_id)
+                    from app.models.tenant import Tenant
+                    resolved_tenant_id = _tenant_id
+                    if resolved_tenant_id is None:
+                        resolved_tenant_id = sync_session.execute(select(Tenant.id)).scalars().first()
+                    acct = AccountingService(sync_session, tenant_id=resolved_tenant_id)
                     try:
                         acct.record_medication_usage(
                             amount=vaccine_cost,
@@ -738,21 +777,44 @@ class FarmService:
         
         medication_cost = float(medicine_item.average_cost or 0) * data.total_quantity_used
 
+        # Persist the operational record before the accounting journal so a
+        # chart-of-accounts gap can never block recording the administration.
+        await self.db.commit()
+        # Snapshot the response now: a later accounting rollback expires ORM
+        # instances, and re-reading them in async context would raise.
+        result = MedicationAdministrationOut.model_validate(admin)
+
+        _admin_id = admin.id
+        _treatment_date = admin.treatment_date
+        _batch_id = data.batch_id
+        _tenant_id = batch.tenant_id
+
         def sync_accounting_call(session):
             from app.services.accounting_service import AccountingService
-            accounting = AccountingService(session, tenant_id=batch.tenant_id)
+            from app.models.tenant import Tenant
+            resolved_tenant_id = _tenant_id
+            if resolved_tenant_id is None:
+                resolved_tenant_id = session.execute(select(Tenant.id)).scalars().first()
+            accounting = AccountingService(session, tenant_id=resolved_tenant_id)
             accounting.record_medication_usage(
                 amount=medication_cost,
-                entry_date=admin.administered_date,
-                reference_id=admin.id,
+                entry_date=_treatment_date,
+                reference_id=_admin_id,
                 created_by_user_id=None,
                 branch_id=batch.house.branch_id if batch.house else None,
-                batch_id=data.batch_id,
+                batch_id=_batch_id,
             )
-        await self.db.run_sync(sync_accounting_call)
 
-        await self.db.commit()
-        return MedicationAdministrationOut.model_validate(admin)
+        try:
+            await self.db.run_sync(sync_accounting_call)
+        except Exception as exc:
+            import logging
+            await self.db.rollback()
+            logging.getLogger("farmexa.farm").warning(
+                "Medication accounting journal failed for administration %s: %s", _admin_id, exc
+            )
+
+        return result
 
     async def update_medication_administration(self, admin_id: int, data: MedicationAdministrationUpdate) -> MedicationAdministrationOut:
         admin = await self.repo.get_medication_administration(admin_id)
