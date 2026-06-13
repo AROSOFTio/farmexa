@@ -1,322 +1,474 @@
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import {
-  BadgeCheck,
+  ArrowRight,
   BarChart3,
-  Boxes,
+  Bird,
   Building2,
   ClipboardCheck,
-  CreditCard,
+  Database,
   FileWarning,
-  LockKeyhole,
-  PackageCheck,
-  Scale,
+  HeadsetIcon,
+  Lock,
+  Pill,
+  PieChart,
+  RefreshCw,
   Scissors,
   ShoppingCart,
+  Users,
   Wheat,
+  Zap,
 } from 'lucide-react'
 import { BrandMark } from '@/components/BrandMark'
-import { InstallPrompt } from '@/components/InstallPrompt'
 import { SEO } from '@/components/SEO'
-import { ThemeSelector, ThemeToggle } from '@/components/ThemeControls'
+import { ThemeToggle } from '@/components/ThemeControls'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { RegistrationWizardModal } from '@/features/auth/RegistrationWizardModal'
 
-const features = [
-  ['Feed Mill Management', Wheat],
-  ['Farm House Management', Building2],
-  ['Flock / Batch Tracking', BadgeCheck],
-  ['Feed Formulation by Percentage', Scale],
-  ['GRN / GIV Stock Transfers', PackageCheck],
-  ['Mortality and Vaccination Reports', ClipboardCheck],
-  ['Slaughter and Meat Processing', Scissors],
-  ['Blast Room and Cold Room Stock', Boxes],
-  ['POS / Cashier Sales by KG', ShoppingCart],
-  ['Finance and Profit Reports', BarChart3],
-  ['Compliance Document Expiry Alerts', FileWarning],
-  ['Multi-user Roles and Permissions', LockKeyhole],
-] as const
+const modules = [
+  {
+    name: 'Feed Mill',
+    description: 'Manage feed production, formulations, inventory, and procurement',
+    icon: Wheat,
+    color: 'from-amber-500 to-orange-600',
+    features: ['Feed formulation', 'Stock management', 'GRN tracking'],
+  },
+  {
+    name: 'Farm Operations',
+    description: 'Complete house management, flock tracking, and health monitoring',
+    icon: Building2,
+    color: 'from-green-500 to-emerald-600',
+    features: ['Batch management', 'House tracking', 'Vaccination records'],
+  },
+  {
+    name: 'Inventory & Transfers',
+    description: 'Track stock movements, goods received, goods issued notes',
+    icon: Database,
+    color: 'from-blue-500 to-cyan-600',
+    features: ['GRN/GIV management', 'Stock transfers', 'Real-time tracking'],
+  },
+  {
+    name: 'Slaughter & Processing',
+    description: 'Process birds, track meat production, manage cold storage',
+    icon: Scissors,
+    color: 'from-red-500 to-rose-600',
+    features: ['Processing records', 'Yield analysis', 'Cold room management'],
+  },
+  {
+    name: 'Sales & POS',
+    description: 'Point of sale, invoicing, payment processing, customer orders',
+    icon: ShoppingCart,
+    color: 'from-purple-500 to-violet-600',
+    features: ['Invoicing', 'KG-based sales', 'Payment tracking'],
+  },
+  {
+    name: 'Finance & CoA',
+    description: 'Chart of accounts, journals, profit/loss, financial reports',
+    icon: BarChart3,
+    color: 'from-indigo-500 to-blue-600',
+    features: ['Journal entries', 'P&L reports', 'Financial analysis'],
+  },
+  {
+    name: 'Compliance & Alerts',
+    description: 'Document expiry tracking, compliance monitoring, alert system',
+    icon: FileWarning,
+    color: 'from-orange-500 to-amber-600',
+    features: ['Document tracking', 'Expiry alerts', 'Compliance reports'],
+  },
+  {
+    name: 'Users & Roles',
+    description: 'Multi-user management, role-based access, permissions control',
+    icon: Lock,
+    color: 'from-slate-500 to-gray-600',
+    features: ['Role management', 'Permissions', 'Audit logs'],
+  },
+]
 
-const modules = ['Feed Mill', 'Farm Operations', 'Inventory and Transfers', 'Slaughter', 'Sales and POS', 'Finance', 'Compliance', 'Reports', 'Users and Roles']
+const features = [
+  {
+    icon: Zap,
+    title: 'Real-time Tracking',
+    description: 'Live flock, mortality, feed usage, and sales data',
+  },
+  {
+    icon: Pill,
+    title: 'Health Management',
+    description: 'Vaccination records, mortality tracking, health alerts',
+  },
+  {
+    icon: PieChart,
+    title: 'Advanced Reports',
+    description: 'Profitability, yield analysis, financial summaries',
+  },
+  {
+    icon: RefreshCw,
+    title: 'Automated Workflows',
+    description: 'Stock movements, batch progression, compliance alerts',
+  },
+  {
+    icon: Users,
+    title: 'Multi-user Support',
+    description: 'Role-based access with granular permissions',
+  },
+  {
+    icon: HeadsetIcon,
+    title: 'Premium Support',
+    description: '24/7 customer support and training available',
+  },
+]
 
 const reasons = [
-  'Built for poultry operations',
-  'Tracks stock from feed mill to sales',
-  'Supports kilograms and numbers',
-  'Gives real-time reports',
-  'Reduces losses and wastage',
-  'Supports cloud access',
-  'Secure multi-tenant SaaS workspace',
-  'Free 14-day trial',
+  'Purpose-built for poultry operations',
+  'Track every KG from feed mill to customer',
+  'Real-time dashboards and KPIs',
+  'Secure multi-tenant cloud platform',
+  'Reduce losses and improve margins',
+  'Complete financial integration',
+  'Mobile-responsive design',
+  '14-day free trial included',
 ]
 
 const faqs = [
-  ['What is Farmexa?', 'Farmexa is a cloud ERP for poultry and farm operations. It helps teams manage feed, birds, stock, sales, finance, compliance, and reports.'],
-  ['Who can use Farmexa?', 'Farm owners, managers, accountants, inventory officers, sales teams, and poultry consultants can use Farmexa from a browser.'],
-  ['Is there a free trial?', 'Yes. New farms can start with a 14-day trial workspace before choosing a plan.'],
-  ['Does each farm get separate data?', 'Yes. Each tenant workspace is isolated so farm records, users, and reports stay separate.'],
+  {
+    q: 'What is Farmexa?',
+    a: 'Farmexa is a complete ERP system built specifically for poultry and farm operations. It connects feed production, farm management, inventory, processing, sales, and finance in one integrated platform.',
+  },
+  {
+    q: 'Who should use Farmexa?',
+    a: 'Farm owners, farm managers, accountants, inventory officers, sales teams, feed mill operators, and poultry consultants can all benefit from Farmexa.',
+  },
+  {
+    q: 'Is there a free trial?',
+    a: 'Yes! New farms get a 14-day trial period to explore all features with sample data before committing to a plan.',
+  },
+  {
+    q: 'Is my farm data secure?',
+    a: 'Absolutely. Each farm operates in an isolated workspace with enterprise-grade encryption, regular backups, and compliance certifications.',
+  },
+  {
+    q: 'Can multiple users access Farmexa?',
+    a: 'Yes. You can create multiple user accounts with different roles and permissions. Each user sees only the data they\'re authorized to access.',
+  },
+  {
+    q: 'Does Farmexa support my local currency?',
+    a: 'Yes. Farmexa supports multiple currencies and can be configured for your local tax and accounting requirements.',
+  },
 ]
-
-const reveal = {
-  hidden: { opacity: 0, y: 34 },
-  visible: { opacity: 1, y: 0 },
-}
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.08 } },
-}
-
-function Reveal({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return (
-    <motion.div
-      className={className}
-      variants={reveal}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.22 }}
-      transition={{ duration: 0.58, ease: [0.22, 1, 0.36, 1] }}
-    >
-      {children}
-    </motion.div>
-  )
-}
 
 export function PublicHomePage() {
   const { settings } = usePlatformSettings()
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false)
-  const workspaceExample = `ngali.${settings.tenant_domain_suffix}`
-  const openRegistration = () => setIsRegistrationOpen(true)
 
   return (
-    <div className="min-h-screen bg-[var(--app-bg)] text-[var(--text-strong)]">
+    <div className="min-h-screen bg-white text-neutral-900">
       <SEO
-        title="Farmexa ERP | Poultry Farm Management SaaS"
-        description="Farmexa is a cloud poultry ERP for feed mill, flocks, inventory, slaughter, sales, finance, compliance, reports, and secure tenant workspaces."
+        title="Farmexa ERP | Poultry Farm Management System"
+        description="Complete ERP system for poultry farms. Feed mill, farm operations, inventory, slaughter, sales, finance, and compliance all in one platform."
         canonicalPath="/"
-        jsonLd={[
-          { '@context': 'https://schema.org', '@type': 'Organization', name: 'Farmexa', url: 'https://farm.arosoftlabs.com' },
-          { '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Farmexa', applicationCategory: 'BusinessApplication', operatingSystem: 'Web', url: 'https://farm.arosoftlabs.com' },
-          {
-            '@context': 'https://schema.org',
-            '@type': 'FAQPage',
-            mainEntity: faqs.map(([question, answer]) => ({
-              '@type': 'Question',
-              name: question,
-              acceptedAnswer: { '@type': 'Answer', text: answer },
-            })),
-          },
-        ]}
       />
-      <header className="sticky top-0 z-30 border-b border-[var(--border-subtle)] bg-[var(--topbar-bg)] backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-5 px-4 py-3 lg:px-6">
-          <BrandMark />
-          <nav className="hidden items-center gap-6 text-[13px] font-semibold text-slate-700 lg:flex">
-            <a href="#home">Home</a>
-            <a href="#features">Features</a>
-            <a href="#modules">Modules</a>
-            <Link to="/affiliate-program">Affiliates</Link>
-            <a href="#why">Why {settings.system_name}</a>
-            <a href="#contact">Contact</a>
-          </nav>
-          <div className="flex items-center gap-2">
-            <ThemeSelector />
-            <ThemeToggle />
-            <Link to="/login" className="btn-secondary">Sign In</Link>
-            <button type="button" onClick={openRegistration} className="btn-primary">Start Free Trial</button>
+
+      {/* ═══════════════════════════════════════════════════════════════════════════════
+          NAVIGATION
+          ═══════════════════════════════════════════════════════════════════════════════ */}
+      <nav className="sticky top-0 z-40 border-b border-neutral-200 bg-white/95 backdrop-blur-sm">
+        <div className="mx-auto max-w-7xl px-6 py-4">
+          <div className="flex items-center justify-between">
+            <BrandMark />
+            <div className="flex items-center gap-6">
+              <a href="#modules" className="text-sm font-medium text-neutral-600 hover:text-neutral-900 transition">
+                Modules
+              </a>
+              <a href="#why" className="text-sm font-medium text-neutral-600 hover:text-neutral-900 transition">
+                Why Farmexa
+              </a>
+              <a href="#faq" className="text-sm font-medium text-neutral-600 hover:text-neutral-900 transition">
+                FAQ
+              </a>
+              <ThemeToggle />
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition"
+              >
+                Sign In
+              </Link>
+            </div>
           </div>
         </div>
-      </header>
+      </nav>
 
-      <main id="home">
-        <section className="relative overflow-hidden border-b border-black/10 bg-[#202020] text-white">
-          <div className="pointer-events-none absolute inset-0 opacity-[0.16] [background-image:linear-gradient(rgba(255,255,255,.18)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:44px_44px]" />
-          <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 lg:grid-cols-[1fr_0.85fr] lg:px-6 lg:py-[4.5rem]">
-            <motion.div
-              className="relative z-10 flex flex-col justify-center"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <motion.div
-                className="mb-4 inline-flex w-fit rounded-[7px] border border-[#d6a62e]/30 bg-[#d6a62e]/10 px-3 py-1 text-[12px] font-semibold text-[#f0cf70]"
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.12, duration: 0.45 }}
-              >
-                14-day free poultry ERP trial
-              </motion.div>
-              <h1 className="max-w-3xl text-[2.35rem] font-bold leading-[1.08] text-white md:text-[3.6rem]">
-                Poultry farm management that stays organized.
-              </h1>
-              <p className="mt-5 max-w-2xl text-[16px] leading-8 text-white/74">
-                {settings.system_name} connects feed mill operations, houses, flocks, inventory, slaughter, sales, finance, compliance, and reporting in one secure workspace.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <button type="button" onClick={openRegistration} className="btn-primary btn-lg">Start 14-Day Free Trial</button>
-                <Link to="/login" className="btn-secondary btn-lg border-white/20 bg-white/10 text-white hover:bg-white/15">Sign In</Link>
-              </div>
-            </motion.div>
+      {/* ═══════════════════════════════════════════════════════════════════════════════
+          HERO SECTION
+          ═══════════════════════════════════════════════════════════════════════════════ */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-white to-neutral-50 py-20 sm:py-32">
+        <div className="absolute inset-0 -z-10 overflow-hidden">
+          <div className="absolute -top-40 right-0 h-80 w-80 rounded-full bg-blue-100 opacity-20 blur-3xl" />
+          <div className="absolute -bottom-40 left-0 h-80 w-80 rounded-full bg-green-100 opacity-20 blur-3xl" />
+        </div>
 
-            <motion.div
-              className="relative z-10 rounded-[10px] border border-white/12 bg-white p-3 shadow-[0_28px_80px_-48px_rgba(0,0,0,.65)]"
-              initial={{ opacity: 0, y: 28, rotateX: 7 }}
-              animate={{ opacity: 1, y: 0, rotateX: 0 }}
-              transition={{ delay: 0.18, duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <div className="rounded-[6px] border border-[#ead9ac] bg-[#fffaf0] p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <div>
-                    <div className="text-[12px] font-semibold uppercase text-[#9b7618]">Farm Admin Dashboard</div>
-                    <div className="text-[20px] font-bold text-[#202020]">{settings.system_name} dashboard</div>
-                  </div>
-                  <div className="rounded-full bg-[#d6a62e] px-3 py-1 text-[12px] font-bold text-[#202020]">Trial: 7 days remaining</div>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-4">
-                  {['28,540 birds', '12,450 kg feed', '2,850 kg meat', 'UGX 8.45M sales'].map((item, index) => (
-                    <motion.div
-                      key={item}
-                      className="rounded-[8px] border border-[#ead9ac] bg-white p-3 text-center text-[12px] font-bold text-[#202020]"
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.34 + index * 0.06, duration: 0.42 }}
-                    >
-                      {item}
-                    </motion.div>
-                  ))}
-                </div>
-                <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                  {['Feed Mill Overview', 'Farm Operations Overview', 'Slaughter Overview', 'Sales and POS Overview'].map((title, index) => (
-                    <motion.div
-                      key={title}
-                      className="rounded-[8px] border border-[#ead9ac] bg-white p-4"
-                      initial={{ opacity: 0, y: 14 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.52 + index * 0.06, duration: 0.45 }}
-                    >
-                      <div className="mb-3 text-[13px] font-bold text-[#202020]">{title}</div>
-                      <div className="space-y-2">
-                        {[1, 2, 3].map((row) => <div key={row} className="h-2 rounded-full bg-[#f0e2bd]" />)}
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        <section className="mx-auto max-w-7xl px-4 py-14 lg:px-6">
-          <Reveal className="max-w-3xl">
-            <div className="page-eyebrow">What is {settings.system_name}?</div>
-            <h2 className="mt-2 text-[1.8rem] font-bold">{settings.system_name} is a cloud-based poultry ERP system.</h2>
-            <p className="mt-4 text-[15px] leading-8 text-slate-600">
-              It gives farms full control over production, stock, slaughter, sales, finance, compliance, and reporting across secure tenant workspaces.
-            </p>
-          </Reveal>
-        </section>
-
-        <section id="features" className="border-y border-black/10 bg-white py-14">
-          <div className="mx-auto max-w-7xl px-4 lg:px-6">
-            <Reveal className="section-header">
-              <div>
-                <div className="page-eyebrow">Key Features</div>
-                <h2 className="section-title">Built around real poultry workflows</h2>
-              </div>
-            </Reveal>
-            <motion.div
-              className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
-              variants={stagger}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.12 }}
-            >
-              {features.map(([label, Icon]) => (
-                <motion.div
-                  key={label}
-                  variants={reveal}
-                  transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
-                  className="group rounded-[8px] border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--brand-primary)] hover:shadow-card"
-                >
-                  <Icon className="mb-3 h-5 w-5 text-[var(--brand-primary)]" />
-                  <div className="text-[14px] font-bold text-slate-900">{label}</div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
-
-        <section id="modules" className="mx-auto max-w-7xl px-4 py-14 lg:px-6">
-          <Reveal>
-            <div className="page-eyebrow">Modules</div>
-            <h2 className="mt-2 text-[1.8rem] font-bold">One connected operating system for poultry teams</h2>
-          </Reveal>
-          <motion.div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.14 }}>
-            {modules.map((module) => (
-              <motion.div key={module} variants={reveal} className="metric-card text-[15px] font-bold transition-transform duration-300 hover:-translate-y-1">
-                {module}
-              </motion.div>
-            ))}
-          </motion.div>
-        </section>
-
-        <section id="why" className="border-y border-black/10 bg-white py-14">
-          <div className="mx-auto max-w-7xl px-4 lg:px-6">
-            <Reveal>
-              <div className="page-eyebrow">Why Choose {settings.system_name}?</div>
-              <h2 className="mt-2 text-[1.8rem] font-bold">Control stock, reduce losses, and keep every department aligned</h2>
-            </Reveal>
-            <motion.div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.16 }}>
-              {reasons.map((reason) => (
-                <motion.div key={reason} variants={reveal} className="rounded-[8px] border border-slate-200 p-4 text-[14px] font-semibold transition-all duration-300 hover:border-[#d6a62e] hover:bg-[#fffaf0]">
-                  {reason}
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
-
-        <section className="mx-auto max-w-7xl px-4 py-14 lg:px-6">
-          <Reveal>
-            <div className="page-eyebrow">FAQ</div>
-            <h2 className="mt-2 text-[1.8rem] font-bold">Simple answers before you start</h2>
-          </Reveal>
-          <div className="mt-6 grid gap-3 md:grid-cols-2">
-            {faqs.map(([question, answer]) => (
-              <article key={question} className="card p-5">
-                <h3 className="text-[15px] font-semibold text-ink-900">{question}</h3>
-                <p className="mt-2 text-[13.5px] leading-6 text-ink-600">{answer}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section id="contact" className="mx-auto max-w-7xl px-4 py-14 lg:px-6">
-          <Reveal className="rounded-[8px] bg-[#202020] p-8 text-white md:p-10">
-            <h2 className="text-[2rem] font-bold text-white">Start your 14-day free trial today.</h2>
-            <p className="mt-3 max-w-2xl text-white/72">
-              No installation required. Your farm gets its own workspace like {workspaceExample}.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button type="button" onClick={openRegistration} className="btn-primary btn-lg">Start Free Trial</button>
-              <Link to="/login" className="btn-secondary btn-lg border-white/20 bg-white/10 text-white hover:bg-white/15">Sign In</Link>
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="text-center">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-2">
+              <Bird className="h-4 w-4 text-blue-600" />
+              <span className="text-sm font-semibold text-blue-600">Modern Poultry ERP Platform</span>
             </div>
-          </Reveal>
-        </section>
-      </main>
 
-      <footer className="border-t border-black/10 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-[13px] text-slate-600 md:flex-row md:items-center md:justify-between lg:px-6">
-          <div className="font-bold text-slate-900">{settings.system_name}</div>
-          <div>{settings.footer_text}</div>
-          <div>Support email: {settings.support_email}</div>
-          <div className="flex gap-4"><Link to="/privacy">Privacy Policy</Link><Link to="/terms">Terms of Service</Link></div>
+            <h1 className="mb-6 text-5xl font-bold leading-tight text-neutral-900 sm:text-6xl">
+              Complete Farm Management
+              <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-600">
+                Made Simple
+              </span>
+            </h1>
+
+            <p className="mb-8 max-w-2xl mx-auto text-xl text-neutral-600">
+              Farmexa connects your entire poultry operation—from feed mill to sales invoice—in one secure,
+              intuitive platform. Manage flocks, track inventory, process orders, and grow your farm.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => setIsRegistrationOpen(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-8 py-4 text-lg font-semibold text-white hover:bg-blue-700 transition"
+              >
+                Start Free 14-Day Trial
+                <ArrowRight className="h-5 w-5" />
+              </button>
+              <Link
+                to="/login"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white px-8 py-4 text-lg font-semibold text-neutral-900 hover:bg-neutral-50 transition"
+              >
+                Sign In
+              </Link>
+            </div>
+
+            <p className="mt-6 text-sm text-neutral-500">
+              No credit card required • Full access to all features
+            </p>
+          </div>
+
+          {/* Hero Features Grid */}
+          <div className="mt-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              ['Real-time tracking', 'Live dashboards for all operations'],
+              ['Multi-user support', 'Role-based access control'],
+              ['Complete reports', 'Profitability, yield, and financials'],
+              ['Secure & scalable', 'Enterprise-grade cloud platform'],
+            ].map(([title, desc]) => (
+              <div key={title} className="rounded-xl border border-neutral-200 bg-white p-4">
+                <p className="font-semibold text-neutral-900">{title}</p>
+                <p className="mt-1 text-sm text-neutral-600">{desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════════════════
+          MODULES SHOWCASE
+          ═══════════════════════════════════════════════════════════════════════════════ */}
+      <section id="modules" className="py-20 sm:py-32">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 text-4xl font-bold text-neutral-900">
+              Complete Modules for Your Farm
+            </h2>
+            <p className="max-w-2xl mx-auto text-xl text-neutral-600">
+              Every aspect of your poultry operation covered in one integrated platform
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {modules.map((module) => {
+              const Icon = module.icon
+              return (
+                <div
+                  key={module.name}
+                  className="group rounded-xl border border-neutral-200 bg-white p-6 hover:border-neutral-300 hover:shadow-lg transition duration-300"
+                >
+                  <div className={`inline-flex rounded-lg bg-gradient-to-br ${module.color} p-3 mb-4`}>
+                    <Icon className="h-6 w-6 text-white" />
+                  </div>
+
+                  <h3 className="mb-2 text-lg font-bold text-neutral-900">{module.name}</h3>
+                  <p className="mb-4 text-sm text-neutral-600">{module.description}</p>
+
+                  <ul className="space-y-2">
+                    {module.features.map((feature) => (
+                      <li key={feature} className="flex items-center gap-2 text-sm text-neutral-600">
+                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-neutral-400" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════════════════
+          FEATURES SECTION
+          ═══════════════════════════════════════════════════════════════════════════════ */}
+      <section id="why" className="bg-gradient-to-b from-neutral-50 to-white py-20 sm:py-32">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 text-4xl font-bold text-neutral-900">
+              Why Choose Farmexa
+            </h2>
+            <p className="max-w-2xl mx-auto text-xl text-neutral-600">
+              Built by farmers, for farmers. Designed specifically for modern poultry operations.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.map((feature) => {
+              const Icon = feature.icon
+              return (
+                <div key={feature.title} className="flex gap-4">
+                  <div className="flex-shrink-0">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
+                      <Icon className="h-6 w-6 text-blue-600" />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="mb-2 font-semibold text-neutral-900">{feature.title}</h3>
+                    <p className="text-neutral-600">{feature.description}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Reasons Grid */}
+          <div className="mt-16">
+            <h3 className="mb-8 text-2xl font-bold text-neutral-900">What makes us different:</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {reasons.map((reason) => (
+                <div
+                  key={reason}
+                  className="rounded-lg border border-neutral-200 bg-white p-4 flex items-center gap-3"
+                >
+                  <div className="h-2 w-2 rounded-full bg-green-600 flex-shrink-0 mt-1" />
+                  <p className="text-neutral-700">{reason}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════════════════
+          FAQ SECTION
+          ═══════════════════════════════════════════════════════════════════════════════ */}
+      <section id="faq" className="py-20 sm:py-32">
+        <div className="mx-auto max-w-3xl px-6">
+          <div className="mb-16 text-center">
+            <h2 className="mb-4 text-4xl font-bold text-neutral-900">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-xl text-neutral-600">
+              Everything you need to know about Farmexa
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            {faqs.map((faq, i) => (
+              <details
+                key={i}
+                className="group rounded-lg border border-neutral-200 bg-white p-6 cursor-pointer hover:border-neutral-300 transition"
+              >
+                <summary className="flex items-center justify-between font-semibold text-neutral-900">
+                  {faq.q}
+                  <span className="ml-4 inline-flex h-6 w-6 items-center justify-center rounded-md bg-neutral-100 text-neutral-600 group-open:bg-blue-100 group-open:text-blue-600 transition">
+                    <svg className="h-4 w-4 transition group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                  </span>
+                </summary>
+                <p className="mt-4 text-neutral-600 leading-relaxed">{faq.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════════════════
+          CTA SECTION
+          ═══════════════════════════════════════════════════════════════════════════════ */}
+      <section className="bg-gradient-to-r from-blue-600 to-green-600 py-20 sm:py-32">
+        <div className="mx-auto max-w-4xl px-6 text-center">
+          <h2 className="mb-6 text-4xl font-bold text-white">Ready to transform your farm?</h2>
+          <p className="mb-8 text-xl text-blue-100">
+            Start your 14-day free trial today. No credit card required.
+          </p>
+
+          <button
+            onClick={() => setIsRegistrationOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-8 py-4 text-lg font-semibold text-blue-600 hover:bg-blue-50 transition"
+          >
+            Start Free Trial
+            <ArrowRight className="h-5 w-5" />
+          </button>
+
+          <p className="mt-8 text-sm text-blue-100">
+            • Free 14-day trial • All features included • No credit card needed
+          </p>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════════════════
+          FOOTER
+          ═══════════════════════════════════════════════════════════════════════════════ */}
+      <footer className="border-t border-neutral-200 bg-neutral-50 py-12">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="mb-8 grid grid-cols-1 sm:grid-cols-4 gap-8">
+            <div>
+              <p className="font-semibold text-neutral-900">Product</p>
+              <ul className="mt-4 space-y-2 text-sm text-neutral-600">
+                <li><a href="#modules" className="hover:text-neutral-900 transition">Modules</a></li>
+                <li><a href="#why" className="hover:text-neutral-900 transition">Features</a></li>
+                <li><a href="#faq" className="hover:text-neutral-900 transition">Pricing</a></li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-semibold text-neutral-900">Company</p>
+              <ul className="mt-4 space-y-2 text-sm text-neutral-600">
+                <li><a href="#" className="hover:text-neutral-900 transition">About</a></li>
+                <li><a href="#" className="hover:text-neutral-900 transition">Blog</a></li>
+                <li><a href="#" className="hover:text-neutral-900 transition">Careers</a></li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-semibold text-neutral-900">Legal</p>
+              <ul className="mt-4 space-y-2 text-sm text-neutral-600">
+                <li><a href="#" className="hover:text-neutral-900 transition">Privacy</a></li>
+                <li><a href="#" className="hover:text-neutral-900 transition">Terms</a></li>
+                <li><a href="#" className="hover:text-neutral-900 transition">Security</a></li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-semibold text-neutral-900">Support</p>
+              <ul className="mt-4 space-y-2 text-sm text-neutral-600">
+                <li><a href="#" className="hover:text-neutral-900 transition">Help Center</a></li>
+                <li><a href="#" className="hover:text-neutral-900 transition">Contact</a></li>
+                <li><a href="#" className="hover:text-neutral-900 transition">Community</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-neutral-200 pt-8">
+            <p className="text-center text-sm text-neutral-600">
+              © {new Date().getFullYear()} Farmexa by Arosoft Labs. All rights reserved.
+            </p>
+          </div>
         </div>
       </footer>
-      <RegistrationWizardModal isOpen={isRegistrationOpen} onClose={() => setIsRegistrationOpen(false)} />
-      <InstallPrompt />
+
+      <RegistrationWizardModal
+        isOpen={isRegistrationOpen}
+        onClose={() => setIsRegistrationOpen(false)}
+      />
     </div>
   )
 }
-
