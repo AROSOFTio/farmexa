@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Boxes, CalendarDays, ClipboardList, PackagePlus, Scissors, TrendingUp } from 'lucide-react'
 import { Modal } from '@/components/Modal'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import {
   useSlaughterRecords,
   useBatches,
@@ -456,16 +457,21 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
   const updateStatus = useUpdateRecordStatus()
   const createOutput = useCreateOutput(outputInventoryItems)
 
-  const handleApproveStart = (record: SlaughterRecord) => {
-    if (window.confirm(`Approve the plan for batch #${record.batch_id} and start processing?`)) {
-      updateStatus.mutate({ recordId: record.id, status: 'in_progress' })
-    }
-  }
+  const [confirmAction, setConfirmAction] = useState<
+    | { type: 'approve' | 'cancel'; record: SlaughterRecord }
+    | null
+  >(null)
 
-  const handleCancelPlan = (record: SlaughterRecord) => {
-    if (window.confirm('Cancel this slaughter plan? This cannot be undone.')) {
-      updateStatus.mutate({ recordId: record.id, status: 'cancelled' })
-    }
+  const handleApproveStart = (record: SlaughterRecord) => setConfirmAction({ type: 'approve', record })
+  const handleCancelPlan = (record: SlaughterRecord) => setConfirmAction({ type: 'cancel', record })
+
+  const runConfirmedAction = () => {
+    if (!confirmAction) return
+    const { type, record } = confirmAction
+    updateStatus.mutate(
+      { recordId: record.id, status: type === 'approve' ? 'in_progress' : 'cancelled' },
+      { onSuccess: () => setConfirmAction(null) }
+    )
   }
 
   const completedRecords = useMemo(() => records.filter((record) => record.status === 'completed'), [records])
@@ -650,6 +656,24 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
           />
         )}
       </Modal>
+
+      <ConfirmDialog
+        isOpen={!!confirmAction}
+        tone={confirmAction?.type === 'cancel' ? 'danger' : 'default'}
+        title={confirmAction?.type === 'cancel' ? 'Cancel slaughter plan?' : 'Approve and start processing?'}
+        message={
+          confirmAction?.type === 'cancel'
+            ? 'This plan will be marked as cancelled and can no longer be processed. This cannot be undone.'
+            : `Approve the plan for batch ${
+                batches.find((b) => b.id === confirmAction?.record.batch_id)?.batch_number ?? `#${confirmAction?.record.batch_id}`
+              } and move it into processing? The birds will be deducted from the batch when outputs are posted.`
+        }
+        confirmLabel={confirmAction?.type === 'cancel' ? 'Cancel plan' : 'Approve & start'}
+        cancelLabel={confirmAction?.type === 'cancel' ? 'Keep plan' : 'Not yet'}
+        isLoading={updateStatus.isPending}
+        onConfirm={runConfirmedAction}
+        onCancel={() => setConfirmAction(null)}
+      />
     </div>
   )
 }
