@@ -13,21 +13,31 @@ RUN npm run build
 
 FROM python:3.12-slim AS production
 
-# Routing: Farmexa only hard-pins its platform host here. Tenant hostnames
-# (<slug>.arosoftlabs.com) are added per-tenant via Coolify's "Domains" field,
-# which generates a Host() router per provisioned tenant. NO wildcard is used,
-# so every other *.arosoftlabs.com subdomain (arofi, cp, mail, …) is left
-# completely free of Farmexa even if its DNS points at this server.
+# Routing: keep the platform host exact, then add a low-priority wildcard for
+# tenant workspaces (<slug>.arosoftlabs.com). Exact routers for infra domains
+# such as cp/mail/courses should win over this wildcard; if they do not, the
+# Farmexa middleware still rejects known infrastructure hosts before serving UI.
 LABEL maintainer="Farmexa Platform" \
     description="Farmexa ERP Coolify single-container deployment" \
     traefik.enable="true" \
     traefik.http.routers.farmexa-platform-http.entrypoints="http" \
     traefik.http.routers.farmexa-platform-http.rule="Host(`farm.arosoftlabs.com`)" \
+    traefik.http.routers.farmexa-platform-http.priority="100" \
     traefik.http.routers.farmexa-platform-http.service="farmexa-platform" \
     traefik.http.routers.farmexa-platform.entrypoints="https" \
     traefik.http.routers.farmexa-platform.rule="Host(`farm.arosoftlabs.com`)" \
     traefik.http.routers.farmexa-platform.tls="true" \
+    traefik.http.routers.farmexa-platform.priority="100" \
     traefik.http.routers.farmexa-platform.service="farmexa-platform" \
+    traefik.http.routers.farmexa-wildcard-http.entrypoints="http" \
+    traefik.http.routers.farmexa-wildcard-http.rule="HostRegexp(`[a-zA-Z0-9-]+\\.arosoftlabs\\.com`)" \
+    traefik.http.routers.farmexa-wildcard-http.priority="1" \
+    traefik.http.routers.farmexa-wildcard-http.service="farmexa-platform" \
+    traefik.http.routers.farmexa-wildcard.entrypoints="https" \
+    traefik.http.routers.farmexa-wildcard.rule="HostRegexp(`[a-zA-Z0-9-]+\\.arosoftlabs\\.com`)" \
+    traefik.http.routers.farmexa-wildcard.tls="true" \
+    traefik.http.routers.farmexa-wildcard.priority="1" \
+    traefik.http.routers.farmexa-wildcard.service="farmexa-platform" \
     traefik.http.services.farmexa-platform.loadbalancer.server.port="80"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -52,4 +62,3 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1/health', timeout=5)"
 
 CMD ["/start-coolify.sh"]
-

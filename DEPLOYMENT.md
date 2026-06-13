@@ -9,8 +9,8 @@ aaPanel and Cloudflare manage public HTTPS. The Docker stack only exposes the in
 Copy `.env.example` to `.env` and set strong passwords and secrets. Required production values include:
 
 - `PRIMARY_PLATFORM_DOMAIN=farm.arosoftlabs.com`
-- `PLATFORM_HOSTS=farm.arosoftlabs.com,farm.arosoftlabs.com,arosoftlabs.com,localhost,127.0.0.1`
-- `DEFAULT_TENANT_DOMAIN_SUFFIX=farm.arosoftlabs.com`
+- `PLATFORM_HOSTS=farm.arosoftlabs.com,localhost,127.0.0.1`
+- `DEFAULT_TENANT_DOMAIN_SUFFIX=arosoftlabs.com`
 - `TENANT_DOMAIN_TARGET_IP=<coolify-server-public-ip>`
 - `CLOUDFLARE_API_TOKEN=<zone dns edit token>`
 - `CLOUDFLARE_ZONE_ID=<cloudflare zone id>`
@@ -37,7 +37,7 @@ Create a Cloudflare API token with Zone DNS edit access for `arosoftlabs.com` if
 
 Create a wildcard record:
 
-`*.farm.arosoftlabs.com -> <contabo-server-ip>`
+`*.arosoftlabs.com -> farm.arosoftlabs.com`
 
 Farmexa still stores each tenant domain in the database and creates explicit Cloudflare DNS records during signup when Cloudflare credentials are configured.
 
@@ -46,7 +46,7 @@ Farmexa still stores each tenant domain in the database and creates explicit Clo
 Point the site domain to the VPS. For the current deployment, use:
 
 - `farm.arosoftlabs.com -> <coolify-server-public-ip>`
-- `*.farm.arosoftlabs.com -> <coolify-server-public-ip>`
+- `*.arosoftlabs.com -> farm.arosoftlabs.com`
 
 In aaPanel, create the site, apply SSL using aaPanel, then configure reverse proxy traffic to the Docker gateway:
 
@@ -59,11 +59,11 @@ Do not paste certificate blocks into nginx manually. Do not run certbot from thi
 For the single-container Coolify deployment, add both the platform domain and the wildcard tenant domain to the application domains:
 
 - `https://farm.arosoftlabs.com`
-- `https://*.farm.arosoftlabs.com`
+- `https://*.arosoftlabs.com`
 
-Keep direction set to allow non-www. If tenant URLs such as `https://benjamin.farm.arosoftlabs.com/login` show `no available server`, DNS may already point to the server, but Coolify has not routed the wildcard host to this application yet.
+Keep direction set to allow non-www. If tenant URLs such as `https://benjamin.arosoftlabs.com/login` show `no available server`, DNS may already point to the server, but Coolify has not routed the wildcard host to this application yet.
 
-The root Dockerfile also ships Traefik catch-all labels for `*.farm.arosoftlabs.com`, so new tenant hosts do not need to be added one by one. If Coolify rewrites application labels, open **Advanced > Container Labels**, disable read-only editing, and make sure the labels beginning with `traefik.http.routers.farmexa-wildcard` are present after redeploy.
+The root Dockerfile also ships low-priority Traefik wildcard labels for direct tenant hosts under `*.arosoftlabs.com`, so new tenant hosts do not need to be added one by one. Exact host routers for infrastructure services should keep higher priority than the wildcard. If Coolify rewrites application labels, open **Advanced > Container Labels**, disable read-only editing, and make sure the labels beginning with `traefik.http.routers.farmexa-wildcard` are present after redeploy.
 
 ## 6. Docker Compose Deployment
 
@@ -99,7 +99,7 @@ Check `https://farm.arosoftlabs.com/health` and the dev admin system health dash
 
 ## 11. Test Tenant Signup
 
-Open `https://farm.arosoftlabs.com/register`, register a farm, and confirm the success page shows a workspace like `https://ngali.farm.arosoftlabs.com/login`.
+Open `https://farm.arosoftlabs.com/register`, register a farm, and confirm the success page shows a workspace like `https://ngali.arosoftlabs.com/login`.
 
 ## 12. Test Subdomain Login
 
@@ -118,4 +118,3 @@ Operational modules should lock while profile, subscription, billing, support, a
 ## 14. Backup and Restore
 
 Use `scripts/backup.sh` and `scripts/restore.sh` with the same `.env` values used by Docker Compose.
-
