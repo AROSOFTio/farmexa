@@ -38,6 +38,7 @@ class DashboardKPIOut(BaseModel):
     feed_used_today_kg: float
     mortality_today: int
     mortality_rate_today: float
+    eggs_today: int
     meat_stock_kg: float
     sales_today: float
     compliance_alerts: int
