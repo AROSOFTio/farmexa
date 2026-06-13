@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { BrandMark } from '@/components/BrandMark'
+import { LoginShowcase } from '@/features/auth/LoginShowcase'
 import { ThemeToggle } from '@/components/ThemeControls'
 import { RegistrationWizardModal } from '@/features/auth/RegistrationWizardModal'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -60,54 +61,30 @@ export function LoginPage() {
     <>
       <SEO title="Sign in to Farmexa" description="Sign in to your Farmexa workspace." canonicalPath="/login" robots="noindex,nofollow" />
 
-      <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[var(--app-bg)] px-5 py-12">
-        {/* ── Subtle animated aurora background ─────────────────────────── */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <motion.div
-            className="absolute -top-32 left-1/4 h-[32rem] w-[32rem] rounded-full bg-blue-400/20 blur-[120px]"
-            animate={{ x: [0, 40, 0], y: [0, 30, 0], scale: [1, 1.1, 1] }}
-            transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <motion.div
-            className="absolute -bottom-40 right-1/4 h-[30rem] w-[30rem] rounded-full bg-indigo-400/15 blur-[120px]"
-            animate={{ x: [0, -36, 0], y: [0, -28, 0], scale: [1, 1.12, 1] }}
-            transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <motion.div
-            className="absolute top-1/3 right-10 h-[22rem] w-[22rem] rounded-full bg-cyan-300/10 blur-[110px]"
-            animate={{ x: [0, 24, 0], y: [0, 20, 0] }}
-            transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
-          />
-        </div>
+      <div className="flex min-h-screen">
+        {/* ── LEFT: animated dashboard showcase (desktop only) ──────────── */}
+        <LoginShowcase />
 
-        {/* ── Top utility bar ───────────────────────────────────────────── */}
-        <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
-          <Link to="/" className="theme-icon-button" aria-label="Back to home" title="Back to home">
-            <ArrowLeft className="h-[15px] w-[15px]" />
-          </Link>
-          <ThemeToggle />
-        </div>
-
-        {/* ── Centered login column ─────────────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="relative z-10 w-full max-w-[400px]"
-        >
-          {/* Brand */}
-          <div className="mb-7 flex flex-col items-center text-center">
-            <BrandMark />
-            <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)]/70 px-3.5 py-1.5 backdrop-blur-sm">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--brand-primary)] opacity-60" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--brand-primary)]" />
-              </span>
-              <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-[var(--brand-primary)]">
-                Modern Poultry ERP
-              </span>
-            </div>
+        {/* ── RIGHT: sign-in form ───────────────────────────────────────── */}
+        <div className="relative flex flex-1 flex-col items-center justify-center bg-[var(--app-bg)] px-5 py-12 sm:px-8">
+          {/* Top utility bar */}
+          <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+            <Link to="/" className="theme-icon-button" aria-label="Back to home" title="Back to home">
+              <ArrowLeft className="h-[15px] w-[15px]" />
+            </Link>
+            <ThemeToggle />
           </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="relative z-10 w-full max-w-[400px]"
+          >
+            {/* Brand — mobile only (the showcase carries branding on desktop) */}
+            <div className="mb-7 flex justify-center lg:hidden">
+              <BrandMark />
+            </div>
 
           {/* Card */}
           <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--surface-card)]/80 p-7 shadow-[0_24px_70px_-24px_rgba(15,23,42,0.28)] backdrop-blur-xl sm:p-8">
@@ -179,8 +156,8 @@ export function LoginPage() {
                 {errors.password ? <p className="form-error">{errors.password.message}</p> : null}
               </div>
 
-              <div className="pt-1 space-y-3">
-                <button type="submit" disabled={isSubmitting} className="btn-primary btn-lg w-full">
+              <div className="flex flex-col gap-3 pt-1 sm:flex-row">
+                <button type="submit" disabled={isSubmitting} className="btn-primary btn-lg flex-1">
                   {isSubmitting ? (
                     <>
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/25 border-t-white" />
@@ -198,7 +175,7 @@ export function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setIsRegistrationOpen(true)}
-                    className="btn-secondary btn-lg w-full"
+                    className="btn-secondary btn-lg flex-1"
                   >
                     <UserPlus className="h-4 w-4" />
                     Start 14-Day Free Trial
@@ -222,7 +199,8 @@ export function LoginPage() {
           <p className="mt-6 text-center text-[11px] text-[var(--text-muted)]/70">
             © {new Date().getFullYear()} Arosoft Labs — Farmexa Poultry ERP
           </p>
-        </motion.div>
+          </motion.div>
+        </div>
       </div>
 
       <RegistrationWizardModal isOpen={isRegistrationOpen} onClose={() => setIsRegistrationOpen(false)} />
