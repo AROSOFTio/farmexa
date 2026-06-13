@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { AlertTriangle, CheckCircle2, Eye, EyeOff, LogIn, UserPlus } from 'lucide-react'
+import { AlertTriangle, Eye, EyeOff, LogIn, UserPlus } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { BrandMark } from '@/components/BrandMark'
+import { LoginHero } from '@/features/auth/LoginHero'
 import { ThemeToggle } from '@/components/ThemeControls'
 import { RegistrationWizardModal } from '@/features/auth/RegistrationWizardModal'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -23,13 +24,6 @@ const loginSchema = z.object({
 })
 
 type LoginFormValues = z.infer<typeof loginSchema>
-
-const HERO_FEATURES = [
-  'Real-time flock, mortality & vaccination tracking',
-  'Feed formulation and inventory management',
-  'Integrated POS, invoicing & financial reports',
-  'Compliance alerts and document expiry tracking',
-]
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -68,84 +62,8 @@ export function LoginPage() {
       <SEO title="Sign in to Farmexa" description="Sign in to your Farmexa workspace." canonicalPath="/login" robots="noindex,nofollow" />
       <div className="flex min-h-screen overflow-hidden">
 
-      {/* ── LEFT: Visual Hero Panel ──────────────────────────────────── */}
-      <div className="relative hidden lg:flex lg:w-[52%] xl:w-[54%] flex-col overflow-hidden bg-[#0B1B3F]">
-        {/* Clean gradient base */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#1E3A8A] via-[#1D4ED8] to-[#1E40AF]" />
-
-        {/* Subtle dotted grid texture */}
-        <div
-          className="absolute inset-0 opacity-[0.12]"
-          style={{
-            backgroundImage: 'radial-gradient(circle, #FFFFFF 1px, transparent 1px)',
-            backgroundSize: '28px 28px',
-          }}
-        />
-
-        {/* Soft glow accents */}
-        <div className="absolute -top-32 -right-24 h-96 w-96 rounded-full bg-blue-400/20 blur-3xl" />
-        <div className="absolute -bottom-40 -left-24 h-96 w-96 rounded-full bg-cyan-400/10 blur-3xl" />
-
-        {/* Content positioned over the visual */}
-        <div className="relative z-10 flex h-full flex-col justify-between p-10 xl:p-14">
-          {/* Brand mark */}
-          <div>
-            <BrandMark compact light />
-          </div>
-
-          {/* Hero copy */}
-          <div className="max-w-[480px]">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-400/10 px-4 py-1.5 backdrop-blur-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-300">
-                Modern Poultry ERP
-              </span>
-            </div>
-
-            <h1 className="text-[2.8rem] font-extrabold leading-[1.08] tracking-tight text-white xl:text-[3.4rem]">
-              Complete farm<br />
-              <span className="text-blue-300">management</span><br />
-              made simple.
-            </h1>
-
-            <p className="mt-5 text-[15px] leading-relaxed text-white/70">
-              Farmexa connects your entire poultry operation — from feed mill to sales invoice — in one secure, intuitive platform.
-            </p>
-
-            <ul className="mt-8 space-y-3.5">
-              {HERO_FEATURES.map((feature) => (
-                <li key={feature} className="flex items-center gap-3.5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-400/20 ring-1 ring-blue-400/30">
-                    <CheckCircle2 className="h-3 w-3 text-blue-300" />
-                  </span>
-                  <span className="text-[13.5px] font-medium text-white/78">{feature}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Footer trust row */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-6 border-t border-white/10 pt-6">
-              <div>
-                <div className="text-[20px] font-bold text-white">12+</div>
-                <div className="text-[11px] text-white/55">Modules</div>
-              </div>
-              <div>
-                <div className="text-[20px] font-bold text-white">100%</div>
-                <div className="text-[11px] text-white/55">Cloud-based</div>
-              </div>
-              <div>
-                <div className="text-[20px] font-bold text-white">24/7</div>
-                <div className="text-[11px] text-white/55">Access</div>
-              </div>
-            </div>
-            <div className="text-[11.5px] text-white/35">
-              © {new Date().getFullYear()} Arosoft Labs — Farmexa Poultry ERP
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* ── LEFT: Animated Hero Panel ────────────────────────────────── */}
+      <LoginHero />
 
       {/* ── RIGHT: Login Form Panel ───────────────────────────────────── */}
       <div className="relative flex flex-1 flex-col items-center justify-center bg-[var(--app-bg)] px-5 py-14 sm:px-8">
