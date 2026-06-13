@@ -20,45 +20,45 @@ const LOOP = 9
  */
 export function LoginShowcase() {
   return (
-    <div className="relative hidden overflow-hidden bg-gradient-to-br from-[#EAF1FF] via-[#F4F8FF] to-[#E7EEFF] lg:flex lg:w-[48%] xl:w-[52%]">
+    <div className="relative hidden overflow-hidden bg-gradient-to-br from-[#EAF1FF] via-[#F4F8FF] to-[#E7EEFF] lg:flex lg:flex-col lg:justify-center">
       {/* soft animated accents */}
       <motion.div
-        className="absolute -top-32 -left-20 h-80 w-80 rounded-full bg-blue-300/30 blur-[90px]"
-        animate={{ x: [0, 30, 0], y: [0, 20, 0] }}
+        className="absolute -top-24 -left-16 h-72 w-72 rounded-full bg-blue-300/30 blur-[80px]"
+        animate={{ x: [0, 26, 0], y: [0, 18, 0] }}
         transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
       />
       <motion.div
-        className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-indigo-300/25 blur-[90px]"
-        animate={{ x: [0, -24, 0], y: [0, -18, 0] }}
+        className="absolute -bottom-24 -right-12 h-72 w-72 rounded-full bg-indigo-300/25 blur-[80px]"
+        animate={{ x: [0, -22, 0], y: [0, -16, 0] }}
         transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
       />
 
-      <div className="relative z-10 flex w-full flex-col justify-center px-10 py-12 xl:px-16">
-        <div className="mb-8 max-w-[420px]">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white/70 px-3.5 py-1.5 backdrop-blur-sm">
+      <div className="relative z-10 flex w-full flex-col justify-center px-9 py-10 xl:px-11">
+        <div className="mb-6 max-w-[380px]">
+          <div className="mb-3.5 inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white/70 px-3 py-1 backdrop-blur-sm">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500 opacity-60" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-600" />
             </span>
-            <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-brand-700">Modern Poultry ERP</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-700">Modern Poultry ERP</span>
           </div>
-          <h2 className="text-[2rem] font-bold leading-tight tracking-tight text-neutral-900">
+          <h2 className="text-[1.7rem] font-bold leading-[1.12] tracking-tight text-neutral-900">
             Run your whole farm
             <br />
             from one screen.
           </h2>
-          <p className="mt-3 text-[14px] leading-relaxed text-neutral-600">
+          <p className="mt-2.5 text-[13px] leading-relaxed text-neutral-600">
             Flocks, feed, processing, sales and finance — live, in real time.
           </p>
         </div>
 
         <DashboardMock />
 
-        <div className="mt-8 flex items-center gap-7">
+        <div className="mt-7 flex items-center gap-6">
           {[['12+', 'Modules'], ['100%', 'Cloud'], ['24/7', 'Access']].map(([v, l]) => (
             <div key={l}>
-              <div className="text-[18px] font-bold text-neutral-900">{v}</div>
-              <div className="text-[11px] text-neutral-500">{l}</div>
+              <div className="text-[17px] font-bold text-neutral-900">{v}</div>
+              <div className="text-[10.5px] text-neutral-500">{l}</div>
             </div>
           ))}
         </div>
