@@ -21,6 +21,22 @@ async def has_permission(user: User, permission_code: str) -> bool:
     return False
 
 
+def has_permission_sync(user: User, permission_code: str) -> bool:
+    """Synchronous capability check against already-loaded role/user permissions.
+
+    Safe to call from sync request handlers: it only reads relationships that
+    `get_current_user` has eagerly loaded, so it performs no database IO.
+    """
+    if user.role is not None:
+        for rp in user.role.role_permissions:
+            if rp.permission and rp.permission.code == permission_code:
+                return True
+    for up in user.user_permissions:
+        if up.permission and up.permission.code == permission_code:
+            return True
+    return False
+
+
 async def get_user_permissions(user: User) -> list[str]:
     """Return flat list of permission codes for the user's role plus individual user permissions."""
     permission_codes = []

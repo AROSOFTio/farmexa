@@ -69,6 +69,10 @@ def _add_branch_filter(execute_state):
 
 PLATFORM_ADMIN_ROLES = {"super_manager", "developer_admin"}
 
+# Roles whose data access spans every branch (no UserBranchAccess scoping).
+# HR/payroll is administered company-wide, so the HR officer is tenant-wide too.
+TENANT_WIDE_ROLES = PLATFORM_ADMIN_ROLES | {"manager", "tenant_admin", "hr_officer"}
+
 DEFAULT_PRODUCTION_STOCK_ITEMS: list[dict[str, str]] = []
 
 DEFAULT_FEED_RAW_MATERIALS: list[tuple[str, float]] = []
@@ -517,6 +521,11 @@ def _apply_runtime_schema_patches(engine: Engine) -> None:
         connection.execute(text("ALTER TABLE expense_categories ADD COLUMN IF NOT EXISTS default_account_code VARCHAR(20)"))
         connection.execute(text("ALTER TABLE income_categories ADD COLUMN IF NOT EXISTS default_account_code VARCHAR(20)"))
         connection.execute(text("ALTER TABLE journal_lines ADD COLUMN IF NOT EXISTS batch_id INTEGER REFERENCES batches(id) ON DELETE SET NULL"))
+        # HR leave negotiation workflow (supervisor review + day adjustment).
+        connection.execute(text("ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS manager_note TEXT"))
+        connection.execute(text("ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS adjusted_days INTEGER"))
+        connection.execute(text("ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS reviewed_by_id INTEGER"))
+        connection.execute(text("ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP WITH TIME ZONE"))
         connection.execute(text("""
             CREATE OR REPLACE VIEW customer_balances AS
             SELECT
@@ -922,7 +931,7 @@ async def get_tenant_db(request: Request, current_user: User = Depends(get_curre
         requested_branch = request.headers.get("x-branch-id")
         requested_branch_id = int(requested_branch) if requested_branch and requested_branch.isdigit() else None
 
-        if current_user.role and current_user.role.name not in PLATFORM_ADMIN_ROLES.union({"manager", "tenant_admin"}):
+        if current_user.role and current_user.role.name not in TENANT_WIDE_ROLES:
             from app.models.branch import UserBranchAccess
             from sqlalchemy import select
             result = await session.execute(
@@ -969,7 +978,7 @@ async def get_tenant_sync_db(request: Request, current_user: User = Depends(get_
     requested_branch = request.headers.get("x-branch-id")
     requested_branch_id = int(requested_branch) if requested_branch and requested_branch.isdigit() else None
     
-    if current_user.role and current_user.role.name not in PLATFORM_ADMIN_ROLES.union({"manager", "tenant_admin"}):
+    if current_user.role and current_user.role.name not in TENANT_WIDE_ROLES:
         from app.models.branch import UserBranchAccess
         from sqlalchemy import select
         result = session.execute(

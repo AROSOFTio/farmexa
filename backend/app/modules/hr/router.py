@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import require_permission
 from app.db.tenant_db import get_tenant_sync_db
+from app.permissions.checker import has_permission_sync
 from app.modules.hr import schemas
 from app.modules.hr.service import HRService
 
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/hr", tags=["HR & Payroll"])
 def create_employee(
     payload: schemas.EmployeeCreate,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:write")),
+    current_user=Depends(require_permission("hr:employee:write")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     return service.create_employee(payload)
@@ -32,7 +33,7 @@ def list_employees(
     skip: int = Query(0),
     limit: int = Query(100),
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:read")),
+    current_user=Depends(require_permission("hr:employee:read")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     return service.list_employees(branch_id=branch_id, is_active=is_active, skip=skip, limit=limit)
@@ -42,7 +43,7 @@ def list_employees(
 def get_employee(
     employee_id: int,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:read")),
+    current_user=Depends(require_permission("hr:employee:read")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     return service.get_employee(employee_id)
@@ -53,7 +54,7 @@ def update_employee(
     employee_id: int,
     payload: schemas.EmployeeUpdate,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:write")),
+    current_user=Depends(require_permission("hr:employee:write")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     return service.update_employee(employee_id, payload)
@@ -63,7 +64,7 @@ def update_employee(
 def deactivate_employee(
     employee_id: int,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:write")),
+    current_user=Depends(require_permission("hr:employee:write")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     service.deactivate_employee(employee_id)
@@ -75,7 +76,7 @@ def deactivate_employee(
 def create_payroll_period(
     payload: schemas.PayrollPeriodCreate,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:write")),
+    current_user=Depends(require_permission("hr:payroll:process")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     return service.create_payroll_period(payload)
@@ -85,7 +86,7 @@ def create_payroll_period(
 def list_payroll_periods(
     branch_id: Optional[int] = Query(None),
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:read")),
+    current_user=Depends(require_permission("hr:payroll:read")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     return service.list_payroll_periods(branch_id=branch_id)
@@ -95,7 +96,7 @@ def list_payroll_periods(
 def get_payroll_period(
     period_id: int,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:read")),
+    current_user=Depends(require_permission("hr:payroll:read")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     return service.get_payroll_period(period_id)
@@ -105,7 +106,7 @@ def get_payroll_period(
 def process_payroll_period(
     period_id: int,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:write")),
+    current_user=Depends(require_permission("hr:payroll:process")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     return service.process_payroll_period(period_id)
@@ -115,8 +116,7 @@ def process_payroll_period(
 def approve_payroll_period(
     period_id: int,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:write")),
-    _=Depends(require_permission("accounting:write")),
+    current_user=Depends(require_permission("hr:payroll:approve")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     return service.approve_payroll_period(period_id, approved_by_id=current_user.id)
@@ -126,7 +126,8 @@ def approve_payroll_period(
 def post_payroll_journals(
     period_id: int,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:write")),
+    current_user=Depends(require_permission("hr:payroll:approve")),
+    # Posting to the general ledger additionally requires finance authority.
     _=Depends(require_permission("accounting:write")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
@@ -137,7 +138,7 @@ def post_payroll_journals(
 def get_payroll_lines(
     period_id: int,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:read")),
+    current_user=Depends(require_permission("hr:payroll:read")),
 ):
     from app.models.hr import PayrollLine
     from sqlalchemy.orm import joinedload
@@ -152,7 +153,7 @@ def get_payslip_pdf(
     period_id: int,
     employee_id: int,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:read")),
+    current_user=Depends(require_permission("hr:payroll:read")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     pdf_data = service.generate_payslip_pdf(period_id, employee_id)
@@ -160,10 +161,11 @@ def get_payslip_pdf(
 
 
 # --- Leave Types ---
+# Any staff member who can request leave needs to read the available leave types.
 @router.get("/leave-types", response_model=List[schemas.LeaveTypeOut])
 def list_leave_types(
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:read")),
+    current_user=Depends(require_permission("hr:leave:request")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     return service.list_leave_types()
@@ -173,7 +175,7 @@ def list_leave_types(
 def create_leave_type(
     payload: schemas.LeaveTypeCreate,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:write")),
+    current_user=Depends(require_permission("hr:employee:write")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     return service.create_leave_type(payload)
@@ -185,27 +187,35 @@ def list_leave_requests(
     employee_id: Optional[int] = Query(None),
     status: Optional[str] = Query(None),
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:read")),
+    current_user=Depends(require_permission("hr:leave:request")),
 ):
+    # Without team-leave visibility, callers only see their own requests.
     service = HRService(db, tenant_id=current_user.tenant_id)
-    return service.list_leave_requests(employee_id=employee_id, status=status)
+    restrict = None
+    if not has_permission_sync(current_user, "hr:leave:read"):
+        own = service.employee_for_user(current_user.id)
+        restrict = own.id if own else -1  # -1 => no employee record => see nothing
+    return service.list_leave_requests(
+        employee_id=employee_id, status=status, restrict_employee_id=restrict
+    )
 
 
 @router.post("/leave-requests", response_model=schemas.LeaveRequestOut)
 def create_leave_request(
     payload: schemas.LeaveRequestCreate,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:write")),
+    current_user=Depends(require_permission("hr:leave:request")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
-    return service.create_leave_request(payload)
+    can_manage = has_permission_sync(current_user, "hr:leave:approve")
+    return service.create_leave_request(payload, requester_user_id=current_user.id, can_manage=can_manage)
 
 
 @router.patch("/leave-requests/{request_id}/approve", response_model=schemas.LeaveRequestOut)
 def approve_leave_request(
     request_id: int,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:write")),
+    current_user=Depends(require_permission("hr:leave:approve")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     return service.approve_leave(request_id, approver_id=current_user.id)
@@ -214,11 +224,45 @@ def approve_leave_request(
 @router.patch("/leave-requests/{request_id}/reject", response_model=schemas.LeaveRequestOut)
 def reject_leave_request(
     request_id: int,
+    payload: schemas.LeaveRejectIn,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:write")),
+    current_user=Depends(require_permission("hr:leave:approve")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
-    return service.reject_leave(request_id)
+    return service.reject_leave(request_id, reviewer_id=current_user.id, reason=payload.reason)
+
+
+@router.patch("/leave-requests/{request_id}/adjust", response_model=schemas.LeaveRequestOut)
+def adjust_leave_request(
+    request_id: int,
+    payload: schemas.LeaveAdjustIn,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("hr:leave:approve")),
+):
+    service = HRService(db, tenant_id=current_user.tenant_id)
+    return service.adjust_leave(
+        request_id, reviewer_id=current_user.id, adjusted_days=payload.adjusted_days, reason=payload.reason
+    )
+
+
+@router.patch("/leave-requests/{request_id}/accept-adjustment", response_model=schemas.LeaveRequestOut)
+def accept_leave_adjustment(
+    request_id: int,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("hr:leave:request")),
+):
+    service = HRService(db, tenant_id=current_user.tenant_id)
+    return service.respond_to_adjustment(request_id, requester_user_id=current_user.id, accept=True)
+
+
+@router.patch("/leave-requests/{request_id}/decline-adjustment", response_model=schemas.LeaveRequestOut)
+def decline_leave_adjustment(
+    request_id: int,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("hr:leave:request")),
+):
+    service = HRService(db, tenant_id=current_user.tenant_id)
+    return service.respond_to_adjustment(request_id, requester_user_id=current_user.id, accept=False)
 
 
 # --- Attendance ---
@@ -226,7 +270,7 @@ def reject_leave_request(
 def record_attendance(
     payload: schemas.AttendanceRecordCreate,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:write")),
+    current_user=Depends(require_permission("hr:attendance:write")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     return service.record_attendance(payload)
@@ -238,7 +282,7 @@ def list_attendance(
     date_filter: Optional[date] = Query(None, alias="date"),
     branch_id: Optional[int] = Query(None),
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("hr:read")),
+    current_user=Depends(require_permission("hr:attendance:read")),
 ):
     service = HRService(db, tenant_id=current_user.tenant_id)
     return service.list_attendance(employee_id=employee_id, date_filter=date_filter, branch_id=branch_id)

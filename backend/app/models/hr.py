@@ -42,6 +42,9 @@ class LeaveStatus(str, enum.Enum):
     APPROVED  = "approved"
     REJECTED  = "rejected"
     CANCELLED = "cancelled"
+    # Supervisor proposed a different number of days; awaiting the requester's
+    # acceptance before it is auto-approved.
+    ADJUSTED  = "adjusted"
 
 
 class Employee(Base):
@@ -141,10 +144,16 @@ class LeaveRequest(Base):
     days_requested = Column(Integer, nullable=False)
     reason         = Column(Text, nullable=True)
     status         = Column(String(20), nullable=False, default="pending")
+    # Supervisor review trail (small communication flow: a note for any
+    # reject/adjust decision, plus the proposed day count when adjusting).
+    manager_note   = Column(Text, nullable=True)
+    adjusted_days  = Column(Integer, nullable=True)
+    reviewed_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reviewed_at    = Column(DateTime(timezone=True), nullable=True)
     approved_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     approved_at    = Column(DateTime(timezone=True), nullable=True)
     created_at     = Column(DateTime(timezone=True), default=_now)
-    
+
     employee   = relationship("Employee", back_populates="leave_requests")
     leave_type = relationship("LeaveType")
 

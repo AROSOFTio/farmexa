@@ -79,7 +79,11 @@ export interface LeaveRequest {
   end_date: string
   days_requested: number
   reason?: string
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled'
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled' | 'adjusted'
+  manager_note?: string | null
+  adjusted_days?: number | null
+  reviewed_by_id?: number | null
+  reviewed_at?: string | null
   approved_by_id?: number
   approved_at?: string
   created_at?: string
@@ -194,8 +198,23 @@ export const hrService = {
     return data
   },
 
-  async rejectLeaveRequest(id: number): Promise<LeaveRequest> {
-    const { data } = await api.patch(`/hr/leave-requests/${id}/reject`)
+  async rejectLeaveRequest(id: number, reason: string): Promise<LeaveRequest> {
+    const { data } = await api.patch(`/hr/leave-requests/${id}/reject`, { reason })
+    return data
+  },
+
+  async adjustLeaveRequest(id: number, adjusted_days: number, reason: string): Promise<LeaveRequest> {
+    const { data } = await api.patch(`/hr/leave-requests/${id}/adjust`, { adjusted_days, reason })
+    return data
+  },
+
+  async acceptLeaveAdjustment(id: number): Promise<LeaveRequest> {
+    const { data } = await api.patch(`/hr/leave-requests/${id}/accept-adjustment`)
+    return data
+  },
+
+  async declineLeaveAdjustment(id: number): Promise<LeaveRequest> {
+    const { data } = await api.patch(`/hr/leave-requests/${id}/decline-adjustment`)
     return data
   },
 

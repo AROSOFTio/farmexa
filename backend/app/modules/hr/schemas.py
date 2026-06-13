@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional, Dict, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # --- Employee Schemas ---
@@ -136,7 +136,6 @@ class LeaveTypeOut(LeaveTypeBase):
 
 
 class LeaveRequestBase(BaseModel):
-    employee_id: int
     leave_type_id: int
     start_date: date
     end_date: date
@@ -145,13 +144,29 @@ class LeaveRequestBase(BaseModel):
 
 
 class LeaveRequestCreate(LeaveRequestBase):
-    pass
+    # Optional: approvers may file on behalf of staff. When omitted (or when the
+    # caller lacks team-leave permission) it resolves to the caller's own record.
+    employee_id: Optional[int] = None
+
+
+class LeaveRejectIn(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=500)
+
+
+class LeaveAdjustIn(BaseModel):
+    adjusted_days: int = Field(..., gt=0)
+    reason: str = Field(..., min_length=1, max_length=500)
 
 
 class LeaveRequestOut(LeaveRequestBase):
     id: int
     tenant_id: int
+    employee_id: int
     status: str
+    manager_note: Optional[str] = None
+    adjusted_days: Optional[int] = None
+    reviewed_by_id: Optional[int] = None
+    reviewed_at: Optional[datetime] = None
     approved_by_id: Optional[int] = None
     approved_at: Optional[datetime] = None
     created_at: Optional[datetime] = None

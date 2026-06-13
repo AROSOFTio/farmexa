@@ -58,10 +58,33 @@ PERMISSIONS = [
     ("dev_admin:write", "Manage tenants, plans, and modules", "developer_admin"),
     ("accounting:read", "View accounting data (COA, journals, reports)", "accounting"),
     ("accounting:write", "Create and post journal entries, manage COA", "accounting"),
-    ("hr:read", "View HR and payroll records", "hr"),
-    ("hr:write", "Create/edit HR and payroll records", "hr"),
+    # --- HR & Payroll (granular, least-privilege) ---
+    ("hr:leave:request", "Submit and track your own leave requests", "hr"),
+    ("hr:leave:read", "View all staff leave requests", "hr"),
+    ("hr:leave:approve", "Approve, reject, or adjust leave requests", "hr"),
+    ("hr:employee:read", "View employee records", "hr"),
+    ("hr:employee:write", "Create/edit/deactivate employee records", "hr"),
+    ("hr:attendance:read", "View attendance records", "hr"),
+    ("hr:attendance:write", "Record attendance", "hr"),
+    ("hr:payroll:read", "View payroll runs and payslips", "hr"),
+    ("hr:payroll:process", "Create and process payroll runs", "hr"),
+    ("hr:payroll:approve", "Approve payroll runs and post payroll journals", "hr"),
     ("procurement:read", "View purchase orders and supplier invoices", "procurement"),
     ("procurement:write", "Create/approve purchase orders, invoices, and payments", "procurement"),
+    # --- Inventory store flows (GRN / GIV) ---
+    ("grn:read", "View goods received notes", "inventory"),
+    ("grn:create", "Create goods received notes", "inventory"),
+    ("grn:approve", "Approve goods received notes", "inventory"),
+    ("grn:receive", "Confirm receipt against goods received notes", "inventory"),
+    ("grn:cancel", "Cancel goods received notes", "inventory"),
+    ("giv:read", "View goods issue vouchers", "inventory"),
+    ("giv:create", "Create goods issue vouchers", "inventory"),
+    ("giv:approve", "Approve goods issue vouchers", "inventory"),
+    ("giv:issue", "Issue stock against goods issue vouchers", "inventory"),
+    ("giv:cancel", "Cancel goods issue vouchers", "inventory"),
+    # --- Health & Safety ---
+    ("health_safety:read", "View health & safety records", "health_safety"),
+    ("health_safety:write", "Create/edit health & safety records", "health_safety"),
 ]
 
 

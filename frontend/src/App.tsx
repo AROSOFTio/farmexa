@@ -526,11 +526,11 @@ export default function App() {
           </Route>
 
           <Route path="hr">
-            <Route index element={<Navigate to="/hr/employees" replace />} />
+            <Route index element={<Navigate to="/hr/leave" replace />} />
             <Route
               path="employees"
               element={
-                <ProtectedRoute permission="hr:read">
+                <ProtectedRoute permission="hr:employee:read">
                   <EmployeesPage />
                 </ProtectedRoute>
               }
@@ -538,7 +538,7 @@ export default function App() {
             <Route
               path="payroll"
               element={
-                <ProtectedRoute permission="hr:read">
+                <ProtectedRoute permission="hr:payroll:read">
                   <PayrollPage />
                 </ProtectedRoute>
               }
@@ -546,7 +546,7 @@ export default function App() {
             <Route
               path="leave"
               element={
-                <ProtectedRoute permission="hr:read">
+                <ProtectedRoute permission="hr:leave:request">
                   <LeavePage />
                 </ProtectedRoute>
               }
@@ -554,7 +554,7 @@ export default function App() {
             <Route
               path="attendance"
               element={
-                <ProtectedRoute permission="hr:read">
+                <ProtectedRoute permission="hr:attendance:read">
                   <AttendancePage />
                 </ProtectedRoute>
               }

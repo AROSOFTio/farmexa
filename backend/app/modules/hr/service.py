@@ -415,34 +415,114 @@ class HRService:
         lt = LeaveType(tenant_id=self.tenant_id, **data.model_dump())
         self.db.add(lt); self.db.commit(); self.db.refresh(lt); return lt
 
-    def list_leave_requests(self, employee_id=None, status=None):
+    def employee_for_user(self, user_id: int):
+        """Resolve the Employee record linked to a staff user account (or None)."""
+        from app.models.hr import Employee
+        if not user_id:
+            return None
+        return self.db.query(Employee).filter(
+            Employee.tenant_id == self.tenant_id, Employee.user_id == user_id
+        ).first()
+
+    def list_leave_requests(self, employee_id=None, status=None, restrict_employee_id=None):
         from app.models.hr import LeaveRequest
         from sqlalchemy.orm import joinedload
         q = self.db.query(LeaveRequest).options(
             joinedload(LeaveRequest.employee), joinedload(LeaveRequest.leave_type)
         ).filter(LeaveRequest.tenant_id == self.tenant_id)
+        # Self-service callers only ever see their own requests.
+        if restrict_employee_id is not None:
+            q = q.filter(LeaveRequest.employee_id == restrict_employee_id)
         if employee_id: q = q.filter(LeaveRequest.employee_id == employee_id)
         if status: q = q.filter(LeaveRequest.status == status)
         return q.order_by(LeaveRequest.created_at.desc()).all()
 
-    def create_leave_request(self, data):
+    def create_leave_request(self, data, requester_user_id: int, can_manage: bool):
         from app.models.hr import LeaveRequest
-        req = LeaveRequest(tenant_id=self.tenant_id, **data.model_dump())
+        from fastapi import HTTPException
+        payload = data.model_dump()
+        requested_employee_id = payload.pop("employee_id", None)
+        own = self.employee_for_user(requester_user_id)
+        # Approvers/HR may file on behalf of any employee; everyone else (and any
+        # request with no explicit employee) is pinned to the caller's own record.
+        if can_manage and requested_employee_id:
+            employee_id = requested_employee_id
+        else:
+            if own is None:
+                raise HTTPException(
+                    400,
+                    "Your user account is not linked to an employee record, so leave "
+                    "cannot be filed for you. Ask HR to link your staff profile.",
+                )
+            employee_id = own.id
+        req = LeaveRequest(
+            tenant_id=self.tenant_id, employee_id=employee_id, status="pending", **payload
+        )
         self.db.add(req); self.db.commit(); self.db.refresh(req); return req
 
-    def approve_leave(self, request_id: int, approver_id: int):
+    def _get_leave(self, request_id: int):
         from app.models.hr import LeaveRequest
-        req = self.db.query(LeaveRequest).filter(LeaveRequest.id == request_id).first()
-        if not req: raise __import__('fastapi').HTTPException(404, "Not found")
-        req.status = "approved"; req.approved_by_id = approver_id
+        from fastapi import HTTPException
+        req = self.db.query(LeaveRequest).filter(
+            LeaveRequest.id == request_id, LeaveRequest.tenant_id == self.tenant_id
+        ).first()
+        if not req:
+            raise HTTPException(404, "Leave request not found")
+        return req
+
+    def approve_leave(self, request_id: int, approver_id: int):
+        from fastapi import HTTPException
+        req = self._get_leave(request_id)
+        if req.status not in ("pending", "adjusted"):
+            raise HTTPException(400, f"Cannot approve a leave request that is '{req.status}'.")
+        req.status = "approved"
+        req.reviewed_by_id = approver_id
+        req.reviewed_at = datetime.now(timezone.utc)
+        req.approved_by_id = approver_id
         req.approved_at = datetime.now(timezone.utc)
         self.db.commit(); self.db.refresh(req); return req
 
-    def reject_leave(self, request_id: int):
-        from app.models.hr import LeaveRequest
-        req = self.db.query(LeaveRequest).filter(LeaveRequest.id == request_id).first()
-        if not req: raise __import__('fastapi').HTTPException(404, "Not found")
+    def reject_leave(self, request_id: int, reviewer_id: int, reason: str):
+        from fastapi import HTTPException
+        req = self._get_leave(request_id)
+        if req.status not in ("pending", "adjusted"):
+            raise HTTPException(400, f"Cannot reject a leave request that is '{req.status}'.")
         req.status = "rejected"
+        req.manager_note = reason
+        req.reviewed_by_id = reviewer_id
+        req.reviewed_at = datetime.now(timezone.utc)
+        self.db.commit(); self.db.refresh(req); return req
+
+    def adjust_leave(self, request_id: int, reviewer_id: int, adjusted_days: int, reason: str):
+        """Supervisor proposes a different day count; requester must accept it."""
+        from fastapi import HTTPException
+        req = self._get_leave(request_id)
+        if req.status != "pending":
+            raise HTTPException(400, f"Only a pending request can be adjusted (this one is '{req.status}').")
+        req.status = "adjusted"
+        req.adjusted_days = adjusted_days
+        req.manager_note = reason
+        req.reviewed_by_id = reviewer_id
+        req.reviewed_at = datetime.now(timezone.utc)
+        self.db.commit(); self.db.refresh(req); return req
+
+    def respond_to_adjustment(self, request_id: int, requester_user_id: int, accept: bool):
+        """Requester accepts (auto-approves at adjusted days) or declines an adjustment."""
+        from fastapi import HTTPException
+        req = self._get_leave(request_id)
+        if req.status != "adjusted":
+            raise HTTPException(400, "This request has no pending day adjustment to respond to.")
+        own = self.employee_for_user(requester_user_id)
+        if own is None or req.employee_id != own.id:
+            raise HTTPException(403, "Only the requester can respond to the proposed adjustment.")
+        if accept:
+            if req.adjusted_days:
+                req.days_requested = req.adjusted_days
+            req.status = "approved"
+            req.approved_by_id = req.reviewed_by_id
+            req.approved_at = datetime.now(timezone.utc)
+        else:
+            req.status = "cancelled"
         self.db.commit(); self.db.refresh(req); return req
 
     # --- Attendance ---
