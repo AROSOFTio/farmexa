@@ -648,7 +648,7 @@ export default function App() {
             <Route
               path="branches"
               element={
-                <ProtectedRoute permission="settings:read">
+                <ProtectedRoute permission="branches:read">
                   <ModuleGuard moduleKey="settings">
                     <BranchesPage />
                   </ModuleGuard>

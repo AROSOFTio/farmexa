@@ -51,6 +51,8 @@ PERMISSIONS = [
     ("reports:export", "Export reports", "reports"),
     ("settings:read", "View settings", "settings"),
     ("settings:write", "Edit settings", "settings"),
+    ("branches:read", "View branches", "settings"),
+    ("branches:write", "Create and manage branches", "settings"),
     ("users:read", "View users", "users"),
     ("users:write", "Create/edit users", "users"),
     ("users:delete", "Delete/deactivate users", "users"),

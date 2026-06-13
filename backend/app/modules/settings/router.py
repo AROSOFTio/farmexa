@@ -126,14 +126,19 @@ from app.models.branch import Branch, UserBranchAccess
 @router.get("/branches", response_model=List[schemas.BranchOut])
 def list_branches(
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("settings:read")),
+    current_user=Depends(require_permission("branches:read")),
 ):
     """List all branches. Global admins see all, staff see only what they have access to."""
     query = db.query(Branch)
-    # The global ORM filter `_add_branch_filter` already limits this to allowed branches automatically
-    # but wait, the ORM filter only filters if `branch_id` exists. `Branch` has `id` instead of `branch_id`.
-    # Let's manually filter if the user is not a platform admin.
-    if current_user.role and current_user.role.name not in {"super_manager", "developer_admin", "manager"}:
+    # Branch managers (anyone who can manage branches) and platform admins see
+    # every branch; other staff see only branches they have explicit access to.
+    from app.permissions.checker import has_permission_sync
+
+    is_global = (
+        (current_user.role and current_user.role.name in {"super_manager", "developer_admin", "manager"})
+        or has_permission_sync(current_user, "branches:write")
+    )
+    if not is_global:
         allowed = db.query(UserBranchAccess.branch_id).filter(UserBranchAccess.user_id == current_user.id).all()
         allowed_ids = [a[0] for a in allowed]
         query = query.filter(Branch.id.in_(allowed_ids))
@@ -143,7 +148,7 @@ def list_branches(
 def create_branch(
     payload: schemas.BranchCreate,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("settings:write")),
+    current_user=Depends(require_permission("branches:write")),
 ):
     branch = Branch(**payload.model_dump())
     db.add(branch)
@@ -156,7 +161,7 @@ def update_branch(
     branch_id: int,
     payload: schemas.BranchUpdate,
     db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("settings:write")),
+    current_user=Depends(require_permission("branches:write")),
 ):
     branch = db.get(Branch, branch_id)
     if not branch:

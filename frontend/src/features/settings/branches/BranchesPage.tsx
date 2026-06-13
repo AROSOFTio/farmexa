@@ -8,7 +8,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { SEO } from '@/components/SEO'
 
 export function BranchesPage() {
-  const { hasPermission, hasRole } = useAuth()
+  const { hasPermission } = useAuth()
   const queryClient = useQueryClient()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null)
@@ -58,14 +58,7 @@ export function BranchesPage() {
     setEditingBranch(branch)
   }
 
-  const isGlobal = hasRole('super_manager') || hasRole('developer_admin') || hasRole('manager')
-  if (!isGlobal) {
-    return (
-      <div className="p-8 text-center text-slate-500">
-        You do not have permission to manage branches.
-      </div>
-    )
-  }
+  const canManageBranches = hasPermission('branches:write')
 
   return (
     <>
@@ -78,13 +71,15 @@ export function BranchesPage() {
               Manage physical locations, branches, or store fronts for this workspace.
             </p>
           </div>
-          <button
-            onClick={() => { reset(); setIsModalOpen(true) }}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Branch
-          </button>
+          {canManageBranches ? (
+            <button
+              onClick={() => { reset(); setIsModalOpen(true) }}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add Branch
+            </button>
+          ) : null}
         </div>
 
         {isLoading ? (
@@ -122,9 +117,11 @@ export function BranchesPage() {
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                        <button onClick={() => handleEdit(branch)} className="text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300">
-                          <Edit2 className="h-4 w-4" />
-                        </button>
+                        {canManageBranches ? (
+                          <button onClick={() => handleEdit(branch)} className="text-brand-600 hover:text-brand-900 dark:text-brand-400 dark:hover:text-brand-300">
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                        ) : null}
                       </td>
                     </tr>
                   ))}

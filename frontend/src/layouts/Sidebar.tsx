@@ -109,6 +109,8 @@ const FARM_NAV: NavGroup[] = [
     children: [
       { label: 'Chart of Accounts', path: '/accounting/coa', permission: 'accounting:read' },
       { label: 'Journal Entries', path: '/accounting/journals', permission: 'accounting:read' },
+      { label: 'Trial Balance', path: '/accounting/trial-balance', permission: 'accounting:read' },
+      { label: 'Balance Sheet', path: '/accounting/statements', permission: 'accounting:read' },
       { label: 'Fiscal Years', path: '/accounting/settings', permission: 'accounting:write' },
       { label: 'Quick Expenses', path: '/finance/expenses', permission: 'finance:read' },
       { label: 'Quick Income', path: '/finance/incomes', permission: 'finance:read' },
@@ -161,7 +163,7 @@ const FARM_NAV: NavGroup[] = [
     children: [
       // Company details, roles, billing, and domains are top-management only
       { label: 'Farm Profile', path: '/settings/profile', permission: 'settings:read', moduleKey: 'farm_profile' },
-      { label: 'Branches', path: '/settings/branches', permission: 'settings:read', moduleKey: 'settings' },
+      { label: 'Branches', path: '/settings/branches', permission: 'branches:read', moduleKey: 'settings' },
       { label: 'Users', path: '/settings/users', permission: 'users:read', moduleKey: 'users' },
       { label: 'Roles', path: '/settings/roles', permission: 'users:write', moduleKey: 'settings' },
       { label: 'Company Settings', path: '/settings/company', permission: 'settings:write', moduleKey: 'settings' },
