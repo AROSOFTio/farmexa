@@ -14,9 +14,8 @@ RUN npm run build
 FROM python:3.12-slim AS production
 
 # Routing: keep the platform host exact, then add a low-priority wildcard for
-# tenant workspaces (<slug>.arosoftlabs.com). Exact routers for infra domains
-# such as cp/mail/courses should win over this wildcard; if they do not, the
-# Farmexa middleware still rejects known infrastructure hosts before serving UI.
+# tenant workspaces (<slug>.arosoftlabs.com). The wildcard explicitly excludes
+# reserved infrastructure/platform hosts so Farmexa does not claim those names.
 LABEL maintainer="Farmexa Platform" \
     description="Farmexa ERP Coolify single-container deployment" \
     traefik.enable="true" \
@@ -30,11 +29,11 @@ LABEL maintainer="Farmexa Platform" \
     traefik.http.routers.farmexa-platform.priority="100" \
     traefik.http.routers.farmexa-platform.service="farmexa-platform" \
     traefik.http.routers.farmexa-wildcard-http.entrypoints="http" \
-    traefik.http.routers.farmexa-wildcard-http.rule="HostRegexp(`[a-zA-Z0-9-]+\\.arosoftlabs\\.com`)" \
+    traefik.http.routers.farmexa-wildcard-http.rule="HostRegexp(`[a-zA-Z0-9-]+\\.arosoftlabs\\.com`) && !Host(`farm.arosoftlabs.com`) && !Host(`www.arosoftlabs.com`) && !Host(`cp.arosoftlabs.com`) && !Host(`mail.arosoftlabs.com`) && !Host(`courses.arosoftlabs.com`) && !Host(`demo.arosoftlabs.com`) && !Host(`my.arosoftlabs.com`) && !Host(`arofi.arosoftlabs.com`) && !Host(`api.arosoftlabs.com`) && !Host(`admin.arosoftlabs.com`) && !Host(`support.arosoftlabs.com`) && !Host(`myfarm.arosoftlabs.com`)" \
     traefik.http.routers.farmexa-wildcard-http.priority="1" \
     traefik.http.routers.farmexa-wildcard-http.service="farmexa-platform" \
     traefik.http.routers.farmexa-wildcard.entrypoints="https" \
-    traefik.http.routers.farmexa-wildcard.rule="HostRegexp(`[a-zA-Z0-9-]+\\.arosoftlabs\\.com`)" \
+    traefik.http.routers.farmexa-wildcard.rule="HostRegexp(`[a-zA-Z0-9-]+\\.arosoftlabs\\.com`) && !Host(`farm.arosoftlabs.com`) && !Host(`www.arosoftlabs.com`) && !Host(`cp.arosoftlabs.com`) && !Host(`mail.arosoftlabs.com`) && !Host(`courses.arosoftlabs.com`) && !Host(`demo.arosoftlabs.com`) && !Host(`my.arosoftlabs.com`) && !Host(`arofi.arosoftlabs.com`) && !Host(`api.arosoftlabs.com`) && !Host(`admin.arosoftlabs.com`) && !Host(`support.arosoftlabs.com`) && !Host(`myfarm.arosoftlabs.com`)" \
     traefik.http.routers.farmexa-wildcard.tls="true" \
     traefik.http.routers.farmexa-wildcard.priority="1" \
     traefik.http.routers.farmexa-wildcard.service="farmexa-platform" \

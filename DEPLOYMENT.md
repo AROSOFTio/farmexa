@@ -63,7 +63,7 @@ For the single-container Coolify deployment, add both the platform domain and th
 
 Keep direction set to allow non-www. If tenant URLs such as `https://benjamin.arosoftlabs.com/login` show `no available server`, DNS may already point to the server, but Coolify has not routed the wildcard host to this application yet.
 
-The root Dockerfile also ships low-priority Traefik wildcard labels for direct tenant hosts under `*.arosoftlabs.com`, so new tenant hosts do not need to be added one by one. Exact host routers for infrastructure services should keep higher priority than the wildcard. If Coolify rewrites application labels, open **Advanced > Container Labels**, disable read-only editing, and make sure the labels beginning with `traefik.http.routers.farmexa-wildcard` are present after redeploy.
+The root Dockerfile also ships low-priority Traefik wildcard labels for direct tenant hosts under `*.arosoftlabs.com`, so new tenant hosts do not need to be added one by one. The wildcard rule explicitly excludes reserved hosts such as `www`, `cp`, `mail`, `courses`, `demo`, `my`, `arofi`, `api`, `admin`, `support`, and `myfarm`. If Coolify rewrites application labels, open **Advanced > Container Labels**, disable read-only editing, and make sure the labels beginning with `traefik.http.routers.farmexa-wildcard` are present after redeploy.
 
 ## 6. Docker Compose Deployment
 
