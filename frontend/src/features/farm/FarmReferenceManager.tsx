@@ -31,8 +31,15 @@ type FormValues = z.infer<typeof schema>
 
 export interface FarmReferenceManagerType {
   type: ReferenceType
+  /** Plural noun for section titles and lists, e.g. "Mortality causes". */
   label: string
+  /** Singular noun for the form actions, e.g. "cause", "vaccine", "breed". */
+  singular: string
   description: string
+}
+
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
 function emptyValues(): FormValues {
@@ -79,6 +86,7 @@ export function FarmReferenceManager({ types, initialType }: { types: FarmRefere
   )
 
   const selectedTypeMeta = types.find((entry) => entry.type === selectedType)
+  const singular = selectedTypeMeta?.singular ?? 'item'
 
   const createItem = useMutation({
     mutationFn: (values: FormValues) =>
@@ -90,12 +98,12 @@ export function FarmReferenceManager({ types, initialType }: { types: FarmRefere
         is_active: values.is_active,
       }),
     onSuccess: () => {
-      toast.success('List item saved.')
+      toast.success(`${capitalize(singular)} saved.`)
       qc.invalidateQueries({ queryKey: ['farm-reference-items'] })
       form.reset(emptyValues())
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.detail ?? 'Failed to save list item.')
+      toast.error(error?.response?.data?.detail ?? `Failed to save ${singular}.`)
     },
   })
 
@@ -112,13 +120,13 @@ export function FarmReferenceManager({ types, initialType }: { types: FarmRefere
       })
     },
     onSuccess: () => {
-      toast.success('List item updated.')
+      toast.success(`${capitalize(singular)} updated.`)
       qc.invalidateQueries({ queryKey: ['farm-reference-items'] })
       setEditingItem(null)
       form.reset(emptyValues())
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.detail ?? 'Failed to update list item.')
+      toast.error(error?.response?.data?.detail ?? `Failed to update ${singular}.`)
     },
   })
 
@@ -145,27 +153,29 @@ export function FarmReferenceManager({ types, initialType }: { types: FarmRefere
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        {types.map((entry) => (
-          <button
-            key={entry.type}
-            type="button"
-            onClick={() => {
-              setSelectedType(entry.type)
-              setEditingItem(null)
-              form.reset(emptyValues())
-            }}
-            className={
-              entry.type === selectedType
-                ? 'rounded-[10px] border border-brand-300 bg-brand-50 px-4 py-3 text-left'
-                : 'rounded-[10px] border border-neutral-150 bg-white px-4 py-3 text-left'
-            }
-          >
-            <div className="text-sm font-semibold text-ink-900">{entry.label}</div>
-            <div className="mt-1 text-xs text-ink-500">{entry.description}</div>
-          </button>
-        ))}
-      </div>
+      {types.length > 1 ? (
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {types.map((entry) => (
+            <button
+              key={entry.type}
+              type="button"
+              onClick={() => {
+                setSelectedType(entry.type)
+                setEditingItem(null)
+                form.reset(emptyValues())
+              }}
+              className={
+                entry.type === selectedType
+                  ? 'rounded-[10px] border border-brand-300 bg-brand-50 px-4 py-3 text-left'
+                  : 'rounded-[10px] border border-neutral-150 bg-white px-4 py-3 text-left'
+              }
+            >
+              <div className="text-sm font-semibold text-ink-900">{entry.label}</div>
+              <div className="mt-1 text-xs text-ink-500">{entry.description}</div>
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <div className="rounded-3xl border border-neutral-150 bg-white">
@@ -175,7 +185,9 @@ export function FarmReferenceManager({ types, initialType }: { types: FarmRefere
           </div>
           <div className="divide-y divide-neutral-100">
             {visibleItems.length === 0 ? (
-              <div className="px-5 py-10 text-sm text-ink-500">No entries yet. Add the master list first, then users will pick from a dropdown.</div>
+              <div className="px-5 py-10 text-sm text-ink-500">
+                No {selectedTypeMeta?.label.toLowerCase() ?? 'entries'} yet. Add the first {singular} so operators can pick it from the dropdown.
+              </div>
             ) : (
               visibleItems.map((item) => (
                 <div key={item.id} className="flex items-center justify-between gap-4 px-5 py-4">
@@ -198,14 +210,14 @@ export function FarmReferenceManager({ types, initialType }: { types: FarmRefere
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="rounded-3xl border border-neutral-150 bg-neutral-50 p-5 space-y-4">
           <div>
-            <h3 className="text-lg font-semibold text-ink-900">{editingItem ? 'Edit list item' : 'Add list item'}</h3>
+            <h3 className="text-lg font-semibold text-ink-900">{editingItem ? `Edit ${singular}` : `Add ${singular}`}</h3>
             <p className="mt-1 text-sm text-ink-500">
-              {editingItem ? 'Update the dropdown entry used by operators.' : 'Create the values operators will select later.'}
+              {editingItem ? `Update this ${singular}.` : `Add a ${singular} operators can select from the dropdown.`}
             </p>
           </div>
 
           <div>
-            <label className="form-label">Name</label>
+            <label className="form-label">{capitalize(singular)} name</label>
             <input className="form-input" {...form.register('name')} />
             {form.formState.errors.name ? <p className="form-error">{form.formState.errors.name.message}</p> : null}
           </div>
@@ -240,7 +252,7 @@ export function FarmReferenceManager({ types, initialType }: { types: FarmRefere
             ) : null}
             <button type="submit" className="btn-primary" disabled={isSaving}>
               <Plus className="h-4 w-4" />
-              {isSaving ? 'Saving...' : editingItem ? 'Update item' : 'Add item'}
+              {isSaving ? 'Saving...' : editingItem ? `Update ${singular}` : `Add ${singular}`}
             </button>
           </div>
         </form>

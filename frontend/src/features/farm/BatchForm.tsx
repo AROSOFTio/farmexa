@@ -38,11 +38,13 @@ const batchReferenceTypes: FarmReferenceManagerType[] = [
   {
     type: 'batch_breed',
     label: 'Breeds',
+    singular: 'breed',
     description: 'Managers define the poultry breeds users can select on batch entry.',
   },
   {
     type: 'batch_source',
     label: 'Sources',
+    singular: 'source',
     description: 'Managers define hatcheries and suppliers instead of users typing them each time.',
   },
 ]
@@ -352,9 +354,12 @@ export function BatchForm({ onSuccess }: { onSuccess?: () => void }) {
       <Modal
         isOpen={isReferenceModalOpen}
         onClose={() => setIsReferenceModalOpen(false)}
-        title="Batch setup lists"
+        title={referenceModalType === 'batch_breed' ? 'Breeds' : 'Sources'}
       >
-        <FarmReferenceManager types={batchReferenceTypes} initialType={referenceModalType} />
+        <FarmReferenceManager
+          types={batchReferenceTypes.filter((entry) => entry.type === referenceModalType)}
+          initialType={referenceModalType}
+        />
       </Modal>
 
       <Modal

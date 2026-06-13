@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Activity, ClipboardList, HeartPulse, Pill, Scale, Skull, TrendingUp } from 'lucide-react'
+import { Activity, ClipboardList, HeartPulse, Pill, Plus, Scale, Skull, TrendingUp } from 'lucide-react'
 import { toast } from 'sonner'
 
 import api from '@/services/api'
@@ -270,6 +270,7 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
           {
             type: 'mortality_cause',
             label: 'Mortality causes',
+            singular: 'cause',
             description: 'Managers define the standard mortality causes used by operators.',
           },
         ]
@@ -278,10 +279,14 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
             {
               type: 'vaccine',
               label: 'Vaccines',
+              singular: 'vaccine',
               description: 'Managers define vaccine names so users select them instead of typing.',
             },
           ]
         : []
+
+  // Specific label for the "add reference item" button (no generic "Manage list").
+  const addReferenceLabel = mode === 'mortality' ? 'Add cause' : 'Add vaccine'
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -314,7 +319,8 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
           ) : null}
           {canManageFarm && mode !== 'growth' ? (
             <button type="button" className="btn-secondary" onClick={() => setIsReferenceModalOpen(true)}>
-              Manage list
+              <Plus className="h-4 w-4" />
+              {addReferenceLabel}
             </button>
           ) : null}
         </div>
@@ -483,7 +489,8 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
                 <label className="form-label !mb-0">Cause</label>
                 {canManageFarm ? (
                   <button type="button" className="btn-secondary btn-sm" onClick={() => setIsReferenceModalOpen(true)}>
-                    Manage list
+                    <Plus className="h-4 w-4" />
+                    Add cause
                   </button>
                 ) : null}
               </div>
@@ -515,7 +522,8 @@ export function FarmOperationsPage({ mode }: { mode: FarmOperationMode }) {
                 <label className="form-label !mb-0">Vaccine name</label>
                 {canManageFarm ? (
                   <button type="button" className="btn-secondary btn-sm" onClick={() => setIsReferenceModalOpen(true)}>
-                    Manage list
+                    <Plus className="h-4 w-4" />
+                    Add vaccine
                   </button>
                 ) : null}
               </div>
