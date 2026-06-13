@@ -6,6 +6,8 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
 COPY frontend/ ./
+# Raise Node heap so vite/rollup doesn't OOM on constrained build hosts
+ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN npm run build
 
 FROM python:3.12-slim AS production
