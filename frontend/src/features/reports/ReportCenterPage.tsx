@@ -32,7 +32,18 @@ export function ReportCenterPage() {
   const navigate = useNavigate()
   const { hasPermission } = useAuth()
   const catalogQuery = useQuery({ queryKey: ['reports-catalog'], queryFn: reportsService.catalog })
-  const catalog = catalogQuery.data ?? []
+  // Show a report only to roles that can access its underlying domain.
+  const REPORT_CATEGORY_PERMISSION: Record<string, string> = {
+    'Sales Reports': 'sales:read',
+    'Inventory Reports': 'inventory:read',
+    'Feed Reports': 'feed:read',
+    'Finance Reports': 'finance:read',
+    'Accounting Reports': 'accounting:read',
+    'Compliance Reports': 'farm:read',
+  }
+  const catalog = (catalogQuery.data ?? []).filter((report) =>
+    hasPermission(REPORT_CATEGORY_PERMISSION[report.category] ?? 'reports:read')
+  )
   const selectedReport = reportKey ? catalog.find((report) => report.key === reportKey) : undefined
   const [filters, setFilters] = useState({ start_date: monthStartValue(), end_date: todayValue(), search: '' })
   const [selectedFields, setSelectedFields] = useState<string[]>([])

@@ -282,7 +282,6 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
     # ===================== Dedicated HR =====================
     "hr_officer": [
         "dashboard:read",
-        "reports:read",
         *HR_FULL,
     ],
     # ===================== Compliance & support =====================

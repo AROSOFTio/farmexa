@@ -249,16 +249,6 @@ def get_cashbook(
     return svc.get_cashbook(account_id, from_date=from_date, to_date=to_date, branch_id=branch_id)
 
 
-@router.get("/trial-balance", response_model=schemas.TrialBalanceOut, summary="Trial balance")
-def get_trial_balance(
-    as_of_date: Optional[date] = Query(None, description="Date to compute balances up to"),
-    branch_id: Optional[int] = Query(None),
-    svc=Depends(_svc),
-    _=Depends(require_permission("accounting:read")),
-):
-    return svc.get_trial_balance(as_of_date=as_of_date, branch_id=branch_id)
-
-
 @router.get("/profit-loss", response_model=schemas.ProfitLossOut, summary="Profit & Loss statement")
 def get_profit_loss(
     from_date: Optional[date] = Query(None),

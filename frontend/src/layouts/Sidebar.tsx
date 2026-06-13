@@ -109,12 +109,11 @@ const FARM_NAV: NavGroup[] = [
     children: [
       { label: 'Chart of Accounts', path: '/accounting/coa', permission: 'accounting:read' },
       { label: 'Journal Entries', path: '/accounting/journals', permission: 'accounting:read' },
-      { label: 'Trial Balance', path: '/accounting/trial-balance', permission: 'accounting:read' },
-      { label: 'Balance Sheet', path: '/accounting/statements', permission: 'accounting:read' },
+      // Single statements page with both Profit & Loss and Balance Sheet tabs.
+      { label: 'Financial Statements', path: '/accounting/statements', permission: 'accounting:read' },
       { label: 'Fiscal Years', path: '/accounting/settings', permission: 'accounting:write' },
       { label: 'Quick Expenses', path: '/finance/expenses', permission: 'finance:read' },
       { label: 'Quick Income', path: '/finance/incomes', permission: 'finance:read' },
-      { label: 'Profit & Loss', path: '/reports/profit-loss', permission: 'reports:read' },
     ],
   },
   {
@@ -149,12 +148,9 @@ const FARM_NAV: NavGroup[] = [
     label: 'Reports',
     icon: BarChart3,
     children: [
-      { label: 'Overview', path: '/reports', permission: 'reports:read', moduleKey: 'reports' },
-      { label: 'Sales Summary', path: '/reports/sales-summary', permission: 'reports:read', moduleKey: 'reports' },
-      { label: 'Inventory Stock', path: '/reports/inventory-stock', permission: 'reports:read', moduleKey: 'reports' },
-      { label: 'Feed Stock', path: '/reports/feed-stock', permission: 'reports:read', moduleKey: 'reports' },
-      { label: 'Feed Consumption', path: '/reports/feed-consumption', permission: 'reports:read', moduleKey: 'reports' },
-      { label: 'Compliance Expiry', path: '/reports/compliance-expiring', permission: 'reports:read', moduleKey: 'reports' },
+      // Single entry point; the Report Center shows only the report cards the
+      // user's role can actually access.
+      { label: 'Report Center', path: '/reports', permission: 'reports:read', moduleKey: 'reports' },
     ],
   },
   {

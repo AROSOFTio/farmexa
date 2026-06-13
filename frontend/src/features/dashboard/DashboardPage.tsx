@@ -254,6 +254,17 @@ export function DashboardPage() {
     queryFn: () => api.get('/analytics/profit').then((r) => r.data),
     refetchInterval: 60_000,
   })
+  // HR widgets — real counts, only fetched for users who can see them.
+  const { data: hrEmployees } = useQuery<any[]>({
+    queryKey: ['dash-hr-employees'],
+    enabled: hasPermission('hr:employee:read'),
+    queryFn: () => api.get('/hr/employees', { params: { is_active: true } }).then((r) => r.data),
+  })
+  const { data: hrPendingLeave } = useQuery<any[]>({
+    queryKey: ['dash-hr-pending-leave'],
+    enabled: hasPermission('hr:leave:request'),
+    queryFn: () => api.get('/hr/leave-requests', { params: { status: 'pending' } }).then((r) => r.data),
+  })
 
   if (isLoading) {
     return (
@@ -511,15 +522,16 @@ export function DashboardPage() {
       </div>
       )}
 
-      {/* ROW 3 & 4: OPERATIONS & ACTIVITY */}
+      {/* ROW 3 & 4: OPERATIONS & ACTIVITY — each panel is shown only to roles that may see it */}
+      {(canViewFarm || canViewFeedStock || canViewInventory || canViewHr || activities.length > 0) ? (
       <div className="grid gap-5 lg:grid-cols-3">
-        {/* Flock Overview */}
+        {canViewFarm ? (
         <DashboardPanel title="Flock Overview" viewAllTo="/farm/batches">
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-md border border-border p-3">
               <div className="flex items-center gap-2">
                 <Bird className="h-4 w-4 text-success" />
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Active Flocks</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Active Houses</span>
               </div>
               <div className="mt-2 text-xl font-bold text-text-primary">{kpis.active_houses}</div>
             </div>
@@ -530,6 +542,7 @@ export function DashboardPage() {
               </div>
               <div className="mt-2 text-xl font-bold text-text-primary">{formatNumber(kpis.total_birds)}</div>
             </div>
+            {canViewMortality ? (
             <div className="rounded-md border border-border p-3">
               <div className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-danger" />
@@ -537,17 +550,21 @@ export function DashboardPage() {
               </div>
               <div className="mt-2 text-xl font-bold text-text-primary">{kpis.mortality_today} <span className="text-sm font-medium text-text-secondary">({kpis.mortality_rate_today}%)</span></div>
             </div>
+            ) : null}
+            {canViewEggs ? (
             <div className="rounded-md border border-border p-3">
               <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-info" />
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">FCR (Avg)</span>
+                <Egg className="h-4 w-4 text-info" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Eggs Today</span>
               </div>
-              <div className="mt-2 text-xl font-bold text-text-primary">1.72</div>
+              <div className="mt-2 text-xl font-bold text-text-primary">{formatNumber(eggsToday)}</div>
             </div>
+            ) : null}
           </div>
         </DashboardPanel>
+        ) : null}
 
-        {/* Inventory Summary */}
+        {(canViewFeedStock || canViewInventory) ? (
         <DashboardPanel title="Inventory Summary" viewAllTo="/inventory/items">
           <table className="w-full text-left text-[13px]">
             <thead>
@@ -565,12 +582,39 @@ export function DashboardPage() {
                   <td className="py-2.5"><StatusDot status={item.status} /></td>
                 </tr>
               ))}
+              {feed_stock.length === 0 ? (
+                <tr><td colSpan={3} className="py-4 text-center text-text-secondary">No stock recorded yet.</td></tr>
+              ) : null}
             </tbody>
           </table>
         </DashboardPanel>
+        ) : null}
 
-        {/* Activity Center */}
-        <DashboardPanel title="Recent Activities" viewAllTo="/reports/activities">
+        {canViewHr ? (
+        <DashboardPanel title="HR & Payroll" viewAllTo="/hr/leave">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-md border border-border p-3">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-info" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Pending Leave</span>
+              </div>
+              <div className="mt-2 text-xl font-bold text-text-primary">{formatNumber(hrPendingLeave?.length ?? 0)}</div>
+            </div>
+            {hasPermission('hr:employee:read') ? (
+            <div className="rounded-md border border-border p-3">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-success" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Staff</span>
+              </div>
+              <div className="mt-2 text-xl font-bold text-text-primary">{formatNumber(hrEmployees?.length ?? 0)}</div>
+            </div>
+            ) : null}
+          </div>
+        </DashboardPanel>
+        ) : null}
+
+        {activities.length > 0 ? (
+        <DashboardPanel title="Recent Activities">
           <div className="space-y-4">
             {activities.map((act) => (
               <div key={act.id} className="flex gap-3">
@@ -586,22 +630,21 @@ export function DashboardPage() {
             ))}
           </div>
         </DashboardPanel>
+        ) : null}
       </div>
+      ) : null}
 
-      {/* ROW 5: QUICK ACTIONS */}
+      {/* ROW 5: QUICK ACTIONS — only the actions this role is allowed to perform */}
+      {quickActions.length > 0 ? (
       <div>
         <h3 className="text-[14px] font-bold text-text-primary mb-3">Quick Actions</h3>
         <div className="flex flex-wrap gap-3">
-          {hasPermission('sales:write') && <QuickActionButton icon={ShoppingCart} label="New Sale" to="/sales/orders" />}
-          {hasPermission('procurement:write') && <QuickActionButton icon={Package} label="New Purchase" to="/procurement/purchase-orders" />}
-          {hasPermission('procurement:write') && <QuickActionButton icon={Truck} label="Add Supplier" to="/procurement/suppliers" />}
-          {hasPermission('finance:write') && <QuickActionButton icon={DollarSign} label="Expense" to="/finance/expenses" />}
-          <QuickActionButton icon={Wheat} label="Feed Issue" to="/feed/consumption" />
-          <QuickActionButton icon={Egg} label="Egg Collection" to="/farm/eggs" />
-          <QuickActionButton icon={Skull} label="Record Mortality" to="/farm/mortality" />
-          <QuickActionButton icon={Bird} label="Add Flock/Batch" to="/farm/batches" />
+          {quickActions.map((action) => (
+            <QuickActionButton key={action.label} icon={action.icon} label={action.label} to={action.to} />
+          ))}
         </div>
       </div>
+      ) : null}
 
     </div>
   )

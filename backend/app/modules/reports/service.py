@@ -222,23 +222,6 @@ REPORT_CATALOG: dict[str, ReportCatalogItem] = {
         ],
     ),
     # ── Accounting Reports ──────────────────────────────────────────
-    "trial-balance": ReportCatalogItem(
-        key="trial-balance",
-        title="Trial Balance",
-        category="Accounting Reports",
-        description="All account debit and credit balances at a given date, verifying books balance.",
-        filters=[
-            ReportFilter(key="as_of_date", label="As of date", type="date"),
-            ReportFilter(key="branch_id",  label="Branch (optional)", type="text"),
-        ],
-        fields=[
-            _field("account_code",  "Code"),
-            _field("account_name",  "Account"),
-            _field("account_type",  "Type"),
-            _field("total_debit",   "Debit (UGX)"),
-            _field("total_credit",  "Credit (UGX)"),
-        ],
-    ),
     "balance-sheet": ReportCatalogItem(
         key="balance-sheet",
         title="Balance Sheet",
@@ -493,7 +476,6 @@ class ReportsService:
             "debtors": self._debtors,
             "credit-sales": self._credit_sales,
             # Accounting reports
-            "trial-balance": self._trial_balance,
             "balance-sheet": self._balance_sheet,
             "general-ledger": self._general_ledger,
             "cashbook": self._cashbook_report,
@@ -844,33 +826,6 @@ class ReportsService:
             return None
 
     # ── Accounting report handlers ────────────────────────────────────
-
-    def _trial_balance(self, db: Session, request: ReportRequest):
-        from app.services.accounting_service import AccountingService
-        extra = request.filters or {}
-        tenant_id = self._get_tenant_id(db)
-        svc = AccountingService(db, tenant_id=tenant_id)
-        result = svc.get_trial_balance(
-            as_of_date=self._parse_date(extra.get("as_of_date")),
-            branch_id=self._int_or_none(extra.get("branch_id")),
-        )
-        rows = [
-            {
-                "account_code": r["account_code"],
-                "account_name": r["account_name"],
-                "account_type": str(r["account_type"]).replace("_", " ").title(),
-                "total_debit": float(r["total_debit"]),
-                "total_credit": float(r["total_credit"]),
-            }
-            for r in result.get("rows", [])
-        ]
-        total_debit = sum(r["total_debit"] for r in rows)
-        total_credit = sum(r["total_credit"] for r in rows)
-        return rows, {
-            "total_debit": total_debit,
-            "total_credit": total_credit,
-            "balanced": "YES" if abs(total_debit - total_credit) < 0.02 else "NO",
-        }
 
     def _balance_sheet(self, db: Session, request: ReportRequest):
         from app.services.accounting_service import AccountingService

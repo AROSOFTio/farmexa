@@ -51,7 +51,6 @@ import { JournalsPage } from '@/features/accounting/JournalsPage'
 import { AccountingSettingsPage } from '@/features/accounting/AccountingSettingsPage'
 import { CashbookPage } from '@/features/finance/reports/CashbookPage'
 import { GeneralLedgerPage } from '@/features/finance/reports/GeneralLedgerPage'
-import { TrialBalancePage } from '@/features/finance/reports/TrialBalancePage'
 import { FinancialStatementsPage } from '@/features/finance/reports/FinancialStatementsPage'
 import { EmployeesPage } from '@/features/hr/EmployeesPage'
 import { PurchaseOrdersPage } from '@/features/procurement/PurchaseOrdersPage'
@@ -491,7 +490,6 @@ export default function App() {
             <Route index element={<Navigate to="/accounting/coa" replace />} />
             <Route path="cashbook" element={<ProtectedRoute permission="accounting:read"><ModuleGuard moduleKey="accounting"><CashbookPage /></ModuleGuard></ProtectedRoute>} />
             <Route path="ledger" element={<ProtectedRoute permission="accounting:read"><ModuleGuard moduleKey="accounting"><GeneralLedgerPage /></ModuleGuard></ProtectedRoute>} />
-            <Route path="trial-balance" element={<ProtectedRoute permission="accounting:read"><ModuleGuard moduleKey="accounting"><TrialBalancePage /></ModuleGuard></ProtectedRoute>} />
             <Route path="statements" element={<ProtectedRoute permission="accounting:read"><ModuleGuard moduleKey="accounting"><FinancialStatementsPage /></ModuleGuard></ProtectedRoute>} />
             <Route
               path="coa"

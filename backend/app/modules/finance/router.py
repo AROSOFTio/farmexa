@@ -119,16 +119,6 @@ def get_general_ledger(
     acct_service = AccountingService(db, tenant_id=current_user.tenant_id)
     return acct_service.get_ledger(account_id, from_date, to_date, branch_id)
 
-@router.get("/reports/trial-balance", response_model=schemas.TrialBalanceReport)
-def get_trial_balance(
-    as_of_date: Optional[date] = None,
-    branch_id: Optional[int] = None,
-    db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("finance:read")),
-):
-    acct_service = AccountingService(db, tenant_id=current_user.tenant_id)
-    return acct_service.get_trial_balance(as_of_date, branch_id)
-
 @router.get("/reports/profit-and-loss", response_model=schemas.ProfitLossReport)
 def get_profit_and_loss(
     from_date: Optional[date] = None,
