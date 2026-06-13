@@ -29,8 +29,22 @@ class ModuleCatalogItemOut(BaseModel):
     description: str | None = None
     is_core: bool
     is_enabled: bool
+    is_addon: bool = False
+    coming_soon: bool = False
     monthly_price: Decimal | None = None
-    currency: str = "UGX"
+    currency: str = "USD"
+
+
+class AddonPackageOut(BaseModel):
+    key: str
+    name: str
+    description: str | None = None
+    modules: list[str]
+    price: Decimal | None = None
+    currency: str = "USD"
+    available: bool = True
+    coming_soon: bool = False
+    is_enabled: bool = False
 
 
 class UpgradeRequestItemOut(BaseModel):
@@ -117,6 +131,7 @@ class TenantUpgradeOverviewOut(BaseModel):
     billing_cycle: str
     enabled_modules: list[str]
     catalog: list[ModuleCatalogItemOut]
+    packages: list[AddonPackageOut] = Field(default_factory=list)
     requests: list[ModuleUpgradeRequestOut]
     domain_requests: list[CustomDomainRequestOut] = Field(default_factory=list)
     custom_domain_price: Decimal

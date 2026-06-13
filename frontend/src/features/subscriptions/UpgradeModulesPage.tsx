@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, CreditCard, Layers3, Wallet } from 'lucide-react'
+import { CheckCircle2, CreditCard, Layers3, Sparkles, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 
 import api from '@/services/api'
@@ -13,8 +13,22 @@ interface CatalogItem {
   description: string | null
   is_core: boolean
   is_enabled: boolean
+  is_addon: boolean
+  coming_soon: boolean
   monthly_price: string | null
   currency: string
+}
+
+interface AddonPackage {
+  key: string
+  name: string
+  description: string | null
+  modules: string[]
+  price: string | null
+  currency: string
+  available: boolean
+  coming_soon: boolean
+  is_enabled: boolean
 }
 
 interface UpgradeRequestItem {
@@ -57,12 +71,14 @@ interface UpgradeOverview {
   billing_cycle: string
   enabled_modules: string[]
   catalog: CatalogItem[]
+  packages: AddonPackage[]
   requests: UpgradeRequest[]
 }
 
-function formatMoney(value: string | null | undefined, currency = 'UGX') {
-  if (!value) return `${currency} 0`
-  return `${currency} ${Number(value).toLocaleString()}`
+function formatMoney(value: string | number | null | undefined, currency = 'USD') {
+  const amount = Number(value ?? 0)
+  if (currency === 'USD') return `$${amount.toLocaleString()}`
+  return `${currency} ${amount.toLocaleString()}`
 }
 
 function formatDate(value: string | null | undefined) {
@@ -73,7 +89,7 @@ function formatDate(value: string | null | undefined) {
 export function UpgradeModulesPage() {
   const queryClient = useQueryClient()
   const { enabledModules, refetchMe, user } = useAuth()
-  const [selectedModules, setSelectedModules] = useState<string[]>([])
+  const [selectedPackages, setSelectedPackages] = useState<string[]>([])
   const [notes, setNotes] = useState('')
 
   const { data, isLoading } = useQuery<UpgradeOverview>({
@@ -90,34 +106,41 @@ export function UpgradeModulesPage() {
     }
   }, [data, enabledModules, refetchMe])
 
-  const optionalModules = useMemo(
-    () => (data?.catalog ?? []).filter((module) => !module.is_core && !module.is_enabled),
-    [data?.catalog]
+  const packages = data?.packages ?? []
+  const selectablePackages = useMemo(
+    () => packages.filter((pkg) => pkg.available && !pkg.is_enabled),
+    [packages]
   )
 
   const selectionTotal = useMemo(
     () =>
-      optionalModules
-        .filter((module) => selectedModules.includes(module.key))
-        .reduce((sum, module) => sum + Number(module.monthly_price ?? 0), 0),
-    [optionalModules, selectedModules]
+      selectablePackages
+        .filter((pkg) => selectedPackages.includes(pkg.key))
+        .reduce((sum, pkg) => sum + Number(pkg.price ?? 0), 0),
+    [selectablePackages, selectedPackages]
   )
 
+  const currency = packages[0]?.currency ?? 'USD'
+
   const createRequest = useMutation({
-    mutationFn: () =>
-      api.post('/subscriptions/modules/requests', {
-        module_keys: selectedModules,
+    mutationFn: () => {
+      const moduleKeys = selectablePackages
+        .filter((pkg) => selectedPackages.includes(pkg.key))
+        .flatMap((pkg) => pkg.modules)
+      return api.post('/subscriptions/modules/requests', {
+        module_keys: moduleKeys,
         notes: notes || null,
-      }),
+      })
+    },
     onSuccess: async () => {
-      toast.success('Upgrade request created. Payment is required before modules are activated.')
-      setSelectedModules([])
+      toast.success('Add-on request created. Payment is required before it is activated.')
+      setSelectedPackages([])
       setNotes('')
       await queryClient.invalidateQueries({ queryKey: ['subscription-module-overview'] })
       await refetchMe()
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.detail ?? 'Failed to create module upgrade request.')
+      toast.error(error?.response?.data?.detail ?? 'Failed to create add-on request.')
     },
   })
 
@@ -137,17 +160,22 @@ export function UpgradeModulesPage() {
     [data?.requests]
   )
 
-  const canRequest = selectedModules.length > 0 && !pendingRequest
   const roleName = user?.role?.name ?? ''
   const isTenantAdmin = !['developer_admin', 'super_manager'].includes(roleName)
+  const canRequest = selectedPackages.length > 0 && !pendingRequest && isTenantAdmin
+
+  const togglePackage = (key: string) =>
+    setSelectedPackages((current) =>
+      current.includes(key) ? current.filter((item) => item !== key) : [...current, key]
+    )
 
   return (
     <div className="animate-fade-in space-y-6">
       <section className="section-header">
         <div>
-          <h1 className="section-title">Upgrade Modules</h1>
+          <h1 className="section-title">Add-ons</h1>
           <p className="section-subtitle">
-            Select paid add-on modules, generate a pending invoice, then wait for payment activation.
+            Browse add-ons available on top of your plan. Pick what you need, generate an invoice, and it activates after payment.
           </p>
         </div>
       </section>
@@ -156,17 +184,17 @@ export function UpgradeModulesPage() {
         <div className="metric-card">
           <div className="metric-label">Current Plan</div>
           <div className="metric-value capitalize">{data?.current_plan ?? '...'}</div>
-          <div className="metric-note">Tenant subscription plan currently controlling base access.</div>
+          <div className="metric-note">Your base subscription plan.</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">Enabled Modules</div>
           <div className="metric-value">{data?.enabled_modules.length ?? 0}</div>
-          <div className="metric-note">Modules already active inside the tenant workspace.</div>
+          <div className="metric-note">Modules already active in your workspace.</div>
         </div>
         <div className="metric-card">
           <div className="metric-label">Selected Total</div>
-          <div className="metric-value">{formatMoney(String(selectionTotal), data?.catalog[0]?.currency ?? 'UGX')}</div>
-          <div className="metric-note">Amount due for the modules currently selected below.</div>
+          <div className="metric-value">{formatMoney(selectionTotal, currency)}</div>
+          <div className="metric-note">Monthly amount for the add-ons selected below.</div>
         </div>
       </section>
 
@@ -174,7 +202,7 @@ export function UpgradeModulesPage() {
         <div className="card px-5 py-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-sm font-semibold text-[var(--text-strong)]">Upgrade request awaiting completion</div>
+              <div className="text-sm font-semibold text-[var(--text-strong)]">Add-on request awaiting completion</div>
               <div className="mt-1 text-[13px] text-[var(--text-muted)]">
                 Invoice {pendingRequest.invoice?.invoice_number ?? 'Pending'} | status {pendingRequest.status.replace(/_/g, ' ')}
               </div>
@@ -202,57 +230,61 @@ export function UpgradeModulesPage() {
               <div className="flex items-center gap-3">
                 <Layers3 className="h-4 w-4 text-[var(--brand-primary)]" />
                 <div>
-                  <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Available add-on modules</h2>
-                  <p className="mt-1 text-[13px] text-[var(--text-muted)]">Modules stay locked until payment is confirmed.</p>
+                  <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Available add-ons</h2>
+                  <p className="mt-1 text-[13px] text-[var(--text-muted)]">Add-ons stay locked until payment is confirmed.</p>
                 </div>
               </div>
             </div>
             <div className="grid gap-4 p-5 md:grid-cols-2">
               {isLoading ? (
-                <div className="text-[13px] text-[var(--text-muted)]">Loading module catalog...</div>
-              ) : optionalModules.length ? (
-                optionalModules.map((module) => {
-                  const active = selectedModules.includes(module.key)
+                <div className="text-[13px] text-[var(--text-muted)]">Loading add-ons...</div>
+              ) : packages.length ? (
+                packages.map((pkg) => {
+                  const active = selectedPackages.includes(pkg.key)
+                  const locked = pkg.coming_soon || pkg.is_enabled || !pkg.available
                   return (
                     <button
-                      key={module.key}
+                      key={pkg.key}
                       type="button"
-                      onClick={() =>
-                        setSelectedModules((current) =>
-                          current.includes(module.key)
-                            ? current.filter((item) => item !== module.key)
-                            : [...current, module.key]
-                        )
-                      }
+                      disabled={locked}
+                      onClick={() => !locked && togglePackage(pkg.key)}
                       className={`rounded-[16px] border px-3.5 py-3 text-left transition-colors ${
                         active
                           ? 'border-brand-200 bg-brand-50'
-                          : 'border-[var(--border-subtle)] bg-[var(--surface-card)] hover:bg-[var(--surface-soft)]'
-                      }`}
+                          : 'border-[var(--border-subtle)] bg-[var(--surface-card)]'
+                      } ${locked ? 'cursor-not-allowed opacity-70' : 'hover:bg-[var(--surface-soft)]'}`}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="text-[13px] font-semibold text-[var(--text-strong)]">{module.name}</div>
-                          <div className="mt-1 text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">{module.category.replace(/_/g, ' ')}</div>
+                        <div className="flex items-center gap-2">
+                          {pkg.coming_soon ? <Sparkles className="h-4 w-4 text-amber-500" /> : null}
+                          <div className="text-[13px] font-semibold text-[var(--text-strong)]">{pkg.name}</div>
                         </div>
-                        {active ? <CheckCircle2 className="h-4 w-4 text-[var(--brand-primary)]" /> : null}
+                        {pkg.coming_soon ? (
+                          <span className="badge badge-neutral uppercase">Coming soon</span>
+                        ) : pkg.is_enabled ? (
+                          <span className="badge badge-brand uppercase">Active</span>
+                        ) : active ? (
+                          <CheckCircle2 className="h-4 w-4 text-[var(--brand-primary)]" />
+                        ) : null}
                       </div>
-                      <p className="mt-2 text-[12px] leading-5 text-[var(--text-muted)]">{module.description}</p>
+                      <p className="mt-2 text-[12px] leading-5 text-[var(--text-muted)]">{pkg.description}</p>
                       <div className="mt-3 text-[13px] font-semibold text-[var(--text-strong)]">
-                        {formatMoney(module.monthly_price, module.currency)} / {data?.billing_cycle ?? 'month'}
+                        {pkg.coming_soon
+                          ? 'Coming soon'
+                          : `${formatMoney(pkg.price, pkg.currency)} / month`}
                       </div>
                     </button>
                   )
                 })
               ) : (
-                <div className="text-[13px] text-[var(--text-muted)]">No paid add-on modules are available right now.</div>
+                <div className="text-[13px] text-[var(--text-muted)]">No add-ons are available right now.</div>
               )}
             </div>
           </div>
 
           <div className="card overflow-hidden">
             <div className="border-b border-[var(--border-subtle)] px-5 py-4">
-              <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Upgrade history</h2>
+              <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Add-on history</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="data-table">
@@ -278,7 +310,7 @@ export function UpgradeModulesPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className="py-10 text-center text-[var(--text-muted)]">No module upgrade requests yet.</td>
+                      <td colSpan={5} className="py-10 text-center text-[var(--text-muted)]">No add-on requests yet.</td>
                     </tr>
                   )}
                 </tbody>
@@ -291,7 +323,7 @@ export function UpgradeModulesPage() {
           <div className="flex items-center gap-3">
             <Wallet className="h-4 w-4 text-[var(--brand-primary)]" />
             <div>
-              <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Selected upgrade</h2>
+              <h2 className="text-[1rem] font-semibold text-[var(--text-strong)]">Selected add-ons</h2>
               <p className="mt-1 text-[13px] text-[var(--text-muted)]">Create a pending request before payment.</p>
             </div>
           </div>
@@ -303,18 +335,18 @@ export function UpgradeModulesPage() {
           ) : null}
 
           <div className="mt-5 space-y-3">
-            {selectedModules.length ? selectedModules.map((moduleKey) => {
-              const module = optionalModules.find((item) => item.key === moduleKey)
-              if (!module) return null
+            {selectedPackages.length ? selectedPackages.map((pkgKey) => {
+              const pkg = selectablePackages.find((item) => item.key === pkgKey)
+              if (!pkg) return null
               return (
-                <div key={moduleKey} className="rounded-[14px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
-                  <div className="text-sm font-semibold text-[var(--text-strong)]">{module.name}</div>
-                  <div className="mt-1 text-[12px] text-[var(--text-muted)]">{formatMoney(module.monthly_price, module.currency)}</div>
+                <div key={pkgKey} className="rounded-[14px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3">
+                  <div className="text-sm font-semibold text-[var(--text-strong)]">{pkg.name}</div>
+                  <div className="mt-1 text-[12px] text-[var(--text-muted)]">{formatMoney(pkg.price, pkg.currency)} / month</div>
                 </div>
               )
             }) : (
               <div className="rounded-[14px] border border-dashed border-[var(--border-subtle)] px-4 py-8 text-center text-[13px] text-[var(--text-muted)]">
-                Select one or more modules to see the upgrade summary.
+                Select one or more add-ons to see the summary.
               </div>
             )}
           </div>
@@ -332,10 +364,10 @@ export function UpgradeModulesPage() {
           <div className="mt-5 rounded-[16px] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-4">
             <div className="flex items-center justify-between gap-3 text-sm font-semibold text-[var(--text-strong)]">
               <span>Total due</span>
-              <span>{formatMoney(String(selectionTotal), data?.catalog[0]?.currency ?? 'UGX')}</span>
+              <span>{formatMoney(selectionTotal, currency)} / month</span>
             </div>
             <div className="mt-2 text-[12px] text-[var(--text-muted)]">
-              The backend will only activate modules after a successful payment callback.
+              Add-ons are activated only after a successful payment callback.
             </div>
           </div>
 
@@ -346,7 +378,7 @@ export function UpgradeModulesPage() {
             onClick={() => createRequest.mutate()}
           >
             <CreditCard className="h-4 w-4" />
-            {createRequest.isPending ? 'Submitting...' : 'Create Upgrade Request'}
+            {createRequest.isPending ? 'Submitting...' : 'Request Add-ons'}
           </button>
         </aside>
       </section>

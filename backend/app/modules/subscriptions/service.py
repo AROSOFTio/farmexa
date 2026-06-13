@@ -164,6 +164,12 @@ class SubscriptionUpgradeService:
         )
         price_map = {price.module_key: price for price in prices_result.scalars().all()}
         enabled_modules = sorted(module.module_key for module in tenant.modules if module.is_enabled)
+        enabled_set = set(enabled_modules)
+        from app.modules.developer_admin.catalog import (
+            ADDON_MODULE_KEYS,
+            COMING_SOON_MODULE_KEYS,
+            addon_packages,
+        )
         catalog = [
             {
                 "key": module.key,
@@ -172,10 +178,27 @@ class SubscriptionUpgradeService:
                 "description": module.description,
                 "is_core": module.is_core,
                 "is_enabled": module.key in enabled_modules,
+                "is_addon": module.key in ADDON_MODULE_KEYS,
+                "coming_soon": module.key in COMING_SOON_MODULE_KEYS,
                 "monthly_price": price_map.get(module.key).price if price_map.get(module.key) else None,
-                "currency": price_map.get(module.key).currency if price_map.get(module.key) else "UGX",
+                "currency": price_map.get(module.key).currency if price_map.get(module.key) else "USD",
             }
             for module in modules_result.scalars().all()
+        ]
+        # Browsable add-on packages (bought on top of the tenant's plan).
+        packages = [
+            {
+                "key": pkg["key"],
+                "name": pkg["name"],
+                "description": pkg.get("description"),
+                "modules": pkg["modules"],
+                "price": pkg.get("price"),
+                "currency": pkg.get("currency", "USD"),
+                "available": pkg.get("available", True),
+                "coming_soon": pkg.get("coming_soon", False),
+                "is_enabled": all(key in enabled_set for key in pkg["modules"]),
+            }
+            for pkg in addon_packages()
         ]
         requests = sorted(tenant.module_requests, key=lambda item: item.created_at, reverse=True)
         domain_requests = sorted(tenant.domain_requests, key=lambda item: item.created_at, reverse=True)
@@ -186,6 +209,7 @@ class SubscriptionUpgradeService:
             "billing_cycle": tenant.billing_cycle.value if hasattr(tenant.billing_cycle, "value") else str(tenant.billing_cycle),
             "enabled_modules": enabled_modules,
             "catalog": catalog,
+            "packages": packages,
             "requests": requests,
             "domain_requests": domain_requests,
             "custom_domain_price": getattr(system_settings, "custom_domain_annual_price", None) or settings.CUSTOM_DOMAIN_ANNUAL_PRICE,
@@ -228,6 +252,16 @@ class SubscriptionUpgradeService:
                 detail=f"Core module(s) cannot be upgraded through tenant self-service: {', '.join(core_modules)}",
             )
 
+        # "Coming soon" add-ons can be browsed but not purchased yet.
+        from app.modules.developer_admin.catalog import COMING_SOON_MODULE_KEYS
+
+        coming_soon = [key for key in requested_keys if key in COMING_SOON_MODULE_KEYS]
+        if coming_soon:
+            raise HTTPException(
+                status_code=409,
+                detail=f"This add-on is coming soon and cannot be purchased yet: {', '.join(coming_soon)}",
+            )
+
         billing_cycle = self._coerce_billing_cycle(payload.billing_cycle or tenant.billing_cycle.value)
         prices_result = await self.db.execute(
             select(ModulePrice).where(
@@ -236,13 +270,10 @@ class SubscriptionUpgradeService:
             )
         )
         price_map = {price.module_key: price for price in prices_result.scalars().all()}
-        unpriced = [key for key in requested_keys if key not in price_map]
-        if unpriced:
-            raise HTTPException(
-                status_code=409,
-                detail=f"No pricing is configured for module(s): {', '.join(unpriced)}",
-            )
-        currency = next((price.currency for price in price_map.values()), "UGX")
+        # Add-ons are priced as a whole package on an anchor module; the other
+        # modules in the package carry no price (treated as $0), so requesting a
+        # full package is allowed and totals the package price.
+        currency = next((price.currency for price in price_map.values()), "USD")
         total_amount = sum(float(price_map.get(key).price or 0) for key in requested_keys)
 
         request = TenantModuleRequest(

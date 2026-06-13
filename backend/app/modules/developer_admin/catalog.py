@@ -52,6 +52,7 @@ DEFAULT_MODULES = [
     {"key": "users", "name": "Users", "category": "administration", "description": "User administration", "is_core": True},
     {"key": "settings", "name": "Settings", "category": "administration", "description": "Tenant settings", "is_core": True},
     {"key": "hr", "name": "HR & Payroll", "category": "hr", "description": "Employees, leave, attendance, and payroll", "is_core": False},
+    {"key": "ai_analysis", "name": "AI Analysis", "category": "ai", "description": "AI that monitors the whole farm — profit, loss, compliance, and more (coming soon)", "is_core": False},
 ]
 
 MANDATORY_TENANT_MODULE_KEYS = {"dashboard", "users", "settings"}
@@ -83,7 +84,11 @@ PKG_SLAUGHTER = [
 ]
 PKG_COMPLIANCE = ["compliance_documents", "compliance_alerts"]
 PKG_HR = ["hr"]
+PKG_AI_ANALYSIS = ["ai_analysis"]
 
+# Add-on price is charged once per package (flat USD/month) on its anchor module
+# (the first module in the package). Other modules in the package carry no
+# separate price, so enabling the whole package costs exactly the package price.
 MODULE_PACKAGES = [
     {"key": "foundation", "name": "Foundation", "kind": "core", "modules": PKG_FOUNDATION,
      "description": "Dashboard, users, settings, farm profile, and reports."},
@@ -95,17 +100,35 @@ MODULE_PACKAGES = [
      "description": "Customers, orders, invoices, payments, and balances."},
     {"key": "finance", "name": "Finance & Accounting", "kind": "tier", "modules": PKG_FINANCE,
      "description": "Accounting, expenses, income, batch costing, P&L, and cash flow."},
-    # Add-ons — pricing.mode is "flat" (monthly USD) or "percent" (of base plan price).
+    # Add-ons — bought on top of any plan; flat USD/month each.
     {"key": "slaughter", "name": "Slaughter & Processing", "kind": "addon", "modules": PKG_SLAUGHTER,
      "description": "Processing planning, records, outputs, cut parts, byproducts, and yield analysis.",
-     "pricing": {"mode": "flat", "monthly": 9.0, "currency": "USD"}},
+     "price": 9, "currency": "USD", "available": True},
     {"key": "compliance", "name": "Compliance", "kind": "addon", "modules": PKG_COMPLIANCE,
      "description": "Compliance documents and expiry/renewal alerts.",
-     "pricing": {"mode": "percent", "percent": 5}},
+     "price": 5, "currency": "USD", "available": True},
     {"key": "hr", "name": "HR & Payroll", "kind": "addon", "modules": PKG_HR,
      "description": "Employees, leave, attendance, and payroll.",
-     "pricing": {"mode": "percent", "percent": 15}},
+     "price": 15, "currency": "USD", "available": True},
+    {"key": "ai_analysis", "name": "AI Analysis", "kind": "addon", "modules": PKG_AI_ANALYSIS,
+     "description": "AI that watches your whole operation — profit, loss, compliance and more, with insights and alerts.",
+     "price": None, "currency": "USD", "available": False, "coming_soon": True},
 ]
+
+# Modules that belong to an add-on package (used to keep them out of base tiers
+# and to badge them in the upgrade catalogue).
+ADDON_MODULE_KEYS = {key for pkg in MODULE_PACKAGES if pkg["kind"] == "addon" for key in pkg["modules"]}
+# Modules that are visible but not yet purchasable.
+COMING_SOON_MODULE_KEYS = {
+    key for pkg in MODULE_PACKAGES if pkg.get("coming_soon") for key in pkg["modules"]
+}
+# Map a module key to the add-on package it anchors a price for / belongs to.
+MODULE_TO_ADDON = {key: pkg["key"] for pkg in MODULE_PACKAGES if pkg["kind"] == "addon" for key in pkg["modules"]}
+
+
+def addon_packages() -> list[dict]:
+    """The add-on packages tenants can browse and buy on top of their plan."""
+    return [pkg for pkg in MODULE_PACKAGES if pkg["kind"] == "addon"]
 
 DEFAULT_PLANS = [
     {
@@ -195,6 +218,11 @@ DEFAULT_PLAN_MODULES = {
 # are defined in MODULE_PACKAGES because their amount depends on the base plan.
 # The Slaughter & Processing add-on is a flat $9/mo; we tag it on its anchor
 # module so the package totals $9 regardless of how many sub-modules it carries.
+# Flat add-on prices, anchored on one module per package (the rest are $0 so a
+# whole package costs exactly its package price). AI Analysis is "coming soon"
+# and intentionally has no price. Percentage pricing is not used.
 DEFAULT_MODULE_PRICES = [
-    {"module_key": "slaughter_records", "billing_cycle": "monthly", "price": 9, "currency": "USD", "notes": "Slaughter & Processing add-on (flat monthly)"},
+    {"module_key": "slaughter_planning", "billing_cycle": "monthly", "price": 9, "currency": "USD", "notes": "Slaughter & Processing add-on (flat monthly)"},
+    {"module_key": "compliance_documents", "billing_cycle": "monthly", "price": 5, "currency": "USD", "notes": "Compliance add-on (flat monthly)"},
+    {"module_key": "hr", "billing_cycle": "monthly", "price": 15, "currency": "USD", "notes": "HR & Payroll add-on (flat monthly)"},
 ]
