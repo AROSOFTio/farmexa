@@ -49,6 +49,7 @@ def is_platform_host(host: str | None) -> bool:
 #   - nginx/farmexa.arosoft.io.conf (aaPanel reference)
 INFRASTRUCTURE_SUBDOMAINS: frozenset[str] = frozenset({
     "cp",        # Coolify control panel   (cp.arosoftlabs.com)
+    "app",       # Reserved app subdomain  (app.arosoftlabs.com)
     "mail",      # Mail server             (mail.arosoftlabs.com)
     "courses",   # LMS / courses platform  (courses.arosoftlabs.com)
     "my",        # Reserved                (my.arosoftlabs.com)
@@ -81,6 +82,7 @@ def is_infrastructure_host(host: str | None) -> bool:
 # Reserved slugs that must not be used for tenant workspaces or customer slugs.
 RESERVED_SLUGS = {
     "cp",
+    "app",
     "farm",
     "mail",
     "www",
@@ -151,4 +153,3 @@ async def verify_domain_points_to_target(host: str) -> DnsVerificationResult:
         target_ip=target_ip,
         error=None if resolved else "No A records were returned.",
     )
-
