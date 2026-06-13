@@ -26,9 +26,9 @@ type LoginFormValues = z.infer<typeof loginSchema>
 
 const HERO_FEATURES = [
   'Real-time flock, mortality & vaccination tracking',
-  'Feed mill, inventory & stock management',
-  'Integrated sales, invoicing & finance',
-  'Compliance documents with expiry alerts',
+  'Feed formulation and inventory management',
+  'Integrated POS, invoicing & financial reports',
+  'Compliance alerts and document expiry tracking',
 ]
 
 export function LoginPage() {
@@ -97,28 +97,28 @@ export function LoginPage() {
 
           {/* Hero copy */}
           <div className="max-w-[480px]">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-4 py-1.5 backdrop-blur-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-300">
-                Poultry ERP Platform
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-400/10 px-4 py-1.5 backdrop-blur-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-300">
+                Modern Poultry ERP
               </span>
             </div>
 
             <h1 className="text-[2.8rem] font-extrabold leading-[1.08] tracking-tight text-white xl:text-[3.4rem]">
-              Farm management<br />
-              <span className="text-amber-400">that stays</span><br />
-              organized.
+              Complete farm<br />
+              <span className="text-blue-300">management</span><br />
+              made simple.
             </h1>
 
-            <p className="mt-5 text-[15px] leading-relaxed text-white/65">
-              Farmexa connects your entire operation — from feed mill to sales invoice — in one secure, fast workspace.
+            <p className="mt-5 text-[15px] leading-relaxed text-white/70">
+              Farmexa connects your entire poultry operation — from feed mill to sales invoice — in one secure, intuitive platform.
             </p>
 
             <ul className="mt-8 space-y-3.5">
               {HERO_FEATURES.map((feature) => (
                 <li key={feature} className="flex items-center gap-3.5">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-400/20 ring-1 ring-amber-400/30">
-                    <CheckCircle2 className="h-3 w-3 text-amber-400" />
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-400/20 ring-1 ring-blue-400/30">
+                    <CheckCircle2 className="h-3 w-3 text-blue-300" />
                   </span>
                   <span className="text-[13.5px] font-medium text-white/78">{feature}</span>
                 </li>
@@ -151,9 +151,9 @@ export function LoginPage() {
         </div>
 
         <motion.div
-          initial={{ opacity: 0, y: 14 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
           className="w-full max-w-[400px]"
         >
           {/* Mobile-only logo */}
