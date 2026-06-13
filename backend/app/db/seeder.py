@@ -420,6 +420,25 @@ async def _seed_saas_catalog(db: AsyncSession) -> None:
             )
             await db.execute(statement)
 
+    # Reconcile plan->module rows so modules removed from a plan don't linger
+    # (e.g. when a package is pulled out of a tier into an add-on).
+    target_plan_modules = {
+        (plan_code, module_key)
+        for plan_code, modules in DEFAULT_PLAN_MODULES.items()
+        for module_key in modules
+    }
+    existing_plan_modules = (
+        await db.execute(select(PlanModule.plan_code, PlanModule.module_key))
+    ).all()
+    for plan_code, module_key in existing_plan_modules:
+        if (plan_code, module_key) not in target_plan_modules:
+            await db.execute(
+                delete(PlanModule).where(
+                    PlanModule.plan_code == plan_code,
+                    PlanModule.module_key == module_key,
+                )
+            )
+
     for price in DEFAULT_MODULE_PRICES:
         statement = (
             insert(ModulePrice)
@@ -434,6 +453,15 @@ async def _seed_saas_catalog(db: AsyncSession) -> None:
             )
         )
         await db.execute(statement)
+
+    # Drop stale per-module prices for modules that are no longer individually
+    # priced (their cost now lives in a tier or a percentage-based add-on).
+    target_priced_modules = {price["module_key"] for price in DEFAULT_MODULE_PRICES}
+    existing_priced_modules = set(
+        (await db.execute(select(ModulePrice.module_key))).scalars().all()
+    )
+    for module_key in existing_priced_modules - target_priced_modules:
+        await db.execute(delete(ModulePrice).where(ModulePrice.module_key == module_key))
 
 
 async def _seed_affiliate_commission_rules(db: AsyncSession) -> None:

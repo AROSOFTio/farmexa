@@ -51,56 +51,109 @@ DEFAULT_MODULES = [
     {"key": "reports", "name": "Reports", "category": "reports", "description": "Operational and management reports", "is_core": True},
     {"key": "users", "name": "Users", "category": "administration", "description": "User administration", "is_core": True},
     {"key": "settings", "name": "Settings", "category": "administration", "description": "Tenant settings", "is_core": True},
+    {"key": "hr", "name": "HR & Payroll", "category": "hr", "description": "Employees, leave, attendance, and payroll", "is_core": False},
 ]
 
 MANDATORY_TENANT_MODULE_KEYS = {"dashboard", "users", "settings"}
+
+# ---------------------------------------------------------------------------
+# Packaging — modules are sold as domain packages, not one by one.
+#
+#   Tier packages   are bundled into the Starter / Farmer / Enterprise plans.
+#   Add-on packages are bought on top of any plan (and are all included in the
+#                   full trial). Add-on pricing is either a flat USD amount or a
+#                   percentage of the tenant's base plan price.
+# ---------------------------------------------------------------------------
+PKG_FOUNDATION = ["dashboard", "users", "settings", "farm_profile", "reports"]
+PKG_FLOCK_OPS = [
+    "houses", "breeds", "batches", "batch_performance", "egg_production",
+    "feed_consumption", "mortality", "vaccination", "medication",
+    "growth_tracking", "health_observations",
+]
+PKG_FEED_INVENTORY = [
+    "feed_stock", "feed_purchases", "feed_suppliers", "feed_wastage", "suppliers",
+    "inventory_items", "inventory_movements", "medicine_supplies", "egg_stock",
+    "meat_stock", "packaging_stock", "byproduct_stock", "low_stock_alerts",
+]
+PKG_SALES = ["customers", "sales_orders", "invoices", "payments", "balances"]
+PKG_FINANCE = ["accounting", "expenses", "income", "batch_costing", "profit_loss", "cash_flow"]
+PKG_SLAUGHTER = [
+    "slaughter_planning", "slaughter_records", "slaughter_outputs",
+    "slaughter_cut_parts", "slaughter_byproducts", "yield_analysis",
+]
+PKG_COMPLIANCE = ["compliance_documents", "compliance_alerts"]
+PKG_HR = ["hr"]
+
+MODULE_PACKAGES = [
+    {"key": "foundation", "name": "Foundation", "kind": "core", "modules": PKG_FOUNDATION,
+     "description": "Dashboard, users, settings, farm profile, and reports."},
+    {"key": "flock_ops", "name": "Flock & Farm Operations", "kind": "tier", "modules": PKG_FLOCK_OPS,
+     "description": "Houses, batches, egg collection, feed use, mortality, vaccination, medication, growth, health."},
+    {"key": "feed_inventory", "name": "Feed & Inventory", "kind": "tier", "modules": PKG_FEED_INVENTORY,
+     "description": "Feed purchases & suppliers, stock, movements, medicine and product stock, low-stock alerts."},
+    {"key": "sales", "name": "Sales & Customers", "kind": "tier", "modules": PKG_SALES,
+     "description": "Customers, orders, invoices, payments, and balances."},
+    {"key": "finance", "name": "Finance & Accounting", "kind": "tier", "modules": PKG_FINANCE,
+     "description": "Accounting, expenses, income, batch costing, P&L, and cash flow."},
+    # Add-ons — pricing.mode is "flat" (monthly USD) or "percent" (of base plan price).
+    {"key": "slaughter", "name": "Slaughter & Processing", "kind": "addon", "modules": PKG_SLAUGHTER,
+     "description": "Processing planning, records, outputs, cut parts, byproducts, and yield analysis.",
+     "pricing": {"mode": "flat", "monthly": 9.0, "currency": "USD"}},
+    {"key": "compliance", "name": "Compliance", "kind": "addon", "modules": PKG_COMPLIANCE,
+     "description": "Compliance documents and expiry/renewal alerts.",
+     "pricing": {"mode": "percent", "percent": 5}},
+    {"key": "hr", "name": "HR & Payroll", "kind": "addon", "modules": PKG_HR,
+     "description": "Employees, leave, attendance, and payroll.",
+     "pricing": {"mode": "percent", "percent": 15}},
+]
 
 DEFAULT_PLANS = [
     {
         "code": "full_trial",
         "name": "Full Trial",
-        "description": "14-day full-feature Farmexa trial with every module enabled",
+        "description": "14-day full-feature Farmexa trial with every module and add-on enabled",
         "billing_cycle": "monthly",
         "monthly_price": 0,
         "quarterly_price": 0,
         "annual_price": 0,
-        "currency": "UGX",
+        "currency": "USD",
         "trial_days": 14,
         "is_custom": False,
     },
     {
+        # code kept as "basic" for backward compatibility with existing tenants.
         "code": "basic",
-        "name": "Core",
-        "description": "Core farm operation modules",
+        "name": "Starter",
+        "description": "Run your flock day to day: farm operations and core feed stock.",
         "billing_cycle": "monthly",
-        "monthly_price": 250000,
-        "quarterly_price": 720000,
-        "annual_price": 2700000,
-        "currency": "UGX",
+        "monthly_price": 16,
+        "quarterly_price": 48,
+        "annual_price": 160,  # ~2 months free
+        "currency": "USD",
         "trial_days": 14,
         "is_custom": False,
     },
     {
         "code": "standard",
-        "name": "Standard",
-        "description": "Operational, feed, inventory, and sales modules",
+        "name": "Farmer",
+        "description": "Grow and trade: full feed & inventory plus sales and customers.",
         "billing_cycle": "monthly",
-        "monthly_price": 450000,
-        "quarterly_price": 1290000,
-        "annual_price": 4860000,
-        "currency": "UGX",
+        "monthly_price": 20,
+        "quarterly_price": 60,
+        "annual_price": 200,  # ~2 months free
+        "currency": "USD",
         "trial_days": 14,
         "is_custom": False,
     },
     {
         "code": "premium",
-        "name": "Premium",
-        "description": "Full operational, compliance, finance, and admin suite",
+        "name": "Enterprise",
+        "description": "Run the whole business: everything in Farmer plus finance & accounting.",
         "billing_cycle": "monthly",
-        "monthly_price": 750000,
-        "quarterly_price": 2160000,
-        "annual_price": 8100000,
-        "currency": "UGX",
+        "monthly_price": 25,
+        "quarterly_price": 75,
+        "annual_price": 250,  # ~2 months free
+        "currency": "USD",
         "trial_days": 14,
         "is_custom": False,
     },
@@ -112,59 +165,36 @@ DEFAULT_PLANS = [
         "monthly_price": 0,
         "quarterly_price": 0,
         "annual_price": 0,
-        "currency": "UGX",
+        "currency": "USD",
         "trial_days": 0,
         "is_custom": True,
     },
 ]
 
+def _dedupe(keys: list[str]) -> list[str]:
+    """Order-preserving de-duplication for composed package lists."""
+    return list(dict.fromkeys(keys))
+
+
+# Tiers are composed from packages. Each tier is the one below it plus more.
+# Starter only ships the core "feed_stock" slice of Feed & Inventory.
+_STARTER_MODULES = _dedupe(PKG_FOUNDATION + PKG_FLOCK_OPS + ["feed_stock"])
+_FARMER_MODULES = _dedupe(_STARTER_MODULES + PKG_FEED_INVENTORY + PKG_SALES)
+_ENTERPRISE_MODULES = _dedupe(_FARMER_MODULES + PKG_FINANCE)
+
 DEFAULT_PLAN_MODULES = {
+    # Trial unlocks everything, including the add-on packages.
     "full_trial": [module["key"] for module in DEFAULT_MODULES],
-    "basic": [
-        "dashboard",
-        "users",
-        "settings",
-        "farm_profile",
-        "houses",
-        "batches",
-        "egg_production",
-        "feed_stock",
-        "feed_consumption",
-        "mortality",
-        "reports",
-    ],
-    "standard": [
-        "dashboard",
-        "users",
-        "settings",
-        "farm_profile",
-        "houses",
-        "batches",
-        "egg_production",
-        "feed_stock",
-        "feed_consumption",
-        "mortality",
-        "vaccination",
-        "medication",
-        "growth_tracking",
-        "feed_purchases",
-        "feed_suppliers",
-        "inventory_items",
-        "inventory_movements",
-        "customers",
-        "sales_orders",
-        "invoices",
-        "payments",
-        "slaughter_records",
-        "slaughter_outputs",
-        "reports",
-    ],
-    "premium": [module["key"] for module in DEFAULT_MODULES if module["key"] not in {"balances"}],
+    "basic": _STARTER_MODULES,        # Starter
+    "standard": _FARMER_MODULES,      # Farmer
+    "premium": _ENTERPRISE_MODULES,   # Enterprise
     "custom": [],
 }
 
+# Flat per-module price overrides. Percentage-priced add-ons (HR, Compliance)
+# are defined in MODULE_PACKAGES because their amount depends on the base plan.
+# The Slaughter & Processing add-on is a flat $9/mo; we tag it on its anchor
+# module so the package totals $9 regardless of how many sub-modules it carries.
 DEFAULT_MODULE_PRICES = [
-    {"module_key": "slaughter_records", "billing_cycle": "monthly", "price": 150000, "currency": "UGX", "notes": "Advanced processing module"},
-    {"module_key": "compliance_documents", "billing_cycle": "monthly", "price": 100000, "currency": "UGX", "notes": "Compliance and reminders"},
-    {"module_key": "profit_loss", "billing_cycle": "monthly", "price": 120000, "currency": "UGX", "notes": "Advanced finance reporting"},
+    {"module_key": "slaughter_records", "billing_cycle": "monthly", "price": 9, "currency": "USD", "notes": "Slaughter & Processing add-on (flat monthly)"},
 ]
