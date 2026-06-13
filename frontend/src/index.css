@@ -11,7 +11,7 @@
     --card: #FFFFFF;
     --sidebar: #F8FAFC;
 
-    --primary: #108A43;
+    --primary: #2563EB;
     --primary-foreground: #FFFFFF;
 
     --text-primary: #1F2937;
@@ -19,16 +19,16 @@
 
     --border-color: #D8E0EA;
 
-    --success: #108A43;
+    --success: #16A34A;
     --warning: #B7791F;
     --danger: #C2410C;
     --info: #2563EB;
 
     /* Shared UI tokens used across the app */
-    --brand-primary: #108A43;
-    --brand-primary-rgb: 16, 138, 67;
-    --brand-primary-hover: #0B6F35;
-    --brand-secondary: #233041;
+    --brand-primary: #2563EB;
+    --brand-primary-rgb: 37, 99, 235;
+    --brand-primary-hover: #1D4ED8;
+    --brand-secondary: #1E293B;
     --surface-card: #FFFFFF;
     --surface-soft: #F5F7FA;
     --surface-muted: #EEF2F6;
@@ -41,10 +41,10 @@
     --sidebar-section: #8A94A6;
     --sidebar-icon: #506075;
     --sidebar-hover-bg: #EEF3F8;
-    --sidebar-active-bg: #E7F4EC;
-    --sidebar-active-text: #0B6F35;
+    --sidebar-active-bg: #E8EFFD;
+    --sidebar-active-text: #1D4ED8;
     --sidebar-border: #D8E0EA;
-    --sidebar-panel: #ECF7F0;
+    --sidebar-panel: #EEF3FD;
     --sidebar-shadow: 10px 0 24px -22px rgba(31, 41, 55, 0.35);
     --shadow-card: 0 1px 2px rgba(31, 41, 55, 0.06), 0 8px 22px rgba(31, 41, 55, 0.05);
   }
@@ -58,8 +58,8 @@
     --card: #1E293B;
     --sidebar: #172033;
 
-    --primary: #22C55E;
-    --primary-foreground: #0F172A;
+    --primary: #3B82F6;
+    --primary-foreground: #FFFFFF;
 
     --text-primary: #F8FAFC;
     --text-secondary: #94A3B8;
@@ -71,9 +71,9 @@
     --danger: #EF4444;
     --info: #3B82F6;
 
-    --brand-primary: #4ADE80;
-    --brand-primary-rgb: 74, 222, 128;
-    --brand-primary-hover: #22C55E;
+    --brand-primary: #60A5FA;
+    --brand-primary-rgb: 96, 165, 250;
+    --brand-primary-hover: #3B82F6;
     --brand-secondary: #111827;
     --surface-card: #1E293B;
     --surface-soft: #111827;
@@ -85,7 +85,7 @@
     --sidebar-text: #F8FAFC;
     --sidebar-muted: #CBD5E1;
     --sidebar-section: #94A3B8;
-    --sidebar-icon: #86EFAC;
+    --sidebar-icon: #93C5FD;
     --sidebar-hover-bg: rgba(255, 255, 255, 0.08);
     --sidebar-active-bg: rgba(var(--brand-primary-rgb), 0.2);
     --sidebar-active-text: #FFFFFF;

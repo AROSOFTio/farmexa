@@ -1,3 +1,4 @@
+import { ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CalendarDays } from 'lucide-react'
@@ -13,154 +14,130 @@ interface RecordFormProps {
   onCancel: () => void
 }
 
+/** A labelled section with a thin divider — replaces the heavy gray fieldset boxes. */
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="space-y-4">
+      <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-400">{title}</h3>
+      {children}
+    </section>
+  )
+}
+
+function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string; children: ReactNode }) {
+  return (
+    <div>
+      <label className="form-label">{label}</label>
+      {children}
+      {hint && !error ? <p className="form-hint">{hint}</p> : null}
+      {error ? <p className="form-error">{error}</p> : null}
+    </div>
+  )
+}
+
 export function RecordForm({ batches, section, onSubmit, isLoading, onCancel }: RecordFormProps) {
   const form = useForm<RecordFormValues>({
     resolver: zodResolver(recordSchema),
     defaultValues: emptyRecordFormValues(),
   })
-
-  const selectedBatch = batches.find((batch) => batch.id === form.watch('batch_id'))
+  const { register, formState, watch } = form
+  const errors = formState.errors
+  const selectedBatch = batches.find((batch) => batch.id === watch('batch_id'))
 
   return (
-    <form className="space-y-5" onSubmit={form.handleSubmit(onSubmit)}>
-      <div className="rounded-[18px] border border-neutral-200 bg-neutral-50 p-4">
-        <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Run identification</div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="form-label">Batch</label>
-            <select className="form-input" {...form.register('batch_id')}>
-              <option value={0}>Choose batch</option>
-              {batches.map((batch) => (
-                <option key={batch.id} value={batch.id}>
-                  {batch.batch_number} - {batch.breed}
-                </option>
-              ))}
-            </select>
-            {selectedBatch ? (
-              <p className="form-hint">House: {selectedBatch.house?.name ?? `House #${selectedBatch.house_id ?? '-'}`}</p>
-            ) : null}
-            {form.formState.errors.batch_id ? <p className="form-error">{form.formState.errors.batch_id.message}</p> : null}
+    <form className="divide-y divide-neutral-100" onSubmit={form.handleSubmit(onSubmit)}>
+      <div className="space-y-7 pb-6">
+        <Section title="Run identification">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Batch" error={errors.batch_id?.message} hint={selectedBatch ? `House: ${selectedBatch.house?.name ?? `House #${selectedBatch.house_id ?? '-'}`}` : undefined}>
+              <select className="form-input" {...register('batch_id')}>
+                <option value={0}>Choose batch</option>
+                {batches.map((batch) => (
+                  <option key={batch.id} value={batch.id}>
+                    {batch.batch_number} - {batch.breed}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Slaughter date" error={errors.slaughter_date?.message}>
+              <input className="form-input" type="date" {...register('slaughter_date')} />
+            </Field>
           </div>
-          <div>
-            <label className="form-label">Slaughter date</label>
-            <input className="form-input" type="date" {...form.register('slaughter_date')} />
-            {form.formState.errors.slaughter_date ? <p className="form-error">{form.formState.errors.slaughter_date.message}</p> : null}
+        </Section>
+
+        <Section title="Live bird intake">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Live birds count" error={errors.live_birds_count?.message}>
+              <input className="form-input" type="number" min={0} {...register('live_birds_count')} />
+            </Field>
+            <Field label="Total live weight (kg)" error={errors.total_live_weight?.message}>
+              <input className="form-input" type="number" min={0} step="0.01" {...register('total_live_weight')} />
+            </Field>
+            <Field label="Mortality before process">
+              <input className="form-input" type="number" min={0} {...register('mortality_birds_count')} />
+            </Field>
+            <Field label="Condemned birds">
+              <input className="form-input" type="number" min={0} {...register('condemned_birds_count')} />
+            </Field>
           </div>
-        </div>
+        </Section>
+
+        <Section title="Waste & byproduct classes">
+          <div className="grid gap-4 md:grid-cols-3">
+            <Field label="Waste (kg)"><input className="form-input" type="number" min={0} step="0.01" {...register('waste_weight')} /></Field>
+            <Field label="Blood (kg)"><input className="form-input" type="number" min={0} step="0.01" {...register('blood_weight')} /></Field>
+            <Field label="Feathers (kg)"><input className="form-input" type="number" min={0} step="0.01" {...register('feathers_weight')} /></Field>
+            <Field label="Offal (kg)"><input className="form-input" type="number" min={0} step="0.01" {...register('offal_weight')} /></Field>
+            <Field label="Head (kg)"><input className="form-input" type="number" min={0} step="0.01" {...register('head_weight')} /></Field>
+            <Field label="Feet (kg)"><input className="form-input" type="number" min={0} step="0.01" {...register('feet_weight')} /></Field>
+            <Field label="Reusable byproducts (kg)"><input className="form-input" type="number" min={0} step="0.01" {...register('reusable_byproducts_weight')} /></Field>
+          </div>
+        </Section>
+
+        <Section title="Production costs">
+          <div className="grid gap-4 md:grid-cols-3">
+            <Field label="Direct labour (UGX)" hint="Slaughter floor wages">
+              <input className="form-input" type="number" min={0} step="100" placeholder="0" {...register('direct_labour_cost')} />
+            </Field>
+            <Field label="Overhead (UGX)" hint="Utilities, packaging">
+              <input className="form-input" type="number" min={0} step="100" placeholder="0" {...register('overhead_cost')} />
+            </Field>
+            <Field label="Chick cost / bird (UGX)" hint="Blank = batch default">
+              <input className="form-input" type="number" min={0} step="100" placeholder="Auto" {...register('chick_cost_override')} />
+            </Field>
+          </div>
+        </Section>
+
+        <Section title="Inspection & storage">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Quality inspection status">
+              <select className="form-input" {...register('quality_inspection_status')}>
+                <option value="pending">Pending</option>
+                <option value="passed">Passed</option>
+                <option value="failed">Failed</option>
+                <option value="rework">Rework</option>
+              </select>
+            </Field>
+            <Field label="Cold-room / storage location">
+              <input className="form-input" {...register('cold_room_location')} />
+            </Field>
+            <Field label="Waste disposal record">
+              <textarea className="form-input min-h-[80px]" {...register('waste_disposal_notes')} />
+            </Field>
+            <Field label="Notes">
+              <textarea className="form-input min-h-[80px]" {...register('notes')} />
+            </Field>
+          </div>
+        </Section>
       </div>
 
-      <div className="rounded-[18px] border border-neutral-200 bg-neutral-50 p-4">
-        <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Live bird intake</div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="form-label">Live birds count</label>
-            <input className="form-input" type="number" min={0} {...form.register('live_birds_count')} />
-            {form.formState.errors.live_birds_count ? <p className="form-error">{form.formState.errors.live_birds_count.message}</p> : null}
-          </div>
-          <div>
-            <label className="form-label">Total live weight (kg)</label>
-            <input className="form-input" type="number" min={0} step="0.01" {...form.register('total_live_weight')} />
-            {form.formState.errors.total_live_weight ? <p className="form-error">{form.formState.errors.total_live_weight.message}</p> : null}
-          </div>
-          <div>
-            <label className="form-label">Mortality before process</label>
-            <input className="form-input" type="number" min={0} {...form.register('mortality_birds_count')} />
-          </div>
-          <div>
-            <label className="form-label">Condemned birds</label>
-            <input className="form-input" type="number" min={0} {...form.register('condemned_birds_count')} />
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-[18px] border border-neutral-200 bg-neutral-50 p-4">
-        <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Waste and byproduct classes</div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="form-label">Waste weight (kg)</label>
-            <input className="form-input" type="number" min={0} step="0.01" {...form.register('waste_weight')} />
-          </div>
-          <div>
-            <label className="form-label">Blood (kg)</label>
-            <input className="form-input" type="number" min={0} step="0.01" {...form.register('blood_weight')} />
-          </div>
-          <div>
-            <label className="form-label">Feathers (kg)</label>
-            <input className="form-input" type="number" min={0} step="0.01" {...form.register('feathers_weight')} />
-          </div>
-          <div>
-            <label className="form-label">Offal (kg)</label>
-            <input className="form-input" type="number" min={0} step="0.01" {...form.register('offal_weight')} />
-          </div>
-          <div>
-            <label className="form-label">Head (kg)</label>
-            <input className="form-input" type="number" min={0} step="0.01" {...form.register('head_weight')} />
-          </div>
-          <div>
-            <label className="form-label">Feet (kg)</label>
-            <input className="form-input" type="number" min={0} step="0.01" {...form.register('feet_weight')} />
-          </div>
-          <div className="md:col-span-2">
-            <label className="form-label">Reusable byproducts (kg)</label>
-            <input className="form-input" type="number" min={0} step="0.01" {...form.register('reusable_byproducts_weight')} />
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-[18px] border border-neutral-200 bg-neutral-50 p-4">
-        <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Production costs</div>
-        <div className="grid gap-4 md:grid-cols-3">
-          <div>
-            <label className="form-label">Direct labour cost (UGX)</label>
-            <input className="form-input" type="number" min={0} step="100" placeholder="0" {...form.register('direct_labour_cost')} />
-            <p className="form-hint">Wages for slaughter floor workers</p>
-          </div>
-          <div>
-            <label className="form-label">Processing overhead (UGX)</label>
-            <input className="form-input" type="number" min={0} step="100" placeholder="0" {...form.register('overhead_cost')} />
-            <p className="form-hint">Utilities, packaging, consumables</p>
-          </div>
-          <div>
-            <label className="form-label">Chick cost per bird (UGX)</label>
-            <input className="form-input" type="number" min={0} step="100" placeholder="Auto from batch" {...form.register('chick_cost_override')} />
-            <p className="form-hint">Leave blank to use batch chick cost</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="form-label">Quality inspection status</label>
-          <select className="form-input" {...form.register('quality_inspection_status')}>
-            <option value="pending">Pending</option>
-            <option value="passed">Passed</option>
-            <option value="failed">Failed</option>
-            <option value="rework">Rework</option>
-          </select>
-        </div>
-        <div>
-          <label className="form-label">Cold-room / storage location</label>
-          <input className="form-input" {...form.register('cold_room_location')} />
-        </div>
-      </div>
-
-      <div>
-        <label className="form-label">Waste disposal record</label>
-        <textarea className="form-input min-h-[88px]" {...form.register('waste_disposal_notes')} />
-      </div>
-
-      <div>
-        <label className="form-label">Notes</label>
-        <textarea className="form-input min-h-[88px]" {...form.register('notes')} />
-      </div>
-
-      <div className="flex justify-end gap-3">
+      <div className="flex justify-end gap-3 pt-5">
         <button type="button" className="btn-secondary" onClick={onCancel}>
-          Close
+          Cancel
         </button>
         <button className="btn-primary" disabled={isLoading} type="submit">
           <CalendarDays className="h-4 w-4" />
-          {isLoading ? 'Saving...' : section === 'planning' ? 'Plan slaughter run' : 'Enter slaughter record'}
+          {isLoading ? 'Saving...' : section === 'planning' ? 'Plan slaughter run' : 'Save record'}
         </button>
       </div>
     </form>

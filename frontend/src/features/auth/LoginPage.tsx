@@ -69,24 +69,22 @@ export function LoginPage() {
       <div className="flex min-h-screen overflow-hidden">
 
       {/* ── LEFT: Visual Hero Panel ──────────────────────────────────── */}
-      <div className="relative hidden lg:flex lg:w-[56%] xl:w-[58%] flex-col overflow-hidden">
-        {/* Video layer — falls back silently if file missing */}
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="absolute inset-0 h-full w-full object-cover"
-        >
-          <source src="/videos/farmexa-hero.mp4" type="video/mp4" />
-        </video>
-        {/* Static background image (always visible, video covers it when loaded) */}
+      <div className="relative hidden lg:flex lg:w-[52%] xl:w-[54%] flex-col overflow-hidden bg-[#0B1B3F]">
+        {/* Clean gradient base */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1E3A8A] via-[#1D4ED8] to-[#1E40AF]" />
+
+        {/* Subtle dotted grid texture */}
         <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: 'url(/images/auth/farmexa-login-background.png)' }}
+          className="absolute inset-0 opacity-[0.12]"
+          style={{
+            backgroundImage: 'radial-gradient(circle, #FFFFFF 1px, transparent 1px)',
+            backgroundSize: '28px 28px',
+          }}
         />
-        {/* Dark gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#080e1a]/90 via-[#0d1829]/75 to-[#111827]/82" />
+
+        {/* Soft glow accents */}
+        <div className="absolute -top-32 -right-24 h-96 w-96 rounded-full bg-blue-400/20 blur-3xl" />
+        <div className="absolute -bottom-40 -left-24 h-96 w-96 rounded-full bg-cyan-400/10 blur-3xl" />
 
         {/* Content positioned over the visual */}
         <div className="relative z-10 flex h-full flex-col justify-between p-10 xl:p-14">
@@ -126,9 +124,25 @@ export function LoginPage() {
             </ul>
           </div>
 
-          {/* Footer */}
-          <div className="text-[11.5px] text-white/32">
-            © {new Date().getFullYear()} Arosoft Labs — Farmexa Poultry ERP
+          {/* Footer trust row */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-6 border-t border-white/10 pt-6">
+              <div>
+                <div className="text-[20px] font-bold text-white">12+</div>
+                <div className="text-[11px] text-white/55">Modules</div>
+              </div>
+              <div>
+                <div className="text-[20px] font-bold text-white">100%</div>
+                <div className="text-[11px] text-white/55">Cloud-based</div>
+              </div>
+              <div>
+                <div className="text-[20px] font-bold text-white">24/7</div>
+                <div className="text-[11px] text-white/55">Access</div>
+              </div>
+            </div>
+            <div className="text-[11.5px] text-white/35">
+              © {new Date().getFullYear()} Arosoft Labs — Farmexa Poultry ERP
+            </div>
           </div>
         </div>
       </div>

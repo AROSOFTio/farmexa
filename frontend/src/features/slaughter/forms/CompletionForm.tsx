@@ -1,9 +1,9 @@
+import { ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ShieldCheck } from 'lucide-react'
 import { completionSchema, CompletionFormValues } from '../schemas'
 import { SlaughterRecord } from '../types'
-import { emptyCompletionValues, useCompleteRecord } from '../hooks'
 import { formatUGX } from '../utils'
 
 interface CompletionFormProps {
@@ -11,6 +11,24 @@ interface CompletionFormProps {
   onSubmit: (values: CompletionFormValues) => void
   onCancel: () => void
   isLoading?: boolean
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="space-y-4">
+      <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-400">{title}</h3>
+      {children}
+    </section>
+  )
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <label className="form-label">{label}</label>
+      {children}
+    </div>
+  )
 }
 
 export function CompletionForm({ record, onSubmit, onCancel, isLoading }: CompletionFormProps) {
@@ -36,20 +54,20 @@ export function CompletionForm({ record, onSubmit, onCancel, isLoading }: Comple
       notes: record.notes ?? '',
     },
   })
+  const { register } = form
 
   return (
-    <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-      {record.total_production_cost ? (
-        <div className="rounded-[18px] border border-neutral-200 bg-neutral-50 p-4">
-          <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Production cost analysis</h4>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+    <form className="divide-y divide-neutral-100" onSubmit={form.handleSubmit(onSubmit)}>
+      <div className="space-y-7 pb-6">
+        {record.total_production_cost ? (
+          <div className="grid grid-cols-2 gap-4 rounded-[12px] bg-brand-50 px-4 py-3 md:grid-cols-4">
             <div>
-              <p className="text-xs text-neutral-500">Total production cost</p>
+              <p className="text-xs text-neutral-500">Total cost</p>
               <p className="text-sm font-semibold text-neutral-900">{formatUGX(record.total_production_cost)}</p>
             </div>
             <div>
-              <p className="text-xs text-neutral-500">Cost per kg</p>
-              <p className="text-sm font-semibold text-neutral-900">{formatUGX(record.cost_per_kg)}/kg</p>
+              <p className="text-xs text-neutral-500">Cost / kg</p>
+              <p className="text-sm font-semibold text-neutral-900">{formatUGX(record.cost_per_kg)}</p>
             </div>
             <div>
               <p className="text-xs text-neutral-500">Direct labour</p>
@@ -60,117 +78,78 @@ export function CompletionForm({ record, onSubmit, onCancel, isLoading }: Comple
               <p className="text-sm font-medium text-neutral-700">{formatUGX(record.overhead_cost)}</p>
             </div>
           </div>
-          {record.production_journal_id ? (
-            <p className="mt-2 text-xs text-neutral-500">Journal Entry #{record.production_journal_id} posted ✓</p>
-          ) : null}
-        </div>
-      ) : null}
+        ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="form-label">Workflow status</label>
-          <select className="form-input" {...form.register('status')}>
-            <option value="scheduled">Scheduled</option>
-            <option value="in_progress">In progress</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        </div>
-        <div>
-          <label className="form-label">Dressed weight (kg)</label>
-          <input className="form-input" type="number" min={0} step="0.01" {...form.register('total_dressed_weight')} />
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="form-label">Quality inspection</label>
-          <select className="form-input" {...form.register('quality_inspection_status')}>
-            <option value="pending">Pending</option>
-            <option value="passed">Passed</option>
-            <option value="failed">Failed</option>
-            <option value="rework">Rework</option>
-          </select>
-        </div>
-        <div>
-          <label className="form-label">Approval status</label>
-          <select className="form-input" {...form.register('approval_status')}>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="form-label">Mortality birds</label>
-          <input className="form-input" type="number" min={0} {...form.register('mortality_birds_count')} />
-        </div>
-        <div>
-          <label className="form-label">Condemned birds</label>
-          <input className="form-input" type="number" min={0} {...form.register('condemned_birds_count')} />
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label className="form-label">Waste weight</label>
-          <input className="form-input" type="number" min={0} step="0.01" {...form.register('waste_weight')} />
-        </div>
-        <div>
-          <label className="form-label">Reusable byproducts</label>
-          <input className="form-input" type="number" min={0} step="0.01" {...form.register('reusable_byproducts_weight')} />
-        </div>
-      </div>
-
-      <div className="rounded-[18px] border border-neutral-200 bg-neutral-50 p-4">
-        <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Loss category weights</div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="form-label">Blood</label>
-            <input className="form-input" type="number" min={0} step="0.01" {...form.register('blood_weight')} />
+        <Section title="Outcome">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Workflow status">
+              <select className="form-input" {...register('status')}>
+                <option value="scheduled">Scheduled</option>
+                <option value="in_progress">In progress</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </Field>
+            <Field label="Dressed weight (kg)">
+              <input className="form-input" type="number" min={0} step="0.01" {...register('total_dressed_weight')} />
+            </Field>
+            <Field label="Quality inspection">
+              <select className="form-input" {...register('quality_inspection_status')}>
+                <option value="pending">Pending</option>
+                <option value="passed">Passed</option>
+                <option value="failed">Failed</option>
+                <option value="rework">Rework</option>
+              </select>
+            </Field>
+            <Field label="Approval status">
+              <select className="form-input" {...register('approval_status')}>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </Field>
           </div>
-          <div>
-            <label className="form-label">Feathers</label>
-            <input className="form-input" type="number" min={0} step="0.01" {...form.register('feathers_weight')} />
+        </Section>
+
+        <Section title="Bird losses">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Mortality birds"><input className="form-input" type="number" min={0} {...register('mortality_birds_count')} /></Field>
+            <Field label="Condemned birds"><input className="form-input" type="number" min={0} {...register('condemned_birds_count')} /></Field>
           </div>
-          <div>
-            <label className="form-label">Offal</label>
-            <input className="form-input" type="number" min={0} step="0.01" {...form.register('offal_weight')} />
+        </Section>
+
+        <Section title="Weight breakdown">
+          <div className="grid gap-4 md:grid-cols-3">
+            <Field label="Waste"><input className="form-input" type="number" min={0} step="0.01" {...register('waste_weight')} /></Field>
+            <Field label="Reusable byproducts"><input className="form-input" type="number" min={0} step="0.01" {...register('reusable_byproducts_weight')} /></Field>
+            <Field label="Blood"><input className="form-input" type="number" min={0} step="0.01" {...register('blood_weight')} /></Field>
+            <Field label="Feathers"><input className="form-input" type="number" min={0} step="0.01" {...register('feathers_weight')} /></Field>
+            <Field label="Offal"><input className="form-input" type="number" min={0} step="0.01" {...register('offal_weight')} /></Field>
+            <Field label="Head"><input className="form-input" type="number" min={0} step="0.01" {...register('head_weight')} /></Field>
+            <Field label="Feet"><input className="form-input" type="number" min={0} step="0.01" {...register('feet_weight')} /></Field>
+            <Field label="Cold-room location"><input className="form-input" {...register('cold_room_location')} /></Field>
           </div>
-          <div>
-            <label className="form-label">Head</label>
-            <input className="form-input" type="number" min={0} step="0.01" {...form.register('head_weight')} />
+        </Section>
+
+        <Section title="Notes">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Waste disposal record">
+              <textarea className="form-input min-h-[80px]" {...register('waste_disposal_notes')} />
+            </Field>
+            <Field label="Notes">
+              <textarea className="form-input min-h-[80px]" {...register('notes')} />
+            </Field>
           </div>
-          <div>
-            <label className="form-label">Feet</label>
-            <input className="form-input" type="number" min={0} step="0.01" {...form.register('feet_weight')} />
-          </div>
-          <div>
-            <label className="form-label">Cold-room location</label>
-            <input className="form-input" {...form.register('cold_room_location')} />
-          </div>
-        </div>
+        </Section>
       </div>
 
-      <div>
-        <label className="form-label">Waste disposal record</label>
-        <textarea className="form-input min-h-[88px]" {...form.register('waste_disposal_notes')} />
-      </div>
-
-      <div>
-        <label className="form-label">Notes</label>
-        <textarea className="form-input min-h-[88px]" {...form.register('notes')} />
-      </div>
-
-      <div className="flex justify-end gap-3">
+      <div className="flex justify-end gap-3 pt-5">
         <button type="button" className="btn-secondary" onClick={onCancel}>
-          Close
+          Cancel
         </button>
         <button className="btn-primary" disabled={isLoading} type="submit">
           <ShieldCheck className="h-4 w-4" />
-          {isLoading ? 'Saving...' : 'Save Finalization'}
+          {isLoading ? 'Saving...' : 'Save finalization'}
         </button>
       </div>
     </form>

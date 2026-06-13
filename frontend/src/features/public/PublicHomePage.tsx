@@ -202,7 +202,7 @@ export function PublicHomePage() {
       <section className="relative overflow-hidden bg-gradient-to-b from-white to-neutral-50 py-20 sm:py-32">
         <div className="absolute inset-0 -z-10 overflow-hidden">
           <div className="absolute -top-40 right-0 h-80 w-80 rounded-full bg-blue-100 opacity-20 blur-3xl" />
-          <div className="absolute -bottom-40 left-0 h-80 w-80 rounded-full bg-green-100 opacity-20 blur-3xl" />
+          <div className="absolute -bottom-40 left-0 h-80 w-80 rounded-full bg-blue-100 opacity-30 blur-3xl" />
         </div>
 
         <div className="mx-auto max-w-6xl px-6">
@@ -215,7 +215,7 @@ export function PublicHomePage() {
             <h1 className="mb-6 text-5xl font-bold leading-tight text-neutral-900 sm:text-6xl">
               Complete Farm Management
               <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-600">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400">
                 Made Simple
               </span>
             </h1>
@@ -349,7 +349,7 @@ export function PublicHomePage() {
                   key={reason}
                   className="rounded-lg border border-neutral-200 bg-white p-4 flex items-center gap-3"
                 >
-                  <div className="h-2 w-2 rounded-full bg-green-600 flex-shrink-0 mt-1" />
+                  <div className="h-2 w-2 rounded-full bg-blue-600 flex-shrink-0 mt-1" />
                   <p className="text-neutral-700">{reason}</p>
                 </div>
               ))}
@@ -396,7 +396,7 @@ export function PublicHomePage() {
       {/* ═══════════════════════════════════════════════════════════════════════════════
           CTA SECTION
           ═══════════════════════════════════════════════════════════════════════════════ */}
-      <section className="bg-gradient-to-r from-blue-600 to-green-600 py-20 sm:py-32">
+      <section className="bg-gradient-to-r from-blue-700 to-blue-500 py-20 sm:py-32">
         <div className="mx-auto max-w-4xl px-6 text-center">
           <h2 className="mb-6 text-4xl font-bold text-white">Ready to transform your farm?</h2>
           <p className="mb-8 text-xl text-blue-100">

@@ -94,29 +94,22 @@ function RecordsSection({ section, records, batches, planningRecords, onFinalize
 
   return (
     <div className="space-y-4">
-      <div className="card p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="card overflow-hidden">
+        <div className="flex flex-col gap-4 border-b border-neutral-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-neutral-900">{copy.actionLabel}</h2>
-            <p className="mt-1 text-sm text-neutral-500">{copy.actionDescription}</p>
+            <h2 className="text-lg font-bold text-neutral-900">
+              {section === 'planning' ? 'Scheduled and active runs' : 'Processing runs'}
+            </h2>
+            <p className="mt-1 text-sm text-neutral-500">
+              {section === 'planning'
+                ? 'Monitor scheduled and in-progress batches before they reach yield approval.'
+                : 'Finalize yield, approval, and cold-room posting one record at a time.'}
+            </p>
           </div>
-          <button type="button" className="btn-primary" onClick={onRecordClick}>
+          <button type="button" className="btn-primary shrink-0" onClick={onRecordClick}>
             <CalendarDays className="h-4 w-4" />
             {copy.actionLabel}
           </button>
-        </div>
-      </div>
-
-      <div className="card overflow-hidden">
-        <div className="border-b border-neutral-100 px-6 py-5">
-          <h2 className="text-lg font-bold text-neutral-900">
-            {section === 'planning' ? 'Scheduled and active runs' : 'Processing runs'}
-          </h2>
-          <p className="mt-1 text-sm text-neutral-500">
-            {section === 'planning'
-              ? 'Monitor scheduled and in-progress batches before they reach yield approval.'
-              : 'Finalize yield, approval, and cold-room posting one record at a time.'}
-          </p>
         </div>
         <div className="overflow-x-auto">
           <table className="data-table">
@@ -183,37 +176,30 @@ function OutputsSection({ section, visibleOutputs, stockItems, approvedRecords, 
 
   return (
     <div className="space-y-4">
-      <div className="card p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="card overflow-hidden">
+        <div className="flex flex-col gap-4 border-b border-neutral-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-neutral-900">{copy.actionLabel}</h2>
-            <p className="mt-1 text-sm text-neutral-500">{copy.actionDescription}</p>
+            <h2 className="text-lg font-bold text-neutral-900">
+              {section === 'cuts' ? 'Cut-part ledger' : section === 'byproducts' ? 'Byproduct ledger' : 'Output ledger'}
+            </h2>
+            <p className="mt-1 text-sm text-neutral-500">
+              {section === 'cuts'
+                ? 'Saleable cut parts and processed poultry products already moved into stock.'
+                : section === 'byproducts'
+                  ? 'Manure and reusable byproducts captured from approved runs.'
+                  : 'Finished product, cut-part, and byproduct lines transferred into inventory.'}
+            </p>
           </div>
-          <button type="button" className="btn-primary" onClick={onOutputClick} disabled={approvedRecords.length === 0}>
+          <button type="button" className="btn-primary shrink-0" onClick={onOutputClick} disabled={approvedRecords.length === 0}>
             <PackagePlus className="h-4 w-4" />
             {copy.actionLabel}
           </button>
         </div>
         {approvedRecords.length === 0 ? (
-          <div className="mt-4 rounded-[16px] border border-dashed border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-500">
+          <div className="border-b border-neutral-100 bg-amber-50/60 px-6 py-3 text-sm text-amber-700">
             Approve at least one completed slaughter run before posting inventory outputs.
           </div>
         ) : null}
-      </div>
-
-      <div className="card overflow-hidden">
-        <div className="border-b border-neutral-100 px-6 py-5">
-          <h2 className="text-lg font-bold text-neutral-900">
-            {section === 'cuts' ? 'Cut-part ledger' : section === 'byproducts' ? 'Byproduct ledger' : 'Output ledger'}
-          </h2>
-          <p className="mt-1 text-sm text-neutral-500">
-            {section === 'cuts'
-              ? 'Saleable cut parts and processed poultry products already moved into stock.'
-              : section === 'byproducts'
-                ? 'Manure and reusable byproducts captured from approved runs.'
-                : 'Finished product, cut-part, and byproduct lines transferred into inventory.'}
-          </p>
-        </div>
         <div className="overflow-x-auto">
           <table className="data-table">
             <thead>
