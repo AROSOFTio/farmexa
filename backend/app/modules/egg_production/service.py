@@ -85,45 +85,69 @@ class EggProductionService:
             notes=data.notes,
         )
         self.db.add(log)
+        await self.db.flush()
+
+        # Make produced eggs sellable: add good-egg trays to a finished-product
+        # inventory item so they appear in POS automatically. Revenue is booked
+        # when the eggs are actually sold (POS), not at production time — so we no
+        # longer post an egg-sales journal here (that double-counted on sale).
+        good_trays = round(data.good_eggs / 30, 4)
+        if good_trays > 0:
+            await self._add_eggs_to_inventory(
+                trays=good_trays,
+                unit_price=price_per_tray,
+                reference_id=log.id,
+                record_date=data.record_date,
+            )
+
         await self.db.commit()
         await self.db.refresh(log)
-
-        # Wire accounting: book egg sales revenue if price_per_tray is provided
-        if price_per_tray and price_per_tray > 0 and trays > 0:
-            revenue = round(trays * float(price_per_tray), 4)
-            _log_id = log.id
-            _record_date = data.record_date
-            _batch_id = data.batch_id
-            _branch_id = getattr(batch, "branch_id", None)
-            _tenant = tenant_id or getattr(batch, "tenant_id", None)
-
-            def _post_egg_journal(sync_session):
-                from app.services.accounting_service import AccountingService
-                acct = AccountingService(sync_session, tenant_id=_tenant)
-                try:
-                    acct.record_egg_sales(
-                        revenue=revenue,
-                        entry_date=_record_date,
-                        reference_id=_log_id,
-                        is_cash=False,   # staged as AR, not cash
-                        branch_id=_branch_id,
-                        batch_id=_batch_id,
-                    )
-                except Exception as exc:
-                    import logging
-                    logging.getLogger("farmexa.egg_production").warning(
-                        "Egg accounting journal failed for log %s: %s", _log_id, exc
-                    )
-
-            try:
-                await self.db.run_sync(_post_egg_journal)
-            except Exception as exc:
-                import logging
-                logging.getLogger("farmexa.egg_production").warning(
-                    "Egg accounting run_sync failed for log %s: %s", log.id, exc
-                )
-
         return log
+
+    async def _add_eggs_to_inventory(
+        self,
+        *,
+        trays: float,
+        unit_price,
+        reference_id: int,
+        record_date: date,
+    ) -> None:
+        """Find or create the 'Eggs' finished-product stock item and add trays to it."""
+        from app.models.inventory import StockCategory, StockItem
+        from app.services.inventory_coordinator import InventoryCoordinator
+        from app.services.stock_sku import generate_unique_sku_async
+
+        res = await self.db.execute(
+            select(StockItem).where(func.lower(StockItem.name) == "eggs")
+        )
+        item = res.scalar_one_or_none()
+        if item is None:
+            item = StockItem(
+                name="Eggs",
+                sku=await generate_unique_sku_async(self.db, "EGG", "Eggs"),
+                category=StockCategory.FINISHED_PRODUCT,
+                unit_of_measure="tray",
+                current_quantity=0.0,
+                reorder_level=0.0,
+                unit_price=float(unit_price or 0),
+                average_cost=0.0,
+                description="Eggs from production (sold per tray).",
+                is_active=True,
+            )
+            self.db.add(item)
+            await self.db.flush()
+        elif unit_price and float(unit_price) > 0 and not float(item.unit_price or 0):
+            item.unit_price = float(unit_price)
+
+        coordinator = InventoryCoordinator(self.db)
+        await coordinator.record_in_async(
+            item_id=item.id,
+            quantity=float(trays),
+            reference_type="egg_production",
+            reference_id=reference_id,
+            unit_cost=0.0,
+            notes=f"Egg production {record_date}",
+        )
 
     async def update_log(self, log_id: int, data: EggProductionUpdate) -> EggProductionLog:
         log = await self.get_log(log_id)

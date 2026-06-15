@@ -258,7 +258,7 @@ export function PosPage() {
                         form.setValue(`items.${index}.unit_price`, selected?.unit_price ?? 0)
                       }}>
                         <option value={0}>Choose product</option>
-                        {products.filter((item) => item.is_active && item.current_quantity > 0).map((item) => <option key={item.id} value={item.id}>{item.name} ({item.current_quantity.toLocaleString()} {item.unit_of_measure})</option>)}
+                        {products.filter((item) => item.is_active).map((item) => <option key={item.id} value={item.id}>{item.name} ({item.current_quantity.toLocaleString()} {item.unit_of_measure})</option>)}
                       </select>
                       {product && (
                         <div className="mt-0.5 px-1 text-[10px] text-ink-400">

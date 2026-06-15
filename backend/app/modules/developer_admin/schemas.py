@@ -65,6 +65,21 @@ class ModuleToggle(BaseModel):
     is_enabled: bool
 
 
+class TenantModuleSettingOut(BaseModel):
+    """A module as seen by a tenant admin managing their own farm's features."""
+    module_key: str
+    name: str
+    category: str
+    description: str | None = None
+    is_core: bool
+    is_enabled: bool
+    in_plan: bool
+
+
+class TenantModuleToggleBody(BaseModel):
+    is_enabled: bool
+
+
 class ModulePriceUpdate(BaseModel):
     billing_cycle: str
     price: Decimal

@@ -191,3 +191,40 @@ def list_audit_log(
         .limit(min(limit, 500))
         .all()
     )
+
+
+# ── Tenant module self-service ──────────────────────────────────────
+# A tenant admin can turn features they own on/off for their own farm.
+# (The platform developer can toggle anything for any tenant via the
+# /developer-admin endpoints — this is the tenant-scoped counterpart.)
+from app.modules.developer_admin.schemas import (  # noqa: E402
+    ModuleToggle,
+    TenantModuleOut,
+    TenantModuleSettingOut,
+    TenantModuleToggleBody,
+)
+from app.modules.developer_admin.service import DeveloperAdminService  # noqa: E402
+
+
+@router.get("/modules", response_model=List[TenantModuleSettingOut])
+async def list_my_modules(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("settings:read")),
+):
+    if not current_user.tenant_id:
+        return []
+    return await DeveloperAdminService(db).get_tenant_module_settings(current_user.tenant_id)
+
+
+@router.put("/modules/{module_key}", response_model=TenantModuleOut)
+async def toggle_my_module(
+    module_key: str,
+    body: TenantModuleToggleBody,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("settings:write")),
+):
+    return await DeveloperAdminService(db).toggle_tenant_own_module(
+        current_user.tenant_id,
+        ModuleToggle(module_key=module_key, is_enabled=body.is_enabled),
+        current_user,
+    )

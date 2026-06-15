@@ -29,6 +29,7 @@ import { SettingsConfigPage } from '@/features/settings/SettingsConfigPage'
 import { UsersPage } from '@/features/settings/users/UsersPage'
 import { RolesPage } from '@/features/settings/users/RolesPage'
 import { StoreLocationsPage } from '@/features/settings/StoreLocationsPage'
+import { ModulesPage } from '@/features/settings/ModulesPage'
 import { BranchesPage } from '@/features/settings/branches/BranchesPage'
 import { SlaughterPage } from '@/features/slaughter/SlaughterPage'
 import { AppLayout } from '@/layouts/AppLayout'
@@ -650,6 +651,14 @@ export default function App() {
                   <ModuleGuard moduleKey="settings">
                     <BranchesPage />
                   </ModuleGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="modules"
+              element={
+                <ProtectedRoute permission="settings:write">
+                  <ModulesPage />
                 </ProtectedRoute>
               }
             />

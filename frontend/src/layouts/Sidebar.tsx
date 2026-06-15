@@ -163,6 +163,8 @@ const FARM_NAV: NavGroup[] = [
       { label: 'Users', path: '/settings/users', permission: 'users:read', moduleKey: 'users' },
       { label: 'Roles', path: '/settings/roles', permission: 'users:write', moduleKey: 'settings' },
       { label: 'Company Settings', path: '/settings/company', permission: 'settings:write', moduleKey: 'settings' },
+      // No moduleKey: must stay reachable so an admin can re-enable a feature they turned off.
+      { label: 'Modules & Features', path: '/settings/modules', permission: 'settings:write' },
       { label: 'Subscription', path: '/settings/subscription', permission: 'settings:write' },
       { label: 'Custom Domains', path: '/account/domains', permission: 'settings:write' },
     ],

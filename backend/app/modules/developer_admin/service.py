@@ -1233,6 +1233,59 @@ class DeveloperAdminService:
         await self.db.refresh(module)
         return TenantModuleOut.model_validate(module)
 
+    async def get_tenant_module_settings(self, tenant_id: int) -> list[dict]:
+        """Modules a tenant owns (in plan, core, or already toggled) with current state.
+
+        Used by the tenant-admin self-service screen so a farm can turn off
+        features it doesn't use. Modules outside the tenant's entitlement are not
+        listed — those are added by the platform (developer) only.
+        """
+        tenant = await self._get_tenant_model(tenant_id)
+        core_keys = await self._get_core_module_keys()
+        plan_keys = set(await self._get_plan_module_keys(tenant.plan))
+        tenant_rows = {row.module_key: row for row in await self._get_tenant_modules(tenant_id)}
+
+        modules = (
+            await self.db.execute(select(PlatformModule).order_by(PlatformModule.category, PlatformModule.name))
+        ).scalars().all()
+
+        settings: list[dict] = []
+        for mod in modules:
+            row = tenant_rows.get(mod.key)
+            entitled = mod.key in plan_keys or mod.key in core_keys or row is not None
+            if not entitled:
+                continue
+            enabled = row.is_enabled if row is not None else (mod.key in plan_keys or mod.key in core_keys)
+            settings.append({
+                "module_key": mod.key,
+                "name": mod.name,
+                "category": mod.category,
+                "description": mod.description,
+                "is_core": mod.is_core,
+                "is_enabled": enabled,
+                "in_plan": mod.key in plan_keys,
+            })
+        return settings
+
+    async def toggle_tenant_own_module(self, tenant_id: int, data: ModuleToggle, actor: User) -> TenantModuleOut:
+        """Tenant-admin self-service toggle, restricted to the tenant's entitlement.
+
+        A tenant can disable/re-enable features they already own, but cannot grant
+        themselves modules outside their plan — that stays a platform (developer)
+        decision via toggle_module.
+        """
+        tenant = await self._get_tenant_model(tenant_id)
+        core_keys = await self._get_core_module_keys()
+        plan_keys = set(await self._get_plan_module_keys(tenant.plan))
+        tenant_rows = {row.module_key: row for row in await self._get_tenant_modules(tenant_id)}
+        entitled = data.module_key in plan_keys or data.module_key in core_keys or data.module_key in tenant_rows
+        if not entitled:
+            raise HTTPException(
+                status_code=403,
+                detail="This module is not part of your plan. Contact support to add it.",
+            )
+        return await self.toggle_module(tenant_id, data, actor)
+
     async def assign_domain(self, tenant_id: int, data: DomainAssignRequest, actor: User) -> Tenant:
         tenant = await self._get_tenant_model(tenant_id)
         await self._upsert_domain(tenant, data.host, is_primary=data.is_primary)
