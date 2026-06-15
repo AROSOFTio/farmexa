@@ -5,12 +5,13 @@ Tenant operational database provisioning and per-tenant session dependencies.
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import UTC, datetime
 from threading import RLock
 from typing import Any
 
 from fastapi import Depends, HTTPException, status, Request
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import Enum as SAEnum, create_engine, inspect, text
 from sqlalchemy.engine import Engine, URL, make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
@@ -35,6 +36,8 @@ from app.services.stock_sku import generate_unique_sku
 
 from sqlalchemy import event
 from sqlalchemy.orm import with_loader_criteria
+
+logger = logging.getLogger(__name__)
 
 _branch_scoped_classes: list[type] | None = None
 
@@ -83,6 +86,7 @@ _tenant_sync_engines: dict[str, Engine] = {}
 _tenant_async_sessions: dict[str, async_sessionmaker[AsyncSession]] = {}
 _tenant_sync_sessions: dict[str, sessionmaker[Session]] = {}
 _schema_initialized: set[str] = set()
+_columns_reconciled: set[str] = set()
 _synced_user_ids: dict[str, set[int]] = {}
 
 
@@ -245,7 +249,77 @@ def _ensure_schema_ready_sync(database_name: str) -> sessionmaker[Session]:
         with _cache_lock:
             _schema_initialized.add(database_name)
     _apply_runtime_schema_patches(engine)
+    with _cache_lock:
+        already_reconciled = database_name in _columns_reconciled
+    if not already_reconciled:
+        _reconcile_table_columns(engine)
+        with _cache_lock:
+            _columns_reconciled.add(database_name)
     return factory
+
+
+def _reconcile_table_columns(engine: Engine) -> None:
+    """Add any model columns missing from existing tenant tables.
+
+    Tenant DBs bypass Alembic, and ``create_all`` only creates whole missing
+    tables — it never adds a new column to a table that already exists. So when
+    the SQLAlchemy models gain a column (added via an Alembic migration on the
+    platform DB), pre-existing tenant tables silently fall behind. Every ORM
+    SELECT emits all mapped columns and every INSERT lists them, so the drift
+    surfaces as dashboards failing to load and vaccine/sales saves erroring.
+
+    This diffs the metadata against the live schema and issues a nullable
+    ``ADD COLUMN`` for anything missing (carrying over a server default when the
+    model declares one). It never emits ``NOT NULL`` — that would fail on tables
+    that already have rows — so new rows still get their Python-side defaults.
+    The explicit, ordered patches in ``_apply_runtime_schema_patches`` (enum
+    conversions, type changes, FK-bearing columns, views) remain authoritative;
+    this is a safety net for plain additive columns only.
+    """
+    inspector = inspect(engine)
+    try:
+        existing_tables = set(inspector.get_table_names())
+    except SQLAlchemyError as exc:  # pragma: no cover - defensive
+        logger.warning("Column reconcile skipped (cannot inspect schema): %s", exc)
+        return
+
+    dialect = engine.dialect
+    # AUTOCOMMIT so a single failed ADD COLUMN doesn't poison the whole batch
+    # (in Postgres any error aborts the surrounding transaction).
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+        for table in Base.metadata.sorted_tables:
+            if table.name not in existing_tables:
+                continue
+            try:
+                existing_cols = {col["name"] for col in inspector.get_columns(table.name)}
+            except SQLAlchemyError:  # pragma: no cover - defensive
+                continue
+            for column in table.columns:
+                if column.name in existing_cols:
+                    continue
+                try:
+                    # Ensure the backing enum type exists before referencing it.
+                    if isinstance(column.type, SAEnum):
+                        column.type.create(bind=conn, checkfirst=True)
+                    type_sql = column.type.compile(dialect=dialect)
+                    ddl = (
+                        f'ALTER TABLE {table.name} '
+                        f'ADD COLUMN IF NOT EXISTS "{column.name}" {type_sql}'
+                    )
+                    server_default = column.server_default
+                    default_sql = None
+                    if server_default is not None and hasattr(server_default, "arg"):
+                        arg = server_default.arg
+                        default_sql = arg if isinstance(arg, str) else getattr(arg, "text", None)
+                    if default_sql:
+                        ddl += f" DEFAULT {default_sql}"
+                    conn.execute(text(ddl))
+                    logger.info("Reconciled missing column %s.%s", table.name, column.name)
+                except SQLAlchemyError as exc:
+                    logger.warning(
+                        "Reconcile ADD COLUMN failed for %s.%s: %s",
+                        table.name, column.name, exc,
+                    )
 
 
 def _apply_runtime_schema_patches(engine: Engine) -> None:
