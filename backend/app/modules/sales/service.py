@@ -1,6 +1,7 @@
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from email.message import EmailMessage
+import logging
 import smtplib
 import threading
 import uuid
@@ -27,6 +28,8 @@ from app.services.inventory_coordinator import InventoryCoordinator, ReferenceTy
 from app.services.accounting_service import AccountingService
 
 from . import schemas
+
+logger = logging.getLogger("farmexa.sales")
 
 
 class SalesService:
@@ -266,25 +269,35 @@ class SalesService:
 
         db.flush()
 
-        from app.models.tenant import Tenant
-        tenant = db.query(Tenant).first()
-        tenant_id = tenant.id if tenant else None
-        accounting = AccountingService(db, tenant_id=tenant_id)
-        accounting.record_egg_sales(
-            revenue=total_amount,
-            entry_date=invoice.issue_date,
-            reference_id=invoice.id,
-            is_cash=False,  # This creates AR
-            created_by_user_id=None,
-            batch_id=order.batch_id,
-        )
-
+        # Persist the order, items, invoice and stock movements first so a ledger
+        # posting failure can never block or roll back the sale (best-effort
+        # accounting, matching the farm/feed modules).
+        _order_id = db_order.id
+        _invoice_id = invoice.id
+        _invoice_issue_date = invoice.issue_date
         db.commit()
+
+        try:
+            from app.models.tenant import Tenant
+            tenant = db.query(Tenant).first()
+            tenant_id = tenant.id if tenant else None
+            accounting = AccountingService(db, tenant_id=tenant_id)
+            accounting.record_egg_sales(
+                revenue=total_amount,
+                entry_date=_invoice_issue_date,
+                reference_id=_invoice_id,
+                is_cash=False,  # This creates AR
+                created_by_user_id=None,
+                batch_id=order.batch_id,
+            )
+        except Exception as exc:
+            db.rollback()
+            logger.warning("Sales order accounting journal failed for invoice %s: %s", _invoice_id, exc)
 
         return (
             db.query(Order)
             .options(joinedload(Order.customer), joinedload(Order.items))
-            .filter(Order.id == db_order.id)
+            .filter(Order.id == _order_id)
             .first()
         )
 
@@ -370,19 +383,29 @@ class SalesService:
         )
         
         db.flush()
-        
-        from app.models.tenant import Tenant
-        tenant = db.query(Tenant).first()
-        tenant_id = tenant.id if tenant else None
-        accounting = AccountingService(db, tenant_id=tenant_id)
-        accounting.record_payment_received(
-            payment_amount=payment.amount,
-            entry_date=payment.payment_date,
-            reference_id=db_payment.id,
-            created_by_user_id=None,
-        )
 
+        # Persist the payment + invoice/status/reminder changes before posting the
+        # ledger so a journal failure can never block or lose the payment.
+        _payment_id = db_payment.id
+        _payment_amount = payment.amount
+        _payment_date = payment.payment_date
         db.commit()
+
+        try:
+            from app.models.tenant import Tenant
+            tenant = db.query(Tenant).first()
+            tenant_id = tenant.id if tenant else None
+            accounting = AccountingService(db, tenant_id=tenant_id)
+            accounting.record_payment_received(
+                payment_amount=_payment_amount,
+                entry_date=_payment_date,
+                reference_id=_payment_id,
+                created_by_user_id=None,
+            )
+        except Exception as exc:
+            db.rollback()
+            logger.warning("Payment accounting journal failed for payment %s: %s", _payment_id, exc)
+
         db.refresh(db_payment)
         return db_payment
 

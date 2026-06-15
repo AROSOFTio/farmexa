@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import require_permission, get_current_user
 from app.core.branch_deps import get_branch_context, BranchContext
 from app.db.tenant_db import get_tenant_sync_db
-from app.models.inventory import StockCategory, TransferStatus, TransferType, GIVStatus, GRNStatus
+from app.models.inventory import StockCategory, TransferStatus, GIVStatus, GRNStatus
 from app.modules.inventory import schemas, service
 
 router = APIRouter(prefix="/inventory", tags=["Inventory"])
@@ -111,30 +111,6 @@ def list_transfers(
     current_user=Depends(require_permission("inventory:read")),
 ):
     return service.inventory_service.get_transfers(db, skip, limit, status_filter)
-
-
-@router.get("/giv", response_model=List[schemas.StockTransferOut])
-def list_giv(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("inventory:read")),
-):
-    return [item for item in service.inventory_service.get_transfers(db, skip, limit) if item.transfer_type == TransferType.GIV]
-
-
-@router.get("/grn", response_model=List[schemas.StockTransferOut])
-def list_grn(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_tenant_sync_db),
-    current_user=Depends(require_permission("inventory:read")),
-):
-    return [
-        item
-        for item in service.inventory_service.get_transfers(db, skip, limit)
-        if item.status in {TransferStatus.ISSUED, TransferStatus.RECEIVED}
-    ]
 
 
 @router.post("/transfers", response_model=schemas.StockTransferOut)
