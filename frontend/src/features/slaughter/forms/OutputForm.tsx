@@ -2,25 +2,32 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { PackagePlus } from 'lucide-react'
 import { outputSchema, OutputFormValues } from '../schemas'
-import { StockItem, SlaughterRecord, SlaughterSection } from '../types'
+import { SlaughterRecord, SlaughterSection } from '../types'
 import { emptyOutputValues } from '../hooks'
 import { formatDate } from '../utils'
 
+interface OutputCatalogEntry {
+  value: string
+  label: string
+  stockName: string
+}
+
 interface OutputFormProps {
   approvedRecords: SlaughterRecord[]
-  stockItems: StockItem[]
+  outputCatalog: readonly OutputCatalogEntry[]
   section: SlaughterSection
   onSubmit: (values: OutputFormValues) => void
   isLoading?: boolean
   onCancel: () => void
 }
 
-export function OutputForm({ approvedRecords, stockItems, section, onSubmit, isLoading, onCancel }: OutputFormProps) {
+export function OutputForm({ approvedRecords, outputCatalog, section, onSubmit, isLoading, onCancel }: OutputFormProps) {
   const form = useForm<OutputFormValues>({
     resolver: zodResolver(outputSchema),
     defaultValues: {
       ...emptyOutputValues(),
       record_id: approvedRecords[0]?.id ?? 0,
+      output_type: outputCatalog[0]?.value ?? '',
     },
   })
 
@@ -30,8 +37,13 @@ export function OutputForm({ approvedRecords, stockItems, section, onSubmit, isL
     return 'Post product output'
   }
 
+  const handleSubmit = (values: OutputFormValues) => {
+    const entry = outputCatalog.find((item) => item.value === values.output_type)
+    onSubmit({ ...values, product_name: entry?.stockName ?? values.output_type.replace(/_/g, ' ') })
+  }
+
   return (
-    <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+    <form className="space-y-4" onSubmit={form.handleSubmit(handleSubmit)}>
       <div>
         <label className="form-label">Approved slaughter record</label>
         <select className="form-input" {...form.register('record_id')}>
@@ -46,24 +58,24 @@ export function OutputForm({ approvedRecords, stockItems, section, onSubmit, isL
       </div>
 
       <div>
-        <label className="form-label">Inventory item</label>
-        <select className="form-input" {...form.register('stock_item_id')}>
-          <option value={0}>Choose stock item</option>
-          {stockItems.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
+        <label className="form-label">Product</label>
+        <select className="form-input" {...form.register('output_type')}>
+          <option value="">Choose product</option>
+          {outputCatalog.map((entry) => (
+            <option key={entry.value} value={entry.value}>
+              {entry.label}
             </option>
           ))}
         </select>
-        {form.formState.errors.stock_item_id ? <p className="form-error">{form.formState.errors.stock_item_id.message}</p> : null}
+        {form.formState.errors.output_type ? <p className="form-error">{form.formState.errors.output_type.message}</p> : null}
         <p className="form-hint">
-          Only coded slaughter items entered by inventory or slaughter managers appear here. Sales and processing users must select from this list instead of typing items manually.
+          The finished good is created in inventory automatically and becomes available in POS once stock is posted — no manual product setup needed.
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <label className="form-label">Quantity</label>
+          <label className="form-label">Quantity (kg)</label>
           <input className="form-input" type="number" min={0} step="0.01" {...form.register('quantity')} />
           {form.formState.errors.quantity ? <p className="form-error">{form.formState.errors.quantity.message}</p> : null}
         </div>

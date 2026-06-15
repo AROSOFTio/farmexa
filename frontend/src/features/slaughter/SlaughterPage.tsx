@@ -21,8 +21,6 @@ import {
   SlaughterRecord,
   StockItem,
   productionOutputCatalog,
-  productionOutputStockSkus,
-  productionOutputStockNames,
   saleableOutputTypes,
   byproductOutputTypes,
 } from './types'
@@ -33,7 +31,6 @@ import {
   outputLabel,
   isSaleableOutput,
   isByproductOutput,
-  inferOutputType,
   getSectionCopy,
 } from './utils'
 
@@ -443,19 +440,10 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
   const { data: batches = [] } = useBatches()
   const { data: stockItems = [] } = useStockItems()
 
-  const outputInventoryItems = useMemo(() => {
-    const matched = stockItems.filter((item: StockItem) => {
-      const normalizedSku = item.sku?.trim().toLowerCase()
-      if (normalizedSku && productionOutputStockSkus.has(normalizedSku)) return true
-      return productionOutputStockNames.has(item.name.trim().toLowerCase())
-    })
-    return matched.length > 0 ? matched : stockItems
-  }, [stockItems])
-
   const createRecord = useCreateRecord()
   const completeRecord = useCompleteRecord()
   const updateStatus = useUpdateRecordStatus()
-  const createOutput = useCreateOutput(outputInventoryItems)
+  const createOutput = useCreateOutput()
 
   const [confirmAction, setConfirmAction] = useState<
     | { type: 'approve' | 'cancel'; record: SlaughterRecord }
@@ -559,15 +547,6 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
     })
   }
 
-  const availableOutputItems = useMemo(
-    () =>
-      outputInventoryItems.filter((item) => {
-        const outputType = inferOutputType(item)
-        return !!outputType && outputCatalogForSection.some((entry) => entry.value === outputType)
-      }),
-    [outputCatalogForSection, outputInventoryItems]
-  )
-
   return (
     <div className="animate-fade-in space-y-6">
       <div className="section-header">
@@ -633,7 +612,7 @@ export function SlaughterPage({ section }: { section: SlaughterSection }) {
       >
         <OutputForm
           approvedRecords={approvedRecords}
-          stockItems={outputInventoryItems}
+          outputCatalog={outputCatalogForSection}
           section={section}
           onSubmit={handleOutputSubmit}
           isLoading={createOutput.isPending}

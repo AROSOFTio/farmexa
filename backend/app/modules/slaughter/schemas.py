@@ -27,16 +27,20 @@ SlaughterOutputType = Literal[
 
 
 class SlaughterOutputBase(BaseModel):
-    stock_item_id: int
     output_type: SlaughterOutputType = "dressed_chicken"
     quantity: NonNegativeWeight
     unit_cost: Optional[NonNegativeMoney] = None
 
 class SlaughterOutputCreate(SlaughterOutputBase):
-    pass
+    # Either point at an existing sellable item, or name the finished good and let
+    # the backend find/create it — so slaughter outputs flow into inventory/POS
+    # with no manual stock-item setup.
+    stock_item_id: Optional[int] = None
+    product_name: Optional[str] = Field(default=None, max_length=150)
 
 class SlaughterOutputOut(SlaughterOutputBase):
     id: int
+    stock_item_id: int
     total_cost: Optional[Money] = None
 
     class Config:

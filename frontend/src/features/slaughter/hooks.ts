@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import api from '@/services/api'
 import { SlaughterRecord, BatchOption, StockItem } from './types'
 import { RecordFormValues, CompletionFormValues, OutputFormValues } from './schemas'
-import { todayValue, inferOutputType } from './utils'
+import { todayValue } from './utils'
 
 export function useSlaughterRecords() {
   return useQuery({
@@ -94,25 +94,20 @@ export function useUpdateRecordStatus() {
   })
 }
 
-export function useCreateOutput(outputInventoryItems: StockItem[]) {
+export function useCreateOutput() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (values: OutputFormValues) => {
-      const selectedItem = outputInventoryItems.find((item) => item.id === values.stock_item_id)
-      const outputType = inferOutputType(selectedItem)
-      if (!outputType) {
-        throw new Error('Selected item is not configured as a slaughter output. Ask an inventory or slaughter manager to register the correct item code.')
-      }
-      return api.post(`/slaughter/records/${values.record_id}/outputs`, {
-        stock_item_id: values.stock_item_id,
-        output_type: outputType,
+    mutationFn: (values: OutputFormValues) =>
+      api.post(`/slaughter/records/${values.record_id}/outputs`, {
+        output_type: values.output_type,
+        product_name: values.product_name?.trim() || null,
         quantity: values.quantity,
         unit_cost: values.unit_cost ?? null,
-      })
-    },
+      }),
     onSuccess: () => {
       toast.success('Slaughter output posted to inventory.')
       qc.invalidateQueries({ queryKey: ['slaughter-records'] })
+      qc.invalidateQueries({ queryKey: ['slaughter-stock-items'] })
       qc.invalidateQueries({ queryKey: ['inventory-items'] })
       qc.invalidateQueries({ queryKey: ['inventory-movements'] })
     },
@@ -175,7 +170,8 @@ export function emptyCompletionValues(): CompletionFormValues {
 export function emptyOutputValues(): OutputFormValues {
   return {
     record_id: 0,
-    stock_item_id: 0,
+    output_type: '',
+    product_name: '',
     quantity: 0,
     unit_cost: undefined,
   }

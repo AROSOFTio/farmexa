@@ -4,11 +4,13 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.utils.audit import write_audit_log_sync
 from app.models.farm import Batch, BatchStatus
-from app.models.inventory import MovementType, StockItem, StockMovement
+from app.models.inventory import MovementType, StockCategory, StockItem, StockMovement
+from app.services.stock_sku import generate_unique_sku
 from app.models.slaughter import (
     QualityInspectionStatus,
     SlaughterApprovalStatus,
@@ -241,9 +243,35 @@ class SlaughterService:
         if db_record.status == SlaughterStatus.CANCELLED:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot add outputs to a cancelled record")
 
-        item = db.query(StockItem).filter(StockItem.id == output.stock_item_id).first()
-        if not item:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock item not found")
+        # Resolve the sellable item. The slaughter team should not have to pre-create
+        # inventory: if no item is selected, find one matching the product name (or
+        # the output type) and create it as a FINISHED_PRODUCT when absent, so the
+        # output flows straight into inventory and the POS catalogue automatically.
+        item = None
+        if output.stock_item_id:
+            item = db.query(StockItem).filter(StockItem.id == output.stock_item_id).first()
+        if item is None:
+            product_name = (output.product_name or "").strip() or output.output_type.replace("_", " ").title()
+            item = (
+                db.query(StockItem)
+                .filter(func.lower(StockItem.name) == product_name.lower())
+                .first()
+            )
+            if item is None:
+                item = StockItem(
+                    name=product_name,
+                    sku=generate_unique_sku(db, "SLG", product_name),
+                    category=StockCategory.FINISHED_PRODUCT,
+                    unit_of_measure="kg",
+                    current_quantity=0.0,
+                    reorder_level=0.0,
+                    unit_price=float(output.unit_cost or 0),
+                    average_cost=float(output.unit_cost or 0),
+                    description=f"Slaughter finished good ({output.output_type})",
+                    is_active=True,
+                )
+                db.add(item)
+                db.flush()
 
         # If this is the first output posting, atomically post input movement and reduce batch
         batch = db.query(Batch).filter(Batch.id == db_record.batch_id).first()
@@ -294,7 +322,7 @@ class SlaughterService:
         db_output = SlaughterOutput(
             tenant_id=tenant_id,
             slaughter_record_id=record_id,
-            stock_item_id=output.stock_item_id,
+            stock_item_id=item.id,
             output_type=output.output_type,
             quantity=output.quantity,
             unit_cost=output.unit_cost,

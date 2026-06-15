@@ -54,7 +54,8 @@ export const completionSchema = z.object({
 
 export const outputSchema = z.object({
   record_id: z.coerce.number().int().positive('Record is required'),
-  stock_item_id: z.coerce.number().int().positive('Stock item is required'),
+  output_type: z.string().min(1, 'Product is required'),
+  product_name: z.string().optional(),
   quantity: z.coerce.number().positive('Quantity must be greater than zero'),
   unit_cost: z.coerce.number().optional(),
 })
