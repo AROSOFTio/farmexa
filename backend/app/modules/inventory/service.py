@@ -351,7 +351,6 @@ class InventoryService:
                 reference_type=ReferenceType.GIV_ISSUE.value,
                 reference_id=giv.id,
                 notes=f"{giv.giv_number}: {giv.destination or 'Issue'} from {giv.from_store_location.code}",
-                location_id=giv.from_store_location_id,
             )
             giv.status = GIVStatus.ISSUED
             giv.issued_at = now
@@ -442,7 +441,6 @@ class InventoryService:
                 reference_id=grn.id,
                 unit_cost=grn.unit_cost,
                 notes=f"{grn.grn_number}: {grn.source_type} into {grn.received_into_store_location.code}",
-                location_id=grn.received_into_store_location_id,
             )
             grn.status = GRNStatus.RECEIVED
             grn.received_at = now

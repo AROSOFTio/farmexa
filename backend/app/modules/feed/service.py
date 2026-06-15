@@ -1,3 +1,4 @@
+import logging
 import uuid
 from decimal import Decimal
 
@@ -24,7 +25,10 @@ from app.modules.feed.schemas import (
 from app.modules.farm.repository import FarmRepository
 from app.services.inventory_coordinator import InventoryCoordinator, ReferenceType
 from app.services.stock_sku import generate_unique_sku_async
+from app.models.tenant import Tenant
 from app.services.accounting_service import AccountingService
+
+logger = logging.getLogger("farmexa.feed")
 
 
 def _feed_item_current_stock(item: FeedItem) -> float:
@@ -269,19 +273,34 @@ class FeedService:
         total_amount = sum(
             (to_decimal(qty) * price for _, qty, price in prepared_items), Decimal("0")
         )
+        # Persist the purchase + stock movements before attempting accounting so a
+        # journal failure can never lose the operational record.
+        await self.db.commit()
+
+        # Wire accounting (best-effort). FeedPurchase has no tenant_id column —
+        # tenant DBs are single-tenant, so resolve the id the COA was seeded under
+        # from the tenants table. Never let a journal failure block the purchase.
+        _purchase_id = purchase.id
+        _purchase_date = purchase.purchase_date
+        _branch_id = purchase.branch_id
+
         def sync_accounting_call(session):
-            accounting = AccountingService(session, tenant_id=purchase.tenant_id)
+            tenant_id = session.execute(select(Tenant.id)).scalars().first()
+            accounting = AccountingService(session, tenant_id=tenant_id)
             accounting.record_feed_purchase(
                 amount=total_amount,
-                entry_date=purchase.purchase_date,
-                reference_id=purchase.id,
+                entry_date=_purchase_date,
+                reference_id=_purchase_id,
                 is_cash=True,  # Defaulting to cash for feed purchases
                 created_by_user_id=None,
-                branch_id=purchase.branch_id
+                branch_id=_branch_id,
             )
-        await self.db.run_sync(sync_accounting_call)
+        try:
+            await self.db.run_sync(sync_accounting_call)
+        except Exception as exc:
+            await self.db.rollback()
+            logger.warning("Feed purchase accounting journal failed for purchase %s: %s", _purchase_id, exc)
 
-        await self.db.commit()
         purchase = await self.repo.get_purchase(purchase.id)
         return FeedPurchaseOut.model_validate(purchase)
 
@@ -319,19 +338,33 @@ class FeedService:
             await self.db.rollback()
             raise HTTPException(status_code=400, detail=f"Cannot record stock movement for feed consumption: {e.detail}")
 
+        # Persist the consumption + stock movement before best-effort accounting.
+        await self.db.commit()
+
+        # FeedConsumption has no tenant_id column — resolve the single tenant the
+        # COA was seeded under, and never let a journal failure block the save.
+        _consumption_id = consumption.id
+        _consumption_date = consumption.record_date
+        _branch_id = batch.branch_id
+        _batch_id = data.batch_id
+
         def sync_accounting_call(session):
-            accounting = AccountingService(session, tenant_id=consumption.tenant_id)
+            tenant_id = session.execute(select(Tenant.id)).scalars().first()
+            accounting = AccountingService(session, tenant_id=tenant_id)
             accounting.record_feed_consumption(
                 amount=consumption_cost,
-                entry_date=consumption.consumption_date,
-                reference_id=consumption.id,
+                entry_date=_consumption_date,
+                reference_id=_consumption_id,
                 created_by_user_id=None,
-                branch_id=batch.branch_id,
-                batch_id=data.batch_id,
+                branch_id=_branch_id,
+                batch_id=_batch_id,
             )
-        await self.db.run_sync(sync_accounting_call)
+        try:
+            await self.db.run_sync(sync_accounting_call)
+        except Exception as exc:
+            await self.db.rollback()
+            logger.warning("Feed consumption accounting journal failed for consumption %s: %s", _consumption_id, exc)
 
-        await self.db.commit()
         return FeedConsumptionOut.model_validate(consumption)
 
     async def get_formulations(self) -> list[FeedFormulationOut]:
