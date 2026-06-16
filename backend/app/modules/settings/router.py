@@ -151,6 +151,7 @@ def create_branch(
     current_user=Depends(require_permission("branches:write")),
 ):
     branch = Branch(**payload.model_dump())
+    branch.tenant_id = current_user.tenant_id
     db.add(branch)
     db.commit()
     db.refresh(branch)
