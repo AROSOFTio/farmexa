@@ -79,14 +79,21 @@ async def process_pesapal_callback(
     OrderMerchantReference: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
+    redirect_url = "/account/billing"
     if OrderTrackingId:
-        await SubscriptionUpgradeService(db).process_pesapal_notification(
-            order_tracking_id=OrderTrackingId,
-            merchant_reference=OrderMerchantReference,
-            source_ip=request.client.host if request.client else None,
-            raw_payload=dict(request.query_params),
-        )
-    return RedirectResponse(url="/account/billing")
+        try:
+            tenant_billing_url = await SubscriptionUpgradeService(db).process_pesapal_notification_with_redirect(
+                order_tracking_id=OrderTrackingId,
+                merchant_reference=OrderMerchantReference,
+                source_ip=request.client.host if request.client else None,
+                raw_payload=dict(request.query_params),
+                request=request,
+            )
+            if tenant_billing_url:
+                redirect_url = tenant_billing_url
+        except Exception:
+            pass
+    return RedirectResponse(url=redirect_url)
 
 
 @router.api_route("/payments/pesapal/ipn", methods=["GET", "POST"])

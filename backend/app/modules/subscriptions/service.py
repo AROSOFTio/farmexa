@@ -491,6 +491,48 @@ class SubscriptionUpgradeService:
         status_result = await PesapalService(system_settings).get_transaction_status(order_tracking_id)
         await self._apply_payment_status(status_result, source_ip, raw_payload, merchant_reference)
 
+    async def process_pesapal_notification_with_redirect(
+        self,
+        *,
+        order_tracking_id: str,
+        merchant_reference: str | None,
+        source_ip: str | None,
+        raw_payload: dict[str, Any],
+        request: Any,
+    ) -> str | None:
+        """Process payment and return the tenant's billing URL for post-payment redirect."""
+        from fastapi import Request as FastAPIRequest
+        system_settings = await self._get_system_settings()
+        status_result = await PesapalService(system_settings).get_transaction_status(order_tracking_id)
+        await self._apply_payment_status(status_result, source_ip, raw_payload, merchant_reference)
+
+        # Resolve the tenant's primary domain for the redirect
+        invoice_number = status_result.merchant_reference or merchant_reference
+        if not invoice_number:
+            return None
+        invoice_row = await self.db.execute(
+            select(BillingInvoice).where(BillingInvoice.invoice_number == invoice_number)
+        )
+        invoice = invoice_row.scalar_one_or_none()
+        if not invoice:
+            return None
+
+        from app.models.tenant import TenantDomain, DomainStatus as DS
+        domain_row = await self.db.execute(
+            select(TenantDomain).where(
+                TenantDomain.tenant_id == invoice.tenant_id,
+                TenantDomain.is_primary.is_(True),
+            ).order_by(TenantDomain.is_primary.desc()).limit(1)
+        )
+        primary_domain = domain_row.scalar_one_or_none()
+        if not primary_domain:
+            return None
+
+        scheme = "https"
+        if hasattr(request, "headers"):
+            scheme = request.headers.get("x-forwarded-proto", "https").split(",")[0].strip()
+        return f"{scheme}://{primary_domain.host}/account/billing"
+
     async def _apply_payment_status(
         self,
         status_result: PesapalStatusResult,
