@@ -1557,6 +1557,93 @@ class DeveloperAdminService:
         await self.db.commit()
         return await self._get_tenant_model(tenant_id)
 
+    async def get_tenant_insights(self, tenant_id: int) -> dict:
+        import asyncio
+        from datetime import datetime, timedelta, timezone
+
+        result = await self.db.execute(select(Tenant).where(Tenant.id == tenant_id))
+        tenant = result.scalar_one_or_none()
+        if not tenant:
+            raise HTTPException(status_code=404, detail="Tenant not found.")
+
+        # User counts live in the platform DB
+        from sqlalchemy import func as sa_func
+        from app.models.user import User as UserModel
+        user_rows = await self.db.execute(
+            select(
+                sa_func.count(UserModel.id).label("total"),
+                sa_func.count(UserModel.id).filter(UserModel.is_active.is_(True)).label("active"),
+            ).where(UserModel.tenant_id == tenant_id, UserModel.deleted_at.is_(None))
+        )
+        user_counts = user_rows.one()
+
+        base = {
+            "available": False,
+            "db_status": tenant.operational_db_status,
+            "total_users": user_counts.total,
+            "active_users": user_counts.active,
+        }
+
+        if not tenant.operational_db_name or tenant.operational_db_status != "ready":
+            return base
+
+        db_name = tenant.operational_db_name
+
+        def _gather() -> dict:
+            from app.db.tenant_db import get_tenant_admin_sync_session
+            from sqlalchemy import text
+
+            cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+
+            with get_tenant_admin_sync_session(db_name) as s:
+                def q(sql: str, **p):
+                    try:
+                        return s.execute(text(sql), p).scalar() or 0
+                    except Exception:
+                        return 0
+
+                return {
+                    # ── Finance / Sales ────────────────────────────────────
+                    "revenue_30d":             q("SELECT COALESCE(SUM(total_amount),0) FROM invoices WHERE created_at >= :d", d=cutoff),
+                    "revenue_all_time":        q("SELECT COALESCE(SUM(total_amount),0) FROM invoices"),
+                    "invoices_paid":           q("SELECT COUNT(*) FROM invoices WHERE status = 'paid'"),
+                    "invoices_pending":        q("SELECT COUNT(*) FROM invoices WHERE status NOT IN ('paid','cancelled','void')"),
+                    "outstanding_receivables": q("SELECT COALESCE(SUM(total_amount - COALESCE(paid_amount,0)),0) FROM invoices WHERE status NOT IN ('paid','cancelled','void')"),
+                    "expenses_30d":            q("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE expense_date >= :d", d=cutoff),
+                    "incomes_30d":             q("SELECT COALESCE(SUM(amount),0) FROM incomes WHERE income_date >= :d", d=cutoff),
+                    # ── Journal / Accounting ───────────────────────────────
+                    "journal_entries_total":   q("SELECT COUNT(*) FROM journal_entries"),
+                    "journal_entries_30d":     q("SELECT COUNT(*) FROM journal_entries WHERE created_at >= :d", d=cutoff),
+                    "accounts_count":          q("SELECT COUNT(*) FROM accounts"),
+                    # ── Stock / Inventory ──────────────────────────────────
+                    "stock_items_count":       q("SELECT COUNT(*) FROM stock_items WHERE is_active = true"),
+                    "stock_value":             q("SELECT COALESCE(SUM(current_quantity * COALESCE(average_cost, unit_price, 0)),0) FROM stock_items WHERE is_active = true"),
+                    "stock_movements_30d":     q("SELECT COUNT(*) FROM stock_movements WHERE created_at >= :d", d=cutoff),
+                    # ── Production ────────────────────────────────────────
+                    "active_batches":          q("SELECT COUNT(*) FROM batches WHERE status = 'active'"),
+                    "total_batches":           q("SELECT COUNT(*) FROM batches"),
+                    "eggs_produced_30d":       q("SELECT COALESCE(SUM(good_eggs),0) FROM egg_production_logs WHERE production_date >= :d", d=cutoff),
+                    "slaughter_records_30d":   q("SELECT COUNT(*) FROM slaughter_records WHERE created_at >= :d", d=cutoff),
+                    "mortality_30d":           q("SELECT COALESCE(SUM(quantity),0) FROM mortality_logs WHERE record_date >= :d", d=cutoff),
+                    # ── Orders / Customers ────────────────────────────────
+                    "orders_30d":              q("SELECT COUNT(*) FROM orders WHERE created_at >= :d", d=cutoff),
+                    "orders_total":            q("SELECT COUNT(*) FROM orders"),
+                    "customers_count":         q("SELECT COUNT(*) FROM customers"),
+                    # ── Procurement ───────────────────────────────────────
+                    "purchase_orders_30d":     q("SELECT COUNT(*) FROM purchase_orders WHERE created_at >= :d", d=cutoff),
+                    "purchase_orders_total":   q("SELECT COUNT(*) FROM purchase_orders"),
+                    "procurement_spend_30d":   q("SELECT COALESCE(SUM(total_amount),0) FROM purchase_orders WHERE created_at >= :d", d=cutoff),
+                    # ── HR ────────────────────────────────────────────────
+                    "active_employees":        q("SELECT COUNT(*) FROM employees WHERE is_active = true"),
+                    "payroll_spend_30d":       q("SELECT COALESCE(SUM(pl.gross_pay),0) FROM payroll_lines pl JOIN payroll_periods pp ON pp.id = pl.payroll_period_id WHERE pp.created_at >= :d", d=cutoff),
+                    # ── Activity ──────────────────────────────────────────
+                    "audit_events_30d":        q("SELECT COUNT(*) FROM audit_logs WHERE created_at >= :d", d=cutoff),
+                    "last_activity_at":        q("SELECT MAX(created_at) FROM audit_logs"),
+                }
+
+        stats = await asyncio.to_thread(_gather)
+        return {**base, "available": True, **stats}
+
     async def delete_tenant(self, tenant_id: int, actor: User) -> None:
         import asyncio
         from sqlalchemy import delete as sql_delete

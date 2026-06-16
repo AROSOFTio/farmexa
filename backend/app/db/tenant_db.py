@@ -91,6 +91,22 @@ def _is_platform_admin(user: User | None) -> bool:
     return bool(user and user.role and user.role.name in PLATFORM_ADMIN_ROLES)
 
 
+from contextlib import contextmanager
+
+@contextmanager
+def get_tenant_admin_sync_session(database_name: str):
+    """Unscoped sync session for a tenant DB — admin/monitoring queries only, no branch filter."""
+    _engine, session_factory, _created = _get_or_create_sync_runtime(database_name)
+    session = session_factory()
+    try:
+        yield session
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
 def drop_tenant_database(database_name: str) -> None:
     """Dispose in-process connection caches then DROP the tenant's operational database."""
     with _cache_lock:

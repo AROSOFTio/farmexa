@@ -290,6 +290,15 @@ function formatDate(value: string | null | undefined) {
   return new Date(value).toLocaleDateString('en-UG', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function InsightStat({ label, value, highlight = false }: { label: string; value: string | number; highlight?: boolean }) {
+  return (
+    <div className={clsx('rounded-xl border px-3 py-3', highlight ? 'border-amber-200 bg-amber-50' : 'border-[var(--border-subtle)] bg-[var(--surface-soft)]')}>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">{label}</div>
+      <div className={clsx('mt-1 text-base font-bold', highlight ? 'text-amber-700' : 'text-slate-900')}>{value}</div>
+    </div>
+  )
+}
+
 function statusBadge(status: string) {
   switch (status) {
     case 'active':
@@ -375,6 +384,14 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
   const { data: settingsSummary } = useQuery<DeveloperAdminSettings>({
     queryKey: ['dev-admin-settings'],
     queryFn: () => api.get('/dev-admin/settings').then((response) => response.data),
+  })
+
+  const { data: tenantInsights, isLoading: insightsLoading } = useQuery({
+    queryKey: ['dev-admin-tenant-insights', selectedTenantId],
+    queryFn: () => api.get(`/dev-admin/tenants/${selectedTenantId}/insights`).then((r) => r.data),
+    enabled: !!selectedTenantId,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
   })
 
   const tenantForm = useForm<TenantFormValues>({
@@ -1373,6 +1390,126 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
                   })}
                 </div>
               </div>
+
+              {/* ── Tenant Insights ─────────────────────────────── */}
+              <div className="card overflow-hidden">
+                <div className="surface-header">
+                  <div>
+                    <h2 className="surface-title">Tenant Insights</h2>
+                    <p className="surface-subtitle">Live metrics from {selectedTenant.name}'s operational database — refreshes every 2 min.</p>
+                  </div>
+                  {tenantInsights && (
+                    <span className={clsx('badge', tenantInsights.available ? 'badge-success' : 'bg-slate-100 text-slate-500')}>
+                      {tenantInsights.available ? 'DB Connected' : tenantInsights.db_status?.replace(/_/g, ' ') ?? 'Unavailable'}
+                    </span>
+                  )}
+                </div>
+
+                {insightsLoading ? (
+                  <div className="flex items-center justify-center py-10 text-sm text-slate-500">Loading insights…</div>
+                ) : !tenantInsights?.available ? (
+                  <div className="px-5 py-8 text-sm text-slate-500">
+                    Database status: <strong>{tenantInsights?.db_status ?? 'unknown'}</strong> — insights are only available once the tenant's operational database is ready.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[var(--border-subtle)]">
+
+                    {/* Users */}
+                    <div className="px-5 py-4">
+                      <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Users</div>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <InsightStat label="Total users" value={tenantInsights.total_users} />
+                        <InsightStat label="Active users" value={tenantInsights.active_users} />
+                      </div>
+                    </div>
+
+                    {/* Revenue & Finance */}
+                    <div className="px-5 py-4">
+                      <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Revenue & Finance</div>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <InsightStat label="Revenue (30 d)" value={formatMoney(tenantInsights.revenue_30d)} />
+                        <InsightStat label="Revenue (all time)" value={formatMoney(tenantInsights.revenue_all_time)} />
+                        <InsightStat label="Outstanding receivables" value={formatMoney(tenantInsights.outstanding_receivables)} highlight={Number(tenantInsights.outstanding_receivables) > 0} />
+                        <InsightStat label="Invoices paid" value={tenantInsights.invoices_paid} />
+                        <InsightStat label="Invoices pending" value={tenantInsights.invoices_pending} highlight={Number(tenantInsights.invoices_pending) > 0} />
+                        <InsightStat label="Expenses (30 d)" value={formatMoney(tenantInsights.expenses_30d)} />
+                      </div>
+                    </div>
+
+                    {/* Accounting */}
+                    <div className="px-5 py-4">
+                      <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Accounting / Journals</div>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <InsightStat label="Journal entries (30 d)" value={tenantInsights.journal_entries_30d} />
+                        <InsightStat label="Journal entries (total)" value={tenantInsights.journal_entries_total} />
+                        <InsightStat label="Chart of accounts" value={tenantInsights.accounts_count} />
+                      </div>
+                    </div>
+
+                    {/* Stock */}
+                    <div className="px-5 py-4">
+                      <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Stock & Inventory</div>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <InsightStat label="Stock items (active)" value={tenantInsights.stock_items_count} />
+                        <InsightStat label="Estimated stock value" value={formatMoney(tenantInsights.stock_value)} />
+                        <InsightStat label="Stock movements (30 d)" value={tenantInsights.stock_movements_30d} />
+                      </div>
+                    </div>
+
+                    {/* Production */}
+                    <div className="px-5 py-4">
+                      <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Farm Production</div>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <InsightStat label="Active batches" value={tenantInsights.active_batches} />
+                        <InsightStat label="Total batches" value={tenantInsights.total_batches} />
+                        <InsightStat label="Eggs produced (30 d)" value={Number(tenantInsights.eggs_produced_30d).toLocaleString()} />
+                        <InsightStat label="Slaughter records (30 d)" value={tenantInsights.slaughter_records_30d} />
+                        <InsightStat label="Mortality (30 d)" value={tenantInsights.mortality_30d} highlight={Number(tenantInsights.mortality_30d) > 0} />
+                      </div>
+                    </div>
+
+                    {/* Orders */}
+                    <div className="px-5 py-4">
+                      <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Orders & Customers</div>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <InsightStat label="Orders (30 d)" value={tenantInsights.orders_30d} />
+                        <InsightStat label="Orders (total)" value={tenantInsights.orders_total} />
+                        <InsightStat label="Customers" value={tenantInsights.customers_count} />
+                      </div>
+                    </div>
+
+                    {/* Procurement */}
+                    <div className="px-5 py-4">
+                      <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Procurement</div>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <InsightStat label="POs (30 d)" value={tenantInsights.purchase_orders_30d} />
+                        <InsightStat label="POs (total)" value={tenantInsights.purchase_orders_total} />
+                        <InsightStat label="Procurement spend (30 d)" value={formatMoney(tenantInsights.procurement_spend_30d)} />
+                      </div>
+                    </div>
+
+                    {/* HR */}
+                    <div className="px-5 py-4">
+                      <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">HR & Payroll</div>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <InsightStat label="Active employees" value={tenantInsights.active_employees} />
+                        <InsightStat label="Payroll spend (30 d)" value={formatMoney(tenantInsights.payroll_spend_30d)} />
+                      </div>
+                    </div>
+
+                    {/* Activity */}
+                    <div className="px-5 py-4">
+                      <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">System Activity</div>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        <InsightStat label="Audit events (30 d)" value={tenantInsights.audit_events_30d} />
+                        <InsightStat label="Last activity" value={tenantInsights.last_activity_at ? formatDate(tenantInsights.last_activity_at) : '—'} />
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+              </div>
+
             </>
           ) : (
             <div className="card px-6 py-12 text-center text-slate-500">Select a tenant to manage plan assignment, domains, and module overrides.</div>
