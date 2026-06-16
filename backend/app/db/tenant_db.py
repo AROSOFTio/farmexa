@@ -370,260 +370,203 @@ def _apply_runtime_schema_patches(engine: Engine) -> None:
                 except Exception:
                     pass
 
-    with engine.begin() as connection:
-        connection.execute(
-            text(
-                """
-                DO $$
-                BEGIN
-                    IF EXISTS (
-                        SELECT 1
-                        FROM information_schema.columns
-                        WHERE table_name = 'tenants'
-                          AND column_name = 'plan'
-                          AND udt_name = 'subscriptionplan'
-                    ) THEN
-                        ALTER TABLE tenants ALTER COLUMN plan TYPE VARCHAR(50) USING plan::text;
-                    END IF;
-                END $$;
-                """
-            )
-        )
-        connection.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS job_title VARCHAR(120)"))
-        connection.execute(text("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS supplier_type VARCHAR(80)"))
-        connection.execute(text("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS products_supplied TEXT"))
-        connection.execute(text("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS supplier_officer VARCHAR(100)"))
-        connection.execute(text("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS alternate_phone VARCHAR(50)"))
-        connection.execute(text("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS tax_id VARCHAR(80)"))
-        connection.execute(text("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS payment_terms VARCHAR(120)"))
-        connection.execute(text("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS lead_time_days INTEGER"))
-        connection.execute(text("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS notes TEXT"))
-        connection.execute(text("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true"))
-        connection.execute(text("ALTER TABLE batches ADD COLUMN IF NOT EXISTS section_id INTEGER"))
-        connection.execute(text("ALTER TABLE batches ADD COLUMN IF NOT EXISTS stock_item_id INTEGER"))
-        connection.execute(text("ALTER TABLE feed_items ADD COLUMN IF NOT EXISTS stock_item_id INTEGER"))
-        connection.execute(text("ALTER TABLE tenant_modules ADD COLUMN IF NOT EXISTS is_manual_override BOOLEAN NOT NULL DEFAULT false"))
+    # Each patch runs in its own AUTOCOMMIT transaction so a single failure
+    # never aborts the rest, and concurrent workers don't deadlock on DDL locks.
+    _ddl_patches = [
+        # tenants.plan type migration (safe DO block)
+        """
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'tenants' AND column_name = 'plan' AND udt_name = 'subscriptionplan'
+            ) THEN
+                ALTER TABLE tenants ALTER COLUMN plan TYPE VARCHAR(50) USING plan::text;
+            END IF;
+        END $$;
+        """,
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS job_title VARCHAR(120)",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS supplier_type VARCHAR(80)",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS products_supplied TEXT",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS supplier_officer VARCHAR(100)",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS alternate_phone VARCHAR(50)",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS tax_id VARCHAR(80)",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS payment_terms VARCHAR(120)",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS lead_time_days INTEGER",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS notes TEXT",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true",
+        "ALTER TABLE batches ADD COLUMN IF NOT EXISTS section_id INTEGER",
+        "ALTER TABLE batches ADD COLUMN IF NOT EXISTS stock_item_id INTEGER",
+        "ALTER TABLE feed_items ADD COLUMN IF NOT EXISTS stock_item_id INTEGER",
+        "ALTER TABLE tenant_modules ADD COLUMN IF NOT EXISTS is_manual_override BOOLEAN NOT NULL DEFAULT false",
         # Phase 2 Branch ID patches
-        connection.execute(text("ALTER TABLE stock_items ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
-        connection.execute(text("ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
-        connection.execute(text("ALTER TABLE store_locations ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
-        connection.execute(text("ALTER TABLE poultry_houses ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
-        connection.execute(text("ALTER TABLE batches ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
-        connection.execute(text("ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
-        connection.execute(text("ALTER TABLE feed_purchases ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
-        connection.execute(text("ALTER TABLE feed_production_batches ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)"))
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_batches_section_id ON batches (section_id)"))
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_batches_stock_item_id ON batches (stock_item_id)"))
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_feed_items_stock_item_id ON feed_items (stock_item_id)"))
-        connection.execute(
-            text(
-                """
-                DO $$
-                BEGIN
-                    IF NOT EXISTS (
-                        SELECT 1
-                        FROM pg_constraint
-                        WHERE conname = 'fk_batches_section_id'
-                    ) THEN
-                        ALTER TABLE batches
-                        ADD CONSTRAINT fk_batches_section_id
-                        FOREIGN KEY (section_id) REFERENCES poultry_house_sections(id) ON DELETE SET NULL;
-                    END IF;
-                END $$;
-                """
-            )
-        )
-        connection.execute(
-            text(
-                """
-                DO $$
-                BEGIN
-                    IF NOT EXISTS (
-                        SELECT 1
-                        FROM pg_constraint
-                        WHERE conname = 'fk_batches_stock_item_id'
-                    ) THEN
-                        ALTER TABLE batches
-                        ADD CONSTRAINT fk_batches_stock_item_id
-                        FOREIGN KEY (stock_item_id) REFERENCES stock_items(id) ON DELETE SET NULL;
-                    END IF;
-                    IF NOT EXISTS (
-                        SELECT 1
-                        FROM pg_constraint
-                        WHERE conname = 'fk_feed_items_stock_item_id'
-                    ) THEN
-                        ALTER TABLE feed_items
-                        ADD CONSTRAINT fk_feed_items_stock_item_id
-                        FOREIGN KEY (stock_item_id) REFERENCES stock_items(id) ON DELETE SET NULL;
-                    END IF;
-                END $$;
-                """
-            )
-        )
-        # ---------------------------------------------------------------
-        # Phase 1 — Enterprise Accounting column migrations
-        # ---------------------------------------------------------------
-        # accounts: add new enterprise columns
-        connection.execute(text("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS tenant_id INTEGER"))
-        connection.execute(text("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS description TEXT"))
-        connection.execute(text("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS allow_manual_entries BOOLEAN NOT NULL DEFAULT true"))
-        connection.execute(text("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_system BOOLEAN NOT NULL DEFAULT false"))
-        # Add normal_balance column (enum must be created first safely)
-        connection.execute(
-            text("""
-            DO $$
-            BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'normalbalance') THEN
-                    CREATE TYPE normalbalance AS ENUM ('debit', 'credit');
-                END IF;
-            END $$;
-            """)
-        )
-        connection.execute(
-            text("""
-            ALTER TABLE accounts ADD COLUMN IF NOT EXISTS normal_balance normalbalance NOT NULL DEFAULT 'debit';
-            """)
-        )
-        # Add fiscalyearstatus enum
-        connection.execute(
-            text("""
-            DO $$
-            BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'fiscalyearstatus') THEN
-                    CREATE TYPE fiscalyearstatus AS ENUM ('open', 'closed', 'locked');
-                END IF;
-            END $$;
-            """)
-        )
-        # accounts: migrate unique constraint from global to per-tenant
-        connection.execute(
-            text("""
-            DO $$
-            BEGIN
-                IF EXISTS (
-                    SELECT 1 FROM pg_constraint WHERE conname = 'accounts_account_code_key'
-                ) THEN
-                    ALTER TABLE accounts DROP CONSTRAINT accounts_account_code_key;
-                END IF;
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_constraint WHERE conname = 'uq_account_code_tenant'
-                ) THEN
-                    ALTER TABLE accounts ADD CONSTRAINT uq_account_code_tenant
-                        UNIQUE (account_code, tenant_id);
-                END IF;
-            END $$;
-            """)
-        )
-        # journal_entries: add missing audit columns that AccountingService references
-        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS tenant_id INTEGER"))
-        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS reference_type VARCHAR(50)"))
-        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS reference_id INTEGER"))
-        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS notes TEXT"))
-        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER"))
-        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS posted_at TIMESTAMPTZ"))
-        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS posted_by_user_id INTEGER"))
-        # Indexes for new columns
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_accounts_tenant_id ON accounts (tenant_id)"))
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_journal_entries_tenant_id ON journal_entries (tenant_id)"))
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_journal_entries_reference_type ON journal_entries (reference_type)"))
-        # ---------------------------------------------------------------
-        # Phase 2 — Multi-Branch Enterprise Data Isolation
-        # ---------------------------------------------------------------
-        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
-        connection.execute(text("ALTER TABLE journal_lines ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
-        connection.execute(text("ALTER TABLE stock_items ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
-        connection.execute(text("ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
-        connection.execute(text("ALTER TABLE batches ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
-        connection.execute(text("ALTER TABLE feed_purchases ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
-        connection.execute(text("ALTER TABLE feed_consumptions ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
-        connection.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
-        connection.execute(text("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
-        connection.execute(text("ALTER TABLE poultry_houses ADD COLUMN IF NOT EXISTS branch_id INTEGER"))
-        
-        # Add index for branch_id on heavy operational tables
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_journal_entries_branch_id ON journal_entries (branch_id)"))
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_stock_movements_branch_id ON stock_movements (branch_id)"))
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_batches_branch_id ON batches (branch_id)"))
-        
-        # ---------------------------------------------------------------
+        "ALTER TABLE stock_items ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)",
+        "ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)",
+        "ALTER TABLE store_locations ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)",
+        "ALTER TABLE poultry_houses ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)",
+        "ALTER TABLE batches ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)",
+        "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)",
+        "ALTER TABLE feed_purchases ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)",
+        "ALTER TABLE feed_production_batches ADD COLUMN IF NOT EXISTS branch_id INTEGER REFERENCES branches(id)",
+        "CREATE INDEX IF NOT EXISTS ix_batches_section_id ON batches (section_id)",
+        "CREATE INDEX IF NOT EXISTS ix_batches_stock_item_id ON batches (stock_item_id)",
+        "CREATE INDEX IF NOT EXISTS ix_feed_items_stock_item_id ON feed_items (stock_item_id)",
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_batches_section_id') THEN
+                ALTER TABLE batches ADD CONSTRAINT fk_batches_section_id
+                    FOREIGN KEY (section_id) REFERENCES poultry_house_sections(id) ON DELETE SET NULL;
+            END IF;
+        END $$;
+        """,
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_batches_stock_item_id') THEN
+                ALTER TABLE batches ADD CONSTRAINT fk_batches_stock_item_id
+                    FOREIGN KEY (stock_item_id) REFERENCES stock_items(id) ON DELETE SET NULL;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_feed_items_stock_item_id') THEN
+                ALTER TABLE feed_items ADD CONSTRAINT fk_feed_items_stock_item_id
+                    FOREIGN KEY (stock_item_id) REFERENCES stock_items(id) ON DELETE SET NULL;
+            END IF;
+        END $$;
+        """,
+        # Phase 1 — Enterprise Accounting
+        "ALTER TABLE accounts ADD COLUMN IF NOT EXISTS tenant_id INTEGER",
+        "ALTER TABLE accounts ADD COLUMN IF NOT EXISTS description TEXT",
+        "ALTER TABLE accounts ADD COLUMN IF NOT EXISTS allow_manual_entries BOOLEAN NOT NULL DEFAULT true",
+        "ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_system BOOLEAN NOT NULL DEFAULT false",
+        # normalbalance enum must exist before the column that uses it
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'normalbalance') THEN
+                CREATE TYPE normalbalance AS ENUM ('debit', 'credit');
+            END IF;
+        END $$;
+        """,
+        "ALTER TABLE accounts ADD COLUMN IF NOT EXISTS normal_balance normalbalance NOT NULL DEFAULT 'debit'",
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'fiscalyearstatus') THEN
+                CREATE TYPE fiscalyearstatus AS ENUM ('open', 'closed', 'locked');
+            END IF;
+        END $$;
+        """,
+        # Migrate global unique constraint to per-tenant
+        """
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'accounts_account_code_key') THEN
+                ALTER TABLE accounts DROP CONSTRAINT accounts_account_code_key;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_account_code_tenant') THEN
+                ALTER TABLE accounts ADD CONSTRAINT uq_account_code_tenant UNIQUE (account_code, tenant_id);
+            END IF;
+        END $$;
+        """,
+        "ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS tenant_id INTEGER",
+        "ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS reference_type VARCHAR(50)",
+        "ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS reference_id INTEGER",
+        "ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS notes TEXT",
+        "ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER",
+        "ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS posted_at TIMESTAMPTZ",
+        "ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS posted_by_user_id INTEGER",
+        "CREATE INDEX IF NOT EXISTS ix_accounts_tenant_id ON accounts (tenant_id)",
+        "CREATE INDEX IF NOT EXISTS ix_journal_entries_tenant_id ON journal_entries (tenant_id)",
+        "CREATE INDEX IF NOT EXISTS ix_journal_entries_reference_type ON journal_entries (reference_type)",
+        # Phase 2 — Multi-Branch Data Isolation
+        "ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS branch_id INTEGER",
+        "ALTER TABLE journal_lines ADD COLUMN IF NOT EXISTS branch_id INTEGER",
+        "ALTER TABLE stock_items ADD COLUMN IF NOT EXISTS branch_id INTEGER",
+        "ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS branch_id INTEGER",
+        "ALTER TABLE batches ADD COLUMN IF NOT EXISTS branch_id INTEGER",
+        "ALTER TABLE feed_purchases ADD COLUMN IF NOT EXISTS branch_id INTEGER",
+        "ALTER TABLE feed_consumptions ADD COLUMN IF NOT EXISTS branch_id INTEGER",
+        "ALTER TABLE orders ADD COLUMN IF NOT EXISTS branch_id INTEGER",
+        "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS branch_id INTEGER",
+        "ALTER TABLE poultry_houses ADD COLUMN IF NOT EXISTS branch_id INTEGER",
+        "CREATE INDEX IF NOT EXISTS ix_journal_entries_branch_id ON journal_entries (branch_id)",
+        "CREATE INDEX IF NOT EXISTS ix_stock_movements_branch_id ON stock_movements (branch_id)",
+        "CREATE INDEX IF NOT EXISTS ix_batches_branch_id ON batches (branch_id)",
         # Phase 4 — Poultry Accounting Automation
-        # ---------------------------------------------------------------
-        connection.execute(text("ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS batch_id INTEGER"))
-        connection.execute(text("ALTER TABLE orders ADD COLUMN IF NOT EXISTS batch_id INTEGER"))
-        connection.execute(text("ALTER TABLE order_items ADD COLUMN IF NOT EXISTS batch_id INTEGER"))
-        connection.execute(text("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS batch_id INTEGER"))
-        connection.execute(text("ALTER TABLE expenses ADD COLUMN IF NOT EXISTS batch_id INTEGER"))
-        
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_stock_movements_batch_id ON stock_movements (batch_id)"))
-
-        # Note: We don't automatically backfill branch_id here because head office might not be created yet.
-        # A separate service handles default branch assignment on initialization.
-
-        # ---------------------------------------------------------------
-        # Reconcile missing columns and views for dynamic tenant databases
-        # ---------------------------------------------------------------
-        connection.execute(text("ALTER TABLE batches ADD COLUMN IF NOT EXISTS chick_cost NUMERIC(18, 4) DEFAULT 0"))
-        connection.execute(text("ALTER TABLE batches ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL"))
-        connection.execute(text("ALTER TABLE egg_production_logs ADD COLUMN IF NOT EXISTS price_per_tray NUMERIC(18, 4)"))
-        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS is_reversed BOOLEAN NOT NULL DEFAULT false"))
-        connection.execute(text("ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS reversal_of_id INTEGER REFERENCES journal_entries(id) ON DELETE SET NULL"))
-        connection.execute(text("ALTER TABLE fiscal_years ADD COLUMN IF NOT EXISTS closed_at TIMESTAMP WITH TIME ZONE"))
-        connection.execute(text("ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS direct_labour_cost NUMERIC(18, 4)"))
-        connection.execute(text("ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS overhead_cost NUMERIC(18, 4)"))
-        connection.execute(text("ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS total_production_cost NUMERIC(18, 4)"))
-        connection.execute(text("ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS cost_per_kg NUMERIC(18, 4)"))
-        connection.execute(text("ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS production_journal_id INTEGER"))
-        connection.execute(text("ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS chick_cost_override NUMERIC(18, 4)"))
-        # branch_transfers.status was historically bound to the stock_transfers
-        # 'transferstatus' type, whose values don't match — convert to its own type.
-        connection.execute(text("""
-            DO $$
-            BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'branchtransferstatus') THEN
-                    CREATE TYPE branchtransferstatus AS ENUM ('pending', 'in_transit', 'completed', 'rejected', 'cancelled');
-                END IF;
-                IF EXISTS (
-                    SELECT 1 FROM information_schema.columns
-                    WHERE table_name = 'branch_transfers' AND column_name = 'status' AND udt_name = 'transferstatus'
-                ) THEN
-                    ALTER TABLE branch_transfers ALTER COLUMN status DROP DEFAULT;
-                    ALTER TABLE branch_transfers
-                        ALTER COLUMN status TYPE branchtransferstatus
-                        USING (CASE status::text
-                            WHEN 'draft' THEN 'pending'
-                            WHEN 'issued' THEN 'in_transit'
-                            WHEN 'received' THEN 'completed'
-                            ELSE 'cancelled'
-                        END)::branchtransferstatus;
-                END IF;
-            END $$;
-        """))
-        connection.execute(text("ALTER TABLE expense_categories ADD COLUMN IF NOT EXISTS default_account_code VARCHAR(20)"))
-        connection.execute(text("ALTER TABLE income_categories ADD COLUMN IF NOT EXISTS default_account_code VARCHAR(20)"))
-        connection.execute(text("ALTER TABLE journal_lines ADD COLUMN IF NOT EXISTS batch_id INTEGER REFERENCES batches(id) ON DELETE SET NULL"))
-        # HR leave negotiation workflow (supervisor review + day adjustment).
-        connection.execute(text("ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS manager_note TEXT"))
-        connection.execute(text("ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS adjusted_days INTEGER"))
-        connection.execute(text("ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS reviewed_by_id INTEGER"))
-        connection.execute(text("ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP WITH TIME ZONE"))
-        connection.execute(text("""
-            CREATE OR REPLACE VIEW customer_balances AS
-            SELECT
-                c.id AS customer_id,
-                COALESCE(
-                    SUM(
-                        CASE
-                            WHEN i.status::text <> 'cancelled'
-                            THEN i.total_amount - i.paid_amount
-                            ELSE 0
-                        END
-                    ),
-                    0
-                ) AS balance
-            FROM customers c
-            LEFT JOIN invoices i ON i.customer_id = c.id
-            GROUP BY c.id
-        """))
+        "ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS batch_id INTEGER",
+        "ALTER TABLE orders ADD COLUMN IF NOT EXISTS batch_id INTEGER",
+        "ALTER TABLE order_items ADD COLUMN IF NOT EXISTS batch_id INTEGER",
+        "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS batch_id INTEGER",
+        "ALTER TABLE expenses ADD COLUMN IF NOT EXISTS batch_id INTEGER",
+        "CREATE INDEX IF NOT EXISTS ix_stock_movements_batch_id ON stock_movements (batch_id)",
+        # Misc additive patches
+        "ALTER TABLE batches ADD COLUMN IF NOT EXISTS chick_cost NUMERIC(18, 4) DEFAULT 0",
+        "ALTER TABLE batches ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL",
+        "ALTER TABLE egg_production_logs ADD COLUMN IF NOT EXISTS price_per_tray NUMERIC(18, 4)",
+        "ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS is_reversed BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS reversal_of_id INTEGER REFERENCES journal_entries(id) ON DELETE SET NULL",
+        "ALTER TABLE fiscal_years ADD COLUMN IF NOT EXISTS closed_at TIMESTAMP WITH TIME ZONE",
+        "ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS direct_labour_cost NUMERIC(18, 4)",
+        "ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS overhead_cost NUMERIC(18, 4)",
+        "ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS total_production_cost NUMERIC(18, 4)",
+        "ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS cost_per_kg NUMERIC(18, 4)",
+        "ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS production_journal_id INTEGER",
+        "ALTER TABLE slaughter_records ADD COLUMN IF NOT EXISTS chick_cost_override NUMERIC(18, 4)",
+        # branch_transfers.status type migration (DO block is atomic within itself)
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'branchtransferstatus') THEN
+                CREATE TYPE branchtransferstatus AS ENUM ('pending', 'in_transit', 'completed', 'rejected', 'cancelled');
+            END IF;
+            IF EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'branch_transfers' AND column_name = 'status' AND udt_name = 'transferstatus'
+            ) THEN
+                ALTER TABLE branch_transfers ALTER COLUMN status DROP DEFAULT;
+                ALTER TABLE branch_transfers
+                    ALTER COLUMN status TYPE branchtransferstatus
+                    USING (CASE status::text
+                        WHEN 'draft' THEN 'pending'
+                        WHEN 'issued' THEN 'in_transit'
+                        WHEN 'received' THEN 'completed'
+                        ELSE 'cancelled'
+                    END)::branchtransferstatus;
+            END IF;
+        END $$;
+        """,
+        "ALTER TABLE expense_categories ADD COLUMN IF NOT EXISTS default_account_code VARCHAR(20)",
+        "ALTER TABLE income_categories ADD COLUMN IF NOT EXISTS default_account_code VARCHAR(20)",
+        "ALTER TABLE journal_lines ADD COLUMN IF NOT EXISTS batch_id INTEGER REFERENCES batches(id) ON DELETE SET NULL",
+        "ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS manager_note TEXT",
+        "ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS adjusted_days INTEGER",
+        "ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS reviewed_by_id INTEGER",
+        "ALTER TABLE leave_requests ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMP WITH TIME ZONE",
+        """
+        CREATE OR REPLACE VIEW customer_balances AS
+        SELECT
+            c.id AS customer_id,
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN i.status::text <> 'cancelled'
+                        THEN i.total_amount - i.paid_amount
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS balance
+        FROM customers c
+        LEFT JOIN invoices i ON i.customer_id = c.id
+        GROUP BY c.id
+        """,
+    ]
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+        for patch_sql in _ddl_patches:
+            try:
+                conn.execute(text(patch_sql))
+            except SQLAlchemyError as exc:
+                logger.warning("Schema patch skipped: %s | SQL: %.120s", exc, patch_sql.strip()[:120])
 
 
 def _upsert_tenant_identity(session: Session, tenant_snapshot: dict[str, Any]) -> None:
