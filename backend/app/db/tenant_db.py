@@ -13,7 +13,7 @@ from typing import Any
 from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy import Enum as SAEnum, create_engine, inspect, text
 from sqlalchemy.engine import Engine, URL, make_url
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session, sessionmaker
 from starlette.concurrency import run_in_threadpool
@@ -807,15 +807,20 @@ def _ensure_tenant_database_sync(
             _create_database_sync(database_name)
 
         session_factory = _ensure_schema_ready_sync(database_name)
-        with session_factory() as session:
-            _upsert_tenant_identity(session, tenant_snapshot)
-            _upsert_user_identity(session, user_snapshot)
-            _seed_default_branch(session, tenant_snapshot)
-            _seed_default_inventory_items(session)
-            # Seed Chart of Accounts + fiscal year if not already present
-            seed_chart_of_accounts(session, tenant_id=tenant_snapshot["id"])
-            create_default_fiscal_year(session, tenant_id=tenant_snapshot["id"])
-            session.commit()
+        try:
+            with session_factory() as session:
+                _upsert_tenant_identity(session, tenant_snapshot)
+                _upsert_user_identity(session, user_snapshot)
+                _seed_default_branch(session, tenant_snapshot)
+                _seed_default_inventory_items(session)
+                # Seed Chart of Accounts + fiscal year if not already present
+                seed_chart_of_accounts(session, tenant_id=tenant_snapshot["id"])
+                create_default_fiscal_year(session, tenant_id=tenant_snapshot["id"])
+                session.commit()
+        except IntegrityError:
+            # Another worker seeded this tenant's data simultaneously — safe to ignore.
+            # The data is now in the DB; we just need to mark this worker's state.
+            logger.info("Concurrent tenant seeding detected for %s — skipping (already seeded).", database_name)
         _mark_user_synced(database_name, user_snapshot)
 
 
