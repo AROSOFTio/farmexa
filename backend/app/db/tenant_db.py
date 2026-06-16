@@ -42,10 +42,11 @@ logger = logging.getLogger(__name__)
 
 def _get_branch_scoped_classes() -> list[type]:
     """Mapped classes that carry a branch_id column (computed dynamically on each ORM execution)."""
+    from app.models.branch import UserBranchAccess as _UBA
     return [
         mapper.class_
         for mapper in Base.registry.mappers
-        if hasattr(mapper.class_, "branch_id")
+        if hasattr(mapper.class_, "branch_id") and mapper.class_ is not _UBA
     ]
 
 

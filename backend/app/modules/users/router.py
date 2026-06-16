@@ -5,8 +5,10 @@ Users router: /api/v1/users endpoints (super_manager only for most operations).
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.db.tenant_db import get_tenant_sync_db
 from app.core.deps import get_current_user, require_permission
 from app.modules.users.catalog import PLATFORM_ROLE_NAMES, role_sort_key
 from app.modules.users.schemas import (
@@ -175,47 +177,46 @@ async def update_user_permissions(
 
 
 @router.get("/{user_id}/branches", response_model=list[int], summary="Get user's allowed branches")
-async def get_user_branches(
+def get_user_branches(
     user_id: int,
     current_user=Depends(require_permission("users:read")),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_tenant_sync_db),
 ):
     """Get list of branch IDs assigned to a user."""
     from sqlalchemy import select
     from app.models.branch import UserBranchAccess
-    
-    result = await db.execute(
+
+    result = db.execute(
         select(UserBranchAccess.branch_id).where(UserBranchAccess.user_id == user_id)
     )
     return list(result.scalars().all())
 
 
 @router.put("/{user_id}/branches", response_model=list[int], summary="Update user's allowed branches")
-async def update_user_branches(
+def update_user_branches(
     user_id: int,
     branch_ids: list[int],
     current_user=Depends(require_permission("users:write")),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_tenant_sync_db),
 ):
     """Set the allowed branches for a user (replaces existing mapping)."""
     from sqlalchemy import delete, select
     from app.models.branch import UserBranchAccess
     from app.models.user import User
-    
-    user_result = await db.execute(select(User).where(User.id == user_id))
-    user = user_result.scalar_one_or_none()
+
+    user = db.get(User, user_id)
     if not user:
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="User not found")
-    
-    await db.execute(delete(UserBranchAccess).where(UserBranchAccess.user_id == user_id))
-    
+
+    db.execute(delete(UserBranchAccess).where(UserBranchAccess.user_id == user_id))
+
     for branch_id in branch_ids:
         db.add(UserBranchAccess(user_id=user_id, branch_id=branch_id))
-    
-    await db.commit()
-    
-    result = await db.execute(
+
+    db.commit()
+
+    result = db.execute(
         select(UserBranchAccess.branch_id).where(UserBranchAccess.user_id == user_id)
     )
     return list(result.scalars().all())

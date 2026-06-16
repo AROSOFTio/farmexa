@@ -33,7 +33,7 @@ export function BranchSwitcher() {
   // Actually, if activeBranch is null, it means "All Branches" or "Default".
   // Let's explicitly offer an "All Branches" option for admins/managers.
   
-  const isGlobal = hasRole('super_manager') || hasRole('developer_admin') || hasRole('manager')
+  const isGlobal = hasRole('super_manager') || hasRole('developer_admin') || hasRole('manager') || hasRole('tenant_admin') || hasRole('hr_officer')
   
   useEffect(() => {
     // If not global and no active branch, default to the first available branch
