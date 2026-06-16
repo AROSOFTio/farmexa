@@ -164,18 +164,34 @@ def update_branch(
     db: Session = Depends(get_tenant_sync_db),
     current_user=Depends(require_permission("branches:write")),
 ):
+    from fastapi import HTTPException
     branch = db.get(Branch, branch_id)
     if not branch:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Branch not found")
-    
+
     update_data = payload.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(branch, key, value)
-    
+
     db.commit()
     db.refresh(branch)
     return branch
+
+
+@router.delete("/branches/{branch_id}", status_code=204)
+def delete_branch(
+    branch_id: int,
+    db: Session = Depends(get_tenant_sync_db),
+    current_user=Depends(require_permission("branches:write")),
+):
+    from fastapi import HTTPException
+    branch = db.get(Branch, branch_id)
+    if not branch:
+        raise HTTPException(status_code=404, detail="Branch not found")
+    if branch.is_default:
+        raise HTTPException(status_code=400, detail="The default Head Office branch cannot be deleted.")
+    db.delete(branch)
+    db.commit()
 
 
 @router.get("/audit-log", response_model=List[schemas.AuditLogOut])
