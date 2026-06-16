@@ -27,14 +27,16 @@ def get_branch_context(
     """
     from app.models.branch import Branch, UserBranchAccess
     PLATFORM_ADMIN_ROLES = {"super_manager", "developer_admin", "platform_admin"}
+    TENANT_WIDE_ROLES = {"tenant_admin", "manager", "hr_officer"}
 
     role_name = getattr(getattr(current_user, "role", None), "name", "") or ""
     is_admin = role_name in PLATFORM_ADMIN_ROLES
+    is_tenant_wide = role_name in TENANT_WIDE_ROLES
     is_owner = getattr(current_user, "is_tenant_owner", False)
 
     tenant_id = getattr(current_user, "tenant_id", None)
 
-    if is_admin or is_owner:
+    if is_admin or is_tenant_wide or is_owner:
         all_branches = (
             db.query(Branch)
             .filter(Branch.tenant_id == tenant_id, Branch.is_active == True)
