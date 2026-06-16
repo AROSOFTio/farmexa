@@ -342,6 +342,7 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null)
   const [createdTenant, setCreatedTenant] = useState<Tenant | null>(null)
   const [pendingDeleteDomain, setPendingDeleteDomain] = useState<{ tenantId: number; domain: TenantDomain } | null>(null)
+  const [pendingDeleteTenant, setPendingDeleteTenant] = useState<Tenant | null>(null)
 
   const canManage = hasPermission('dev_admin:write')
   const meta = sectionMeta(section)
@@ -594,6 +595,17 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
       toast.success('Tenant reactivated.')
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to reactivate tenant.')),
+  })
+
+  const deleteTenantMutation = useMutation({
+    mutationFn: (tenantId: number) => api.delete(`/dev-admin/tenants/${tenantId}`),
+    onSuccess: async () => {
+      await refreshAdminData()
+      toast.success('Tenant permanently deleted.')
+      setPendingDeleteTenant(null)
+      setSelectedTenantId(null)
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to delete tenant.')),
   })
 
   const toggleModuleMutation = useMutation({
@@ -1118,6 +1130,11 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
                                 Edit
                               </button>
                             ) : null}
+                            {canManage ? (
+                              <button type="button" className="btn-danger btn-sm" onClick={() => setPendingDeleteTenant(tenant)}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            ) : null}
                           </div>
                         </td>
                       </tr>
@@ -1206,6 +1223,10 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
                           Suspend
                         </button>
                       )}
+                      <button type="button" className="btn-danger btn-sm" onClick={() => setPendingDeleteTenant(selectedTenant)}>
+                        <Trash2 className="h-4 w-4" />
+                        Delete Forever
+                      </button>
                     </div>
                   ) : null}
                 </div>
@@ -2178,6 +2199,40 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
                 onClick={() => deleteDomainMutation.mutate({ tenantId: pendingDeleteDomain.tenantId, domainId: pendingDeleteDomain.domain.id })}
               >
                 Delete Domain
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
+        isOpen={!!pendingDeleteTenant}
+        onClose={() => setPendingDeleteTenant(null)}
+        title="Delete Tenant Permanently?"
+        description="This cannot be undone. The tenant database, all users, and all data will be destroyed."
+      >
+        {pendingDeleteTenant ? (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <p>You are about to permanently delete <strong>{pendingDeleteTenant.name}</strong>.</p>
+              <ul className="mt-2 list-disc pl-4 space-y-1">
+                <li>Their operational database (<code className="rounded bg-red-100 px-1">{pendingDeleteTenant.operational_db_name ?? 'not yet provisioned'}</code>) will be dropped</li>
+                <li>All user accounts for this tenant will be deleted (emails freed)</li>
+                <li>All subscriptions, modules, domains, and billing records will be removed</li>
+                <li>The same email can be used to register a fresh tenant afterward</li>
+              </ul>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button type="button" className="btn-secondary" onClick={() => setPendingDeleteTenant(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-danger"
+                disabled={deleteTenantMutation.isPending}
+                onClick={() => deleteTenantMutation.mutate(pendingDeleteTenant.id)}
+              >
+                {deleteTenantMutation.isPending ? 'Deleting...' : 'Yes, delete everything'}
               </button>
             </div>
           </div>

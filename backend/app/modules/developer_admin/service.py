@@ -1557,6 +1557,34 @@ class DeveloperAdminService:
         await self.db.commit()
         return await self._get_tenant_model(tenant_id)
 
+    async def delete_tenant(self, tenant_id: int, actor: User) -> None:
+        import asyncio
+        from sqlalchemy import delete as sql_delete
+        from app.db.tenant_db import drop_tenant_database
+
+        result = await self.db.execute(
+            select(Tenant).where(Tenant.id == tenant_id)
+        )
+        tenant = result.scalar_one_or_none()
+        if not tenant:
+            raise HTTPException(status_code=404, detail="Tenant not found.")
+
+        db_name = tenant.operational_db_name
+
+        # Hard-delete all users so their emails are freed for re-registration
+        await self.db.execute(sql_delete(User).where(User.tenant_id == tenant_id))
+
+        # Delete the tenant — cascades handle modules, subscriptions, domains, etc.
+        await self.db.delete(tenant)
+        await self.db.commit()
+
+        # Drop the operational database (blocking I/O — run in thread)
+        if db_name:
+            try:
+                await asyncio.to_thread(drop_tenant_database, db_name)
+            except Exception as exc:
+                logger.warning("Could not drop operational database %s: %s", db_name, exc)
+
     async def get_subscription_history(self, tenant_id: int) -> list[SubscriptionHistory]:
         result = await self.db.execute(
             select(SubscriptionHistory)

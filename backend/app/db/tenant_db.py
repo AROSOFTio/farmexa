@@ -91,6 +91,43 @@ def _is_platform_admin(user: User | None) -> bool:
     return bool(user and user.role and user.role.name in PLATFORM_ADMIN_ROLES)
 
 
+def drop_tenant_database(database_name: str) -> None:
+    """Dispose in-process connection caches then DROP the tenant's operational database."""
+    with _cache_lock:
+        engine = _tenant_sync_engines.pop(database_name, None)
+        if engine:
+            try:
+                engine.dispose()
+            except Exception:
+                pass
+        _tenant_async_engines.pop(database_name, None)
+        _tenant_async_sessions.pop(database_name, None)
+        _tenant_sync_sessions.pop(database_name, None)
+        _schema_initialized.discard(database_name)
+        _patches_applied.discard(database_name)
+        _columns_reconciled.discard(database_name)
+        _synced_user_ids.pop(database_name, None)
+
+    maintenance_engine = create_engine(
+        _maintenance_sync_url(),
+        isolation_level="AUTOCOMMIT",
+        pool_pre_ping=False,
+    )
+    try:
+        with maintenance_engine.connect() as conn:
+            conn.execute(
+                text("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :dbname"),
+                {"dbname": database_name},
+            )
+            conn.execute(text(f'DROP DATABASE IF EXISTS "{database_name}"'))
+        logger.info("Dropped operational database: %s", database_name)
+    except Exception as exc:
+        logger.error("Failed to drop tenant database %s: %s", database_name, exc)
+        raise
+    finally:
+        maintenance_engine.dispose()
+
+
 def _resolved_async_url() -> str:
     return settings.DATABASE_URL or settings.ASYNC_DATABASE_URL
 

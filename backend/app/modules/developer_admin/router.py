@@ -196,6 +196,15 @@ async def retry_domain_setup(
     return await DeveloperAdminService(db).retry_domain_setup(tenant_id, domain_id, current_user)
 
 
+@router.delete("/tenants/{tenant_id}", status_code=204)
+async def delete_tenant(
+    tenant_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("dev_admin:write")),
+):
+    await DeveloperAdminService(db).delete_tenant(tenant_id, current_user)
+
+
 @router.post("/tenants/{tenant_id}/suspend", response_model=TenantOut)
 async def suspend_tenant(
     tenant_id: int,
