@@ -86,6 +86,7 @@ _tenant_sync_engines: dict[str, Engine] = {}
 _tenant_async_sessions: dict[str, async_sessionmaker[AsyncSession]] = {}
 _tenant_sync_sessions: dict[str, sessionmaker[Session]] = {}
 _schema_initialized: set[str] = set()
+_patches_applied: set[str] = set()
 _columns_reconciled: set[str] = set()
 _synced_user_ids: dict[str, set[int]] = {}
 
@@ -248,7 +249,12 @@ def _ensure_schema_ready_sync(database_name: str) -> sessionmaker[Session]:
         Base.metadata.create_all(bind=engine)
         with _cache_lock:
             _schema_initialized.add(database_name)
-    _apply_runtime_schema_patches(engine)
+    with _cache_lock:
+        already_patched = database_name in _patches_applied
+    if not already_patched:
+        _apply_runtime_schema_patches(engine)
+        with _cache_lock:
+            _patches_applied.add(database_name)
     with _cache_lock:
         already_reconciled = database_name in _columns_reconciled
     if not already_reconciled:

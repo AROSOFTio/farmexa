@@ -6,6 +6,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { Toaster } from 'sonner'
 
 import App from './App'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import './index.css'
 import { applyTheme, resolveInitialTheme } from '@/lib/theme'
 import { captureReferralFromUrl } from '@/lib/referrals'
@@ -34,6 +35,7 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
+    <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <App />
@@ -53,5 +55,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       </BrowserRouter>
       {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 )
