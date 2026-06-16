@@ -143,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadMe()
   }, [loadMe])
 
-  const setBranch = useCallback((branch: { id: number; name: string; code: string } | null) => {
+  const setBranch = useCallback((branch: { id: number; name: string; branch_code: string } | null) => {
     if (branch) {
       localStorage.setItem('active_branch', JSON.stringify(branch))
     } else {
