@@ -948,8 +948,8 @@ function AssignBranchesModal({
                       }}
                     />
                     <div>
-                      <div className="font-medium text-neutral-800">{branch.name} <span className="text-neutral-400 font-normal">({branch.code})</span></div>
-                      {branch.location && <div className="text-xs leading-relaxed text-neutral-500">{branch.location}</div>}
+                      <div className="font-medium text-neutral-800">{branch.name} <span className="text-neutral-400 font-normal">({branch.branch_code})</span></div>
+                      {branch.address && <div className="text-xs leading-relaxed text-neutral-500">{branch.address}</div>}
                     </div>
                   </label>
                 ))}

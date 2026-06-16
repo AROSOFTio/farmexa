@@ -17,7 +17,7 @@ interface AuthState {
   enabledModules: string[]
   isAuthenticated: boolean
   isLoading: boolean
-  activeBranch: { id: number; name: string; code: string } | null
+  activeBranch: { id: number; name: string; branch_code: string } | null
 }
 
 interface AuthContextValue extends AuthState {
@@ -27,7 +27,7 @@ interface AuthContextValue extends AuthState {
   hasRole: (role: string) => boolean
   hasModuleAccess: (moduleKey: string) => boolean
   refetchMe: () => Promise<void>
-  setActiveBranch: (branch: { id: number; name: string; code: string } | null) => void
+  setActiveBranch: (branch: { id: number; name: string; branch_code: string } | null) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
