@@ -96,25 +96,111 @@ async def logout(
 
 @router.post("/forgot-password", response_model=MessageOut)
 async def forgot_password(payload: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
-    await log_and_send_email(
-        db,
-        recipient=str(payload.email),
-        subject="Reset your Farmexa password",
-        body="A password reset was requested for your Farmexa account. Use the secure reset link provided by your administrator.",
-        email_type="Password Reset",
-    )
-    await db.commit()
+    from app.models.user import User
+    from app.models.settings import SystemSettings
+    from app.core.security import create_password_reset_token
+    from app.services.email_service import log_and_send_email, branded_email_html
+
+    email_str = str(payload.email).strip().lower()
+    result = await db.execute(select(User).where(User.email == email_str, User.deleted_at.is_(None)))
+    user = result.scalar_one_or_none()
+
+    if user:
+        token = create_password_reset_token(user.id, user.email)
+        
+        # Load system settings
+        settings_result = await db.execute(select(SystemSettings).order_by(SystemSettings.id).limit(1))
+        system_settings = settings_result.scalar_one_or_none()
+        system_name = system_settings.system_name if system_settings else "Farmexa"
+
+        body = (
+            f"Hello {user.full_name or 'there'},\n\n"
+            f"We received a request to reset your {system_name} password.\n"
+            f"Please use the following reset token to set a new password:\n\n"
+            f"{token}\n\n"
+            "This token is valid for 15 minutes. If you did not make this request, you can safely ignore this email.\n"
+        )
+
+        html_body = branded_email_html(
+            title="Reset your password",
+            intro="We received a request to reset your password.",
+            body_html=(
+                "<p>Please copy the reset token below and paste it into the application reset form:</p>"
+                f"<p style='font-size: 14px; font-family: monospace; font-weight: bold; background-color: #f1f5f9; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; word-break: break-all; text-align: center; color: #0f172a;'>{token}</p>"
+                "<p>This token is valid for 15 minutes. If you did not request a password reset, please ignore this email.</p>"
+            ),
+            system_settings=system_settings,
+        )
+
+        await log_and_send_email(
+            db,
+            recipient=user.email,
+            subject=f"Reset your {system_name} password",
+            body=body,
+            html_body=html_body,
+            email_type="Password Reset",
+            system_settings=system_settings,
+        )
+        await db.commit()
+
     return {"message": "If the email exists, a password reset message has been sent."}
 
 
 @router.post("/reset-password", response_model=MessageOut)
 async def reset_password(payload: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
-    return {"message": "Password reset token accepted for processing."}
+    from app.core.security import decode_password_reset_token, hash_password
+    from app.models.user import User
+    from jwt.exceptions import InvalidTokenError
+
+    try:
+        token_data = decode_password_reset_token(payload.token)
+    except (InvalidTokenError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The password reset token is invalid or expired."
+        )
+
+    user_id = int(token_data["sub"])
+    result = await db.execute(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
+
+    user.hashed_password = hash_password(payload.password)
+    await db.commit()
+    return {"message": "Your password has been successfully reset."}
 
 
 @router.post("/verify-email", response_model=MessageOut)
 async def verify_email(payload: VerifyEmailRequest, db: AsyncSession = Depends(get_db)):
-    return {"message": "Email verification token accepted for processing."}
+    from app.core.security import decode_email_verification_token
+    from app.models.user import User
+    from jwt.exceptions import InvalidTokenError
+
+    try:
+        token_data = decode_email_verification_token(payload.token)
+    except (InvalidTokenError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The email verification token is invalid or expired."
+        )
+
+    user_id = int(token_data["sub"])
+    result = await db.execute(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
+
+    # Email is verified successfully
+    return {"message": "Email verified."}
 
 
 @router.get("/me", response_model=MeResponse, summary="Get current authenticated user")

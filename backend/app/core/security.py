@@ -73,3 +73,52 @@ def hash_refresh_token(token: str) -> str:
 
 def refresh_token_expiry() -> datetime:
     return datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
+
+# ── Password Reset Token ──────────────────────────────────────
+
+def create_password_reset_token(user_id: int, email: str) -> str:
+    """Create a JWT password reset token valid for 15 minutes."""
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(minutes=15)
+    payload = {
+        "sub": str(user_id),
+        "email": email,
+        "iat": now,
+        "exp": expire,
+        "type": "reset_password",
+    }
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_password_reset_token(token: str) -> dict:
+    """Decode and verify a password reset token. Raises JWTError or ValueError on invalid."""
+    payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+    if payload.get("type") != "reset_password":
+        raise ValueError("Invalid token type")
+    return payload
+
+
+# ── Email Verification Token ─────────────────────────────────
+
+def create_email_verification_token(user_id: int, email: str) -> str:
+    """Create a JWT email verification token valid for 24 hours."""
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(hours=24)
+    payload = {
+        "sub": str(user_id),
+        "email": email,
+        "iat": now,
+        "exp": expire,
+        "type": "verify_email",
+    }
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_email_verification_token(token: str) -> dict:
+    """Decode and verify an email verification token. Raises JWTError or ValueError on invalid."""
+    payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+    if payload.get("type") != "verify_email":
+        raise ValueError("Invalid token type")
+    return payload
+
