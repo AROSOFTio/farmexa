@@ -202,13 +202,21 @@ class SalesService:
         if not order.items:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="At least one order line is required")
 
+        # Resolve branch_id from order schema, or fallback to session info
+        branch_id = order.branch_id if hasattr(order, "branch_id") and order.branch_id else None
+        if not branch_id:
+            branch_ids = db.info.get("branch_ids")
+            if branch_ids:
+                branch_id = branch_ids[0]
+
         total_amount = Decimal("0")
         db_order = Order(
             customer_id=order.customer_id, 
             status=order.status, 
             notes=order.notes, 
             total_amount=0.0, 
-            batch_id=order.batch_id
+            batch_id=order.batch_id,
+            branch_id=branch_id,
         )
         db.add(db_order)
         db.flush()
@@ -250,6 +258,7 @@ class SalesService:
                 reference_id=db_order.id,
                 notes=f"Order {db_order.id}",
                 batch_id=item.batch_id,
+                branch_id=branch_id,
             )
 
         db_order.total_amount = total_amount
@@ -264,6 +273,7 @@ class SalesService:
             total_amount=total_amount,
             paid_amount=0.0,
             batch_id=order.batch_id,
+            branch_id=branch_id,
         )
         db.add(invoice)
 

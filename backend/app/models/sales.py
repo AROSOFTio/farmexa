@@ -61,6 +61,7 @@ class Order(Base):
     __tablename__ = "orders"
 
     id = Column(Integer, primary_key=True, index=True)
+    branch_id = Column(Integer, ForeignKey("branches.id"), index=True, nullable=True)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
     batch_id = Column(Integer, ForeignKey("batches.id"), nullable=True)
     status = Column(db_enum(OrderStatus, name="orderstatus"), default=OrderStatus.PENDING, nullable=False)
@@ -93,6 +94,7 @@ class Invoice(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     invoice_number = Column(String, unique=True, index=True, nullable=False)
+    branch_id = Column(Integer, ForeignKey("branches.id"), index=True, nullable=True)
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=True)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
     batch_id = Column(Integer, ForeignKey("batches.id"), nullable=True)

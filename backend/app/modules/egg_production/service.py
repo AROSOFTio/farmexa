@@ -98,6 +98,7 @@ class EggProductionService:
                 unit_price=price_per_tray,
                 reference_id=log.id,
                 record_date=data.record_date,
+                branch_id=batch.branch_id if batch else None,
             )
 
         await self.db.commit()
@@ -111,6 +112,7 @@ class EggProductionService:
         unit_price,
         reference_id: int,
         record_date: date,
+        branch_id: Optional[int] = None,
     ) -> None:
         """Find or create the 'Eggs' finished-product stock item and add trays to it."""
         from app.models.inventory import StockCategory, StockItem
@@ -118,7 +120,10 @@ class EggProductionService:
         from app.services.stock_sku import generate_unique_sku_async
 
         res = await self.db.execute(
-            select(StockItem).where(func.lower(StockItem.name) == "eggs")
+            select(StockItem).where(
+                func.lower(StockItem.name) == "eggs",
+                StockItem.branch_id == branch_id
+            )
         )
         item = res.scalar_one_or_none()
         if item is None:
@@ -133,6 +138,7 @@ class EggProductionService:
                 average_cost=0.0,
                 description="Eggs from production (sold per tray).",
                 is_active=True,
+                branch_id=branch_id,
             )
             self.db.add(item)
             await self.db.flush()
@@ -147,6 +153,7 @@ class EggProductionService:
             reference_id=reference_id,
             unit_cost=0.0,
             notes=f"Egg production {record_date}",
+            branch_id=branch_id,
         )
 
     async def update_log(self, log_id: int, data: EggProductionUpdate) -> EggProductionLog:

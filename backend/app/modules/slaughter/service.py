@@ -243,6 +243,10 @@ class SlaughterService:
         if db_record.status == SlaughterStatus.CANCELLED:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot add outputs to a cancelled record")
 
+        batch = db.query(Batch).filter(Batch.id == db_record.batch_id).first()
+        if not batch:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Batch not found")
+
         # Resolve the sellable item. The slaughter team should not have to pre-create
         # inventory: if no item is selected, find one matching the product name (or
         # the output type) and create it as a FINISHED_PRODUCT when absent, so the
@@ -269,14 +273,12 @@ class SlaughterService:
                     average_cost=float(output.unit_cost or 0),
                     description=f"Slaughter finished good ({output.output_type})",
                     is_active=True,
+                    branch_id=batch.branch_id if batch else None,
                 )
                 db.add(item)
                 db.flush()
 
         # If this is the first output posting, atomically post input movement and reduce batch
-        batch = db.query(Batch).filter(Batch.id == db_record.batch_id).first()
-        if not batch:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Batch not found")
         if db_record.inventory_posted_at is None:
             if not batch.stock_item_id:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Batch not linked to inventory; cannot complete slaughter.")
@@ -291,6 +293,7 @@ class SlaughterService:
                     reference_type=ReferenceType.SLAUGHTER_INPUT.value,
                     reference_id=db_record.id,
                     notes=f"Slaughter input: {db_record.live_birds_count} birds from batch {batch.batch_number}",
+                    branch_id=batch.branch_id if batch else None,
                 )
             except HTTPException as e:
                 db.rollback()
@@ -310,6 +313,7 @@ class SlaughterService:
                 reference_id=record_id,
                 unit_cost=output.unit_cost,
                 notes=f"Slaughter output from record {record_id} ({output.output_type})",
+                branch_id=batch.branch_id if batch else None,
             )
         except HTTPException as e:
             db.rollback()
@@ -367,6 +371,7 @@ class SlaughterService:
             if not item:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock item not found")
 
+            batch = db.query(Batch).filter(Batch.id == db_record.batch_id).first()
             coordinator = InventoryCoordinator(db)
             try:
                 coordinator.record_in(
@@ -376,6 +381,7 @@ class SlaughterService:
                     reference_id=record_id,
                     unit_cost=byproduct.unit_cost,
                     notes=f"Slaughter byproduct: {byproduct.byproduct_name} from record {record_id}",
+                    branch_id=batch.branch_id if batch else None,
                 )
             except HTTPException as e:
                 db.rollback()
@@ -435,6 +441,7 @@ class SlaughterService:
                 if not item:
                     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stock item not found")
 
+                batch = db.query(Batch).filter(Batch.id == db_byproduct.slaughter_record.batch_id).first() if db_byproduct.slaughter_record else None
                 coordinator = InventoryCoordinator(db)
                 try:
                     if delta > 0:
@@ -445,6 +452,7 @@ class SlaughterService:
                             reference_id=db_byproduct.id,
                             unit_cost=updates.unit_cost,
                             notes=f"Byproduct quantity adjustment: {db_byproduct.byproduct_name}",
+                            branch_id=batch.branch_id if batch else None,
                         )
                     else:
                         coordinator.record_out(
@@ -453,6 +461,7 @@ class SlaughterService:
                             reference_type=ReferenceType.SLAUGHTER_BYPRODUCT_ADJUSTMENT.value,
                             reference_id=db_byproduct.id,
                             notes=f"Byproduct quantity reduction: {db_byproduct.byproduct_name}",
+                            branch_id=batch.branch_id if batch else None,
                         )
                 except HTTPException as e:
                     db.rollback()

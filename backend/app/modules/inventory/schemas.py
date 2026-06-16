@@ -1,4 +1,4 @@
-﻿from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 from app.models.inventory import StockCategory, MovementType, TransferStatus, TransferType, StoreLocationType, GIVStatus, GRNStatus
@@ -17,6 +17,7 @@ class StockItemBase(BaseModel):
 class StockItemCreate(StockItemBase):
     initial_quantity: float = 0.0
     initial_unit_cost: NonNegativeMoney = Field(default=0)
+    branch_id: Optional[int] = None
 
 class StockItemUpdate(BaseModel):
     name: Optional[str] = None
@@ -30,6 +31,7 @@ class StockItemUpdate(BaseModel):
 
 class StockItemOut(StockItemBase):
     id: int
+    branch_id: Optional[int] = None
     current_quantity: float
     average_cost: Money
     created_at: datetime

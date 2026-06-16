@@ -79,6 +79,7 @@ class OrderBase(BaseModel):
     status: OrderStatus = OrderStatus.PENDING
     notes: Optional[str] = None
     batch_id: Optional[int] = None
+    branch_id: Optional[int] = None
 
 
 class OrderCreate(OrderBase):
@@ -124,6 +125,7 @@ class InvoiceBase(BaseModel):
     total_amount: NonNegativeMoney
     notes: Optional[str] = None
     batch_id: Optional[int] = None
+    branch_id: Optional[int] = None
 
 
 class InvoiceCreate(InvoiceBase):

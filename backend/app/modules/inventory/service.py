@@ -29,7 +29,7 @@ class InventoryService:
     def get_item(self, db: Session, item_id: int):
         return db.query(StockItem).filter(StockItem.id == item_id).first()
 
-    def create_item(self, db: Session, item: schemas.StockItemCreate):
+    def create_item(self, db: Session, item: schemas.StockItemCreate, branch_id: int | None = None):
         db_item = StockItem(
             name=item.name,
             sku=item.sku,
@@ -41,6 +41,7 @@ class InventoryService:
             is_active=item.is_active,
             current_quantity=0.0,
             average_cost=item.initial_unit_cost,
+            branch_id=branch_id,
         )
         db.add(db_item)
         db.flush()
@@ -54,6 +55,7 @@ class InventoryService:
                 reference_id=db_item.id,
                 unit_cost=item.initial_unit_cost,
                 notes="Initial stock entry",
+                branch_id=branch_id,
             )
 
         db.commit()

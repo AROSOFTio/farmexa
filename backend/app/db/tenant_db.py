@@ -39,19 +39,14 @@ from sqlalchemy.orm import with_loader_criteria
 
 logger = logging.getLogger(__name__)
 
-_branch_scoped_classes: list[type] | None = None
-
 
 def _get_branch_scoped_classes() -> list[type]:
-    """Mapped classes that carry a branch_id column (computed once, post-configuration)."""
-    global _branch_scoped_classes
-    if _branch_scoped_classes is None:
-        _branch_scoped_classes = [
-            mapper.class_
-            for mapper in Base.registry.mappers
-            if hasattr(mapper.class_, "branch_id")
-        ]
-    return _branch_scoped_classes
+    """Mapped classes that carry a branch_id column (computed dynamically on each ORM execution)."""
+    return [
+        mapper.class_
+        for mapper in Base.registry.mappers
+        if hasattr(mapper.class_, "branch_id")
+    ]
 
 
 @event.listens_for(Session, "do_orm_execute")

@@ -58,8 +58,10 @@ def create_item(
     item: schemas.StockItemCreate,
     db: Session = Depends(get_tenant_sync_db),
     current_user=Depends(require_permission("inventory:write")),
+    branch_ctx: BranchContext = Depends(get_branch_context),
 ):
-    return service.inventory_service.create_item(db, item)
+    branch_id = item.branch_id or (branch_ctx.active_branch_id if branch_ctx else None)
+    return service.inventory_service.create_item(db, item, branch_id=branch_id)
 
 
 @router.post("/medicine/items", response_model=schemas.StockItemOut)
@@ -67,9 +69,11 @@ def create_medicine_item(
     item: schemas.StockItemCreate,
     db: Session = Depends(get_tenant_sync_db),
     current_user=Depends(require_permission("inventory:write")),
+    branch_ctx: BranchContext = Depends(get_branch_context),
 ):
     payload = item.model_copy(update={"category": StockCategory.MEDICINE})
-    return service.inventory_service.create_item(db, payload)
+    branch_id = item.branch_id or (branch_ctx.active_branch_id if branch_ctx else None)
+    return service.inventory_service.create_item(db, payload, branch_id=branch_id)
 
 
 @router.put("/items/{item_id}", response_model=schemas.StockItemOut)
