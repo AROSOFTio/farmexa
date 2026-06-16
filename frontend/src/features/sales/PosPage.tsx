@@ -68,7 +68,7 @@ export function PosPage() {
   const [paperSize, setPaperSize] = useState(() => localStorage.getItem('farmexa_pos_receipt_size') || '80mm')
   const canAddProduct = hasPermission('inventory:write')
   const { data: customers = [] } = useQuery({ queryKey: ['sales-customers'], queryFn: () => api.get<Customer[]>('/sales/customers').then((response) => response.data) })
-  const { data: products = [] } = useQuery({ queryKey: ['inventory-items'], queryFn: () => api.get<StockItem[]>('/inventory/items').then((response) => response.data) })
+  const { data: products = [], isError: productsError } = useQuery({ queryKey: ['inventory-items'], queryFn: () => api.get<StockItem[]>('/inventory/items').then((response) => response.data) })
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -218,6 +218,16 @@ export function PosPage() {
               </div>
             </div>
           ) : null}
+          {productsError && (
+            <div className="mt-4 rounded-[8px] border border-red-200 bg-red-50 px-3 py-2 text-[12.5px] text-red-700">
+              Could not load products. Please refresh the page or contact your administrator.
+            </div>
+          )}
+          {!productsError && products.length === 0 && (
+            <div className="mt-4 rounded-[8px] border border-amber-200 bg-amber-50 px-3 py-2 text-[12.5px] text-amber-700">
+              No products in inventory yet. Use <strong>Add product</strong> to create one, or record a slaughter / egg production — those automatically add sellable stock.
+            </div>
+          )}
           <div className="mt-6 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-lg font-bold text-ink-900">Cart</h2>
@@ -458,12 +468,13 @@ export function PosPage() {
               {canAddProduct ? (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="form-label">Available quantity (kg)</label>
-                    <input className="form-input" type="number" min={0} step="0.01" value={newProductQuantity} onChange={(event) => setNewProductQuantity(Number(event.target.value) || 0)} />
+                    <label className="form-label">Initial stock quantity (kg) <span className="text-red-500">*</span></label>
+                    <input className="form-input" type="number" min={0.01} step="0.01" value={newProductQuantity || ''} placeholder="e.g. 50" onChange={(event) => setNewProductQuantity(Number(event.target.value) || 0)} />
+                    <p className="mt-0.5 text-[11px] text-ink-400">Required — products with no stock cannot be sold at checkout.</p>
                   </div>
                   <div>
                     <label className="form-label">Sale price per kg</label>
-                    <input className="form-input" type="number" min={0} step="0.01" value={newProductPrice} onChange={(event) => setNewProductPrice(Number(event.target.value) || 0)} />
+                    <input className="form-input" type="number" min={0} step="0.01" value={newProductPrice || ''} placeholder="e.g. 15000" onChange={(event) => setNewProductPrice(Number(event.target.value) || 0)} />
                   </div>
                 </div>
               ) : null}
@@ -472,7 +483,7 @@ export function PosPage() {
             <button
               type="button"
               className="btn-primary"
-              disabled={!missingProductName.trim() || addProduct.isPending || requestProduct.isPending}
+              disabled={!missingProductName.trim() || (canAddProduct && newProductQuantity <= 0) || addProduct.isPending || requestProduct.isPending}
               onClick={() => (canAddProduct ? addProduct.mutate() : requestProduct.mutate())}
             >
               {canAddProduct ? 'Save product' : 'Send request'}
