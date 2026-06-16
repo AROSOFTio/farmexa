@@ -27,6 +27,7 @@ from app.modules.developer_admin.schemas import (
     SaaSCatalogOut,
     SubscriptionHistoryOut,
     SuspendRequest,
+    TenantActivityOut,
     TenantCreate,
     TenantModuleOut,
     TenantOut,
@@ -203,6 +204,15 @@ async def get_tenant_insights(
     current_user=Depends(require_permission("dev_admin:read")),
 ):
     return await DeveloperAdminService(db).get_tenant_insights(tenant_id)
+
+
+@router.get("/tenants/{tenant_id}/activity", response_model=TenantActivityOut)
+async def get_tenant_activity(
+    tenant_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_permission("dev_admin:read")),
+):
+    return await DeveloperAdminService(db).get_tenant_activity(tenant_id)
 
 
 @router.delete("/tenants/{tenant_id}", status_code=204)

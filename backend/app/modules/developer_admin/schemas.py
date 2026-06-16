@@ -385,3 +385,38 @@ class DeveloperAdminSettingsUpdate(BaseModel):
     pesapal_ipn_url: Optional[str] = None
     custom_domain_annual_price: Optional[Decimal] = None
     custom_domain_currency: Optional[str] = None
+
+
+class TenantUserActivityOut(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    role: Optional[str] = None
+    is_active: bool
+    last_login_at: Optional[datetime] = None
+    last_ip: Optional[str] = None
+    last_user_agent: Optional[str] = None
+    login_count_30d: int = 0
+    never_logged_in: bool = False
+    days_since_login: Optional[int] = None
+
+
+class TenantAuditEventOut(BaseModel):
+    id: int
+    action: str
+    entity: str
+    entity_id: Optional[int] = None
+    meta: Optional[str] = None
+    created_at: datetime
+    user_id: Optional[int] = None
+    user_name: Optional[str] = None
+    user_email: Optional[str] = None
+
+
+class TenantActivityOut(BaseModel):
+    users: List[TenantUserActivityOut]
+    recent_activity: List[TenantAuditEventOut]
+    total_logins_30d: int = 0
+    active_today: int = 0
+    never_logged_in_count: int = 0
+    db_available: bool = False

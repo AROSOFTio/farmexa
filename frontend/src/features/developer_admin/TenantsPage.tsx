@@ -200,6 +200,41 @@ interface ActivityLog {
   actor_email?: string | null
 }
 
+interface TenantUserActivity {
+  id: number
+  full_name: string
+  email: string
+  role: string | null
+  is_active: boolean
+  last_login_at: string | null
+  last_ip: string | null
+  last_user_agent: string | null
+  login_count_30d: number
+  never_logged_in: boolean
+  days_since_login: number | null
+}
+
+interface TenantAuditEvent {
+  id: number
+  action: string
+  entity: string
+  entity_id: number | null
+  meta: string | null
+  created_at: string
+  user_id: number | null
+  user_name: string | null
+  user_email: string | null
+}
+
+interface TenantActivityData {
+  users: TenantUserActivity[]
+  recent_activity: TenantAuditEvent[]
+  total_logins_30d: number
+  active_today: number
+  never_logged_in_count: number
+  db_available: boolean
+}
+
 interface DeveloperAdminSettings {
   primary_platform_domain: string
   default_tenant_domain_suffix: string
@@ -389,6 +424,14 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
   const { data: tenantInsights, isLoading: insightsLoading } = useQuery({
     queryKey: ['dev-admin-tenant-insights', selectedTenantId],
     queryFn: () => api.get(`/dev-admin/tenants/${selectedTenantId}/insights`).then((r) => r.data),
+    enabled: !!selectedTenantId,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+  })
+
+  const { data: tenantActivity, isLoading: activityLoading } = useQuery<TenantActivityData>({
+    queryKey: ['dev-admin-tenant-activity', selectedTenantId],
+    queryFn: () => api.get(`/dev-admin/tenants/${selectedTenantId}/activity`).then((r) => r.data),
     enabled: !!selectedTenantId,
     staleTime: 60_000,
     refetchInterval: 120_000,
@@ -1508,6 +1551,138 @@ export function TenantsPage({ section: initialSection = 'tenants' }: { section?:
 
                   </div>
                 )}
+              </div>
+
+              {/* ── User Login & Activity Monitoring ────────────── */}
+              <div className="card overflow-hidden">
+                <div className="surface-header">
+                  <div>
+                    <h2 className="surface-title">User Login & Activity</h2>
+                    <p className="surface-subtitle">Last login per user, session counts, and recent audit trail from {selectedTenant.name}.</p>
+                  </div>
+                  {tenantActivity && (
+                    <div className="flex items-center gap-2">
+                      {tenantActivity.never_logged_in_count > 0 && (
+                        <span className="badge bg-amber-100 text-amber-700">{tenantActivity.never_logged_in_count} never logged in</span>
+                      )}
+                      <span className="badge badge-success">{tenantActivity.active_today} active today</span>
+                    </div>
+                  )}
+                </div>
+
+                {activityLoading ? (
+                  <div className="px-6 py-8 text-center text-sm text-slate-400">Loading activity data…</div>
+                ) : tenantActivity ? (
+                  <div>
+                    {/* Summary row */}
+                    <div className="grid grid-cols-3 divide-x divide-[var(--border-subtle)] border-b border-[var(--border-subtle)]">
+                      <div className="px-5 py-3 text-center">
+                        <div className="text-xl font-bold text-[var(--text-primary)]">{tenantActivity.total_logins_30d}</div>
+                        <div className="text-xs text-slate-500">Logins (30 d)</div>
+                      </div>
+                      <div className="px-5 py-3 text-center">
+                        <div className="text-xl font-bold text-[var(--text-primary)]">{tenantActivity.active_today}</div>
+                        <div className="text-xs text-slate-500">Active today</div>
+                      </div>
+                      <div className="px-5 py-3 text-center">
+                        <div className={clsx('text-xl font-bold', tenantActivity.never_logged_in_count > 0 ? 'text-amber-600' : 'text-[var(--text-primary)]')}>
+                          {tenantActivity.never_logged_in_count}
+                        </div>
+                        <div className="text-xs text-slate-500">Never logged in</div>
+                      </div>
+                    </div>
+
+                    {/* Users table */}
+                    <div className="overflow-x-auto">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Last Login</th>
+                            <th>Logins (30 d)</th>
+                            <th>Last IP</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tenantActivity.users.length === 0 ? (
+                            <tr><td colSpan={6} className="py-6 text-center text-slate-400">No users found</td></tr>
+                          ) : tenantActivity.users.map((u) => (
+                            <tr key={u.id}>
+                              <td>
+                                <div className="font-medium text-[var(--text-primary)]">{u.full_name}</div>
+                                <div className="text-xs text-slate-400">{u.email}</div>
+                              </td>
+                              <td>
+                                <span className="badge bg-slate-100 text-slate-600">{u.role ?? '—'}</span>
+                              </td>
+                              <td>
+                                {u.never_logged_in ? (
+                                  <span className="badge bg-amber-100 text-amber-700">Never</span>
+                                ) : (
+                                  <div>
+                                    <div className="text-sm">{formatDate(u.last_login_at)}</div>
+                                    {u.days_since_login !== null && (
+                                      <div className={clsx('text-xs', u.days_since_login > 14 ? 'text-amber-600' : 'text-slate-400')}>
+                                        {u.days_since_login === 0 ? 'Today' : `${u.days_since_login}d ago`}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                              <td>
+                                <span className={clsx('font-medium', u.login_count_30d === 0 ? 'text-slate-400' : 'text-[var(--text-primary)]')}>
+                                  {u.login_count_30d}
+                                </span>
+                              </td>
+                              <td className="font-mono text-xs text-slate-500">{u.last_ip ?? '—'}</td>
+                              <td>
+                                <span className={clsx('badge', u.is_active ? 'badge-success' : 'badge-danger')}>
+                                  {u.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Recent audit trail */}
+                    {tenantActivity.db_available && tenantActivity.recent_activity.length > 0 && (
+                      <div className="border-t border-[var(--border-subtle)] px-5 py-4">
+                        <div className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Recent Activity (last 100 events)</div>
+                        <div className="max-h-72 overflow-y-auto space-y-1">
+                          {tenantActivity.recent_activity.map((ev) => (
+                            <div key={ev.id} className="flex items-start gap-3 rounded-lg px-3 py-2 text-sm hover:bg-[var(--surface-soft)]">
+                              <span className={clsx(
+                                'mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase',
+                                ev.action === 'CREATE' ? 'bg-green-100 text-green-700' :
+                                ev.action === 'UPDATE' ? 'bg-blue-100 text-blue-700' :
+                                ev.action === 'DELETE' ? 'bg-red-100 text-red-700' :
+                                'bg-slate-100 text-slate-600'
+                              )}>
+                                {ev.action}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <span className="font-medium text-[var(--text-primary)]">{ev.entity}</span>
+                                {ev.entity_id ? <span className="text-slate-400"> #{ev.entity_id}</span> : null}
+                                {ev.user_name && <span className="ml-2 text-xs text-slate-400">by {ev.user_name}</span>}
+                              </div>
+                              <span className="shrink-0 text-xs text-slate-400">{formatDate(ev.created_at)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {!tenantActivity.db_available && (
+                      <div className="px-6 py-4 text-sm text-slate-400 border-t border-[var(--border-subtle)]">
+                        Activity log unavailable — operational database not ready.
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </div>
 
             </>

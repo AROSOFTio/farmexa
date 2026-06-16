@@ -2,7 +2,9 @@
 SQLAlchemy User model.
 """
 
-from sqlalchemy import BigInteger, Boolean, ForeignKey, Index, String
+from datetime import datetime
+
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, SoftDeleteMixin
@@ -24,6 +26,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     role_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("roles.id", ondelete="SET NULL"), nullable=True

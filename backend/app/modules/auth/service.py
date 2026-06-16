@@ -2,7 +2,7 @@
 Auth service: business logic for login, token refresh, and logout.
 """
 
-from datetime import timezone
+from datetime import datetime, timezone
 from fastapi import HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -73,6 +73,7 @@ class AuthService:
                     detail="This user does not belong to the tenant identified by the current domain.",
                 )
 
+        user.last_login_at = datetime.now(timezone.utc)
         access_token = create_access_token(
             subject=str(user.id),
             extra_claims={"role": user.role.name if user.role else None},

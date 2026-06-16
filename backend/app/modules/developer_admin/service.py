@@ -21,7 +21,7 @@ from sqlalchemy.orm import selectinload
 from app.core.config import settings
 from app.core.security import hash_password
 from app.db.tenant_db import provision_tenant_operational_database
-from app.models.auth import AuditLog, Role
+from app.models.auth import AuditLog, RefreshToken, Role
 from app.models.settings import SystemSettings
 from app.models.tenant import (
     BillingCycle,
@@ -1643,6 +1643,142 @@ class DeveloperAdminService:
 
         stats = await asyncio.to_thread(_gather)
         return {**base, "available": True, **stats}
+
+    async def get_tenant_activity(self, tenant_id: int) -> dict:
+        import asyncio
+        from datetime import datetime, timedelta, timezone
+
+        result = await self.db.execute(select(Tenant).where(Tenant.id == tenant_id))
+        tenant = result.scalar_one_or_none()
+        if not tenant:
+            raise HTTPException(status_code=404, detail="Tenant not found.")
+
+        cutoff_30d = datetime.now(timezone.utc) - timedelta(days=30)
+        cutoff_today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+        # Fetch all users for this tenant from platform DB
+        user_rows = await self.db.execute(
+            select(User).where(User.tenant_id == tenant_id, User.deleted_at.is_(None))
+            .options(selectinload(User.role))
+        )
+        users = list(user_rows.scalars().all())
+
+        # Fetch refresh tokens (login events) for these users
+        user_ids = [u.id for u in users]
+        logins_30d_map: dict[int, int] = {}
+        last_token_map: dict[int, RefreshToken] = {}
+
+        if user_ids:
+            token_rows = await self.db.execute(
+                select(
+                    RefreshToken.user_id,
+                    func.count(RefreshToken.id).filter(RefreshToken.created_at >= cutoff_30d).label("logins_30d"),
+                )
+                .where(RefreshToken.user_id.in_(user_ids))
+                .group_by(RefreshToken.user_id)
+            )
+            for row in token_rows.all():
+                logins_30d_map[row.user_id] = row.logins_30d
+
+            # Most recent token per user (for last_ip, last_user_agent)
+            recent_token_rows = await self.db.execute(
+                select(RefreshToken)
+                .where(RefreshToken.user_id.in_(user_ids))
+                .order_by(RefreshToken.created_at.desc())
+            )
+            for tok in recent_token_rows.scalars().all():
+                if tok.user_id not in last_token_map:
+                    last_token_map[tok.user_id] = tok
+
+        now = datetime.now(timezone.utc)
+        user_activity_list = []
+        total_logins_30d = 0
+        active_today_count = 0
+        never_logged_in_count = 0
+
+        for u in users:
+            last_tok = last_token_map.get(u.id)
+            last_login = u.last_login_at
+            if last_login and last_login.tzinfo is None:
+                last_login = last_login.replace(tzinfo=timezone.utc)
+            logins_30d = logins_30d_map.get(u.id, 0)
+            total_logins_30d += logins_30d
+            never = last_login is None
+            if never:
+                never_logged_in_count += 1
+            days_since = int((now - last_login).days) if last_login else None
+            if last_login and last_login >= cutoff_today:
+                active_today_count += 1
+            user_activity_list.append({
+                "id": u.id,
+                "full_name": u.full_name,
+                "email": u.email,
+                "role": u.role.name if u.role else None,
+                "is_active": u.is_active,
+                "last_login_at": last_login.isoformat() if last_login else None,
+                "last_ip": last_tok.ip_address if last_tok else None,
+                "last_user_agent": last_tok.user_agent if last_tok else None,
+                "login_count_30d": logins_30d,
+                "never_logged_in": never,
+                "days_since_login": days_since,
+            })
+
+        # stable two-pass: most recent login first, then never-logged-in floated to top
+        user_activity_list.sort(key=lambda x: x["last_login_at"] or "", reverse=True)
+        user_activity_list.sort(key=lambda x: x["never_logged_in"], reverse=True)
+
+        # Fetch recent audit events from tenant operational DB
+        recent_activity: list[dict] = []
+        db_available = False
+
+        if tenant.operational_db_name and tenant.operational_db_status == "ready":
+            db_available = True
+            db_name = tenant.operational_db_name
+
+            def _fetch_audit() -> list[dict]:
+                from app.db.tenant_db import get_tenant_admin_sync_session
+                from sqlalchemy import text as sa_text
+
+                with get_tenant_admin_sync_session(db_name) as s:
+                    try:
+                        rows = s.execute(
+                            sa_text("""
+                                SELECT al.id, al.action, al.entity, al.entity_id, al.meta,
+                                       al.created_at, al.user_id,
+                                       u.full_name AS user_name, u.email AS user_email
+                                FROM audit_logs al
+                                LEFT JOIN users u ON u.id = al.user_id
+                                ORDER BY al.created_at DESC
+                                LIMIT 100
+                            """)
+                        ).fetchall()
+                        return [
+                            {
+                                "id": r.id,
+                                "action": r.action,
+                                "entity": r.entity,
+                                "entity_id": r.entity_id,
+                                "meta": r.meta,
+                                "created_at": r.created_at.isoformat() if r.created_at else None,
+                                "user_id": r.user_id,
+                                "user_name": r.user_name,
+                                "user_email": r.user_email,
+                            }
+                            for r in rows
+                        ]
+                    except Exception:
+                        return []
+
+            recent_activity = await asyncio.to_thread(_fetch_audit)
+
+        return {
+            "users": user_activity_list,
+            "recent_activity": recent_activity,
+            "total_logins_30d": total_logins_30d,
+            "active_today": active_today_count,
+            "never_logged_in_count": never_logged_in_count,
+            "db_available": db_available,
+        }
 
     async def delete_tenant(self, tenant_id: int, actor: User) -> None:
         import asyncio
