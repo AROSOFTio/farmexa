@@ -493,7 +493,8 @@ async def _seed_admin(db: AsyncSession) -> None:
 
     admin.email = email
     admin.full_name = settings.SEED_ADMIN_FULL_NAME
-    admin.hashed_password = _password_hash_from_seed(settings.SEED_ADMIN_PASSWORD)
+    if admin.id is None:  # new user only — never overwrite a manually-changed password
+        admin.hashed_password = _password_hash_from_seed(settings.SEED_ADMIN_PASSWORD)
     admin.is_active = True
     admin.role_id = role.id
     admin.tenant_id = None
@@ -521,7 +522,8 @@ async def _seed_developer_admin(db: AsyncSession) -> None:
 
     admin.email = email
     admin.full_name = settings.SEED_DEV_ADMIN_FULL_NAME
-    admin.hashed_password = _password_hash_from_seed(settings.SEED_DEV_ADMIN_PASSWORD)
+    if admin.id is None:  # new user only — never overwrite a manually-changed password
+        admin.hashed_password = _password_hash_from_seed(settings.SEED_DEV_ADMIN_PASSWORD)
     admin.is_active = True
     admin.role_id = role.id
     admin.tenant_id = None
