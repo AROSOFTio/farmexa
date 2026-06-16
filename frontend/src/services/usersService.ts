@@ -52,11 +52,11 @@ export const usersService = {
   },
 
   async getUserBranches(userId: number): Promise<number[]> {
-    const { data } = await api.get<number[]>(`/settings/users/${userId}/branches`)
+    const { data } = await api.get<number[]>(`/users/${userId}/branches`)
     return data
   },
 
   async updateUserBranches(userId: number, branchIds: number[]): Promise<void> {
-    await api.post(`/settings/users/${userId}/branches`, { branch_ids: branchIds })
+    await api.put(`/users/${userId}/branches`, branchIds)
   },
 }

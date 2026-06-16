@@ -211,8 +211,9 @@ def update_user_branches(
 
     db.execute(delete(UserBranchAccess).where(UserBranchAccess.user_id == user_id))
 
+    tenant_id = getattr(current_user, "tenant_id", None)
     for branch_id in branch_ids:
-        db.add(UserBranchAccess(user_id=user_id, branch_id=branch_id))
+        db.add(UserBranchAccess(user_id=user_id, branch_id=branch_id, tenant_id=tenant_id))
 
     db.commit()
 

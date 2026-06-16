@@ -143,13 +143,30 @@ function RegisterStaffModal({
   })
 
   const selectedRoleId = watch('role_id')
+  const [selectedBranches, setSelectedBranches] = useState<number[]>([])
+
+  const { data: availableBranches = [] } = useQuery({
+    queryKey: ['settings-branches'],
+    queryFn: branchService.getBranches,
+  })
+
+  const WIDE_ROLES = new Set(['tenant_admin', 'manager', 'hr_officer', 'super_manager', 'developer_admin'])
+  const selectedRole = roles.find((r) => r.id === Number(selectedRoleId))
+  const isWideRole = selectedRole ? WIDE_ROLES.has(selectedRole.name) : false
 
   const mutation = useMutation({
-    mutationFn: usersService.create,
+    mutationFn: async (values: CreateStaffForm) => {
+      const newUser = await usersService.create(values)
+      if (selectedBranches.length > 0) {
+        await usersService.updateUserBranches(newUser.id, selectedBranches)
+      }
+      return newUser
+    },
     onSuccess: () => {
       toast.success('Staff member registered.')
       qc.invalidateQueries({ queryKey: ['users'] })
       reset()
+      setSelectedBranches([])
       onClose()
     },
     onError: (error: AxiosError<ApiError>) => {
@@ -239,6 +256,42 @@ function RegisterStaffModal({
 
           <div className="rounded-2xl border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-600">
             {roleDescriptionFor(roles, Number(selectedRoleId))}
+          </div>
+
+          <div>
+            <label className="form-label mb-2 block">Branch access</label>
+            {isWideRole ? (
+              <p className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                This role has access to all branches automatically — no assignment needed.
+              </p>
+            ) : availableBranches.length === 0 ? (
+              <p className="rounded-xl border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-500">
+                No branches configured. Go to Settings › Branches to add them first.
+              </p>
+            ) : (
+              <div className="grid gap-2">
+                {availableBranches.map((branch) => (
+                  <label key={branch.id} className="flex cursor-pointer items-start gap-3 rounded-xl border border-neutral-200 px-3 py-3 transition-colors hover:border-brand-300">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-500"
+                      checked={selectedBranches.includes(branch.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedBranches((prev) => [...prev, branch.id])
+                        } else {
+                          setSelectedBranches((prev) => prev.filter((id) => id !== branch.id))
+                        }
+                      }}
+                    />
+                    <div>
+                      <div className="font-medium text-neutral-800">{branch.name} <span className="font-normal text-neutral-400">({branch.branch_code})</span></div>
+                      {branch.address && <div className="text-xs text-neutral-500">{branch.address}</div>}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-3 pt-2 sm:flex-row">
